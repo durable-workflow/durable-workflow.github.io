@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="es" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-platform-conformance" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Suite de conformidad de la plataforma | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/es/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/es/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/es/docs/platform-conformance/"><meta data-rh="true" property="og:locale" content="es"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="uk"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="es"><meta data-rh="true" name="docsearch:language" content="es"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Suite de conformidad de la plataforma | Durable Workflow"><meta data-rh="true" name="description" content="Autoridad pública del manifiesto, catálogo de casos de prueba, reglas del ejecutor y controles de publicación de la suite de conformidad Durable Workflow v2."><meta data-rh="true" property="og:description" content="Autoridad pública del manifiesto, catálogo de casos de prueba, reglas del ejecutor y controles de publicación de la suite de conformidad Durable Workflow v2."><meta data-rh="true" name="keywords" content="suite de conformidad de la plataforma,ejecutor de conformidad,casos de prueba de conformidad,compatibilidad de durable workflow,platform-conformance-contract"><meta data-rh="true" name="twitter:title" content="Suite de conformidad de la plataforma | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Autoridad pública del manifiesto, catálogo de casos de prueba, reglas del ejecutor y controles de publicación de la suite de conformidad Durable Workflow v2."><link data-rh="true" rel="icon" href="/es/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/es/docs/platform-conformance/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/platform-conformance/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/platform-conformance/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/platform-conformance/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/platform-conformance/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/platform-conformance/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/platform-conformance/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/platform-conformance/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/platform-conformance/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/platform-conformance/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ejecución y operación","item":"https://durable-workflow.com/es/docs/category/run-and-operate"},{"@type":"ListItem","position":2,"name":"Suite de conformidad de la plataforma","item":"https://durable-workflow.com/es/docs/platform-conformance"}]}</script><link rel="alternate" type="application/rss+xml" href="/es/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/es/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/es/assets/css/styles.4b1f3763.css">
+<script src="/es/assets/js/runtime~main.09dfa9ea.js" defer="defer"></script>
+<script src="/es/assets/js/main.f4a2764f.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/es/img/logo.svg"><div role="region" aria-label="Saltar al contenido principal"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Saltar al contenido principal</a></div><nav aria-label="Principal" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Alternar barra lateral" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/es/"><div class="navbar__logo"><img src="/es/img/logo.svg" alt="Logotipo de Durable Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/es/img/logo.svg" alt="Logotipo de Durable Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/es/docs/introduction/">Documentación</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/es/docs/platform-conformance/">2.x</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/es/docs/platform-conformance/">2.x</a></li><li><a class="dropdown__link" href="/es/docs/1.x/introduction/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/es/blog/">Blog (en inglés)</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Español</a><ul class="dropdown__menu"><li><a href="/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="es">Español</a></li><li><a href="/fr/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="uk">Українська</a></li><li><a href="/ja/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/platform-conformance/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Dale una estrella a Durable Workflow en GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Apoya el proyecto en GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Estrellas en GitHub">1.3K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="modo del sistema" aria-label="Cambiar entre modo oscuro y claro (actualmente modo del sistema)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Buscar" aria-label="Buscar" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Volver al principio" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Barra lateral de Documentos" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/introduction/"><span class="linkLabel_WmDU">Introducción</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/quickstart/"><span class="linkLabel_WmDU">Inicio rápido de Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/capabilities/"><span class="linkLabel_WmDU">Índice de capacidades de 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/laravel-adoption/"><span class="linkLabel_WmDU">Adopción en Laravel y transición del entorno de ejecución</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Modo servicio</span></a><button aria-label="Ampliar la categoría &#x27;Modo servicio&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/embedded/"><span class="categoryLinkLabel_W154">Modo integrado</span></a><button aria-label="Ampliar la categoría &#x27;Modo integrado&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/es/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Ejecución y operación</span></a><button aria-label="Colapsar categoría &#x27;Ejecución y operación&#x27; de la barra lateral" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/deployment/"><span class="linkLabel_WmDU">Despliegues autogestionados</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/rolling-upgrades/"><span class="linkLabel_WmDU">Actualizaciones graduales</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/monitoring/"><span class="linkLabel_WmDU">Supervisión</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/operator-operating-envelope/"><span class="linkLabel_WmDU">Ámbito operativo del operador</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/waterline-operator-api/"><span class="linkLabel_WmDU">Referencia de la API de operadores de Waterline</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/compatibility/"><span class="linkLabel_WmDU">Compatibilidad de versiones</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/platform-protocol-specs/"><span class="linkLabel_WmDU">Especificaciones de protocolos de la plataforma</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/es/docs/platform-conformance/"><span class="linkLabel_WmDU">Suite de conformidad de la plataforma</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/sdk-neutrality/"><span class="linkLabel_WmDU">Neutralidad de los SDK</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/support/"><span class="linkLabel_WmDU">Soporte</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Ejecución externa y entrada de solicitudes</span></a><button aria-label="Ampliar la categoría &#x27;Ejecución externa y entrada de solicitudes&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">IA y automatización</span></a><button aria-label="Ampliar la categoría &#x27;IA y automatización&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/sponsors/"><span class="linkLabel_WmDU">Patrocinadores</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Rastro de navegación"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Página de Inicio" class="breadcrumbs__link" href="/es/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/es/docs/category/run-and-operate/"><span>Ejecución y operación</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Suite de conformidad de la plataforma</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Versión: 2.x</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">En esta página</button></div><div lang="es"><div class="theme-doc-markdown markdown"><header><h1>Suite de conformidad de la plataforma</h1></header>
+<p>Esta página es la autoridad pública de la <strong>suite de conformidad de la
+plataforma</strong> Durable Workflow. Define la matriz de objetivos, catálogo reutilizable
+de casos de prueba, contrato del ejecutor, reglas de éxito/fallo y controles de
+publicación para implementaciones que afirman compatibilidad con Durable Workflow v2.</p>
+<p data-public-authority-identity="true" data-authority-manifest="https://durable-workflow.github.io/platform-conformance-contract.json" data-authority-schema="durable-workflow.v2.platform-conformance.suite" data-authority-version="47">La autoridad legible por máquina se publica en <a href="https://durable-workflow.github.io/platform-conformance-contract.json"><code data-authority-field="manifest-path">/platform-conformance-contract.json</code></a> con el esquema <code data-authority-field="schema">durable-workflow.v2.platform-conformance.suite</code>, versión <code data-authority-field="version">47</code>.</p>
+<p>El servidor independiente anuncia el mismo manifiesto en <code>GET /api/cluster/info</code>
+bajo <code>platform_conformance_suite</code>. El catálogo de
+<a class="" href="/es/docs/platform-protocol-specs/">especificaciones de protocolos de la plataforma</a>
+identifica ese manifiesto anidado como familia de objetos
+<code>platform_conformance_suite_manifest</code> en <code>cluster_info_envelope</code>.</p>
+<p>La suite está subordinada a la autoridad de
+<a class="" href="/es/docs/compatibility/">compatibilidad de versiones</a>. Sus familias de interfaces
+y reglas de estabilidad deben coincidir con ese contrato. La autoridad de
+compatibilidad define el contrato; esta página, cómo demostrar que se cumple.</p>
+<section data-worker-protocol-authority-roles="true" data-current-server-protocol-version="1.20" data-current-conformance-protocol-version="1.19" data-current-conformance-suite-version="47"><h2 id="worker-protocol-authority-roles">Funciones de las autoridades del protocolo de workers</h2><p>El descubrimiento del runtime y la cualificación de conformidad utilizan autoridades de protocolo distintas. Elige la fila correspondiente a tu tarea. Que coincida la etiqueta de versión no convierte una referencia histórica versionada en un alias de la autoridad de Server sin versión.</p><table><thead><tr><th>Función</th><th>Marcador actual</th><th>Autoridad de resolución</th></tr></thead><tbody><tr data-worker-protocol-role="current_server_protocol" data-protocol-version="1.20" data-resolver-role="unversioned_server_mirror" data-api-url="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-api.openapi.yaml" data-stream-url="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml"><td><strong>Protocolo actual de Server publicado</strong></td><td><code>worker_protocol.version</code> = <code>1.20</code></td><td>Copias sin versión respaldadas por Server:<!-- --> <a href="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-api.openapi.yaml">OpenAPI</a> · <a href="https://durable-workflow.github.io/platform-protocol-specs/worker-protocol-stream.asyncapi.yaml">AsyncAPI</a></td></tr><tr data-worker-protocol-role="current_conformance_target" data-protocol-version="1.19" data-suite-version="47" data-resolver-role="versioned_conformance_fixture" data-api-url="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml" data-stream-url="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml"><td><strong>Objetivo actual de conformidad de Workflow</strong></td><td>La suite <code>47</code> tiene como objetivo el protocolo <code>1.19</code></td><td>Fixtures versionados vinculados a una huella:<!-- --> <a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml">OpenAPI</a> · <a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml">AsyncAPI</a></td></tr><tr data-worker-protocol-role="historical_conformance_binding" data-history-protocol-versions="1.13, 1.15, 1.16, 1.17, 1.18" data-history-binding-count="11" data-resolver-role="immutable_digest_bound_fixture"><td><strong>Vinculaciones históricas de conformidad conservadas</strong></td><td>Vinculaciones marcadas como <code>historical</code> para los protocolos <code>1.13, 1.15, 1.16, 1.17, 1.18</code></td><td>Registros inmutables de resolución y huellas en el<!-- --> <a href="https://durable-workflow.github.io/platform-conformance-contract.json">manifiesto de conformidad</a></td></tr></tbody></table></section>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="public-conformance-authorities">Autoridades públicas de conformidad<a href="#public-conformance-authorities" class="hash-link" aria-label="Enlace directo al Autoridades públicas de conformidad" title="Enlace directo al Autoridades públicas de conformidad" translate="no">​</a></h2>
+<p>La suite registra autoridades estables legibles por máquinas mediante identidad
+de esquema y URL pública. La del SDK PHP independiente del framework se publica
+como <a href="/es/platform-conformance/php-sdk-conformance.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.php-sdk-conformance-contract</code></a>.
+Declara topología de paquetes publicados, escenarios y evidencia necesarios, e
+identificadores públicos de ejecutor y esquema de resultados para evaluar
+<code>durable-workflow/sdk</code> contra Server publicado.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="target-matrix">Matriz de objetivos<a href="#target-matrix" class="hash-link" aria-label="Enlace directo al Matriz de objetivos" title="Enlace directo al Matriz de objetivos" translate="no">​</a></h2>
+<p>Un <strong>objetivo</strong> es un tipo de implementación que puede afirmar compatibilidad.
+Una implementación puede cubrir varios. Por ejemplo, el servidor independiente
+declara <code>standalone_server</code>, <code>worker_protocol_implementation</code> y
+<code>repair_actionability_surface</code>.</p>
+<table><thead><tr><th>Objetivo</th><th>Familias de interfaces obligatorias</th><th>Categorías de casos obligatorias</th></tr></thead><tbody><tr><td><code>standalone_server</code></td><td><code>server_api</code>, <code>worker_protocol</code>, <code>cluster_info_manifests</code></td><td><code>control_plane_request_response</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>worker_task_lifecycle</code>, <code>failure_repair_actionability</code></td></tr><tr><td><code>embedded_engine</code></td><td><code>history_event_wire_formats</code></td><td><code>history_replay_bundles</code></td></tr><tr><td><code>official_sdk</code></td><td><code>official_sdks</code>, <code>worker_protocol</code>, <code>history_event_wire_formats</code></td><td><code>control_plane_request_response</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>worker_task_lifecycle</code>, <code>history_replay_bundles</code></td></tr><tr><td><code>worker_protocol_implementation</code></td><td><code>worker_protocol</code>, <code>history_event_wire_formats</code></td><td><code>worker_task_lifecycle</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>history_replay_bundles</code></td></tr><tr><td><code>cli_json_client</code></td><td><code>cli_json</code></td><td><code>control_plane_request_response</code>, <code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>schedules_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>child_workflow_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>cli_json_envelopes</code></td></tr><tr><td><code>waterline_contract_surface</code></td><td><code>waterline_api</code></td><td><code>signal_query_runtime_contract</code>, <code>workflow_update_runtime_contract</code>, <code>search_attribute_runtime_contract</code>, <code>namespace_runtime_contract</code>, <code>saga_runtime_contract</code>, <code>worker_versioning_runtime_contract</code>, <code>migration_runtime_contract</code>, <code>skew_refusal_matrix_contract</code>, <code>principal_attribution_contract</code>, <code>waterline_observer_envelopes</code></td></tr><tr><td><code>repair_actionability_surface</code></td><td><code>worker_protocol</code>, <code>server_api</code></td><td><code>failure_repair_actionability</code></td></tr><tr><td><code>mcp_discovery_surface</code></td><td><code>mcp_discovery_results</code></td><td><code>mcp_discovery_envelopes</code></td></tr><tr><td><code>prerelease_release_candidate</code></td><td><code>server_api</code>, <code>official_sdks</code>, <code>cli_json</code>, <code>waterline_api</code>, <code>cluster_info_manifests</code></td><td><code>skew_refusal_matrix_contract</code>, <code>workflow_update_runtime_contract</code>, <code>principal_attribution_contract</code>, <code>prerelease_readiness_contract</code></td></tr></tbody></table>
+<p>Los objetivos son estables. Añadir uno, añadirle una interfaz o categoría
+obligatoria, promover una categoría provisional a obligatoria, cambiar
+<code>operations</code> o <code>pass_criteria</code> de un escenario estable, cambiar sus requisitos
+públicos (<code>artifact_policy</code>, <code>common_result_evidence</code>, <code>required_matrix</code>,
+<code>scenario_requirements</code> o <code>host_runner_contract</code>) o una regla de éxito/fallo es
+un cambio del contrato y exige incrementar la versión del manifiesto.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="fixture-catalog">Catálogo de casos de prueba<a href="#fixture-catalog" class="hash-link" aria-label="Enlace directo al Catálogo de casos de prueba" title="Enlace directo al Catálogo de casos de prueba" translate="no">​</a></h2>
+<p>Cada fuente estable es un artefacto público con tres vínculos legibles por
+máquinas: <code>artifact_id</code>, <code>resolver_url</code> y <code>sha256</code>. Los identificadores de
+artefactos de ejecución terminan en la versión de la suite; los de protocolo,
+en la versión del catálogo de protocolos. Se resuelve obteniendo <code>resolver_url</code>
+y aceptando los bytes solo si su huella SHA-256 coincide con la del catálogo.</p>
+<table><thead><tr><th>Categoría</th><th>Estado</th><th>Autoridad resoluble por el consumidor</th></tr></thead><tbody><tr><td><code>control_plane_request_response</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/control-plane-api.openapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.control-plane-api@catalog-16</code></a></td></tr><tr><td><code>worker_task_lifecycle</code></td><td><code>stable</code></td><td><a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-api.openapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.worker-protocol-api@catalog-16</code></a></td></tr><tr><td><code>worker_task_lifecycle</code></td><td><code>stable</code></td><td><a href="https://durable-workflow.github.io/platform-protocol-specs/v1.19/worker-protocol-stream.asyncapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.worker-protocol-stream@catalog-16</code></a></td></tr><tr><td><code>signal_query_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/signal-query-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/signal_query_runtime_contract@38</code></a></td></tr><tr><td><code>workflow_update_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/workflow-update-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/workflow_update_runtime_contract@38</code></a></td></tr><tr><td><code>search_attribute_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/search-attribute-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/search_attribute_runtime_contract@38</code></a></td></tr><tr><td><code>schedules_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/schedules-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/schedules_runtime_contract@38</code></a></td></tr><tr><td><code>history_replay_bundles</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/replay-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/history_replay_bundles@38</code></a></td></tr><tr><td><code>history_replay_bundles</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/history-event-payloads.schema.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.history-event-payloads@catalog-16</code></a></td></tr><tr><td><code>history_replay_bundles</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/replay-bundle.schema.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.replay-bundle@catalog-16</code></a></td></tr><tr><td><code>namespace_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/namespace-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/namespace_runtime_contract@38</code></a></td></tr><tr><td><code>child_workflow_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/child-workflow-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/child_workflow_runtime_contract@38</code></a></td></tr><tr><td><code>worker_versioning_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/worker-versioning-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/worker_versioning_runtime_contract@38</code></a></td></tr><tr><td><code>saga_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/saga-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/saga_runtime_contract@38</code></a></td></tr><tr><td><code>migration_runtime_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/migration-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/migration_runtime_contract@38</code></a></td></tr><tr><td><code>skew_refusal_matrix_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/skew-refusal-matrix-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/skew_refusal_matrix_contract@38</code></a></td></tr><tr><td><code>prerelease_readiness_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/prerelease-readiness-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/prerelease_readiness_contract@38</code></a></td></tr><tr><td><code>failure_repair_actionability</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/f781ced1ae33c8697835bd527a125bdf3eaf4321/static/platform-protocol-specs/repair-actionability-objects.schema.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.repair-actionability-objects@catalog-16</code></a></td></tr><tr><td><code>cli_json_envelopes</code></td><td><code>stable</code></td><td><a href="https://durable-workflow.github.io/cli-json-envelopes/v3/manifest.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.cli.output-schema-manifest@3</code></a></td></tr><tr><td><code>principal_attribution_contract</code></td><td><code>stable</code></td><td><a href="https://raw.githubusercontent.com/durable-workflow/workflow/75dfd5c869823409ef3d6c4b009a7882159ae9a2/resources/conformance/suite-v38/platform-conformance/principal-attribution-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.platform-conformance.runtime-scenarios/principal_attribution_contract@38</code></a></td></tr></tbody></table>
+<p>La fila conserva la revisión de esquema CLI v3 como evidencia histórica
+inmutable. El contrato CLI actual es el conjunto cerrado
+<a href="https://durable-workflow.github.io/cli-json-envelopes/v4/manifest.json" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.cli.output-schema-manifest@4</code></a>,
+que publica campos de cargas exclusivamente Avro sin reescribir bytes v2 o v3.</p>
+<p>El objetivo actual de protocolo de workers usa los bytes del protocolo 1.19
+neutrales respecto al ciclo de vida registrados por
+<code>durable-workflow.v2.worker-protocol-api@catalog-16</code> y
+<code>durable-workflow.v2.worker-protocol-stream@catalog-16</code>. Las revisiones 1.15 a
+1.18 siguen en las URL versionadas conservadas por el historial. No sustituyen
+la autoridad actual sin versión del protocolo de Server publicado. Los bytes
+anteriores con redacción beta solo permanecen como vínculo expresamente histórico
+<a href="https://raw.githubusercontent.com/durable-workflow/durable-workflow.github.io/e990bc36731463cc5b2cb2a9175dbccfdea61704/static/platform-protocol-specs/worker-protocol-api.openapi.yaml" target="_blank" rel="noopener noreferrer" class=""><code>durable-workflow.v2.worker-protocol-api@catalog-16-beta-history</code></a>
+registrado en el manifiesto.</p>
+<p><code>waterline_observer_envelopes</code> y <code>mcp_discovery_envelopes</code> siguen en estado
+<code>provisional</code>. Sus ubicaciones previstas en el código no son normativas. Los
+ejecutores no deben resolverlas como casos de prueba ni usarlas para afirmar
+conformidad estable.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="workflow-lifecycle-release-authority">Autoridad de publicación del ciclo de vida de workflows<a href="#workflow-lifecycle-release-authority" class="hash-link" aria-label="Enlace directo al Autoridad de publicación del ciclo de vida de workflows" title="Enlace directo al Autoridad de publicación del ciclo de vida de workflows" translate="no">​</a></h2>
+<p>La autoridad exacta de escenarios de ciclo de vida publicados está
+<a href="https://durable-workflow.github.io/platform-conformance/workflow-lifecycle-scenarios.json" target="_blank" rel="noopener noreferrer" class="">publicada en JSON</a>.
+Registra los requisitos ejercitados en el límite de publicación actual de
+Server, SDK PHP y SDK Rust.</p>
+<p>La partición PHP instala el <code>durable-workflow/sdk</code> exacto de la combinación
+actual desde Packagist en un proyecto Composer desechable. Ejecuta cliente y
+worker PHP separados contra la imagen pública correspondiente, registra la
+distribución Packagist y procedencia de <code>apache/avro</code> oficial y debe indicar
+<code>local_product_source_checkouts_used=false</code>.</p>
+<p>La partición Rust instala el crate exacto de la combinación desde crates.io y
+registra origen de registro y suma de comprobación de ese crate y <code>apache-avro</code>
+oficial. La prueba de cargas usa el sobre Avro publicado del SDK respaldado por
+<code>apache-avro</code>. Un códec propio o código local de producto no son procedencia aceptable.</p>
+<p>Rust debe ejecutar y registrar todas estas celdas:</p>
+<ul>
+<li class=""><code>instance_cancel</code> e <code>instance_terminate</code> mediante comandos públicos del SDK.</li>
+<li class=""><code>selected_run_guard</code> y <code>stale_run_rejection</code> para no confundir la ejecución
+seleccionada con la actual de la instancia.</li>
+<li class=""><code>typed_failed</code>, <code>typed_cancelled</code>, <code>typed_terminated</code> y <code>typed_timed_out</code> como
+resultados terminales tipados con identidad de workflow y ejecución.</li>
+<li class=""><code>cancellation_heartbeat</code> y <code>late_activity_completion_refused</code> para que la
+actividad observe cancelación y una finalización tardía no sobrescriba el resultado.</li>
+<li class=""><code>worker_restart_during_cancellation</code> mientras queda pendiente resolver la
+cancelación, demostrando que un reemplazo no reclama la actividad cerrada.</li>
+</ul>
+<p>El manifiesto exige también versiones exactas, identidad de clúster, procedencia,
+identidades de workflow, resultados por celda, motivos estables, contrato de
+carga, topología del ejecutor, versión del contrato de partición Rust, identidad
+del ejecutor y código de salida. Evidencia Rust ausente, no admitida, bloqueada
+o fallida no satisface la categoría de ciclo de vida.</p>
+<p>Una categoría es obligatoria solo si el objetivo la enumera y no es
+<code>provisional</code>. Las provisionales emiten advertencias informativas y solo son
+vinculantes al promoverse a <code>stable</code> en otra versión de la suite.</p>
+<p><code>signal_query_runtime_contract</code> es estable. Su resultado debe registrar versiones
+concretas fijadas de artefactos publicados y todos los escenarios como <code>pass</code>,
+<code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code>, con hallazgos enlazados.
+Marcadores sin resolver como <code>latest</code>, <code>current</code>, <code>head</code>, <code>&lt;latest&gt;</code>, <code>${VERSION}</code>
+o <code>{{ version }}</code> fallan el control de resultados. Solo cuentan celdas <code>pass</code>:
+<code>published_artifact_install_only</code>,
+<code>python_worker_cli_and_sdk_baseline</code>, <code>php_worker_cli_and_sdk_baseline</code>,
+<code>python_worker_php_facing_and_cli_clients</code>,
+<code>php_worker_python_and_cli_clients</code>,
+<code>rust_worker_rust_php_python_clients</code>, <code>python_worker_rust_client</code>,
+<code>php_worker_rust_client</code>, <code>rust_query_error_and_immutability</code>,
+<code>ordered_signal_delivery</code>,
+<code>dedup_contract_observation</code>, <code>signal_during_replay</code>,
+<code>query_during_replay</code>,
+<code>rust_replayed_instance_state_query_after_cold_restart</code>,
+<code>completed_run_signal_and_query</code>,
+<code>unknown_signal_and_query_errors</code>,
+<code>malformed_signal_and_query_payloads</code> y
+<code>waterline_operator_visibility</code>.</p>
+<p>Los identificadores y criterios se publican en el manifiesto de escenarios
+<a href="/es/platform-conformance/signal-query-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/signal-query-runtime-scenarios.json</code></a>.
+Las pruebas de implementación pueden ejercitarlos, pero no son fuentes estables
+de casos de prueba para ejecutores externos.</p>
+<p>Las celdas Rust instalan de crates.io la versión exacta <code>durable-workflow</code> del
+manifiesto y registran origen Cargo y suma del SDK y su dependencia <code>apache-avro</code>.
+El transporte de consultas derivadas de instantáneas se evalúa con
+<code>rust_worker_rust_php_python_clients</code> y <code>rust_query_error_and_immutability</code>.
+No es estado de instancia reproducido. La celda separada
+<code>rust_replayed_instance_state_query_after_cold_restart</code> usa
+<code>register_replayed_workflow</code> y <code>register_replayed_query</code>, inicia otro proceso tras
+parada completa, restaura historial duradero y compara estado activo, restaurado
+y completado mediante clientes Rust, PHP y Python. Las secuencias de consulta
+correctas y fallidas capturan recuentos de historial y comandos antes de la
+primera consulta medida correcta y deben dejarlos intactos.</p>
+<p>En <code>completed_run_signal_and_query</code>, una ejecución completada correctamente con
+manejador declarado reproducible debe devolver su estado final por cada
+interfaz pública de consulta declarada. Los errores estables de estado terminal
+solo valen para estados expresamente no admitidos o manejadores no disponibles.
+Un error terminal genérico para una ejecución completada reproducible no pasa.</p>
+<p><code>workflow_update_runtime_contract</code> es una categoría estable. Exige artefactos
+publicados, versiones fijadas de Server, CLI, SDK Python, SDK PHP y Waterline,
+declarar si se usó código fuente local y registrar todos los escenarios de
+actualización como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code>
+con hallazgos enlazados. La evidencia satisfactoria debe ejercitar control,
+historial, CLI/SDK e interfaces para operadores públicos; código local no cuenta.</p>
+<p>Los escenarios obligatorios cubren instalación publicada, visibilidad del
+contrato declarado, aceptación en control e historial, visibilidad de operador
+en ejecución o espera, resultado completado de ida y vuelta, fallo o rechazo,
+duplicados e idempotencia, rechazo de actualización desconocida o entrada
+inválida, sobres de carga, workflows terminales, atribución de identidad
+autenticada, paridad cliente/worker PHP y Python y diagnósticos. Si falta soporte
+de actualizaciones de primera clase en un SDK, registra una celda no admitida
+tipada y un hallazgo específico, sin omitir el lenguaje.</p>
+<p>Los identificadores y criterios están en
+<a href="/es/platform-conformance/workflow-update-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/workflow-update-runtime-scenarios.json</code></a>.
+El traspaso actual al ejecutor anfitrión está deliberadamente <code>runner_blocked</code>
+hasta que uno registrado instale los artefactos fijados y ejecute toda la matriz.</p>
+<p><code>search_attribute_runtime_contract</code> es estable. Exige artefactos publicados e
+inicio/actualización de atributos en PHP y Python, consultas y errores CLI,
+visibilidad Waterline, cargas entre lenguajes, consultas de igualdad/rango/bool,
+gramática OR/NOT, pertenencia a listas keyword, seguridad de tipos, distribución
+de latencia de indexación, latencia bajo carga, aislamiento de namespace, rechazo
+de nombres reservados y protección ante inyección. Un subconjunto básico
+Python/Server no es conforme hasta registrar cada celda como <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code>, con hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/search-attribute-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/search-attribute-runtime-scenarios.json</code></a>.</p>
+<p><code>schedules_runtime_contract</code> es estable. Con artefactos publicados debe cubrir
+cadencia cron y de tasa fija, lista y detalle, ventanas de pausa/reanudación sin activaciones,
+eliminación que detiene activaciones futuras, política de activaciones perdidas,
+supervivencia a reinicio, operaciones CLI y SDK Python y orientadas a PHP,
+programaciones Python que activan PHP y viceversa, rechazo de cron inválido y
+tipos de workflow inexistentes. Un subconjunto básico no es conforme hasta
+registrar cada celda como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o
+<code>runner_blocked</code> con hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/schedules-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/schedules-runtime-scenarios.json</code></a>.</p>
+<p><code>history_replay_bundles</code> también es estable. Con artefactos publicados debe cubrir
+reproducción PHP/Python de historiales completados, reinicio de worker,
+actividad, señal/actualización, condición de espera, marcador de versión,
+compensación de saga, rechazo de divergencia de código, mutación de historial en
+servidor e historial malformado y temporización de reinicio con señal en curso.
+Un subconjunto básico de historiales de referencia no es conforme hasta registrar
+cada celda como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code>
+con hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/replay-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/replay-runtime-scenarios.json</code></a>.</p>
+<p><code>namespace_runtime_contract</code> es estable. Con artefactos publicados cubre
+creación/actualización/detalle/listado, limpieza y recreación, aislamiento de
+visibilidad y mutaciones, colas de workers PHP, contexto CLI y ámbito
+predeterminado, selección de namespace entre SDK, aislamiento de esquema y
+consultas de atributos y programaciones, visibilidad Waterline/operador,
+llamadas Nexus explícitas entre namespaces, nombres reservados y enrutamiento
+del registro de resultados para hallazgos. Un subconjunto no es conforme hasta
+registrar cada celda como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o
+<code>runner_blocked</code> con hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>Las notas de implementación no normativas de visibilidad de operador pueden
+proceder del artefacto Waterline publicado o una partición específica. Son
+útiles capturas acotadas de listas y detalle, programaciones si existen,
+atributos de búsqueda, ámbito del panel, estadísticas API y veredicto documentado
+de vistas predeterminadas o sin ámbito anunciadas. Los criterios normativos
+siguen siendo los de <code>waterline_operator_namespace_visibility</code> siguiente.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/namespace-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/namespace-runtime-scenarios.json</code></a>.</p>
+<p><code>child_workflow_runtime_contract</code> es estable. Con artefactos publicados cubre
+padre/hijo en PHP y en Python, PHP a Python y viceversa, tipos de fallo del hijo
+de ida y vuelta, propagación de cancelación del padre, cancelación directa del
+hijo observada por el padre, reinicio de worker padre mientras espera,
+paralelismo de cinco hijos y comportamiento de namespaces. Un ejemplo básico
+padre/hijo no es conforme hasta registrar cada celda como <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code> con hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/child-workflow-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/child-workflow-runtime-scenarios.json</code></a>.</p>
+<p><code>saga_runtime_contract</code> es estable. Con artefactos publicados cubre avance
+correcto, fallo tardío con compensación inversa, fallo temprano sin compensación
+extra, idempotencia de reintentos de compensación, fallo terminal visible,
+reinicio a mitad de compensación, workflow PHP a compensación Python y viceversa,
+errores tipados de ida y vuelta y estado de compensación en curso visible al
+operador. Una prueba de un solo camino correcto o SDK no es conforme hasta
+registrar cada celda como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o
+<code>runner_blocked</code> con hallazgos. Solo cuenta <code>pass</code>. PHP se identifica como
+<code>workflow-php</code> en la matriz y también puede registrarse como <code>workflow</code> al comparar
+el conjunto de artefactos de publicación.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/saga-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/saga-runtime-scenarios.json</code></a>.</p>
+<p><code>worker_versioning_runtime_contract</code> es estable. Con artefactos publicados cubre
+registro por build-ID, visibilidad del despliegue, drenaje/reanudación,
+compatibilidad fijada por ejecución, reproducción solo compatible, enrutamiento
+de nuevos inicios a versión promovida, reproducción tras expulsar caché,
+diagnósticos sin worker compatible, visibilidad CLI/Waterline, fijación entre
+PHP y Python, comportamiento adversarial sin incremento de versión y versiones
+fijadas de API de historial. Un subconjunto no es conforme hasta registrar cada
+celda como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code> con
+hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>La evidencia PHP/Python debe registrar identidades de entorno de workers,
+identificadores de workflow/ejecución, estado de despliegue de cola, resultados
+públicos de sondeo y despliegue usados para verificar la fijación, origen y
+versión de instalación del artefacto publicado y ausencia de código local del producto.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/worker-versioning-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/worker-versioning-runtime-scenarios.json</code></a>.</p>
+<p><code>migration_runtime_contract</code> es estable. Con artefactos publicados cubre el
+estado inicial de la última v1 admitida, pasos documentados, conservación y
+reproducción de historiales completados, progreso en curso, reintentos a mitad
+de actividad, esperas de señal/temporizador, cadencia de programaciones,
+proyección de registro de workers, visibilidad Waterline, acceso CLI a estado
+previo, inicios v2, reversión consciente de colas y rechazo explícito de
+versiones incompatibles. La evidencia de reversión debe inventariar trabajos v1
+listos, diferidos y reservados, indicar si se drenó, capturó SQL y colas
+coherentemente o se aceptó pérdida, y demostrar una activación ejecutable de cola
+o señal para cada fila no terminal restaurada. Un <code>pending</code> antiguo elegible
+solo puede usar Watchdog v1.0.77 si se observa al bucle despachar el Watchdog
+habilitado por defecto, a este redespachar tras cinco minutos y a la fila avanzar
+en su cola registrada. Esto no sustituye colas de reintentos, temporizadores ni
+<code>waiting</code>/<code>running</code>. Restaurar solo SQL pasa como evidencia solo si no existe
+otra ejecución v1 no terminal dependiente de cola en el punto de recuperación.
+El manifiesto debe registrar solo referencia y versión de <code>APP_KEY</code> en el gestor
+de secretos; clave y credenciales de recuperación se protegen por separado de
+SQL y copias de colas. Una instalación nueva básica o una migración sin estado
+v1 realista no es conforme hasta registrar cada celda como <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code> con hallazgos. Solo cuenta <code>pass</code>.</p>
+<p>La celda de pasos documentados debe registrar la lista de comandos de la guía
+pública actual, los ejecutados en su orden, códigos de salida y tiempos por
+comando. Las instantáneas anteriores y posteriores deben incluir historial
+completado, workflow en curso, actividad reintentando, espera de señal o
+temporizador, programación y registro de worker observados.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/migration-runtime-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/migration-runtime-scenarios.json</code></a>.</p>
+<p><code>skew_refusal_matrix_contract</code> es estable. Con artefactos publicados cubre
+combinaciones compatibles, versiones anteriores, posteriores y fuera de ventana
+para CLI, SDK Python, worker SDK PHP independiente y Waterline. Workflow solo
+aparece como motor de Laravel integrado y Waterline. Debe probar límites de
+versiones futuras, capturar peticiones/respuestas de cada operación divergente,
+clasificar workers como <code>register_refused</code>, <code>register_and_serve</code> o
+<code>register_and_drop</code>, y Waterline como <code>banner</code>, <code>render_refused</code> o <code>stale_render</code>.
+Un subconjunto de manifiestos no es conforme hasta registrar cada celda como
+<code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code> con hallazgos.
+Solo cuenta <code>pass</code>. <code>register_and_drop</code> y <code>stale_render</code> sin advertencia explícita
+son defectos bloqueantes del producto.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/skew-refusal-matrix-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/skew-refusal-matrix-scenarios.json</code></a>.</p>
+<p><code>principal_attribution_contract</code> es estable. Con artefactos publicados debe
+demostrar que el historial registra identidades derivadas del servidor para
+inicio, señal, consulta, cancelación, finalización, fallo, anonimato y eventos
+originados en servidor. Debe ejercitar suplantación adversarial de cargas y
+cabeceras, identidades alice/bob, rotación de credenciales, visibilidad CLI y
+Waterline e inicios o señales autenticados desde SDK Python y PHP
+<code>DurableWorkflow\Client</code>. Las celdas SDK registran versión, salidas, muestras
+de identidades de historial/API e identidades de referencia HTTP para comparar
+estructura e identificadores esperados. PHP debe resolver <code>durable-workflow/sdk</code>
+como distribución Packagist exacta y registrar tipo, URL y referencia dist.
+<code>durable-workflow/workflow</code> se resuelve aparte solo para el motor integrado y
+Waterline. Un subconjunto de tokens por rol no es conforme hasta registrar cada
+escenario como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code> con
+hallazgos.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/principal-attribution-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/principal-attribution-scenarios.json</code></a>.</p>
+<p><code>prerelease_readiness_contract</code> es una categoría estable de la candidata
+coordinada 2.0. Solo admite artefactos publicados y documentación pública para
+usuarios, exige veredictos GO / NO-GO separados de Workflow y Waterline y cubre
+funcionalidad básica completa, migración preparada, estabilidad API, exactitud
+documental, configuración comprensible y compatibilidad. Evalúa Server, CLI,
+SDK PHP/Python/Rust, Workflow, Waterline, sample-app y documentación como una
+combinación del ecosistema. Debe ejecutar cada inicio rápido independiente 2.0
+versionado y el recorrido Laravel integrado desde documentación pública actual
+hasta workflows completados observables en 10 minutos, registrando comandos,
+salidas, versiones, procedencia y tiempos reales exactos. Comprobar solo
+descubrimiento no es conforme hasta registrar los escenarios PHP, Python, Rust
+y Laravel como <code>pass</code>, <code>fail</code>, <code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code>.
+Cualquier artefacto ausente, guía obsoleta, paso no documentado, fallo de
+instalación, inestabilidad API, riesgo de incompatibilidad entre componentes o
+discordancia de canal se registra como celda no satisfactoria con hallazgo.
+Evidencia solo del ejecutor no es conforme ni permite dar por lista la versión
+preliminar.</p>
+<p>Identificadores y criterios:
+<a href="/es/platform-conformance/prerelease-readiness-scenarios.json" target="_blank" rel="noopener noreferrer" class=""><code>static/platform-conformance/prerelease-readiness-scenarios.json</code></a>.
+El <a class="" href="/es/docs/quickstart/">inicio rápido 2.0</a> conciso es la ruta pública de incorporación.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="pass--fail-rules">Reglas de éxito y fallo<a href="#pass--fail-rules" class="hash-link" aria-label="Enlace directo al Reglas de éxito y fallo" title="Enlace directo al Reglas de éxito y fallo" translate="no">​</a></h2>
+<ol>
+<li class=""><strong><code>guaranteed_field_equality</code>.</strong> Cada campo garantizado del esquema debe
+estar presente con tipo y valor correctos en la respuesta. Se ignoran los
+campos solo diagnósticos.</li>
+<li class=""><strong><code>unknown_additive_fields_tolerated</code>.</strong> Los campos extra solo pasan si están
+documentados como diagnósticos o el nivel de estabilidad permite evolución aditiva.</li>
+<li class=""><strong><code>frozen_shape_exact_match</code>.</strong> Los casos de familias <code>frozen</code> deben coincidir
+exactamente. Una discrepancia de estructura congelada siempre falla.</li>
+<li class=""><strong><code>required_fixtures_must_pass</code>.</strong> Una publicación debe superar todas las
+categorías obligatorias de cada objetivo declarado. Una sola obligatoria
+fallida impide conformidad para ese objetivo.</li>
+<li class=""><strong><code>stable_runtime_scenario_coverage</code>.</strong> Una categoría estable debe informar
+cada escenario obligatorio con los estados de su manifiesto: <code>pass</code>, <code>fail</code>,
+<code>unsupported</code>, <code>not_covered</code> o <code>runner_blocked</code>. La conformidad completa exige
+todos satisfactorios. Subconjuntos básicos, omisiones, interfaces públicas no
+admitidas o celdas sin cubrir o bloqueadas no son conformes y deben enlazar el
+hallazgo responsable. Este conjunto de estados y regla de solo éxitos son
+semántica de la suite 5 y posteriores.</li>
+<li class=""><strong><code>provisional_categories_warn_only</code>.</strong> Un caso provisional fallido emite
+advertencia y no bloquea la publicación.</li>
+<li class=""><strong><code>diagnostic_only_mismatches_pass</code>.</strong> Si solo difieren campos diagnósticos,
+se registra la diferencia en <code>diagnostic_diff</code> y el caso pasa.</li>
+</ol>
+<p>El resultado declara uno de cuatro niveles:</p>
+<table><thead><tr><th>Nivel</th><th>Significado</th></tr></thead><tbody><tr><td><code>full</code></td><td>Pasan todos los casos obligatorios de todos los objetivos declarados.</td></tr><tr><td><code>partial</code></td><td>Pasan todos los obligatorios de al menos un objetivo, pero falla otro declarado.</td></tr><tr><td><code>provisional</code></td><td>Solo fallan categorías provisionales; pasan todas las obligatorias.</td></tr><tr><td><code>nonconforming</code></td><td>Falla al menos un caso obligatorio en cada objetivo declarado.</td></tr></tbody></table>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="harness-contract">Contrato del ejecutor de pruebas<a href="#harness-contract" class="hash-link" aria-label="Enlace directo al Contrato del ejecutor de pruebas" title="Enlace directo al Contrato del ejecutor de pruebas" translate="no">​</a></h2>
+<p>Un ejecutor conforme:</p>
+<ul>
+<li class="">carga el manifiesto desde <code>platform_conformance_suite</code> de
+<code>GET /api/cluster/info</code> o su copia estática para pruebas sin conexión;</li>
+<li class="">carga cada caso desde su ruta de referencia;</li>
+<li class="">ejercita la implementación mediante la operación documentada;</li>
+<li class="">compara respuestas según las reglas anteriores;</li>
+<li class="">emite un resultado por ejecución con esquema
+<code>durable-workflow.v2.platform-conformance.result</code>, versión de suite, identidad
+de implementación, resultados por caso, diferencias diagnósticas y nivel global;</li>
+<li class="">sale con código distinto de cero si y solo si el nivel es <code>nonconforming</code>.</li>
+</ul>
+<p>El documento de resultados es un artefacto. La afirmación de compatibilidad solo
+vale si se produjo contra la compilación y versión de suite identificadas por
+esa compilación.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="release-gates">Controles de publicación<a href="#release-gates" class="hash-link" aria-label="Enlace directo al Controles de publicación" title="Enlace directo al Controles de publicación" translate="no">​</a></h2>
+<table><thead><tr><th>Publicación</th><th>Objetivos obligatorios declarados</th><th>Artefacto obligatorio</th></tr></thead><tbody><tr><td><code>durable-workflow/server</code></td><td><code>standalone_server</code>, <code>worker_protocol_implementation</code>, <code>repair_actionability_surface</code></td><td>Documento de resultados adjunto a la publicación.</td></tr><tr><td><code>durable-workflow/workflow</code></td><td><code>embedded_engine</code></td><td>Documento de resultados adjunto a la publicación.</td></tr><tr><td><code>durable-workflow/sdk</code></td><td><code>official_sdk</code>, <code>worker_protocol_implementation</code></td><td>Documento de resultados adjunto a la publicación.</td></tr><tr><td><code>durable_workflow</code></td><td><code>official_sdk</code>, <code>worker_protocol_implementation</code></td><td>Documento de resultados adjunto a la publicación.</td></tr><tr><td><code>dw</code></td><td><code>cli_json_client</code></td><td>Documento de resultados adjunto a la publicación.</td></tr><tr><td><code>waterline</code></td><td><code>waterline_contract_surface</code></td><td>Documento de resultados adjunto a la publicación.</td></tr><tr><td><code>durable-workflow/2.0-release-candidate</code></td><td><code>prerelease_release_candidate</code></td><td>El registro de conformidad conserva el resultado de preparación preliminar con artefactos publicados.</td></tr></tbody></table>
+<p>Los revisores confirman resultado adjunto, nivel <code>full</code> o <code>provisional</code> y versión
+de suite coincidente con la expuesta por la compilación probada. <code>nonconforming</code>
+bloquea la publicación.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="release-check">Comprobación de publicación<a href="#release-check" class="hash-link" aria-label="Enlace directo al Comprobación de publicación" title="Enlace directo al Comprobación de publicación" translate="no">​</a></h2>
+<p><code>scripts/check-platform-conformance-authority.js</code> falla la compilación si el
+manifiesto estático apunta a autoridad ausente, local, basada solo en un alias
+de versión o fuera del sitio documental. También valida cada <code>authority_doc</code>
+estable como URL canónica de documentación actual y rechaza árboles fuente
+relativos, casos de prueba, documentación o directorios de esquema del
+repositorio, identificadores sin versión, resolutores privados y huellas
+incorrectas en todas las categorías estables. Las categorías de ejecución
+deben exponer además un manifiesto público vinculado a la suite. La comprobación
+exige que esta página enumere esquema, objetivos, categorías, reglas y controles
+de la copia legible por máquinas.</p>
+<p>Al cambiar la suite, actualiza juntos esta página y
+<code>static/platform-conformance-contract.json</code>. Si añades objetivos o categorías
+obligatorias, promueves categorías, cambias <code>operations</code> o <code>pass_criteria</code>
+estables, requisitos públicos (<code>artifact_policy</code>, <code>common_result_evidence</code>,
+<code>required_matrix</code>, <code>scenario_requirements</code> o <code>host_runner_contract</code>) o reglas,
+incrementa la versión en el mismo cambio de publicación. La comprobación fija
+criterios y requisitos públicos mediante huellas por versión para que ejecutores
+externos no observen nuevos criterios o requisitos de evidencia bajo una suite antigua.</p>
+<p>Las entradas publicadas de huellas de criterios y requisitos son de solo adición.
+Para cambiar <code>operations</code> o <code>pass_criteria</code> estables, deja intactas las entradas
+<code>VERSIONED_RUNTIME_SCENARIO_CRITERIA_DIGESTS</code>, aumenta la versión, actualiza el
+manifiesto de escenarios y añade una huella de criterios para la suite nueva.
+Para cambiar evidencia pública, política de artefactos, matriz, requisitos de
+escenario o contrato de anfitrión, deja intactas las entradas
+<code>VERSIONED_RUNTIME_SCENARIO_PUBLIC_REQUIREMENT_DIGESTS</code>, avanza la versión,
+actualiza el manifiesto y añade la huella correspondiente. La comprobación
+compara entradas publicadas de la rama destino con el cambio actual. Editar o
+eliminar una antigua falla aunque la versión actual añada otra.</p></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Etiquetas:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/compatibility/">compatibility</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/conformance/">conformance</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/protocols/">protocols</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/api-stability/">api-stability</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/es/docusaurus-plugin-content-docs/current/platform-conformance.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Editar esta página</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Página del documento"><a class="pagination-nav__link pagination-nav__link--prev" href="/es/docs/platform-protocol-specs/"><div class="pagination-nav__sublabel">Anterior</div><div class="pagination-nav__label">Especificaciones de protocolos de la plataforma</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/es/docs/sdk-neutrality/"><div class="pagination-nav__sublabel">Siguiente</div><div class="pagination-nav__label">Neutralidad de los SDK</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#public-conformance-authorities" class="table-of-contents__link toc-highlight">Autoridades públicas de conformidad</a></li><li><a href="#target-matrix" class="table-of-contents__link toc-highlight">Matriz de objetivos</a></li><li><a href="#fixture-catalog" class="table-of-contents__link toc-highlight">Catálogo de casos de prueba</a></li><li><a href="#workflow-lifecycle-release-authority" class="table-of-contents__link toc-highlight">Autoridad de publicación del ciclo de vida de workflows</a></li><li><a href="#pass--fail-rules" class="table-of-contents__link toc-highlight">Reglas de éxito y fallo</a></li><li><a href="#harness-contract" class="table-of-contents__link toc-highlight">Contrato del ejecutor de pruebas</a></li><li><a href="#release-gates" class="table-of-contents__link toc-highlight">Controles de publicación</a></li><li><a href="#release-check" class="table-of-contents__link toc-highlight">Comprobación de publicación</a></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Documentación</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/es/docs/introduction/">Introducción</a></li><li class="footer__item"><a class="footer__link-item" href="/es/docs/installation/">Instalación</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Comunidad</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Más recursos</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Documentación para LLM<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>

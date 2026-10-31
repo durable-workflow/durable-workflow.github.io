@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="es" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-migration" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.2">
+<title data-rh="true">Migración a 2.0 | Durable Workflow</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://durable-workflow.com/es/img/durable-workflow-2.0.png"><meta data-rh="true" name="twitter:image" content="https://durable-workflow.com/es/img/durable-workflow-2.0.png"><meta data-rh="true" property="og:url" content="https://durable-workflow.com/es/docs/migration/"><meta data-rh="true" property="og:locale" content="es"><meta data-rh="true" property="og:locale:alternate" content="en"><meta data-rh="true" property="og:locale:alternate" content="de"><meta data-rh="true" property="og:locale:alternate" content="fr"><meta data-rh="true" property="og:locale:alternate" content="pt_BR"><meta data-rh="true" property="og:locale:alternate" content="uk"><meta data-rh="true" property="og:locale:alternate" content="ja"><meta data-rh="true" property="og:locale:alternate" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="es"><meta data-rh="true" name="docsearch:language" content="es"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Migración a 2.0 | Durable Workflow"><meta data-rh="true" name="description" content="Actualiza una aplicación existente de Laravel Workflow v1 a Durable Workflow v2."><meta data-rh="true" property="og:description" content="Actualiza una aplicación existente de Laravel Workflow v1 a Durable Workflow v2."><meta data-rh="true" name="keywords" content="migrar a Durable Workflow v2,actualización de Laravel Workflow,migración del esquema v2,workflow de v1 a v2"><meta data-rh="true" name="twitter:title" content="Migración a 2.0 | Durable Workflow"><meta data-rh="true" name="twitter:description" content="Actualiza una aplicación existente de Laravel Workflow v1 a Durable Workflow v2."><link data-rh="true" rel="icon" href="/es/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://durable-workflow.com/es/docs/migration/"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/migration/" hreflang="en"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/de/docs/migration/" hreflang="de"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/es/docs/migration/" hreflang="es"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/fr/docs/migration/" hreflang="fr"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/pt-BR/docs/migration/" hreflang="pt-BR"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/uk/docs/migration/" hreflang="uk"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/ja/docs/migration/" hreflang="ja"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/zh-Hans/docs/migration/" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://durable-workflow.com/docs/migration/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Modo integrado","item":"https://durable-workflow.com/es/docs/category/embedded"},{"@type":"ListItem","position":2,"name":"Migración a 2.0","item":"https://durable-workflow.com/es/docs/migration"}]}</script><link rel="alternate" type="application/rss+xml" href="/es/blog/rss.xml" title="Durable Workflow RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/es/blog/atom.xml" title="Durable Workflow Atom Feed">
+
+
+
+
+
+
+
+<script src="/analytics/cloudflare-web-analytics.js" type="module" data-cloudflare-web-analytics-token="a1296466c4e5487ca6ffd230a694b933"></script><link rel="stylesheet" href="/es/assets/css/styles.4b1f3763.css">
+<script src="/es/assets/js/runtime~main.09dfa9ea.js" defer="defer"></script>
+<script src="/es/assets/js/main.f4a2764f.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/es/img/logo.svg"><div role="region" aria-label="Saltar al contenido principal"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Saltar al contenido principal</a></div><nav aria-label="Principal" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Alternar barra lateral" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/es/"><div class="navbar__logo"><img src="/es/img/logo.svg" alt="Logotipo de Durable Workflow" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/es/img/logo.svg" alt="Logotipo de Durable Workflow" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Durable Workflow</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/es/docs/introduction/">Documentación</a><div class="navbar__item dropdown dropdown--hoverable"><a class="navbar__link" aria-haspopup="true" aria-expanded="false" role="button" href="/es/docs/migration/">2.x</a><ul class="dropdown__menu"><li><a aria-current="page" class="dropdown__link dropdown__link--active" href="/es/docs/migration/">2.x</a></li><li><a class="dropdown__link" href="/es/docs/1.x/migration/">1.x</a></li></ul></div><a class="navbar__item navbar__link" href="/es/blog/">Blog (en inglés)</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_nlXk"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Español</a><ul class="dropdown__menu"><li><a href="/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en">English</a></li><li><a href="/de/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="de">Deutsch</a></li><li><a href="/es/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="es">Español</a></li><li><a href="/fr/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="fr">Français</a></li><li><a href="/pt-BR/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="pt-BR">Português (Brasil)</a></li><li><a href="/uk/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="uk">Українська</a></li><li><a href="/ja/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="ja">日本語</a></li><li><a href="/zh-Hans/docs/migration/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="zh-Hans">简体中文</a></li></ul></div><a href="https://github.com/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" aria-label="Dale una estrella a Durable Workflow en GitHub" class="navbar-github-star-link navbar__item navbar__link" label="Apoya el proyecto en GitHub"><svg aria-hidden="true" class="navbar-github-star-link__icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.56 7.56 0 0 1 8 4.76c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span class="navbar-github-star-link__count" title="Estrellas en GitHub">1.3K</span></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="modo del sistema" aria-label="Cambiar entre modo oscuro y claro (actualmente modo del sistema)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search searchBarContainer_NW3z" dir="ltr"><svg aria-hidden="true" class="searchIcon_T3tP" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" d="M6.02945 10.20327a4.17382 4.17382 0 1 1 4.17382-4.17382 4.15609 4.15609 0 0 1-4.17382 4.17382Zm9.69195 4.2199-4.8225-4.82338A5.88021 5.88021 0 0 0 12.058 6.02856 6.00467 6.00467 0 1 0 9.59979 10.8989l4.82338 4.82338a.89729.89729 0 0 0 1.29912 0 .89749.89749 0 0 0-.00087-1.29909Z"></path></svg><input placeholder="Buscar" aria-label="Buscar" class="navbar__search-input searchInput_YFbd" value=""><div class="loadingRing_RJI3 searchBarLoadingRing_YnHq"><div></div><div></div><div></div><div></div></div></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Volver al principio" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Barra lateral de Documentos" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/introduction/"><span class="linkLabel_WmDU">Introducción</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/quickstart/"><span class="linkLabel_WmDU">Inicio rápido de Durable Workflow 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/capabilities/"><span class="linkLabel_WmDU">Índice de capacidades de 2.0</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/laravel-adoption/"><span class="linkLabel_WmDU">Adopción en Laravel y transición del entorno de ejecución</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/service-mode/"><span class="categoryLinkLabel_W154">Modo servicio</span></a><button aria-label="Ampliar la categoría &#x27;Modo servicio&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" href="/es/docs/category/embedded/"><span class="categoryLinkLabel_W154">Modo integrado</span></a><button aria-label="Colapsar categoría &#x27;Modo integrado&#x27; de la barra lateral" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/installation/"><span class="linkLabel_WmDU">Instalación</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/es/docs/category/defining-workflows/"><span class="categoryLinkLabel_W154">Definición de workflows</span></a><button aria-label="Ampliar la categoría &#x27;Definición de workflows&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/es/docs/category/features/"><span class="categoryLinkLabel_W154">Funciones</span></a><button aria-label="Ampliar la categoría &#x27;Funciones&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/es/docs/category/constraints/"><span class="categoryLinkLabel_W154">Restricciones</span></a><button aria-label="Ampliar la categoría &#x27;Restricciones&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/how-it-works/"><span class="linkLabel_WmDU">Cómo funciona</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/testing/"><span class="linkLabel_WmDU">Pruebas</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/failures-and-recovery/"><span class="linkLabel_WmDU">Fallos y recuperación</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/es/docs/migration/"><span class="linkLabel_WmDU">Migración a 2.0</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/es/docs/category/configuration/"><span class="categoryLinkLabel_W154">Configuración</span></a><button aria-label="Ampliar la categoría &#x27;Configuración&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/sample-app/"><span class="linkLabel_WmDU">Aplicación de ejemplo</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/es/docs/contribute-a-sample/"><span class="linkLabel_WmDU">Aportar un ejemplo</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/run-and-operate/"><span class="categoryLinkLabel_W154">Ejecución y operación</span></a><button aria-label="Ampliar la categoría &#x27;Ejecución y operación&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/external-execution-and-ingress/"><span class="categoryLinkLabel_W154">Ejecución externa y entrada de solicitudes</span></a><button aria-label="Ampliar la categoría &#x27;Ejecución externa y entrada de solicitudes&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/es/docs/category/ai-and-automation/"><span class="categoryLinkLabel_W154">IA y automatización</span></a><button aria-label="Ampliar la categoría &#x27;IA y automatización&#x27; de la barra lateral" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/es/docs/sponsors/"><span class="linkLabel_WmDU">Patrocinadores</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Rastro de navegación"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Página de Inicio" class="breadcrumbs__link" href="/es/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/es/docs/category/embedded/"><span>Modo integrado</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Migración a 2.0</span></li></ul></nav><span class="theme-doc-version-badge badge badge--secondary">Versión: 2.x</span><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">En esta página</button></div><div lang="es"><div class="theme-doc-markdown markdown"><header><h1>Migración a 2.0</h1></header>
+<p>Esta guía cubre los cambios principales al actualizar una aplicación Laravel v1
+a v2. Primero decide si Laravel seguirá operando el entorno o se conectará a
+Cloud o Server mediante el SDK PHP en la
+<a class="" href="/es/docs/laravel-adoption/">guía de adopción y transición de Laravel</a>.
+Esta página detalla después la actualización del paquete integrado de v1 a v2.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="upgrade-procedure">Procedimiento de actualización<a href="#upgrade-procedure" class="hash-link" aria-label="Enlace directo al Procedimiento de actualización" title="Enlace directo al Procedimiento de actualización" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="before-upgrading">Antes de actualizar<a href="#before-upgrading" class="hash-link" aria-label="Enlace directo al Antes de actualizar" title="Enlace directo al Antes de actualizar" translate="no">​</a></h3>
+<p><strong>1. Inventariar todos los almacenes de ejecución v1</strong></p>
+<p>El estado v1 no está necesariamente solo en la base de workflows. Además de
+filas e historial, puede haber trabajos Laravel listos, diferidos o reservados
+en Redis, una base de colas, SQS u otro backend. Antes de cambiar código, registra:</p>
+<ul>
+<li class="">conexión de almacenamiento y mapeos reales de modelos/tablas v1</li>
+<li class="">todas las conexiones y nombres de cola de workflows y actividades v1,
+incluidas excepciones por workflow o actividad</li>
+<li class="">base, prefijo de claves, región, cuenta y otros parámetros del backend
+necesarios para restaurar las mismas colas</li>
+<li class="">referencia del gestor de secretos y versión inmutable que recuperan la
+<code>APP_KEY</code> exacta, y almacenes de caché de bloqueos de trabajos únicos v1</li>
+</ul>
+<p>No copies al inventario el valor de <code>APP_KEY</code>, credenciales para recuperarla,
+credenciales de base ni del proveedor de colas. Los trabajos cifrados y argumentos
+serializados necesitan la clave original, pero el manifiesto solo debe contener
+su referencia y versión. Protege por separado de las copias SQL y de colas las
+credenciales que permiten recuperarla.</p>
+<p>Las tablas v1 predeterminadas son <code>workflows</code>, <code>workflow_logs</code>,
+<code>workflow_signals</code>, <code>workflow_timers</code>, <code>workflow_exceptions</code> y
+<code>workflow_relationships</code>. La configuración publicada puede sustituir
+<code>stored_workflow_model</code>, <code>stored_workflow_log_model</code>,
+<code>stored_workflow_signal_model</code>, <code>stored_workflow_timer_model</code> o
+<code>stored_workflow_exception_model</code>. Un modelo alternativo puede redefinir <code>$table</code>
+de Eloquent. <code>workflow_relationships_table</code> controla aparte la tabla de relaciones.
+Respalda las tablas y conexión resueltas por esos modelos, no solo los nombres
+predeterminados.</p>
+<p><strong>2. Elegir un límite de reversión y detener la actividad v1</strong></p>
+<p>Impide inicios y señales nuevos al capturar el punto de recuperación. Pausa
+programadores y detén todos los workers capaces de consumir las colas
+inventariadas cuando termine su trabajo actual. Por ejemplo:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Horizon</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan horizon:pause</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Supervisor or systemd (use the names from your deployment)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo supervisorctl stop &lt;your-worker-group&gt;:*</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo systemctl stop laravel-worker</span><br></div></code></pre></div></div>
+<p><code>php artisan queue:restart</code> por sí solo no detiene la actividad si Supervisor,
+systemd, Kubernetes u otro gestor inicia inmediatamente otro worker. Confirma
+que ningún consumidor puede reservar otro trabajo antes de capturar el estado.</p>
+<p>Elige y registra una política:</p>
+<ul>
+<li class=""><strong>Drenar v1:</strong> bloquea trabajo nuevo y deja workers activos hasta que
+<code>php artisan workflow:v1:list</code> (si existe) o una consulta equivalente de la
+tabla configurada no muestre workflows no terminales. Detén workers y confirma
+que no quedan trabajos v1 listos, diferidos o reservados en las colas. Una
+reversión solo SQL puede cubrir esos workflows terminales.</li>
+<li class=""><strong>Conservar v1 en curso:</strong> detén workers en límites de trabajo y captura una
+instantánea coherente de SQL y de todos los backends duraderos de cola. Debe
+incluir trabajo listo, diferido y reservado del mismo punto de recuperación.
+Espera a que termine lo reservado salvo que el backend documente cómo restaurar
+su mensaje y lease con seguridad.</li>
+<li class=""><strong>Aceptar pérdida de ejecuciones en curso:</strong> si no hay un punto restaurable
+de colas, registra los identificadores afectados y acepta expresamente que
+esta reversión no recupera las ejecuciones no terminales dependientes de colas.
+Excluye una fila <code>pending</code> elegible solo tras demostrar la ruta Watchdog
+siguiente, y una espera solo de señal solo tras probar la entrada conservada.
+No presentes ninguna otra fila SQL como trabajo recuperable.</li>
+</ul>
+<p>Una espera solo de señal puede legítimamente no tener trabajo en cola si la
+entrada externa sigue disponible tras revertir. Los reintentos y temporizadores
+dependen de colas: una fila <code>workflow_timers</code> o <code>workflows</code> en espera no recrea un
+trabajo diferido perdido.</p>
+<p>v1.0.77 admitida inicia también <code>Workflow\Watchdog</code>, habilitado por defecto,
+desde el bucle de colas. Detecta un workflow <code>pending</code> cuyo <code>updated_at</code> tenga al
+menos cinco minutos y conserve <code>arguments</code> serializados, y lo vuelve a despachar
+a su conexión y cola registradas. Es una activación acotada solo de pendientes,
+no un sustituto de copias de colas. Solo puedes depender de ella si pruebas en
+un entorno de pruebas que el bucle restaurado despacha Watchdog, este redespacha
+una fila <code>pending</code> antigua elegible y el workflow avanza en la cola esperada.
+No recrea reintentos ni temporizadores, ni recupera filas <code>waiting</code> o <code>running</code>.
+Estas necesitan su trabajo conservado o una entrada externa válida cuando de
+verdad esperan una señal.</p>
+<p><strong>3. Respaldar el conjunto de recuperación para revertir</strong></p>
+<p>Crea una copia completa de base antes de actualizar:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># MySQL/MariaDB</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">mysqldump -u root -p your_database &gt; backup-v1-$(date +%Y%m%d-%H%M%S).sql</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># PostgreSQL</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">pg_dump -U postgres your_database &gt; backup-v1-$(date +%Y%m%d-%H%M%S).sql</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Laravel backup package (if installed)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan backup:run --only-db</span><br></div></code></pre></div></div>
+<p>Conserva después las colas según el backend:</p>
+<ul>
+<li class=""><strong>Cola en base de datos:</strong> incluye sus tablas y conexión en el mismo punto de
+recuperación. Pueden estar fuera de la base de workflows.</li>
+<li class=""><strong>Cola Redis:</strong> usa una instantánea restaurable con la base/prefijo exactos y
+claves listas, diferidas y reservadas. Conserva también bloqueos de trabajos
+únicos necesarios del mismo Redis. Prefiere una base o instancia dedicada:
+restaurar un Redis compartido puede retroceder datos de otras aplicaciones.</li>
+<li class=""><strong>SQS u otra cola gestionada:</strong> usa restauración de mensajes a un punto en el
+tiempo solo si el proveedor conserva de forma coherente disponibles, diferidos
+y en curso. SQS no ofrece la instantánea arbitraria necesaria aquí. Drena v1 o
+clasifica el trabajo restante dependiente de colas como irrecuperable. Las
+únicas excepciones solo SQL son <code>pending</code> elegible con Watchdog demostrado y
+una espera solo de señal probada.</li>
+</ul>
+<p>Conserva juntos copias SQL y de colas, inventario sin secretos y fecha del punto.
+El manifiesto puede nombrar referencia y versión de <code>APP_KEY</code>, nunca la clave ni
+credenciales para obtenerla. Controla por separado el acceso a credenciales de
+gestor de secretos, base, proveedor de colas y restauración de copias. Mezclar
+SQL y colas de puntos distintos no admite reversión de ejecuciones en curso.</p>
+<p><strong>4. Probar primero en un entorno de pruebas</strong></p>
+<p><strong>No actualices producción sin probar antes.</strong> La actualización incluye:</p>
+<ul>
+<li class="">Cambios de esquema (el núcleo duradero v2 añade tablas; la cantidad real es
+la que aplica <code>php artisan migrate</code>, y futuras migraciones consolidadas pueden
+agrupar archivos por funcionalidad)</li>
+<li class="">Cambios de namespaces PHP que requieren cambios de código</li>
+<li class="">Reinicio de workers de colas (breve interrupción)</li>
+<li class="">Validación de capacidades del backend</li>
+</ul>
+<p><strong>Lista de comprobación en pruebas:</strong></p>
+<ul class="contains-task-list containsTaskList_mC6p">
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Desplegar código v2</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Ejecutar migraciones en la base de pruebas</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Reiniciar workers</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Ejecutar <code>php artisan workflow:v2:doctor --strict</code></li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Iniciar un workflow v2 nuevo y verificar que termina</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Verificar que los workflows v1 existentes siguen terminando</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Comprobar que Waterline muestra v1 y v2</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Ejecutar la suite de la aplicación</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Verificar que no hay errores en registros</li>
+</ul>
+<p>Pasa a producción solo después de superar esta validación.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="upgrade-steps">Pasos de actualización<a href="#upgrade-steps" class="hash-link" aria-label="Enlace directo al Pasos de actualización" title="Enlace directo al Pasos de actualización" translate="no">​</a></h3>
+<p><strong>1. Actualizar la dependencia Composer</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer require durable-workflow/workflow:2.15.0</span><br></div></code></pre></div></div>
+<p>El paquete mantenido tanto para v1 como para v2 es <code>durable-workflow/workflow</code>.
+El comando cambia su restricción a la versión fijada pública v2 actual. El nombre
+antiguo <code>laravel-workflow/laravel-workflow</code> solo es un alias de compatibilidad
+para dependencias anteriores al cambio de nombre. Usa el nombre mantenido en
+requisitos nuevos y reversiones. La versión pública fijada es estable 2.0. Usa
+<code>durable-workflow/workflow:^2.0</code> para aceptar automáticamente actualizaciones 2.x compatibles.</p>
+<p><strong>2. Ejecutar migraciones de base de datos</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan migrate</span><br></div></code></pre></div></div>
+<p>v2 añade las tablas del núcleo duradero que sustentan sus funcionalidades. Las
+migraciones actuales crean:</p>
+<ul>
+<li class="">Núcleo: <code>workflow_instances</code>, <code>workflow_runs</code>, <code>workflow_history_events</code>, <code>workflow_tasks</code>, <code>workflow_commands</code></li>
+<li class="">Actividad: <code>activity_executions</code>, <code>activity_attempts</code></li>
+<li class="">Funcionalidades: <code>workflow_updates</code>, <code>workflow_signal_records</code>, <code>workflow_run_waits</code>, <code>workflow_run_timeline_entries</code>, <code>workflow_run_lineage_entries</code>, <code>workflow_schedules</code>, <code>workflow_schedule_history_events</code></li>
+<li class="">Observabilidad: <code>workflow_run_summaries</code>, <code>workflow_failures</code>, <code>workflow_links</code>, <code>worker_compatibility_heartbeats</code></li>
+<li class="">Temporizadores: <code>workflow_run_timers</code>, <code>workflow_run_timer_entries</code></li>
+<li class="">Búsqueda / memo / mensaje / hijo: <code>workflow_search_attributes</code>, <code>workflow_memos</code>, <code>workflow_messages</code>, <code>workflow_child_calls</code></li>
+<li class="">Catálogo de servicios: <code>workflow_service_endpoints</code>, <code>workflow_services</code>, <code>workflow_service_operations</code>, <code>workflow_service_calls</code></li>
+</ul>
+<p>Una migración futura puede consolidarlas en menos archivos sin alterar el
+contrato duradero. Para saber qué hay realmente en tu base, ejecuta
+<code>php artisan migrate:status</code> tras actualizar.</p>
+<p>Se conservan las tablas v1 predeterminadas (<code>workflows</code>, <code>workflow_logs</code>,
+<code>workflow_signals</code>, <code>workflow_timers</code>, <code>workflow_exceptions</code>,
+<code>workflow_relationships</code>) para terminar en v1. Si los modelos configurados
+redefinen tablas o conexión, esas tablas son la referencia v1.</p>
+<p><strong>3. Actualizar configuración si hace falta</strong></p>
+<p>La configuración v2 es compatible hacia atrás. Si publicaste <code>config/workflow.php</code>
+en v1 seguirá funcionando. Las opciones nuevas incluyen:</p>
+<ul>
+<li class=""><code>durable_types</code>: alias para referencias de workflow independientes del lenguaje</li>
+<li class=""><code>task_repair_policy</code>: tratamiento de tareas atascadas</li>
+<li class=""><code>backend_capability_check</code>: validación estricta o permisiva</li>
+<li class=""><code>projection_rebuild</code>: estrategias de reconstrucción desde historial</li>
+<li class=""><code>history_budget</code>: límites de eventos para continue-as-new</li>
+</ul>
+<p>Tienen valores predeterminados razonables. Configúralas solo para cambiar el
+comportamiento predeterminado. Consulta <a class="" href="/es/docs/configuration/options/">Configuración</a>.</p>
+<p><strong>El códec de carga predeterminado pasa a <code>avro</code>.</strong> v1 usaba por defecto
+<code>Workflow\Serializers\Y::class</code>, exclusivo de PHP. v2 usa <code>avro</code>, independiente
+del lenguaje, para que workers Python, Go y TypeScript decodifiquen cargas sin
+compartir PHP. <code>avro</code> es el único códec admitido para workflows v2 nuevos, que
+quedan etiquetados con <code>payload_codec = &quot;avro&quot;</code>.</p>
+<p>Si tu <code>config/workflows.php</code> publicado contiene
+<code>&#x27;serializer&#x27; =&gt; Workflow\Serializers\Y::class</code>, v2 aún lo lee para diagnosticar
+la migración, pero las cargas nuevas se resuelven a Avro. Ejecuta
+<code>php artisan workflow:v2:doctor</code>: señalará ese ajuste antiguo como un asunto de
+drenaje/importación v1.</p>
+<p>Para aceptar explícitamente el valor v2, deja <code>serializer</code> sin establecer o fíjalo:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// config/workflows.php — v2 default (language-neutral, compact binary)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">&#x27;serializer&#x27; =&gt; &#x27;avro&#x27;,</span><br></div></code></pre></div></div>
+<p>Conserva un códec antiguo (<code>&#x27;workflow-serializer-y&#x27;</code> o
+<code>&#x27;workflow-serializer-base64&#x27;</code>) solo si debes terminar de drenar ejecuciones v1
+que comparten valores nativos PHP entre servidor y workers PHP. Los nombres de
+clase antiguos (<code>Workflow\Serializers\Y::class</code>, etc.) siguen siendo alias para
+decodificar v1.</p>
+<p><strong>Los serializadores personalizados v1 no están admitidos en v2.</strong> El registro
+público v2 solo resuelve <code>avro</code>. Los lectores antiguos <code>workflow-serializer-y</code> y
+<code>workflow-serializer-base64</code> están limitados a la ruta
+interna v1 de importación/drenaje; no se seleccionan para ejecuciones o cargas
+SDK nuevas. Si usabas uno propio, drena v1 antes o recodifica el historial a
+<code>avro</code>: no se consulta la clase personalizada. <code>php artisan workflow:v2:doctor</code>
+señala otros valores <code>workflows.serializer</code> como deuda de migración. Omitir el
+códec en ejecuciones nuevas resuelve a <code>avro</code>.</p>
+<p><strong>Las subclases de modelos solo se admiten si conservan el contrato de columnas y
+claves del paquete.</strong> La <a class="" href="/es/docs/configuration/customization-matrix/">matriz de personalización</a>
+congelada es la referencia: se admiten subclases de modelos v2 de instancia,
+ejecución, tarea, evento, proyección, programación, actividad, fallo, enlace,
+mensaje, memo, atributos de búsqueda y llamada hija si conservan nombres de
+tablas, claves primarias y foráneas del paquete. Nombres de tabla con columnas
+foráneas personalizadas quedan fuera. Waterline lee proyecciones v2 mediante
+<code>Workflow\V2\Contracts\OperatorObservabilityRepository</code>, por lo que una subclase
+compatible con el esquema no requiere cambios en Waterline.</p>
+<p><strong>Variables de entorno:</strong></p>
+<p>v2 no añade variables obligatorias. <code>QUEUE_CONNECTION</code>, <code>CACHE_DRIVER</code> y
+<code>DB_CONNECTION</code> siguen funcionando.</p>
+<p><strong>4. Reiniciar workers de colas</strong></p>
+<p>Los workers deben reiniciarse para cargar código v2:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using Laravel queue workers</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan queue:restart</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using Supervisor</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo supervisorctl restart &lt;your-worker-group&gt;:*</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using systemd</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo systemctl restart laravel-worker</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># If using Horizon</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan horizon:terminate</span><br></div></code></pre></div></div>
+<p>Los workers:</p>
+<ol>
+<li class="">Terminan el trabajo actual</li>
+<li class="">Salen de forma ordenada</li>
+<li class="">Reinician con código v2</li>
+</ol>
+<p><strong>Deben reiniciar antes de procesar workflows v2.</strong> Los v1 pueden terminar con
+workers antiguos o nuevos mediante compatibilidad de finalización en v1.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="after-upgrading">Después de actualizar<a href="#after-upgrading" class="hash-link" aria-label="Enlace directo al Después de actualizar" title="Enlace directo al Después de actualizar" translate="no">​</a></h3>
+<p><strong>1. Verificar capacidades del backend</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:doctor --strict</span><br></div></code></pre></div></div>
+<p>Salida esperada:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ Database driver supports required features</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ Queue driver supports required features</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ Cache driver supports locks</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">✓ All backend capabilities present</span><br></div></code></pre></div></div>
+<p>Si falla algo, consulta los requisitos de controladores en
+<a class="" href="/es/docs/installation/#requirements">Requisitos del backend</a>.</p>
+<p><strong>2. Verificar el inicio de workflows v2</strong></p>
+<p>Inicia un workflow de prueba con la API v2:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\WorkflowStub;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\StartOptions;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$workflow = WorkflowStub::make(TestWorkflow::class, &#x27;test-upgrade&#x27;);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$result = $workflow-&gt;start([&#x27;test&#x27; =&gt; true], new StartOptions());</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$runId = $result-&gt;runId();</span><br></div></code></pre></div></div>
+<p><code>WorkflowStub::start()</code> devuelve <code>StartResult</code>. Obtén el identificador con
+<code>runId()</code> antes de compararlo con filas. Tratar el resultado como cadena escalar
+compara silenciosamente un objeto con una columna.</p>
+<p>Comprueba:</p>
+<ul>
+<li class="">Que aparece en Waterline</li>
+<li class="">Que <code>workflow_instances</code> tiene el <code>instance_id</code> correspondiente (<code>$workflow-&gt;id()</code>)</li>
+<li class="">Que <code>workflow_runs</code> tiene el <code>run_id</code> correspondiente (<code>$result-&gt;runId()</code>)</li>
+<li class="">Que termina o avanza como se espera</li>
+</ul>
+<p><strong>3. Comprobar workflows v1 existentes</strong></p>
+<p>Si hay workflows v1 en curso:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v1:list</span><br></div></code></pre></div></div>
+<p>Verifica que siguen avanzando y terminan sin errores en el motor v1.</p>
+<p><strong>4. Vigilar errores en registros</strong></p>
+<p>Observa los registros de aplicación en busca de errores de workflows:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">tail -f storage/logs/laravel.log | grep -i workflow</span><br></div></code></pre></div></div>
+<p>Problemas habituales:</p>
+<ul>
+<li class="">Namespaces PHP: código que aún usa <code>Workflow\Workflow</code> en vez de <code>Workflow\V2\Workflow</code></li>
+<li class="">Métodos: clases v2 de workflow o actividad que aún deben cambiar su entrada a <code>handle()</code></li>
+<li class="">Controladores de cola: <code>sync</code> no está admitido en modo cola; en modo sondeo
+(<code>workflows.v2.task_dispatch_mode=poll</code>) no se usa la cola para entregar tareas
+y <code>sync</code> es aceptable</li>
+</ul>
+<p><strong>5. Verificar observabilidad en Waterline</strong></p>
+<p>Abre Waterline (<code>/waterline</code> por defecto) y verifica:</p>
+<ul>
+<li class="">Los workflows v1 conservan sus datos originales</li>
+<li class="">Los v2 muestran detalles completos de ejecución, historial y actividad</li>
+<li class="">Waterline se muestra sin errores</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="rollback-procedure">Procedimiento de reversión<a href="#rollback-procedure" class="hash-link" aria-label="Enlace directo al Procedimiento de reversión" title="Enlace directo al Procedimiento de reversión" translate="no">​</a></h3>
+<p>Revertir es una operación sobre el conjunto de recuperación. Restaurar solo SQL
+no restaura ejecuciones v1 en curso si sus colas están en Redis, SQS, otra base
+u otro backend externo.</p>
+<p>Si falla la actualización en producción, revierte solo según la política y el
+punto de recuperación elegidos antes:</p>
+<p><strong>1. Detener entrada de aplicación, programadores y workers</strong></p>
+<p>Usa la misma parada previa. Confirma que ningún worker puede reservar trabajo
+y ninguna petición iniciar o señalar un workflow durante la restauración.</p>
+<p><strong>2. Validar el conjunto de recuperación</strong></p>
+<ul>
+<li class="">Solo SQL se admite si el punto elegido no tiene ejecuciones v1 no terminales
+dependientes de colas conservadas. Un <code>pending</code> antiguo elegible puede usar
+Watchdog v1.0.77 demostrado; una espera real solo de señal, una entrada probada.
+No amplíes esas excepciones a otros estados.</li>
+<li class="">Para ejecuciones en curso se necesita SQL y colas restaurables listas,
+diferidas y reservadas del mismo punto para reintentos, temporizadores,
+actividades y trabajo <code>waiting</code> o <code>running</code>. Las esperas de señal necesitan
+entrada funcional y las de temporizador su trabajo diferido.</li>
+<li class="">Si no se cumple, detente. Corrige hacia delante, concilia manualmente los
+workflows registrados o sigue la aceptación previamente documentada de pérdida
+de ejecuciones afectadas.</li>
+</ul>
+<p><strong>3. Restaurar la copia de base</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># MySQL/MariaDB</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">mysql -u root -p your_database &lt; backup-v1-YYYYMMDD-HHMMSS.sql</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"># PostgreSQL</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">psql -U postgres -d your_database &lt; backup-v1-YYYYMMDD-HHMMSS.sql</span><br></div></code></pre></div></div>
+<p>Restaura cada tabla de modelo v1 configurada y <code>workflow_relationships_table</code>,
+aunque estén en otra conexión.</p>
+<p><strong>4. Restaurar las colas del punto de recuperación cuando haga falta</strong></p>
+<p>Mantén los consumidores detenidos. Sigue el procedimiento del proveedor para
+restaurar conexiones, colas, prefijos y trabajos listos, diferidos y reservados
+capturados con SQL. Restaura los bloqueos únicos necesarios incluidos en el
+punto. No sustituyas por una cola vacía con igual nombre: no activa reintentos,
+temporizadores ni trabajo <code>waiting</code>/<code>running</code>. Una cola vacía escribible basta
+solo para <code>pending</code> elegible tras demostrar que Watchdog v1.0.77 arranca y lo
+redespacha.</p>
+<p><strong>5. Revertir la dependencia Composer</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer require durable-workflow/workflow:^1.0 --with-all-dependencies</span><br></div></code></pre></div></div>
+<p><code>durable-workflow/workflow</code> es el nombre mantenido de v1 admitida y v2.
+<code>laravel-workflow/laravel-workflow</code> solo es un alias heredado para grafos antiguos.
+No lo uses en requisitos de reversión.</p>
+<p>Recupera la <code>APP_KEY</code> exacta mediante referencia y versión inventariadas, usando
+credenciales de recuperación separadas. Restaura también conexión de workflows,
+conexiones/nombres de colas, prefijos Redis y modelos propios antes de arrancar
+consumidores. Trabajos cifrados y referencias serializadas dependen de que la
+configuración coincida con el punto capturado.</p>
+<p><strong>6. Reiniciar workers y reabrir entrada</strong></p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain"># Use the start command for your worker system, for example:</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo supervisorctl start &lt;your-worker-group&gt;:*</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">sudo systemctl start laravel-worker</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan horizon:continue</span><br></div></code></pre></div></div>
+<p><strong>7. Verificar que v1 puede seguir ejecutándose</strong></p>
+<p>Ver una fila en Waterline demuestra restauración, no que un worker pueda
+reanudarla. Completa esta lista antes de declarar correcta la reversión:</p>
+<ul class="contains-task-list containsTaskList_mC6p">
+<li class="task-list-item"><input type="checkbox" disabled=""> <code>composer show durable-workflow/workflow</code> muestra la versión v1 prevista
+y los workers han cargado ese código.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Las tablas v1 reales y <code>workflow_relationships_table</code> existen en las
+conexiones previstas.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Cada fila no terminal de la tabla configurada (<code>workflows</code> por defecto)
+está clasificada por próxima activación: trabajo listo/diferido/reservado,
+temporizador conservado o entrada de señal probada. Un <code>pending</code> elegible puede
+citar la evidencia Watchdog siguiente.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->La inspección del proveedor confirma cada reintento, temporizador,
+actividad y activación <code>waiting</code>/<code>running</code> en la conexión/cola registrada.
+Una fila SQL de temporizador no basta, ni Watchdog sustituye esos trabajos.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Para <code>pending</code> restaurado sin trabajo conservado, se observa al bucle
+v1.0.77 encolar Watchdog y, tras cinco minutos de antigüedad, a este encolar el
+workflow en su conexión/cola y a la fila avanzar. Sin esta prueba completa,
+considéralo varado aunque se vea en Waterline.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Ningún reintento, temporizador o fila <code>waiting</code>/<code>running</code> carece de trabajo
+ejecutable requerido o entrada externa usable para una espera real de señal.
+Si falta, está varado; la prueba Watchdog solo de pendientes no lo recupera.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Un reintento o temporizador restaurado supera su marcador anterior y una
+espera de señal controlada logra encolar y consumir su activación.</li>
+<li class="task-list-item"><input type="checkbox" disabled=""> <!-- -->Un workflow canario v1 nuevo termina sin errores de trabajo perdido,
+descifrado, tablas, conexión o enrutamiento de colas.</li>
+</ul>
+<p>Con tablas predeterminadas, esta consulta inicia el inventario. Sustituye la
+tabla resuelta por tu modelo si está personalizado:</p>
+<div class="language-sql codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-sql codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">SELECT</span><span class="token plain"> id</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> class</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">status</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">FROM</span><span class="token plain"> workflows</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">WHERE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">status</span><span class="token plain"> </span><span class="token operator">NOT</span><span class="token plain"> </span><span class="token operator">IN</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;completed&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;failed&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;cancelled&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><br></div></code></pre></div></div>
+<p><strong>Notas importantes de reversión:</strong></p>
+<ul>
+<li class="">Descarta workflows v2 iniciados tras actualizar, que solo existen en tablas v2</li>
+<li class="">Solo SQL restaura registros v1, no mensajes de colas externas</li>
+<li class="">La ejecución v1 en curso se admite solo con SQL y colas del mismo punto
+coherente, o espera documentada solo de señal con entrada usable. La excepción
+adicional es <code>pending</code> antiguo elegible con redespacho Watchdog v1.0.77
+demostrado. No cubre reintentos, temporizadores ni <code>waiting</code>/<code>running</code></li>
+<li class="">Reproducir un punto previo puede repetir efectos externos. Revisa idempotencia
+antes de restaurar actividades en cola</li>
+<li class="">Si debes conservar workflows v2 iniciados durante la actualización, no
+restaures la base: corrige el problema hacia delante</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="code-changes">Cambios de código<a href="#code-changes" class="hash-link" aria-label="Enlace directo al Cambios de código" title="Enlace directo al Cambios de código" translate="no">​</a></h2>
+<p>Estas secciones detallan los cambios necesarios al pasar de las API v1 a v2.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="namespace-change">Cambio de namespace PHP<a href="#namespace-change" class="hash-link" aria-label="Enlace directo al Cambio de namespace PHP" title="Enlace directo al Cambio de namespace PHP" translate="no">​</a></h3>
+<p>Todas las clases v2 están bajo <code>Workflow\V2</code>. Actualiza las importaciones:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\Workflow;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\Activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\WorkflowStub;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\Workflow;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\Activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\WorkflowStub;</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="entry-method">Método de entrada<a href="#entry-method" class="hash-link" aria-label="Enlace directo al Método de entrada" title="Enlace directo al Método de entrada" translate="no">​</a></h3>
+<p>Workflows y actividades v2 usan <code>handle()</code>. Renombra los métodos <code>execute()</code> v1
+al migrar el código:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">class MyWorkflow extends Workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    public function execute($input)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    {</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        $result = yield ActivityStub::make(MyActivity::class, $input);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        return $result;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    }</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">class MyWorkflow extends Workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    public function handle($input)</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    {</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        return activity(MyActivity::class, $input);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    }</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div></code></pre></div></div>
+<p>No dejes <code>execute()</code> como entrada de workflow o actividad v2: el motor lo rechaza.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="activity-calls">Llamadas a actividades<a href="#activity-calls" class="hash-link" aria-label="Enlace directo al Llamadas a actividades" title="Enlace directo al Llamadas a actividades" translate="no">​</a></h3>
+<p>v2 sustituye <code>ActivityStub::make()</code> y <code>yield</code> por funciones auxiliares directas:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$result = yield ActivityStub::make(MyActivity::class, $arg1, $arg2);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\activity;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$result = activity(MyActivity::class, $arg1, $arg2);</span><br></div></code></pre></div></div>
+<p>Las actividades tienen identidad duradera. Cada actividad programada obtiene
+una fila <code>activity_executions</code> con identificador estable y cada intento concreto
+una fila <code>activity_attempts</code> con historial tipado.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="workflow-identity">Identidad del workflow<a href="#workflow-identity" class="hash-link" aria-label="Enlace directo al Identidad del workflow" title="Enlace directo al Identidad del workflow" translate="no">​</a></h3>
+<p>v2 separa instancia y ejecución:</p>
+<ul>
+<li class=""><code>id()</code>: identificador público de instancia, igual a través de continue-as-new</li>
+<li class=""><code>runId()</code>: identificador de la ejecución actual</li>
+</ul>
+<p>En v1 eran el mismo concepto.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="signals">Señales<a href="#signals" class="hash-link" aria-label="Enlace directo al Señales" title="Enlace directo al Señales" translate="no">​</a></h3>
+<p>v2 usa esperas de señales con nombre en lugar de mutadores con <code>#[SignalMethod]</code>:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">#[SignalMethod]</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">public function approve()</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    $this-&gt;approved = true;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\await;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$approved = await(&#x27;approve&#x27;);</span><br></div></code></pre></div></div>
+<p>Admiten <code>await(&#x27;name&#x27;)</code> para esperas bloqueantes y <code>signal()</code> / <code>attemptSignal()</code>
+para entrada externa. Cancelación y terminación no son señales: siguen siendo
+comandos explícitos del entorno.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="queries">Consultas<a href="#queries" class="hash-link" aria-label="Enlace directo al Consultas" title="Enlace directo al Consultas" translate="no">​</a></h3>
+<p>v2 usa métodos de consulta seguros para reproducción en vez de leer propiedades
+directamente:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">#[QueryMethod]</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">public function getStatus(): string</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">{</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    return $this-&gt;status;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">}</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\query;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// Queries are defined as named, replay-safe accessors</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timers-and-side-effects">Temporizadores y efectos secundarios<a href="#timers-and-side-effects" class="hash-link" aria-label="Enlace directo al Temporizadores y efectos secundarios" title="Enlace directo al Temporizadores y efectos secundarios" translate="no">​</a></h3>
+<p>Las funciones auxiliares sustituyen los métodos estáticos v1:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v1</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">yield Timer::make(60);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$value = yield SideEffect::make(fn() =&gt; random_int(1, 100));</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">// v2</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\timer;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use function Workflow\V2\sideEffect;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">timer(60);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$value = sideEffect(fn() =&gt; random_int(1, 100));</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timeouts">Límites de tiempo<a href="#timeouts" class="hash-link" aria-label="Enlace directo al Límites de tiempo" title="Enlace directo al Límites de tiempo" translate="no">​</a></h3>
+<p>v2 añade límites de tiempo de workflow mediante <code>StartOptions</code>:</p>
+<div class="language-php codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-php codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\StartOptions;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">use Workflow\V2\WorkflowStub;</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$workflow = WorkflowStub::make(MyWorkflow::class, &#x27;order-123&#x27;);</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">$workflow-&gt;start(</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    $orderId,</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">    StartOptions::rejectDuplicate()</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        -&gt;withExecutionTimeout(7200)   // 2 hours across all runs</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">        -&gt;withRunTimeout(3600),        // 1 hour per run</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">);</span><br></div></code></pre></div></div>
+<ul>
+<li class="">El <strong>límite de ejecución de instancia</strong> abarca toda la instancia, incluidas
+transiciones continue-as-new.</li>
+<li class="">El <strong>límite de una ejecución</strong> se aplica a una sola y se reinicia con continue-as-new.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="database-migrations">Migraciones de base de datos<a href="#database-migrations" class="hash-link" aria-label="Enlace directo al Migraciones de base de datos" title="Enlace directo al Migraciones de base de datos" translate="no">​</a></h3>
+<p>v2 añade tablas y columnas. El paquete carga sus migraciones automáticamente.
+Tras actualizar:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">composer update durable-workflow/workflow</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan migrate</span><br></div></code></pre></div></div>
+<p>2.0.0 incluye migraciones base limpias. La vía normal es que Laravel cargue las
+migraciones del paquete y ejecutar <code>php artisan migrate</code>.</p>
+<p>Si publicaste migraciones en la aplicación, elige una fuente y mantenla actual:</p>
+<ul>
+<li class="">
+<p><strong>Carga automática del paquete:</strong> elimina las migraciones antiguas publicadas
+de Durable Workflow en <code>database/migrations</code> y ejecuta <code>php artisan migrate</code>.</p>
+</li>
+<li class="">
+<p><strong>Migraciones publicadas:</strong> publica el conjunto actual antes de migrar:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan vendor:publish \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --provider=&quot;Workflow\Providers\WorkflowServiceProvider&quot; \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --tag=migrations \</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">  --force</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan migrate</span><br></div></code></pre></div></div>
+</li>
+</ul>
+<p>No conserves archivos publicados obsoletos mientras dependes de los nuevos
+autocargados: pueden faltar tablas v2 o migraciones de reparación.</p>
+<p>Si personalizaste migraciones, compara tus copias con <code>src/migrations</code> del paquete
+en cada actualización. Conserva tablas, columnas, índices y contratos de nulabilidad
+y valores predeterminados compatibles con los modelos. Si usas una conexión no
+predeterminada, publica las migraciones, establece <code>$connection</code> y sigue
+incorporando todas las nuevas del paquete por orden de fecha.</p>
+<p>Para usuarios de versiones preliminares v2, <code>workflow_run_summaries.memo</code> se
+repara de forma idempotente si una migración antigua creó la tabla sin ella.
+Las instalaciones nuevas ya la crean en la migración base.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="backend-capability-check">Comprobación de capacidades del backend<a href="#backend-capability-check" class="hash-link" aria-label="Enlace directo al Comprobación de capacidades del backend" title="Enlace directo al Comprobación de capacidades del backend" translate="no">​</a></h3>
+<p>v2 valida que cola, base y caché cumplen sus requisitos. Tras actualizar, ejecuta:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v2:doctor --strict</span><br></div></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="configuration">Configuración<a href="#configuration" class="hash-link" aria-label="Enlace directo al Configuración" title="Enlace directo al Configuración" translate="no">​</a></h3>
+<p>Consulta <a class="" href="/es/docs/configuration/options/">Configuración</a> para las nuevas opciones:</p>
+<ul>
+<li class="">Alias de tipos duraderos</li>
+<li class="">Política de reparación de tareas</li>
+<li class="">Comprobaciones de capacidades</li>
+<li class="">Reconstrucción de proyecciones</li>
+<li class="">Presupuestos de historial y eliminación de datos sensibles al exportar</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="waterline">Waterline<a href="#waterline" class="hash-link" aria-label="Enlace directo al Waterline" title="Enlace directo al Waterline" translate="no">​</a></h3>
+<p>La interfaz de supervisión Waterline se actualizó para v2 con:</p>
+<ul>
+<li class="">Detalles de ejecución con duraciones y fechas límite</li>
+<li class="">Seguimiento de intentos de actividad con identificadores duraderos</li>
+<li class="">Visualización actualizada del estado de workflows</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="continue-as-new">Continue-as-new<a href="#continue-as-new" class="hash-link" aria-label="Enlace directo al Continue-as-new" title="Enlace directo al Continue-as-new" translate="no">​</a></h3>
+<p>v2 añade presupuestos de historial que pueden activar continue-as-new al superar
+el umbral de eventos. Se conservan memo, atributos de búsqueda y límites de tiempo
+entre transiciones.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="existing-workflows">Workflows existentes<a href="#existing-workflows" class="hash-link" aria-label="Enlace directo al Workflows existentes" title="Enlace directo al Workflows existentes" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="finish-on-v1-strategy">Estrategia de terminar en v1<a href="#finish-on-v1-strategy" class="hash-link" aria-label="Enlace directo al Estrategia de terminar en v1" title="Enlace directo al Estrategia de terminar en v1" translate="no">​</a></h3>
+<p><strong>Los workflows iniciados en v1 siguen ejecutándose mediante compatibilidad v1.</strong>
+Los nuevos usan semántica v2. No necesitas migrar instancias en curso.</p>
+<p>Al actualizar a 2.0:</p>
+<ol>
+<li class=""><strong>Se conservan datos v1:</strong> tablas predeterminadas <code>workflows</code>, <code>workflow_logs</code>,
+<code>workflow_signals</code>, <code>workflow_timers</code>, <code>workflow_exceptions</code> y
+<code>workflow_relationships</code> intactas; modelos/tablas configurados siguen siendo
+la autoridad.</li>
+<li class=""><strong>v1 termina en su motor:</strong> continúa con reproducción v1 hasta estado terminal.</li>
+<li class=""><strong>v2 usa su motor:</strong> los workflows nuevos usan esquema v2 (<code>workflow_instances</code>,
+<code>workflow_runs</code>, <code>workflow_history_events</code>, etc.).</li>
+<li class=""><strong>Waterline muestra ambos:</strong> la interfaz muestra v1 y v2 juntos.</li>
+</ol>
+<p>Terminar en v1 también depende de Laravel y sus colas. Conserva todas las
+conexiones y colas v1 hasta terminar. Las filas preservan historial y estado,
+pero no reconstruyen trabajos externos perdidos listos, diferidos o reservados.
+Watchdog v1.0.77 puede redespachar <code>pending</code> antiguo elegible desde SQL, pero no
+recrea reintentos, temporizadores ni trabajo <code>waiting</code>/<code>running</code>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="tracking-v1-workflow-completion">Seguimiento de finalización de workflows v1<a href="#tracking-v1-workflow-completion" class="hash-link" aria-label="Enlace directo al Seguimiento de finalización de workflows v1" title="Enlace directo al Seguimiento de finalización de workflows v1" translate="no">​</a></h3>
+<p>Para ver qué workflows v1 siguen activos:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">php artisan workflow:v1:list</span><br></div></code></pre></div></div>
+<p>El comando enumera los que no alcanzaron un estado terminal (completado, fallido,
+cancelado). Úsalo para seguir su finalización.</p>
+<p>Salida de ejemplo:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token plain">+--------------------------------------+---------------------+-----------+------------+</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">| ID                                   | Class               | Status    | Created    |</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">+--------------------------------------+---------------------+-----------+------------+</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">| 01J1234567890ABCDEFGHIJK             | App\OrderWorkflow   | running   | 2 days ago |</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">| 01J9876543210ZYXWVUTSRQP             | App\InvoiceWorkflow | pending   | 1 day ago  |</span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain">+--------------------------------------+---------------------+-----------+------------+</span><br></div></code></pre></div></div>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="waterline-visibility">Visibilidad en Waterline<a href="#waterline-visibility" class="hash-link" aria-label="Enlace directo al Visibilidad en Waterline" title="Enlace directo al Visibilidad en Waterline" translate="no">​</a></h4>
+<p>Tras actualizar, Waterline muestra automáticamente ambos motores:</p>
+<ul>
+<li class=""><strong>v1:</strong> datos originales <code>StoredWorkflow</code> (clase, estado, registros, señales,
+excepciones)</li>
+<li class=""><strong>v2:</strong> detalles completos (ejecuciones, eventos, temporizadores, actividades,
+atributos de búsqueda)</li>
+</ul>
+<p>No requiere configuración: lee ambos conjuntos de tablas y ofrece una vista unificada.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="when-to-clean-up-v1-tables">Cuándo limpiar las tablas v1<a href="#when-to-clean-up-v1-tables" class="hash-link" aria-label="Enlace directo al Cuándo limpiar las tablas v1" title="Enlace directo al Cuándo limpiar las tablas v1" translate="no">​</a></h3>
+<p>Cuando todos terminen (<code>workflow:v1:list</code> muestra cero activos), puedes eliminar
+opcionalmente las tablas v1:</p>
+<div class="language-sql codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-sql codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#F8F8F2"><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_relationships</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_exceptions</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_timers</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_signals</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflow_logs</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><span class="token plain"></span><br></div><div class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">DROP</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">TABLE</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">IF</span><span class="token plain"> </span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">EXISTS</span><span class="token plain"> workflows</span><span class="token punctuation" style="color:rgb(248, 248, 242)">;</span><br></div></code></pre></div></div>
+<p><strong>Importante:</strong> no las elimines mientras haya workflows v1 activos. Fallaría la
+reproducción y quedarían atascados.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="why-finish-on-v1">Por qué terminar en v1<a href="#why-finish-on-v1" class="hash-link" aria-label="Enlace directo al Por qué terminar en v1" title="Enlace directo al Por qué terminar en v1" translate="no">​</a></h3>
+<p>La estrategia evita forzar una migración de datos al actualizar. Los modelos
+de almacenamiento difieren fundamentalmente:</p>
+<ul>
+<li class=""><strong>v1:</strong> estado como fila <code>workflows</code> desnormalizada con registros, señales y
+temporizadores relacionados</li>
+<li class=""><strong>v2:</strong> historial como fuente de eventos con proyecciones (<code>workflow_instances</code>,
+<code>workflow_runs</code>, <code>workflow_history_events</code>)</li>
+</ul>
+<p>Convertir ejecuciones en curso exigiría reconstruir secuencias desde registros
+v1, con riesgo de pérdida de datos e inconsistencias de reproducción. Terminar
+en v1 permite completar con seguridad en el motor original mientras el trabajo
+nuevo pasa inmediatamente a v2.</p></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-tags-row"><div class="col"><b>Etiquetas:</b><ul class="tags_jXut padding--none margin-left--sm"><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/migration/">migration</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/upgrade/">upgrade</a></li><li class="tag_QGVx"><a rel="tag" class="tag_zVej tagRegular_sFm0" href="/es/docs/tags/v-2/">v2</a></li></ul></div></div><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/durable-workflow/durable-workflow.github.io/edit/main/i18n/es/docusaurus-plugin-content-docs/current/migration.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Editar esta página</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Página del documento"><a class="pagination-nav__link pagination-nav__link--prev" href="/es/docs/failures-and-recovery/"><div class="pagination-nav__sublabel">Anterior</div><div class="pagination-nav__label">Fallos y recuperación</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/es/docs/category/configuration/"><div class="pagination-nav__sublabel">Siguiente</div><div class="pagination-nav__label">Configuración</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#upgrade-procedure" class="table-of-contents__link toc-highlight">Procedimiento de actualización</a><ul><li><a href="#before-upgrading" class="table-of-contents__link toc-highlight">Antes de actualizar</a></li><li><a href="#upgrade-steps" class="table-of-contents__link toc-highlight">Pasos de actualización</a></li><li><a href="#after-upgrading" class="table-of-contents__link toc-highlight">Después de actualizar</a></li><li><a href="#rollback-procedure" class="table-of-contents__link toc-highlight">Procedimiento de reversión</a></li></ul></li><li><a href="#code-changes" class="table-of-contents__link toc-highlight">Cambios de código</a><ul><li><a href="#namespace-change" class="table-of-contents__link toc-highlight">Cambio de namespace PHP</a></li><li><a href="#entry-method" class="table-of-contents__link toc-highlight">Método de entrada</a></li><li><a href="#activity-calls" class="table-of-contents__link toc-highlight">Llamadas a actividades</a></li><li><a href="#workflow-identity" class="table-of-contents__link toc-highlight">Identidad del workflow</a></li><li><a href="#signals" class="table-of-contents__link toc-highlight">Señales</a></li><li><a href="#queries" class="table-of-contents__link toc-highlight">Consultas</a></li><li><a href="#timers-and-side-effects" class="table-of-contents__link toc-highlight">Temporizadores y efectos secundarios</a></li><li><a href="#timeouts" class="table-of-contents__link toc-highlight">Límites de tiempo</a></li><li><a href="#database-migrations" class="table-of-contents__link toc-highlight">Migraciones de base de datos</a></li><li><a href="#backend-capability-check" class="table-of-contents__link toc-highlight">Comprobación de capacidades del backend</a></li><li><a href="#configuration" class="table-of-contents__link toc-highlight">Configuración</a></li><li><a href="#waterline" class="table-of-contents__link toc-highlight">Waterline</a></li><li><a href="#continue-as-new" class="table-of-contents__link toc-highlight">Continue-as-new</a></li></ul></li><li><a href="#existing-workflows" class="table-of-contents__link toc-highlight">Workflows existentes</a><ul><li><a href="#finish-on-v1-strategy" class="table-of-contents__link toc-highlight">Estrategia de terminar en v1</a></li><li><a href="#tracking-v1-workflow-completion" class="table-of-contents__link toc-highlight">Seguimiento de finalización de workflows v1</a></li><li><a href="#when-to-clean-up-v1-tables" class="table-of-contents__link toc-highlight">Cuándo limpiar las tablas v1</a></li><li><a href="#why-finish-on-v1" class="table-of-contents__link toc-highlight">Por qué terminar en v1</a></li></ul></li></ul></div></div></div></div></main></div></div></div><div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Documentación</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/es/docs/introduction/">Introducción</a></li><li class="footer__item"><a class="footer__link-item" href="/es/docs/installation/">Instalación</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Comunidad</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://discord.gg/xu5aDDpqVy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://x.com/DurableWorkflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">X<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Más recursos</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://durable-workflow.com/llms-full.txt" target="_blank" rel="noopener noreferrer" class="footer__link-item">Documentación para LLM<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://packagist.org/packages/durable-workflow/workflow" target="_blank" rel="noopener noreferrer" class="footer__link-item">Packagist<svg width="13.5" height="13.5" aria-label="(se abre en una nueva pestaña)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 <a href="https://durable-workflow.com">Durable Workflow</a>.</div></div></div></footer></div></div>
+</body>
+</html>
