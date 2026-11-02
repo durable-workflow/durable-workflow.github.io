@@ -274,11 +274,13 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` busca programaciones activas con `next_fire_at` pasado y las activa en orden. `occurrence_time` es la hora vencida observada por el planificador. Tras cada activación, `next_fire_at` avanza desde el reloj actual a la siguiente ocurrencia cron o de intervalo.
+`tick()` activa las programaciones vencidas, es decir, las programaciones activas cuyo `next_fire_at` ya ha pasado. Cada llamada inicia como máximo `$limit` de ellas (`tick(int $limit = 100)`), de la más antigua a la más reciente y repartidas en round-robin entre espacios de nombres. Las programaciones vencidas que superen el límite siguen vencidas para la siguiente llamada. `occurrence_time` es la hora vencida observada por el planificador. Tras cada activación, `next_fire_at` avanza desde el reloj actual a la siguiente ocurrencia cron o de intervalo.
 
 ### Política de activaciones perdidas {#missed-fire-policy}
 
 La evaluación en vivo usa la semántica **activar una vez y después continuar**. Si el planificador está caído durante una o más horas nominales, el primer tick recuperado inicia un workflow para el `next_fire_at` atrasado, lo registra como `occurrence_time` y avanza desde el reloj actual. Las demás ocurrencias nominales transcurridas durante la caída se omiten.
+
+La misma regla se aplica cuando el planificador está en marcha pero no da abasto. Una programación que sigue esperando una pasada cuando llega su siguiente hora nominal se activa una vez y omite las ocurrencias intermedias. Consulta [Tamaño de pasada y ráfagas](#pass-size-and-bursts).
 
 Usa `backfill()` si deben ejecutarse todas las perdidas. Enumera explícitamente el intervalo solicitado y registra cada ocurrencia por separado.
 
@@ -289,12 +291,7 @@ Ejecuta un tick desde la línea de comandos:
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-El servidor independiente expone la misma evaluación con su propio comando:
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 Para evaluar continuamente, llama al comando desde el planificador de tareas de Laravel:
@@ -303,6 +300,77 @@ Para evaluar continuamente, llama al comando desde el planificador de tareas de 
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### Tamaño de pasada y ráfagas {#pass-size-and-bursts}
+
+Cada pasada de `workflow:v2:schedule-tick` inicia como máximo `limit` programaciones
+vencidas y, por separado, vacía como máximo `limit` acciones en búfer. `limit` se
+toma de la opción `--limit` o, en su defecto, de `workflows.v2.schedules.tick_limit`
+(`DW_V2_SCHEDULE_TICK_LIMIT`), y por defecto vale 100. Un valor que no sea un
+entero positivo hace que el comando falle sin evaluar ninguna programación; nunca
+se sustituye por otro tamaño. El ajuste y la opción requieren Workflow 2.16.0 o
+posterior.
+
+Ambos lotes se reparten en round-robin entre espacios de nombres, empezando por
+los elementos más antiguos, de modo que un espacio de nombres con mucha actividad no puede
+retrasar a otro. Las programaciones vencidas que superen `limit` siguen vencidas y
+las recoge la siguiente pasada. Cuando `N` programaciones vencen a la vez, no hay
+ninguna más antigua vencida y todos los inicios tienen éxito, todas se activan en
+`ceil(N / limit)` pasadas. Con la receta de cada minuto, la última se inicia hasta
+`ceil(N / limit) - 1` minutos después de la primera. Configura `limit` igual o por
+encima de la mayor ráfaga que esperes.
+
+El límite se alarga cuando:
+
+- falla un inicio: la ocurrencia sigue vencida y se reintenta en pasadas
+  posteriores, por lo que una programación que falla continuamente sigue ocupando
+  un hueco mientras sea la más antigua;
+- se seleccionan primero programaciones que vencieron antes, o más programaciones
+  que vencen antes de que se despeje la ráfaga;
+- los ticks se ejecutan con retraso o se omiten.
+
+Con una sobrecarga sostenida, una programación que espera más allá de su siguiente
+hora nominal se activa una vez y omite las ocurrencias intermedias, como se
+describe en [Política de activaciones perdidas](#missed-fire-policy). Usa
+`backfill()` si esas ocurrencias deben ejecutarse.
+
+Configura alertas sobre las métricas de operador `schedules.missed`,
+`schedules.oldest_overdue_at` y `schedules.max_overdue_ms`, y sobre los
+incrementos de `schedules.failures_total`.
+
+:::note Actualizar una aplicación que publicó su configuración antes de 2.16.0
+
+Laravel fusiona la configuración de un paquete con un archivo de configuración
+publicado clave de primer nivel a clave de primer nivel. Una aplicación que publicó
+`config/workflows.php` antes de 2.16.0 conserva su propio array `v2`, por lo que
+`DW_V2_SCHEDULE_TICK_LIMIT` no se lee: el comando usa 100 y sigue aceptando
+`--limit`. Para usar el ajuste, vuelve a publicar el archivo de configuración o
+añade esta entrada al array `v2` de tu archivo publicado:
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### Server nativo {#native-server}
+
+Server nativo 3.x evalúa las programaciones por sí mismo, así que no hay ningún
+comando que ejecutar ni programar. Cada proceso de Server ejecuta un bucle de
+mantenimiento: espera 250 ms, después vacía hasta 100 acciones en búfer e inicia
+hasta 100 programaciones vencidas, ordenadas por `next_fire_at`, y vuelve a
+esperar. El tamaño del lote es fijo; no hay ningún ajuste para él. Las pasadas de
+programación se serializan entre los nodos de Server, por lo que añadir nodos no
+aumenta el rendimiento. Una ráfaga de `N` programaciones vencidas se activa en
+`ceil(N / 100)` pasadas, en orden de vencimiento.
+
+Un inicio que Server rechaza se registra como fallo, y la programación pasa a su
+siguiente ocurrencia, así que una programación que falla no conserva su hueco. Una
+programación cuya especificación no puede evaluarse sigue vencida y se reintenta en
+cada pasada. El comando `schedule:evaluate --limit` del Server PHP congelado no se
+aplica a Server nativo.
 
 ## Máximo de ejecuciones {#max-runs}
 

@@ -282,11 +282,13 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` finds all active schedules whose `next_fire_at` is in the past and triggers them in order. The `occurrence_time` field is the due fire time the scheduler observed. After each trigger, `next_fire_at` advances from the current clock to the next cron or interval occurrence.
+`tick()` triggers due schedules, which are active schedules whose `next_fire_at` is in the past. Each call starts at most `$limit` of them (`tick(int $limit = 100)`), oldest first and shared round-robin across namespaces. Due schedules beyond the limit stay due for the next call. The `occurrence_time` field is the due fire time the scheduler observed. After each trigger, `next_fire_at` advances from the current clock to the next cron or interval occurrence.
 
 ### Missed-fire policy
 
 Live schedule evaluation uses **fire once, then resume** semantics. If the scheduler is down across one or more nominal fire times, the first tick after recovery starts one workflow for the overdue `next_fire_at`, records that due time as `occurrence_time`, and then advances `next_fire_at` from the current clock. Additional nominal occurrences that passed while the scheduler was down are skipped by live evaluation.
+
+The same rule applies when the scheduler is running but cannot keep up. A schedule that is still waiting for a pass when its next nominal time arrives fires once and skips the occurrences in between. See [Pass size and bursts](#pass-size-and-bursts).
 
 Use `backfill()` when every missed occurrence must run. Backfill enumerates the requested window explicitly and records each occurrence separately.
 
@@ -297,13 +299,7 @@ Run a single tick from the command line:
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-The standalone server exposes the same evaluation pass with its own
-command:
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 To evaluate schedules continuously, call this command from Laravel's task scheduler:
@@ -312,6 +308,72 @@ To evaluate schedules continuously, call this command from Laravel's task schedu
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### Pass size and bursts
+
+Each `workflow:v2:schedule-tick` pass starts at most `limit` due schedules and,
+separately, drains at most `limit` buffered actions. `limit` comes from the
+`--limit` option, otherwise from `workflows.v2.schedules.tick_limit`
+(`DW_V2_SCHEDULE_TICK_LIMIT`), and defaults to 100. A value that is not a
+positive integer makes the command fail without evaluating any schedule; it is
+never replaced by another size. The setting and the option need Workflow 2.16.0
+or later.
+
+Both batches are shared round-robin across namespaces, oldest first, so one busy
+namespace cannot hold back another. Due schedules beyond `limit` stay due and are
+picked up by the next pass. When `N` schedules fall due together, nothing older
+is due and every start succeeds, all of them fire within `ceil(N / limit)`
+passes. With the every-minute recipe, the last one starts up to
+`ceil(N / limit) - 1` minutes after the first. Set `limit` at or above the
+largest burst you expect.
+
+The bound is longer when:
+
+- a start fails: the occurrence stays due and is retried on later passes, so a
+  schedule that keeps failing keeps taking a slot while it is the oldest;
+- schedules that became due earlier, or more schedules falling due before the
+  burst clears, are selected first;
+- ticks run late or are skipped.
+
+Under sustained overload, a schedule that waits past its next nominal time
+fires once and skips the occurrences in between, as described in
+[Missed-fire policy](#missed-fire-policy). Use `backfill()` if those occurrences
+must run.
+
+Alert on the operator metrics `schedules.missed`, `schedules.oldest_overdue_at`
+and `schedules.max_overdue_ms`, and on increases in `schedules.failures_total`.
+
+:::note Upgrading an app that published its config before 2.16.0
+
+Laravel merges a package's config into a published config file one top-level key
+at a time. An app that published `config/workflows.php` before 2.16.0 keeps its
+own `v2` array, so `DW_V2_SCHEDULE_TICK_LIMIT` is not read: the command uses 100
+and still accepts `--limit`. To use the setting, re-publish the config file, or
+add this entry to the `v2` array of your published file:
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### Native Server
+
+Native Server 3.x evaluates schedules itself, so there is no command to run or
+schedule. Each Server process runs a maintenance loop: it waits 250 ms, then
+drains up to 100 buffered actions and starts up to 100 due schedules, ordered by
+`next_fire_at`, then waits again. The batch size is fixed; there is no setting
+for it. Schedule passes serialize across Server nodes, so adding nodes does not
+raise throughput. A burst of `N` due schedules fires within `ceil(N / 100)`
+passes, in due order.
+
+A start that Server refuses is recorded as a failure, and the schedule moves on
+to its next occurrence, so a failing schedule does not keep its slot. A schedule
+whose spec cannot be evaluated stays due and is retried on every pass. The
+`schedule:evaluate --limit` command of the frozen PHP Server does not apply to
+native Server.
 
 ## Max runs
 
