@@ -51,6 +51,23 @@ $workflow->start(
 
 `StartOptions` 由工作流引擎使用，不作为参数传入工作流的 `handle()` 方法。它们随工作流持久化，用于后续的工作流／活动派发，包括重放和 continue-as-new 行为。
 
+### 运行的优先级与公平调度 {#run-priority-and-fairness}
+
+在 Workflow 2.15.14 及更高版本的嵌入式模式中，可以在启动运行时设置调度优先级和工作负载类别：
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+发生资源竞争时，优先选择优先级数值较小的任务。应用通常使用 1–9，默认值为 5；0 保留给紧急控制平面任务。在同一优先级内，公平调度键标识工作负载类别，例如租户。权重决定相对调度份额（1–1000，默认 1）。没有键的运行共享同一个类别。
+
+运行会记录这些值。首个工作流任务、定时器和信号触发的恢复任务以及活动任务都会继承这些值。continue-as-new 和重试运行保留前一个运行记录的设置。`ActivityOptions` 中显式指定的优先级或公平调度值会覆盖该活动继承的值。`signalWithStart()` 创建新运行时，也会记录 `StartOptions` 中相同的调度值。
+
 ## ActivityOptions {#activityoptions}
 
 `Workflow\V2\Support\ActivityOptions` 在调用活动时提供逐调用的路由、重试和超时覆盖，无需修改活动类本身：

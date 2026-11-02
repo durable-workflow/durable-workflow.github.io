@@ -51,6 +51,23 @@ $workflow->start(
 
 Les `StartOptions` sont consommées par le moteur et ne sont pas transmises comme arguments à la méthode `handle()` du workflow. Elles sont persistées avec le workflow et utilisées pour les envois ultérieurs de workflows et d’activités, y compris pendant la relecture et la continuation dans une nouvelle exécution.
 
+### Priorité et partage équitable d’une exécution {#run-priority-and-fairness}
+
+Avec le mode intégré de Workflow 2.15.14 ou ultérieur, définissez la priorité de distribution et une classe de charge au démarrage de l’exécution :
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+En cas de contention, les nombres de priorité les plus faibles sont sélectionnés en premier. La plage normale pour les applications est 1–9, avec 5 par défaut ; 0 est réservé aux tâches urgentes du plan de contrôle. Au sein d’un niveau de priorité, la clé d’équité désigne une classe de charge, par exemple un locataire. Son poids définit sa part relative de distribution (1–1000, 1 par défaut). Les exécutions sans clé partagent une même classe.
+
+L’exécution enregistre ces valeurs. Sa première tâche de workflow, ses tâches de reprise après temporisateur ou signal et ses tâches d’activity en héritent. Les exécutions de continue-as-new et de nouvelle tentative conservent les paramètres enregistrés de leur prédécesseur. Les valeurs explicites de priorité ou d’équité dans `ActivityOptions` remplacent les valeurs héritées pour cette activity. Lorsque `signalWithStart()` crée une nouvelle exécution, celle-ci enregistre les mêmes valeurs de planification de `StartOptions`.
+
 ## ActivityOptions {#activityoptions}
 
 `Workflow\V2\Support\ActivityOptions` permet de redéfinir le routage, les nouvelles tentatives et les délais d’expiration pour chaque appel d’activité, sans modifier la classe d’activité :

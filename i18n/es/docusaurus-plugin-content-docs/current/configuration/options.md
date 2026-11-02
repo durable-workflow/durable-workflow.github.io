@@ -51,6 +51,23 @@ $workflow->start(
 
 El motor consume `StartOptions` sin pasarlas como argumentos a `handle()`. Se guardan con el workflow y se usan en los despachos posteriores de workflows y actividades, incluida la reproducción y la continuación como nueva ejecución.
 
+### Prioridad y reparto equitativo de una ejecución {#run-priority-and-fairness}
+
+En el modo integrado de Workflow 2.15.14 o posterior, configura la prioridad de despacho y una clase de trabajo al iniciar la ejecución:
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+Cuando hay contención, se seleccionan primero los números de prioridad menores. El rango normal para aplicaciones es 1–9 y el valor predeterminado es 5; el 0 se reserva para tareas urgentes del plano de control. Dentro de cada nivel de prioridad, la clave de equidad identifica una clase de trabajo, por ejemplo un cliente. Su peso establece la proporción relativa de despacho (1–1000, predeterminado 1). Las ejecuciones sin clave comparten una clase.
+
+La ejecución guarda estos valores. Los heredan su primera tarea de workflow, las tareas de reanudación tras temporizadores y señales, y las tareas de activity. Las ejecuciones de continue-as-new y de reintento conservan la configuración guardada de su predecesora. Los valores explícitos de prioridad o equidad en `ActivityOptions` sustituyen los heredados para esa activity. Cuando `signalWithStart()` crea una ejecución nueva, guarda los mismos valores de planificación de `StartOptions`.
+
 ## ActivityOptions {#activityoptions}
 
 `Workflow\V2\Support\ActivityOptions` permite sustituir por llamada el enrutamiento, los reintentos y los tiempos de espera al invocar una actividad, sin modificar su clase:

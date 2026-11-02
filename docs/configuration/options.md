@@ -51,6 +51,23 @@ $workflow->start(
 
 `StartOptions` are consumed by the workflow engine and are not passed as arguments to your workflow `handle()` method. They are persisted with the workflow and used for subsequent workflow/activity dispatching (including replay and continue-as-new behavior).
 
+### Run priority and fairness {#run-priority-and-fairness}
+
+In embedded Workflow 2.15.14 and newer, set dispatch priority and a workload class when starting the run:
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+Lower priority numbers are selected first under contention. The normal application range is 1–9, with a default of 5; 0 is reserved for urgent control-plane work. Within a priority tier, the fairness key identifies a workload class, such as a tenant. Its weight sets a relative dispatch share (1–1000, default 1). Runs without a key share one class.
+
+The run records these values. Its first workflow task, timer and signal resume tasks, and activity tasks inherit them. Continue-as-new and retry runs keep the predecessor's recorded settings. Explicit priority or fairness values in `ActivityOptions` override the inherited values for that activity. When `signalWithStart()` creates a new run, it records the same `StartOptions` scheduling values.
+
 ## ActivityOptions
 
 `Workflow\V2\Support\ActivityOptions` provides per-call overrides for routing, retries, and timeouts when invoking an activity, without requiring changes to the activity class itself:
