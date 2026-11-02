@@ -270,11 +270,13 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` 查找所有 `next_fire_at` 已过期的活动调度，并依次触发。`occurrence_time` 是调度器观察到的到期触发时间。每次触发后，`next_fire_at` 从当前时钟推进到下一个 cron 或间隔时点。
+`tick()` 触发到期调度，即 `next_fire_at` 已过期的活动调度。每次调用最多启动 `$limit` 个（`tick(int $limit = 100)`），按从旧到新的顺序，在各命名空间之间轮询分配。超出上限的到期调度保持到期状态，留待下次调用处理。`occurrence_time` 是调度器观察到的到期触发时间。每次触发后，`next_fire_at` 从当前时钟推进到下一个 cron 或间隔时点。
 
 ### 错过触发的策略 {#missed-fire-policy}
 
 实时调度评估使用**触发一次，然后恢复正常**语义。调度器停机跨越一个或多个计划触发时间时，恢复后的首次 tick 为逾期 `next_fire_at` 启动一个工作流，将该到期时间记录为 `occurrence_time`，然后从当前时钟推进 `next_fire_at`。停机期间额外错过的计划时点会被实时评估跳过。
+
+调度器在运行但处理不过来时，同样适用此规则。某个调度到下一个计划时间时仍在等待评估过程，则只触发一次，并跳过中间的时点。参见[单次处理量与突发](#pass-size-and-bursts)。
 
 每个错过时点都必须运行时，使用 `backfill()`。回填显式枚举请求的时间窗口，分别记录每个时点。
 
@@ -285,12 +287,7 @@ $results = ScheduleManager::tick();
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-独立 Server 通过自己的命令提供相同评估过程：
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 要持续评估调度，请从 Laravel 任务调度器调用此命令：
@@ -299,6 +296,40 @@ php artisan schedule:evaluate --limit=100
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### 单次处理量与突发 {#pass-size-and-bursts}
+
+每次 `workflow:v2:schedule-tick` 评估过程最多启动 `limit` 个到期调度，并另外最多排空 `limit` 个缓冲动作。`limit` 取自 `--limit` 选项，否则取自 `workflows.v2.schedules.tick_limit`（`DW_V2_SCHEDULE_TICK_LIMIT`），默认为 100。值不是正整数时，命令直接失败，不评估任何调度；不会改用其他数值。该设置和该选项需要 Workflow 2.16.0 或更高版本。
+
+两批处理都按从旧到新的顺序，在各命名空间之间轮询分配，因此一个繁忙的命名空间不会拖住其他命名空间。超出 `limit` 的到期调度保持到期状态，由下一次评估过程处理。当 `N` 个调度同时到期、没有更早的到期调度，且每次启动都成功时，它们全部会在 `ceil(N / limit)` 次评估过程内触发。使用每分钟执行的配置时，最后一个调度最多比第一个晚 `ceil(N / limit) - 1` 分钟启动。请将 `limit` 设为不低于预期的最大突发量。
+
+以下情况会使该上限变长：
+
+- 启动失败：该时点保持到期状态，并在后续评估过程中重试，因此持续失败的调度只要仍是最早到期的，就会一直占用一个名额；
+- 更早到期的调度，或在突发处理完之前又有更多调度到期，会被优先选取；
+- tick 延迟执行或被跳过。
+
+持续过载时，等待超过下一个计划时间的调度只触发一次，并跳过中间的时点，详见[错过触发的策略](#missed-fire-policy)。这些时点必须运行时，使用 `backfill()`。
+
+请针对运维指标 `schedules.missed`、`schedules.oldest_overdue_at` 和 `schedules.max_overdue_ms` 设置告警，并在 `schedules.failures_total` 增长时告警。
+
+:::note 升级在 2.16.0 之前发布过配置的应用
+
+Laravel 按顶层键逐个将包配置合并到已发布的配置文件中。在 2.16.0 之前发布了 `config/workflows.php` 的应用保留自己的 `v2` 数组，因此不会读取 `DW_V2_SCHEDULE_TICK_LIMIT`：命令使用 100，但仍接受 `--limit`。要使用该设置，请重新发布配置文件，或在已发布文件的 `v2` 数组中添加以下条目：
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### 原生 Server {#native-server}
+
+原生 Server 3.x 自行评估调度，因此无需运行或调度任何命令。每个 Server 进程运行一个维护循环：等待 250 ms，然后排空最多 100 个缓冲动作，并按 `next_fire_at` 顺序启动最多 100 个到期调度，随后再次等待。批大小固定，没有对应设置。调度评估过程在各 Server 节点之间串行执行，因此增加节点不会提高吞吐量。`N` 个到期调度的突发会在 `ceil(N / 100)` 次评估过程内按到期顺序全部触发。
+
+Server 拒绝的启动会记录为失败，调度随即推进到下一个时点，因此失败的调度不会一直占用名额。规范无法评估的调度保持到期状态，并在每次评估过程中重试。已冻结的 PHP Server 的 `schedule:evaluate --limit` 命令不适用于原生 Server。
 
 ## 最大运行次数 {#max-runs}
 

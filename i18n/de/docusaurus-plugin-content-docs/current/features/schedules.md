@@ -305,8 +305,11 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` findet alle aktiven Zeitpläne mit vergangenem `next_fire_at` und löst
-sie der Reihe nach aus. Das Feld `occurrence_time` ist die vom Scheduler
+`tick()` löst fällige Zeitpläne aus, also aktive Zeitpläne mit vergangenem
+`next_fire_at`. Jeder Aufruf startet höchstens `$limit` davon
+(`tick(int $limit = 100)`), die ältesten zuerst und reihum (Round-Robin) auf die
+Namespaces verteilt. Fällige Zeitpläne jenseits des Limits bleiben für den
+nächsten Aufruf fällig. Das Feld `occurrence_time` ist die vom Scheduler
 beobachtete fällige Auslösezeit. Nach jeder Auslösung wird `next_fire_at` anhand
 der aktuellen Uhrzeit auf das nächste Cron- oder Intervallvorkommnis gesetzt.
 
@@ -320,6 +323,11 @@ Zeit als `occurrence_time` auf und setzt `next_fire_at` anhand der aktuellen
 Uhrzeit weiter. Weitere reguläre Vorkommnisse während des Ausfalls werden von
 der laufenden Auswertung übersprungen.
 
+Dieselbe Regel gilt, wenn der Scheduler zwar läuft, aber nicht hinterherkommt.
+Ein Zeitplan, der beim Eintreffen seiner nächsten regulären Zeit noch auf einen
+Durchlauf wartet, löst einmal aus und überspringt die dazwischenliegenden
+Vorkommnisse. Siehe [Durchlaufgröße und Lastspitzen](#pass-size-and-bursts).
+
 Verwenden Sie `backfill()`, wenn jedes verpasste Vorkommnis laufen muss.
 Nachholen zählt das angeforderte Zeitfenster explizit auf und zeichnet jedes
 Vorkommnis separat auf.
@@ -331,13 +339,7 @@ Führen Sie einen einzelnen Tick von der Befehlszeile aus:
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-Der eigenständige Server bietet denselben Auswertungsdurchlauf mit einem
-eigenen Befehl an:
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 Rufen Sie diesen Befehl über Laravels Aufgabenplanung auf, um Zeitpläne
@@ -347,6 +349,81 @@ kontinuierlich auszuwerten:
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### Durchlaufgröße und Lastspitzen {#pass-size-and-bursts}
+
+Jeder Durchlauf von `workflow:v2:schedule-tick` startet höchstens `limit` fällige
+Zeitpläne und arbeitet unabhängig davon höchstens `limit` gepufferte Aktionen ab.
+`limit` stammt aus der Option `--limit`, andernfalls aus
+`workflows.v2.schedules.tick_limit` (`DW_V2_SCHEDULE_TICK_LIMIT`), und beträgt
+standardmäßig 100. Ein Wert, der keine positive ganze Zahl ist, lässt den Befehl
+fehlschlagen, ohne einen Zeitplan auszuwerten; er wird nie durch eine andere
+Größe ersetzt. Einstellung und Option erfordern Workflow 2.16.0 oder neuer.
+
+Beide Stapel werden reihum (Round-Robin) auf die Namespaces verteilt, die
+ältesten zuerst, sodass ein ausgelasteter Namespace keinen anderen aufhalten
+kann. Fällige Zeitpläne jenseits von `limit` bleiben fällig und werden vom
+nächsten Durchlauf übernommen. Werden `N` Zeitpläne gleichzeitig fällig, ist
+nichts Älteres fällig und gelingt jeder Start, lösen alle innerhalb von
+`ceil(N / limit)` Durchläufen aus. Mit dem minütlichen Aufruf oben startet der
+letzte bis zu `ceil(N / limit) - 1` Minuten nach dem ersten. Setzen Sie `limit`
+auf mindestens die größte erwartete Lastspitze.
+
+Die Schranke verlängert sich, wenn:
+
+- ein Start fehlschlägt: Das Vorkommnis bleibt fällig und wird in späteren
+  Durchläufen erneut versucht, sodass ein dauerhaft fehlschlagender Zeitplan
+  weiterhin einen Platz belegt, solange er der älteste ist;
+- früher fällig gewordene Zeitpläne oder weitere Zeitpläne, die fällig werden,
+  bevor die Lastspitze abgearbeitet ist, zuerst ausgewählt werden;
+- Ticks verspätet laufen oder ausfallen.
+
+Bei anhaltender Überlastung löst ein Zeitplan, der über seine nächste reguläre
+Zeit hinaus wartet, einmal aus und überspringt die dazwischenliegenden
+Vorkommnisse, wie unter
+[Richtlinie für verpasste Auslösungen](#missed-fire-policy) beschrieben.
+Verwenden Sie `backfill()`, wenn diese Vorkommnisse laufen müssen.
+
+Richten Sie Alarme auf die Betreibermetriken `schedules.missed`,
+`schedules.oldest_overdue_at` und `schedules.max_overdue_ms` sowie auf Anstiege
+von `schedules.failures_total` ein.
+
+:::note Upgrade einer App, die ihre Konfiguration vor 2.16.0 veröffentlicht hat
+
+Laravel führt die Konfiguration eines Pakets Schlüssel für Schlüssel auf oberster
+Ebene mit einer veröffentlichten Konfigurationsdatei zusammen. Eine App, die
+`config/workflows.php` vor 2.16.0 veröffentlicht hat, behält ihr eigenes
+`v2`-Array, daher wird `DW_V2_SCHEDULE_TICK_LIMIT` nicht gelesen: Der Befehl
+verwendet 100 und akzeptiert weiterhin `--limit`. Um die Einstellung zu nutzen,
+veröffentlichen Sie die Konfigurationsdatei erneut oder ergänzen Sie diesen
+Eintrag im `v2`-Array Ihrer veröffentlichten Datei:
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### Nativer Server {#native-server}
+
+Der native Server 3.x wertet Zeitpläne selbst aus, daher gibt es keinen Befehl,
+der ausgeführt oder eingeplant werden muss. Jeder Server-Prozess betreibt eine
+Wartungsschleife: Er wartet 250 ms, arbeitet dann bis zu 100 gepufferte Aktionen
+ab und startet bis zu 100 fällige Zeitpläne, sortiert nach `next_fire_at`, und
+wartet anschließend erneut. Die Stapelgröße ist fest; es gibt keine Einstellung
+dafür. Zeitplandurchläufe werden über Server-Knoten hinweg serialisiert, sodass
+zusätzliche Knoten den Durchsatz nicht erhöhen. Eine Lastspitze von `N` fälligen
+Zeitplänen löst innerhalb von `ceil(N / 100)` Durchläufen aus, in
+Fälligkeitsreihenfolge.
+
+Ein Start, den der Server ablehnt, wird als Fehlschlag aufgezeichnet, und der
+Zeitplan geht zu seinem nächsten Vorkommnis über, sodass ein fehlschlagender
+Zeitplan seinen Platz nicht behält. Ein Zeitplan, dessen Spezifikation nicht
+ausgewertet werden kann, bleibt fällig und wird in jedem Durchlauf erneut
+versucht. Der Befehl `schedule:evaluate --limit` des eingefrorenen PHP-Servers
+gilt nicht für den nativen Server.
 
 ## Maximale Laufzahl {#max-runs}
 
