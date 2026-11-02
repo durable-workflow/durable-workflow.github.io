@@ -54,6 +54,26 @@ $schedule = ScheduleManager::create(
 | `executionTimeoutSeconds` | `int\|null` | `null` | Plazo de cada ejecución lógica del workflow, incluidos reintentos y continuación como nueva ejecución |
 | `runTimeoutSeconds` | `int\|null` | `null` | Plazo de cada ejecución individual, reiniciado al continuar como nueva |
 
+### Zonas horarias y cambios de hora {#time-zones-and-daylight-saving-time}
+
+Las expresiones cron seleccionan horas locales en la `timezone` de la
+programación. Los cambios de hora siguen estas reglas:
+
+- Si el campo de horas selecciona menos de las 24 horas, una hora local
+  repetida se ejecuta una sola vez, en su primera aparición. En Nueva York,
+  `30 1 * * *` se ejecuta a la 01:30 EDT el día del cambio al horario de invierno.
+- Una hora local que se omite al adelantar el reloj se ejecuta una vez,
+  desplazada por la duración del salto. En Nueva York, `30 2 * * *` se ejecuta
+  a las 03:30 ese día.
+- Un campo de horas que selecciona las 24 horas, como `*`, `*/1` o `0-23`,
+  mantiene los intervalos de tiempo real durante la hora repetida. Por ejemplo,
+  `*/15 * * * *` sigue ejecutándose cada 15 minutos reales durante ambas
+  apariciones de la hora repetida en Nueva York.
+
+Use `timezone: 'UTC'` para evitar los cambios de hora locales. Use una
+especificación de intervalo cuando importe más una duración fija entre
+ejecuciones que la hora local.
+
 ### Tiempos de espera del workflow {#workflow-timeouts}
 
 El plazo global cubre una ejecución lógica entre reintentos y continuaciones. El plazo por ejecución limita cada generación y se reinicia al continuar como nueva. Ninguna ejecución puede superar el presupuesto global restante. Cada ocurrencia programada inicia un presupuesto nuevo, medido desde el inicio real del workflow, no desde la hora programada.

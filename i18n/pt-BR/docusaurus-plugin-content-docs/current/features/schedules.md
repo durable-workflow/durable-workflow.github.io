@@ -54,6 +54,25 @@ O `scheduleId` é um identificador único escolhido pelo usuário para o agendam
 | `executionTimeoutSeconds` | `int\|null` | `null` | Tempo limite de cada execução lógica de workflow, incluindo repetições e continue-as-new |
 | `runTimeoutSeconds` | `int\|null` | `null` | Tempo limite de cada execução individual, reiniciado em continue-as-new |
 
+### Fusos horários e horário de verão {#time-zones-and-daylight-saving-time}
+
+As expressões cron selecionam horários locais no fuso `timezone` do
+agendamento. As mudanças de horário seguem estas regras:
+
+- Quando o campo de horas seleciona menos de 24 horas, um horário local
+  repetido dispara uma única vez, na primeira ocorrência. Em Nova York,
+  `30 1 * * *` dispara à 01:30 EDT no dia em que os relógios são atrasados.
+- Um horário local pulado ao adiantar os relógios dispara uma vez, deslocado
+  pela duração do salto. Em Nova York, `30 2 * * *` dispara às 03:30 nesse dia.
+- Um campo que seleciona todas as 24 horas, incluindo `*`, `*/1` e `0-23`,
+  mantém os intervalos de tempo real durante a hora repetida. Por exemplo,
+  `*/15 * * * *` continua disparando a cada 15 minutos reais durante as duas
+  ocorrências da hora repetida em Nova York.
+
+Use `timezone: 'UTC'` para evitar mudanças do horário local. Use uma
+especificação de intervalo quando uma duração fixa entre as execuções for
+mais importante do que o horário local.
+
 ### Tempos limite do workflow {#workflow-timeouts}
 
 O tempo limite de execução lógica abrange repetições e continue-as-new. O
