@@ -51,6 +51,23 @@ $workflow->start(
 
 `StartOptions` はエンジンが消費し、ワークフローの `handle()` 引数には渡しません。ワークフローとともに永続化され、その後のワークフローやアクティビティのディスパッチ（リプレイと continue-as-new を含む）に使われます。
 
+### 実行の優先度と公平な配分 {#run-priority-and-fairness}
+
+埋め込みモードの Workflow 2.15.14 以降では、実行の開始時にディスパッチ優先度とワークロードクラスを指定できます。
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+競合時は優先度の数値が小さいタスクから選択されます。アプリケーションで通常使う範囲は 1–9、既定値は 5 です。0 は緊急のコントロールプレーン処理用です。同じ優先度内では、公平性キーがテナントなどのワークロードクラスを識別します。重みは相対的なディスパッチ配分を指定します（1–1000、既定値 1）。キーのない実行は同じクラスを共有します。
+
+これらの値は実行に記録されます。最初のワークフロータスク、タイマーやシグナル後の再開タスク、アクティビティタスクがその値を継承します。continue-as-new とリトライの実行も、直前の実行に記録された設定を保持します。`ActivityOptions` で優先度や公平性の値を明示すると、そのアクティビティでは継承値を上書きします。`signalWithStart()` が新しい実行を作成する場合も、`StartOptions` の同じスケジューリング値が記録されます。
+
 ## ActivityOptions {#activityoptions}
 
 `Workflow\V2\Support\ActivityOptions` はアクティビティクラスを変更せずに、呼び出しごとのルーティング、リトライ、タイムアウトを上書きします。
