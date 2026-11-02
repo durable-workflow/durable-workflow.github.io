@@ -155,11 +155,9 @@ function checkTrackedBuildAssets(root = repositoryRoot) {
 }
 
 function checkDependencyGraph(lockfile = lockfileManifest) {
-  for (const name of [
-    "js-yaml", "nanoid", "http-cache-semantics", "open", "undici",
-    "body-parser", "fast-uri", "qs", "serialize-javascript",
-  ]) {
-    assertMinimumLockedVersion(name, securityPolicy.minimum_versions[name], lockfile);
+  // Every recorded floor is enforced, so adding a policy entry is enough.
+  for (const [name, minimumVersion] of Object.entries(securityPolicy.minimum_versions)) {
+    assertMinimumLockedVersion(name, minimumVersion, lockfile);
   }
   assert.deepEqual(
     lockedEntries("image-size", lockfile).map(({ entry }) => entry.version),
