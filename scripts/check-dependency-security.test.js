@@ -144,6 +144,7 @@ test("stale wildcard cache entries cannot be reused", () => {
 for (const [name, oldVersion] of [
   ["undici", "7.29.1"], ["body-parser", "1.20.6"], ["fast-uri", "3.1.8"],
   ["qs", "6.16.0"], ["serialize-javascript", "7.0.7"],
+  ["follow-redirects", "1.16.1"], ["joi", "17.13.8"],
 ]) {
   test(`the dependency preflight rejects old root ${name}`, () => {
     const fixture = structuredClone(lockfile);
@@ -156,6 +157,15 @@ for (const [name, oldVersion] of [
     assert.throws(() => checkDependencyGraph(fixture), new RegExp(`${name} must be at least`));
   });
 }
+test("every recorded minimum version is enforced", () => {
+  for (const [name, minimumVersion] of Object.entries(policy.minimum_versions)) {
+    const fixture = structuredClone(lockfile);
+    fixture.packages[`node_modules/review-fixture/node_modules/${name}`] = {version: "0.0.0"};
+    assert.throws(() => checkDependencyGraph(fixture),
+      new RegExp(`${name} must be at least ${minimumVersion.replaceAll(".", "\\.")}`));
+  }
+});
+
 test("the deepmerge version requires renewed review", () => {
   const fixture = structuredClone(lockfile);
   fixture.packages["node_modules/deepmerge"].version = "4.3.2";
