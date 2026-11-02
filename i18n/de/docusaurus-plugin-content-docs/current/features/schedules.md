@@ -58,6 +58,26 @@ Zeitplan-ID und Auslösezeitstempel.
 | `executionTimeoutSeconds` | `int\|null` | `null` | Timeout jeder logischen Workflow-Ausführung über Wiederholungen und Continue-as-new hinweg |
 | `runTimeoutSeconds` | `int\|null` | `null` | Timeout jedes einzelnen Laufs, bei Continue-as-new zurückgesetzt |
 
+### Zeitzonen und Sommerzeit {#time-zones-and-daylight-saving-time}
+
+Cron-Ausdrücke wählen lokale Uhrzeiten in der `timezone` des Zeitplans aus.
+Bei einer Zeitumstellung gelten folgende Regeln:
+
+- Wählt das Stundenfeld weniger als alle 24 Stunden aus, wird eine doppelt
+  vorkommende lokale Uhrzeit nur beim ersten Vorkommen ausgelöst. In New York
+  läuft `30 1 * * *` am Tag der Rückstellung um 01:30 EDT.
+- Eine bei der Vorstellung übersprungene Uhrzeit wird einmal um die Länge
+  der Zeitlücke verschoben. In New York läuft `30 2 * * *` an diesem Tag um
+  03:30 Uhr.
+- Ein Stundenfeld, das alle 24 Stunden auswählt, etwa `*`, `*/1` oder `0-23`,
+  behält während der wiederholten Stunde den tatsächlichen Zeitabstand bei.
+  Beispielsweise läuft `*/15 * * * *` in New York auch während beider
+  Durchläufe der wiederholten Stunde alle 15 tatsächlich vergangenen Minuten.
+
+Mit `timezone: 'UTC'` vermeiden Sie lokale Zeitumstellungen. Verwenden Sie
+eine Intervallspezifikation, wenn ein fester Zeitabstand wichtiger ist als
+die lokale Uhrzeit.
+
 ### Workflow-Timeouts {#workflow-timeouts}
 
 Der Ausführungs-Timeout umfasst eine logische Ausführung über Wiederholungen

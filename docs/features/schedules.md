@@ -54,6 +54,24 @@ The `scheduleId` is a unique, user-chosen identifier for the schedule. Each trig
 | `executionTimeoutSeconds` | `int\|null` | `null` | Timeout for each logical workflow execution across retries and continue-as-new |
 | `runTimeoutSeconds` | `int\|null` | `null` | Timeout for each individual run, resetting on continue-as-new |
 
+### Time zones and daylight saving time
+
+Cron expressions select local times in the schedule's `timezone`. Clock
+changes follow these rules:
+
+- When the hour field selects fewer than all 24 hours, a repeated local time
+  fires once, at its first occurrence. In New York, `30 1 * * *` fires at
+  01:30 EDT on the day clocks go back.
+- A local time skipped when clocks go forward fires once, shifted by the
+  size of the gap. New York `30 2 * * *` fires at 03:30 on that day.
+- An hour field selecting all 24 hours, including `*`, `*/1` and `0-23`,
+  keeps elapsed-time behavior through the repeated hour. For example,
+  `*/15 * * * *` keeps firing every 15 real minutes through both passes of
+  New York's repeated hour.
+
+Use `timezone: 'UTC'` to avoid local clock changes. Use an interval spec when
+a fixed elapsed duration matters more than local wall-clock time.
+
 ### Workflow timeouts
 
 The execution timeout covers one logical execution across retries and

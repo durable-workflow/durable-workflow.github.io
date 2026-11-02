@@ -54,6 +54,26 @@ Le `scheduleId` est un identifiant unique choisi par l’utilisateur. Chaque ex�
 | `executionTimeoutSeconds` | `int\|null` | `null` | Délai d’expiration de chaque exécution logique, nouvelles tentatives et continuations incluses |
 | `runTimeoutSeconds` | `int\|null` | `null` | Délai de chaque exécution individuelle, réinitialisé à chaque continuation |
 
+### Fuseaux horaires et changements d’heure {#time-zones-and-daylight-saving-time}
+
+Les expressions cron sélectionnent des heures locales dans le fuseau
+`timezone` de la planification. Les changements d’heure suivent ces règles :
+
+- Lorsque le champ des heures sélectionne moins de 24 heures, une heure locale
+  répétée déclenche une seule exécution, lors de sa première occurrence. À New
+  York, `30 1 * * *` se déclenche à 01:30 EDT le jour du passage à l’heure d’hiver.
+- Une heure locale sautée lors du passage à l’heure d’été déclenche une seule
+  exécution, décalée de la durée du saut. À New York, `30 2 * * *` se déclenche
+  à 03:30 ce jour-là.
+- Un champ sélectionnant les 24 heures, notamment `*`, `*/1` ou `0-23`,
+  conserve le rythme du temps réellement écoulé pendant l’heure répétée. Par
+  exemple, `*/15 * * * *` continue à se déclencher toutes les 15 minutes réelles
+  pendant les deux occurrences de l’heure répétée à New York.
+
+Utilisez `timezone: 'UTC'` pour éviter les changements d’heure locaux. Utilisez
+une spécification d’intervalle lorsqu’une durée fixe entre les exécutions
+compte davantage que l’heure locale.
+
 ### Délais d’expiration du workflow {#workflow-timeouts}
 
 Le délai d’exécution logique couvre les nouvelles tentatives et continuations.
