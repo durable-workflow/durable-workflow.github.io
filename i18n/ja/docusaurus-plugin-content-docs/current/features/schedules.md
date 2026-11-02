@@ -273,11 +273,13 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` は `next_fire_at` が過去のアクティブな予定を順番に起動します。`occurrence_time` は観測した予定時刻です。その後 `next_fire_at` を現在時刻から次の cron または間隔の発生時点へ進めます。
+`tick()` は期限到来済みの予定、つまり `next_fire_at` が過去のアクティブな予定を起動します。1回の呼び出しで開始するのは最大 `$limit` 件（`tick(int $limit = 100)`）で、古いものから順に、名前空間間でラウンドロビンに配分します。上限を超えた期限到来済みの予定は期限到来のまま残り、次の呼び出しで処理されます。`occurrence_time` は観測した予定時刻です。その後 `next_fire_at` を現在時刻から次の cron または間隔の発生時点へ進めます。
 
 ### 未実行の予定に対する方針 {#missed-fire-policy}
 
 ライブ評価は**1回起動して再開**します。停止中に予定時刻が1回以上過ぎた場合、復旧後最初の tick は遅れた `next_fire_at` に対し1つだけ起動し、`occurrence_time` にその予定を記録して、現在時刻から次回を計算します。停止中に過ぎた他の予定はライブ評価ではスキップします。
+
+スケジューラーが稼働中でも処理が追いつかない場合に同じ規則が適用されます。評価パスを待っている間に次の予定時刻を迎えた予定は1回だけ起動し、その間の予定はスキップします。[パスサイズとバースト](#pass-size-and-bursts)を参照してください。
 
 全未実行分が必要なら `backfill()` を使います。指定範囲を明示的に列挙し、各回を別々に記録します。
 
@@ -288,12 +290,7 @@ $results = ScheduleManager::tick();
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-独立 Server にも同じ評価を行う専用コマンドがあります。
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 継続評価するには Laravel のタスクスケジューラーから呼びます。
@@ -302,6 +299,40 @@ php artisan schedule:evaluate --limit=100
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### パスサイズとバースト {#pass-size-and-bursts}
+
+`workflow:v2:schedule-tick` の各パスは、期限到来済みの予定を最大 `limit` 件開始し、それとは別にバッファー済みのアクションを最大 `limit` 件処理します。`limit` は `--limit` オプションで指定し、なければ `workflows.v2.schedules.tick_limit`（`DW_V2_SCHEDULE_TICK_LIMIT`）から取得し、既定値は 100 です。正の整数でない値を指定するとコマンドは予定を一切評価せずに失敗し、別のサイズに置き換えられることはありません。この設定とオプションには Workflow 2.16.0 以降が必要です。
+
+どちらのバッチも古いものから順に名前空間間でラウンドロビンに配分されるため、混雑した1つの名前空間が他の名前空間を妨げることはありません。`limit` を超えた期限到来済みの予定は期限到来のまま残り、次のパスで処理されます。`N` 件の予定が同時に期限を迎え、それより古い期限到来済みの予定がなく、すべての開始が成功する場合、全件が `ceil(N / limit)` パス以内に起動します。毎分実行のレシピでは、最後の予定は最初の予定から最大 `ceil(N / limit) - 1` 分遅れて開始します。`limit` は想定される最大のバースト以上に設定してください。
+
+次の場合はこの上限より長くかかります。
+
+- 開始に失敗した場合: その回は期限到来のまま残り、後続のパスで再試行されます。そのため失敗し続ける予定は、最も古い間は枠を1つ占有し続けます。
+- それ以前に期限を迎えた予定や、バーストが解消する前に新たに期限を迎えた予定が先に選ばれる場合。
+- tick の実行が遅れたり、スキップされたりした場合。
+
+過負荷が続くと、次の予定時刻を過ぎても待たされた予定は1回だけ起動し、その間の予定はスキップします。これは[未実行の予定に対する方針](#missed-fire-policy)で説明したとおりです。それらの回も実行する必要がある場合は `backfill()` を使います。
+
+運用メトリクス `schedules.missed`、`schedules.oldest_overdue_at`、`schedules.max_overdue_ms` と、`schedules.failures_total` の増加に対してアラートを設定してください。
+
+:::note 2.16.0 より前に設定を公開したアプリのアップグレード
+
+Laravel はパッケージの設定を公開済みの設定ファイルへトップレベルのキー単位でマージします。2.16.0 より前に `config/workflows.php` を公開したアプリは独自の `v2` 配列を保持するため、`DW_V2_SCHEDULE_TICK_LIMIT` は読み込まれません。コマンドは 100 を使用し、`--limit` は引き続き受け付けます。この設定を使うには、設定ファイルを再公開するか、公開済みファイルの `v2` 配列に次のエントリーを追加します。
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### ネイティブ Server {#native-server}
+
+ネイティブ Server 3.x は予定を自身で評価するため、実行やスケジュール登録が必要なコマンドはありません。各 Server プロセスはメンテナンスループを実行します。250 ms 待機し、バッファー済みのアクションを最大 100 件処理して、期限到来済みの予定を `next_fire_at` の順に最大 100 件開始し、再び待機します。バッチサイズは固定で、変更する設定はありません。予定の評価パスは Server ノード間で直列化されるため、ノードを追加してもスループットは上がりません。`N` 件の期限到来済みの予定のバーストは、期限の順に `ceil(N / 100)` パス以内に起動します。
+
+Server が拒否した開始は失敗として記録され、その予定は次の発生時点へ進みます。そのため失敗する予定が枠を占有し続けることはありません。仕様を評価できない予定は期限到来のまま残り、毎回のパスで再試行されます。凍結された PHP Server の `schedule:evaluate --limit` コマンドはネイティブ Server には適用されません。
 
 ## 最大実行数 {#max-runs}
 
