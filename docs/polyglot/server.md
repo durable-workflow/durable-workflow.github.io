@@ -509,11 +509,11 @@ curl http://localhost:8080/api/cluster/info \
 
 Returns the build identity, capability flags, protocol manifests, limits and
 discovery for the namespace named by `X-Namespace` (or the `namespace` query
-parameter, else `default`). Abridged output from the 3.0.1 image:
+parameter, else `default`). Abridged output from the 3.0.4 image:
 
 ```json
 {
-  "version": "3.0.1",
+  "version": "3.0.4",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -564,7 +564,7 @@ Key field notes for client code:
 - The build version is `version`, not `server_version`. `implementation` is
   `"rust"` on the native Server.
 - Check `control_plane.version` and `worker_protocol.version` before calling
-  the API. Native 3.0.1 serves control plane `2` and worker protocol `1.20`,
+  the API. Native 3.0.4 serves control plane `2` and worker protocol `1.20`,
   and accepts worker requests that send any protocol version from `1.0` to
   `1.20`.
 - Workflow-task commands live under

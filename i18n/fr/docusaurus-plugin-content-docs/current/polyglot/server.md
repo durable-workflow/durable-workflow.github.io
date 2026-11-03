@@ -375,11 +375,11 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Renvoie l’identité du build, les indicateurs de capacités, les manifestes de protocole, les limites et la découverte pour le namespace désigné par `X-Namespace` (ou le paramètre de requête `namespace`, à défaut `default`). Sortie abrégée de l’image 3.0.1 :
+Renvoie l’identité du build, les indicateurs de capacités, les manifestes de protocole, les limites et la découverte pour le namespace désigné par `X-Namespace` (ou le paramètre de requête `namespace`, à défaut `default`). Sortie abrégée de l’image 3.0.4 :
 
 ```json
 {
-  "version": "3.0.1",
+  "version": "3.0.4",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -428,7 +428,7 @@ Renvoie l’identité du build, les indicateurs de capacités, les manifestes de
 Points clés pour le code client :
 
 - La version du build est `version`, pas `server_version`. `implementation` vaut `"rust"` sur le Server natif.
-- Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.0.1 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
+- Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.0.4 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
 - Les commandes de tâche workflow se trouvent sous `worker_protocol.server_capabilities.supported_workflow_task_commands`.
 - Un indicateur de capacité à `false` désigne une fonctionnalité ou un contrat publié que le natif ne sert pas. `response_compression` est vide, car le natif envoie des réponses non compressées.
 - `native_unqualified` liste chaque membre de la réponse PHP 2.x que le natif omet, avec la raison. On y trouve `topology`, `supported_sdk_versions` et `client_compatibility`.

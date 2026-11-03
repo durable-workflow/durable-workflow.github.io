@@ -502,11 +502,11 @@ curl http://localhost:8080/api/cluster/info \
 
 Повертає ідентичність збірки, прапорці можливостей, маніфести протоколів,
 ліміти та дані виявлення для namespace, названого в `X-Namespace` (або в
-параметрі запиту `namespace`, інакше `default`). Скорочений вивід образу 3.0.1:
+параметрі запиту `namespace`, інакше `default`). Скорочений вивід образу 3.0.4:
 
 ```json
 {
-  "version": "3.0.1",
+  "version": "3.0.4",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -557,7 +557,7 @@ curl http://localhost:8080/api/cluster/info \
 - Версія збірки міститься в `version`, а не в `server_version`. На нативному
   Server `implementation` має значення `"rust"`.
 - Перевіряйте `control_plane.version` і `worker_protocol.version` перед
-  викликами API. Нативний 3.0.1 обслуговує площину керування `2` і протокол
+  викликами API. Нативний 3.0.4 обслуговує площину керування `2` і протокол
   worker `1.20`, а також приймає запити worker із будь-якою версією протоколу
   від `1.0` до `1.20`.
 - Команди workflow-task містяться в
