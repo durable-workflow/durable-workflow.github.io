@@ -15,6 +15,8 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
     commands and the Compose URL. Replace every occurrence if the release
     number changes.
   - Merge docs PR #426 first. This post links to its native install guides.
+  - Confirm PHP SDK 3.8.1 is published (it fixes activities with heartbeat
+    timeouts; do not recommend 3.8.0).
   - Remove `draft: true` to publish.
 */}
 
@@ -156,10 +158,16 @@ existing PHP database to native once, with an explicit, one-way takeover:
    database.
 
 There is no rollback to PHP after takeover, apart from restoring your verified
-backup into a new database. Takeover accepts PHP database layouts from 2.5.14
-through 2.11.8. It is planned for deprecation in the 3.1.x line, so move from
-PHP while you are on 3.0.x. Follow the
-[native takeover runbook](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+backup into a new database. Takeover recognizes PHP database layouts from
+2.5.14 through 2.11.8 and refuses any other database before changing it.
+Databases created by PHP 2.8.0 through 2.11.8 are tested end to end on SQLite,
+PostgreSQL, MySQL and MariaDB. It also refuses, without changing anything, a
+database that holds external payload references, workflow-to-workflow
+messages, pending service-call work, or schedules that use search attributes or
+Laravel queue routing. Rehearse the takeover on a restored copy of your backup
+first. Takeover is planned for deprecation in the 3.1.x line, so move from PHP
+while you are on 3.0.x. Follow the
+[native takeover runbook](https://github.com/durable-workflow/server/blob/3.0.3/docs/rust-server-upgrade-takeover.md)
 step by step.
 
 ## SDK support
@@ -169,7 +177,7 @@ use. These SDK releases declare support for native Server 3.x:
 
 | SDK | Release | Declares native Server 3.x support from |
 | --- | --- | --- |
-| [PHP](/docs/polyglot/php/) (`durable-workflow/sdk`) | 3.8.0 | 3.0.0 |
+| [PHP](/docs/polyglot/php/) (`durable-workflow/sdk`) | 3.8.1 | 3.0.0 |
 | [Python](/docs/polyglot/python/) (`durable-workflow`) | 2.13.0 | 3.0.0 |
 | [Rust](/docs/polyglot/rust/) (`durable-workflow` crate) | 4.10.3 | 3.0.2 |
 
