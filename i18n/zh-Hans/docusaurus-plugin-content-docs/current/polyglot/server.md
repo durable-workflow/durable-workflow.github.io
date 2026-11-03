@@ -48,7 +48,7 @@ PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）�
 
 滚动发布 Worker 构建群、排空旧构建群，或回滚时保持长期运行固定在兼容执行器上，请参考 [Worker 兼容性与路由](/docs/polyglot/worker-compatibility-routing)。
 
-需要 `GET /api/cluster/info` 所公开的当前角色词汇、进程类别、权限边界、故障域或迁移路径时，参阅 [Server 角色拓扑](/docs/polyglot/server-role-topology)。
+需要 PHP Server 2.x 从 `GET /api/cluster/info` 公开的角色词汇、进程类别、权限边界、故障域或迁移路径时，参阅 [Server 角色拓扑](/docs/polyglot/server-role-topology)。原生 3.x Server 以单一进程运行，不公开拓扑清单。
 
 ## 快速开始 {#quick-start}
 
@@ -304,13 +304,135 @@ curl -X POST http://localhost:8080/api/namespaces \
 
 ## 健康检查 {#health-checks}
 
+原生 Server 公开三个发现端点。`GET /api/health` 和 `GET /api/ready` 无需凭据；`GET /api/cluster/info` 需要 Worker、运维或管理员令牌。三者都不要求控制平面版本请求头。
+
 ### API 健康状态 {#api-health}
 
 ```bash
 curl http://localhost:8080/api/health
 ```
 
-返回 `200 OK` 及以下内容：
+Server 能够对其数据库执行一条简单查询时，返回 `200 OK`：
+
+```json
+{"status":"serving","checks":{"database":true}}
+```
+
+该查询失败时，返回 `503 Service Unavailable`，并带有 `"status":"degraded"` 与 `"database":false`。由于数据库故障会使此检查失败，请勿将其用作会触发重启的存活探针。Helm chart 使用 TCP 存活探针，并将就绪探针放在 `/api/ready` 上。
+
+### 就绪状态 {#readiness}
+
+```bash
+curl http://localhost:8080/api/ready
+```
+
+`/api/ready` 是部署准入门。只有当进程内定时器与维护循环正在运行且健康，并且 Server 能读取其 schema 所需的每张表时，才返回 `200 OK`：
+
+```json
+{
+  "status": "ready",
+  "development": false,
+  "checks": {
+    "database": {
+      "status": "ok",
+      "mode": "schema_read",
+      "write_capacity_verified": false,
+      "tls": {
+        "mode": null,
+        "encrypted": null,
+        "ca_verified": null,
+        "hostname_verified": null,
+        "evidence": "not_verified",
+        "scope": "rust_to_configured_database_endpoint"
+      }
+    }
+  },
+  "qualification": "release"
+}
+```
+
+否则返回 `503 Service Unavailable`，带有 `"status":"not_ready"` 与 `checks.database.status: "failed"`，且不含 `tls` 块。
+
+- `checks.database.mode: "schema_read"` 与 `write_capacity_verified: false` 表示就绪检查只证明 schema 可读，并不证明数据库具备写入能力。
+- `checks.database.tls` 报告 [数据库 TLS](/docs/polyglot/server-config-reference#database-tls) 设置对该连接所做的保证。示例使用 SQLite，不涉及 TLS。
+- 在已发布镜像上，`development` 为 `false`，`qualification` 为 `"release"`。没有发布版本的源码构建则报告 `true` 和 `"unpublished_execution_slice"`。
+
+原生 Server 没有迁移检查、发布安全判断或引导准入门。它在启动时创建或检查自身 schema；在 [原生接管](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md) 执行之前，它拒绝针对 PHP 数据库或未知数据库启动。
+
+### Server 能力 {#server-capabilities}
+
+```bash
+curl http://localhost:8080/api/cluster/info \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+返回构建标识、能力标志、协议清单、限制，以及由 `X-Namespace`（或 `namespace` 查询参数，否则为 `default`）指定的命名空间的发现信息。以下为 3.0.1 镜像的节选输出：
+
+```json
+{
+  "version": "3.0.1",
+  "implementation": "rust",
+  "development": false,
+  "server_id": "2145ce2abb12",
+  "default_namespace": "default",
+  "capabilities": {
+    "workflow_tasks": true,
+    "activity_tasks": true,
+    "signals": true,
+    "queries": true,
+    "updates": true,
+    "schedules": true,
+    "timer_runtime_contract": false,
+    "payload_codecs": ["avro"],
+    "response_compression": []
+  },
+  "control_plane": {
+    "version": "2",
+    "request_contract": { "schema": "durable-workflow.v2.control-plane-request.contract", "version": 1, "...": "..." }
+  },
+  "worker_protocol": {
+    "version": "1.20",
+    "server_capabilities": {
+      "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
+      "query_tasks": true,
+      "workflow_updates": true,
+      "...": "..."
+    }
+  },
+  "namespace": { "name": "default", "exists": true, "status": "active", "...": "..." },
+  "limits": { "max_payload_bytes": 2097152, "...": "..." },
+  "structural_limits": { "...": "..." },
+  "discovery": {
+    "mode": "compatibility",
+    "operator_metrics_path": "/api/system/operator-metrics",
+    "task_repair_path": "/api/system/repair"
+  },
+  "native_unqualified": {
+    "topology": "Native runs as one process role and publishes no topology manifest.",
+    "...": "..."
+  },
+  "payload_codec": "avro",
+  "qualified_for_php_takeover": false
+}
+```
+
+面向客户端代码的关键字段说明：
+
+- 构建版本是 `version`，而不是 `server_version`。在原生 Server 上，`implementation` 为 `"rust"`。
+- 调用 API 之前，请检查 `control_plane.version` 和 `worker_protocol.version`。原生 3.0.1 提供控制平面 `2` 与 Worker 协议 `1.20`，并接受发送 `1.0` 至 `1.20` 之间任一协议版本的 Worker 请求。
+- 工作流任务命令位于 `worker_protocol.server_capabilities.supported_workflow_task_commands`。
+- 值为 `false` 的能力标志表示原生 Server 不提供的功能或已发布契约。`response_compression` 为空，因为原生 Server 发送未压缩的响应。
+- `native_unqualified` 列出原生 Server 省略的每个 PHP 2.x 响应成员及其原因，其中包括 `topology`、`supported_sdk_versions` 和 `client_compatibility`。
+- 唯一的载荷编解码器是 Avro：`capabilities.payload_codecs` 恰好为 `["avro"]`。
+- 响应还携带 `auth_composition_contract`、`principal_attribution_contract`、`service_catalog_read_contract` 和 `message_streams_contract` 清单。
+
+## PHP Server 2.x 健康、就绪与拓扑 {#php-server-2x-health-readiness-and-topology}
+
+PHP Server 2.x 已冻结在 2.11.8，其公开的发现接口比原生 Server 更多。本节内容仅适用于 PHP 2.x；原生 Server 不公开其中任何内容。
+
+### PHP 2.x API 健康状态 {#php-2x-api-health}
+
+`GET /api/health` 返回 `200 OK` 及该节点的拓扑摘要：
 
 ```json
 {
@@ -371,7 +493,7 @@ curl http://localhost:8080/api/health
 
 部署尚未就绪时，`/api/ready` 也包含同一摘要，因此即使引导阻塞存在，探针仍可区分 `server_http_node`、`scheduler_node`、`matching_node` 与 `execution_node` 响应。
 
-### 就绪状态 {#readiness}
+### PHP 2.x 就绪状态 {#php-2x-readiness}
 
 ```bash
 curl http://localhost:8080/api/ready
@@ -407,7 +529,7 @@ curl http://localhost:8080/api/ready
 
 调度**读取**有意豁免，以便恢复期间检查状态：`GET /api/schedules`、`GET /api/schedules/{scheduleId}` 和 `GET /api/schedules/{scheduleId}/history` 在引导门阻塞其他路由时仍可访问。
 
-### Server 能力 {#server-capabilities}
+### PHP 2.x Server 能力 {#php-2x-server-capabilities}
 
 ```bash
 curl http://localhost:8080/api/cluster/info \
@@ -982,8 +1104,8 @@ Worker 注册、轮询、发送心跳并完成任务，需要 `X-Durable-Workflo
 
 唯一**无需** `X-Durable-Workflow-Control-Plane-Version` 的端点是发现和健康探针：
 
-- `GET /api/health`：存活探针与公开 `topology` 摘要（无需认证）
-- `GET /api/ready`：就绪探针及同一 `topology` 摘要（无需认证）
+- `GET /api/health`：数据库存活检查（无需认证）
+- `GET /api/ready`：就绪准入门（无需认证）
 - `GET /api/cluster/info`：Server 能力、协议版本和唯一 Avro 载荷编解码器。客户端应先访问此端点，发现支持的控制平面与 Worker 协议版本。
 
 ## 故障排查 {#troubleshooting}

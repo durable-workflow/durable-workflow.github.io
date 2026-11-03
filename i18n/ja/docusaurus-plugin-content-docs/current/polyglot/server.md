@@ -48,7 +48,7 @@ Laravel 内で v2 を使っている場合は、[組み込みから Server へ�
 
 Worker のビルド群を更新・ドレインする場合や、ロールバック中も長期実行を互換実行環境に固定したい場合は、[Worker の互換性とルーティング](/docs/polyglot/worker-compatibility-routing)を使ってください。
 
-`GET /api/cluster/info` が公開するロール名、プロセスクラス、権限境界、障害ドメイン、移行経路は、[Server のロールトポロジー](/docs/polyglot/server-role-topology)を参照してください。
+PHP Server 2.x が `GET /api/cluster/info` で公開するロール名、プロセスクラス、権限境界、障害ドメイン、移行経路は、[Server のロールトポロジー](/docs/polyglot/server-role-topology)を参照してください。ネイティブ 3.x Server は単一プロセスで動作し、トポロジーマニフェストを公開しません。
 
 ## クイックスタート {#quick-start}
 
@@ -305,13 +305,135 @@ curl -X POST http://localhost:8080/api/namespaces \
 
 ## ヘルスチェック {#health-checks}
 
+ネイティブ Server は三つの検出エンドポイントを公開します。`GET /api/health` と `GET /api/ready` は認証情報が不要です。`GET /api/cluster/info` には Worker、オペレーター、管理者のいずれかのトークンが必要です。三つとも、コントロールプレーンのバージョンヘッダーは不要です。
+
 ### API の稼働確認 {#api-health}
 
 ```bash
 curl http://localhost:8080/api/health
 ```
 
-次の内容で `200 OK` を返します。
+Server がデータベースに対して簡単なクエリを実行できる場合、`200 OK` を返します。
+
+```json
+{"status":"serving","checks":{"database":true}}
+```
+
+クエリが失敗すると、`"status":"degraded"` と `"database":false` を含む `503 Service Unavailable` を返します。データベース障害でこの確認は失敗するため、再起動を引き起こす liveness プローブには使わないでください。Helm チャートは TCP の liveness プローブを使い、readiness を `/api/ready` に割り当てています。
+
+### 準備状態 {#readiness}
+
+```bash
+curl http://localhost:8080/api/ready
+```
+
+`/api/ready` はデプロイのゲートです。プロセス内のタイマー・メンテナンスループが動作して正常であり、Server がスキーマに必要なすべてのテーブルを読み取れる場合だけ `200 OK` を返します。
+
+```json
+{
+  "status": "ready",
+  "development": false,
+  "checks": {
+    "database": {
+      "status": "ok",
+      "mode": "schema_read",
+      "write_capacity_verified": false,
+      "tls": {
+        "mode": null,
+        "encrypted": null,
+        "ca_verified": null,
+        "hostname_verified": null,
+        "evidence": "not_verified",
+        "scope": "rust_to_configured_database_endpoint"
+      }
+    }
+  },
+  "qualification": "release"
+}
+```
+
+それ以外の場合は、`"status":"not_ready"` と `checks.database.status: "failed"` を含む `503 Service Unavailable` を返し、`tls` ブロックは含みません。
+
+- `checks.database.mode: "schema_read"` と `write_capacity_verified: false` は、準備確認がスキーマを読み取れることを証明するだけで、データベースの書き込み能力までは証明しないことを示します。
+- `checks.database.tls` は、[データベース TLS](/docs/polyglot/server-config-reference#database-tls) 設定がこの接続に対して保証する内容を報告します。例は TLS が適用されない SQLite の場合です。
+- 公開イメージでは `development` が `false`、`qualification` が `"release"` です。リリースバージョンを持たないソースビルドでは `true` と `"unpublished_execution_slice"` を報告します。
+
+ネイティブにはマイグレーション確認、ロールアウト安全性の判定、初期化ゲートがありません。起動時にスキーマを作成または確認し、PHP 用または不明なデータベースに対しては、[ネイティブへの引き継ぎ](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)を実行するまで起動を拒否します。
+
+### Server の能力 {#server-capabilities}
+
+```bash
+curl http://localhost:8080/api/cluster/info \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+ビルド識別、能力フラグ、プロトコルのマニフェスト、制限値、そして `X-Namespace`（または `namespace` クエリパラメーター、どちらもなければ `default`）で指定した Namespace の検出情報を返します。3.0.1 イメージの出力を抜粋します。
+
+```json
+{
+  "version": "3.0.1",
+  "implementation": "rust",
+  "development": false,
+  "server_id": "2145ce2abb12",
+  "default_namespace": "default",
+  "capabilities": {
+    "workflow_tasks": true,
+    "activity_tasks": true,
+    "signals": true,
+    "queries": true,
+    "updates": true,
+    "schedules": true,
+    "timer_runtime_contract": false,
+    "payload_codecs": ["avro"],
+    "response_compression": []
+  },
+  "control_plane": {
+    "version": "2",
+    "request_contract": { "schema": "durable-workflow.v2.control-plane-request.contract", "version": 1, "...": "..." }
+  },
+  "worker_protocol": {
+    "version": "1.20",
+    "server_capabilities": {
+      "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
+      "query_tasks": true,
+      "workflow_updates": true,
+      "...": "..."
+    }
+  },
+  "namespace": { "name": "default", "exists": true, "status": "active", "...": "..." },
+  "limits": { "max_payload_bytes": 2097152, "...": "..." },
+  "structural_limits": { "...": "..." },
+  "discovery": {
+    "mode": "compatibility",
+    "operator_metrics_path": "/api/system/operator-metrics",
+    "task_repair_path": "/api/system/repair"
+  },
+  "native_unqualified": {
+    "topology": "Native runs as one process role and publishes no topology manifest.",
+    "...": "..."
+  },
+  "payload_codec": "avro",
+  "qualified_for_php_takeover": false
+}
+```
+
+クライアントコード向けの主なフィールドの注意点：
+
+- ビルドバージョンは `server_version` ではなく `version` です。ネイティブ Server では `implementation` が `"rust"` です。
+- API を呼び出す前に `control_plane.version` と `worker_protocol.version` を確認してください。ネイティブ 3.0.1 はコントロールプレーン `2` と Worker プロトコル `1.20` を提供し、`1.0` から `1.20` までの任意のプロトコルバージョンを送る Worker 要求を受け付けます。
+- ワークフロータスクのコマンドは `worker_protocol.server_capabilities.supported_workflow_task_commands` にあります。
+- `false` の能力フラグは、ネイティブが提供しない機能や公開契約を示します。ネイティブは圧縮しない応答を送るため、`response_compression` は空です。
+- `native_unqualified` は、PHP 2.x の応答のうちネイティブが含めない各メンバーを理由とともに列挙します。`topology`、`supported_sdk_versions`、`client_compatibility` が含まれます。
+- ペイロードコーデックは Avro だけです。`capabilities.payload_codecs` は正確に `["avro"]` です。
+- 応答には `auth_composition_contract`、`principal_attribution_contract`、`service_catalog_read_contract`、`message_streams_contract` のマニフェストも含まれます。
+
+## PHP Server 2.x のヘルスチェック、準備状態、トポロジー {#php-server-2x-health-readiness-and-topology}
+
+2.11.8 で凍結された PHP Server 2.x は、ネイティブより大きな検出インターフェースを公開します。この節の内容はすべて PHP 2.x だけに適用され、ネイティブ Server はいずれも公開しません。
+
+### PHP 2.x の API 稼働確認 {#php-2x-api-health}
+
+`GET /api/health` は、ノードのトポロジー概要とともに `200 OK` を返します。
 
 ```json
 {
@@ -372,7 +494,7 @@ curl http://localhost:8080/api/health
 
 未準備のデプロイでも `/api/ready` に同じ概要があり、初期化の阻害要因がある間も、プローブは `server_http_node`、`scheduler_node`、`matching_node`、`execution_node` の応答を区別できます。
 
-### 準備状態 {#readiness}
+### PHP 2.x の準備状態 {#php-2x-readiness}
 
 ```bash
 curl http://localhost:8080/api/ready
@@ -408,7 +530,7 @@ curl http://localhost:8080/api/ready
 
 スケジュールの**読み取り**は復旧調査のため除外します。`GET /api/schedules`、`GET /api/schedules/{scheduleId}`、`GET /api/schedules/{scheduleId}/history` は、他のルートが阻害中も使用できます。
 
-### Server の能力 {#server-capabilities}
+### PHP 2.x の Server 能力 {#php-2x-server-capabilities}
 
 ```bash
 curl http://localhost:8080/api/cluster/info \
@@ -983,8 +1105,8 @@ Worker が登録、ポーリング、ハートビート、完了に使います�
 
 `X-Durable-Workflow-Control-Plane-Version` が**不要**なのは、検出とヘルスのエンドポイントだけです。
 
-- `GET /api/health`：稼働確認と公開 `topology` 概要（認証不要）
-- `GET /api/ready`：準備確認と同じ `topology` 概要（認証不要）
+- `GET /api/health`：データベースの稼働確認（認証不要）
+- `GET /api/ready`：準備状態のゲート（認証不要）
 - `GET /api/cluster/info`：Server 能力、プロトコルの版、唯一の Avro コーデック。クライアントは最初にこれで対応コントロールプレーンと Worker プロトコルを検出します。
 
 ## 問題の調査 {#troubleshooting}

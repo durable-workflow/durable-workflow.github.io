@@ -54,7 +54,7 @@ Si ya ejecuta v2 integrado en una aplicación Laravel, use la [guía de migraci�
 
 Consulte [Compatibilidad y enrutamiento de workers](/docs/polyglot/worker-compatibility-routing) al desplegar cohortes de compilación, drenar cohortes antiguas o mantener ejecuciones prolongadas fijadas a ejecutores compatibles durante una reversión.
 
-Consulte [Topología de roles de Server](/docs/polyglot/server-role-topology) para conocer el vocabulario de roles, clases de proceso, límites de autoridad, dominios de fallo y vía de migración que publica `GET /api/cluster/info`.
+Consulte [Topología de roles de Server](/docs/polyglot/server-role-topology) para conocer el vocabulario de roles, clases de proceso, límites de autoridad, dominios de fallo y vía de migración que PHP Server 2.x publica desde `GET /api/cluster/info`. El Server nativo 3.x se ejecuta como un único proceso y no publica ningún manifiesto de topología.
 
 ## Inicio rápido {#quick-start}
 
@@ -311,13 +311,135 @@ curl -X POST http://localhost:8080/api/namespaces \
 
 ## Comprobaciones de salud {#health-checks}
 
+El Server nativo publica tres endpoints de descubrimiento. `GET /api/health` y `GET /api/ready` no requieren credenciales. `GET /api/cluster/info` requiere un token de worker, operador o administrador. Ninguno de los tres exige el encabezado de versión del plano de control.
+
 ### Salud de la API {#api-health}
 
 ```bash
 curl http://localhost:8080/api/health
 ```
 
-Devuelve `200 OK` con:
+Devuelve `200 OK` cuando Server puede ejecutar una consulta trivial contra su base de datos:
+
+```json
+{"status":"serving","checks":{"database":true}}
+```
+
+Si esa consulta falla, devuelve `503 Service Unavailable` con `"status":"degraded"` y `"database":false`. Como una caída de la base de datos hace fallar esta comprobación, no la use como sonda de vida que provoque reinicios. El chart de Helm usa una sonda de vida TCP y asigna la disponibilidad a `/api/ready`.
+
+### Disponibilidad {#readiness}
+
+```bash
+curl http://localhost:8080/api/ready
+```
+
+`/api/ready` es la condición de disponibilidad para desplegar. Solo devuelve `200 OK` cuando el bucle en proceso de temporizadores y mantenimiento está en ejecución y sano, y Server puede leer todas las tablas que necesita su esquema:
+
+```json
+{
+  "status": "ready",
+  "development": false,
+  "checks": {
+    "database": {
+      "status": "ok",
+      "mode": "schema_read",
+      "write_capacity_verified": false,
+      "tls": {
+        "mode": null,
+        "encrypted": null,
+        "ca_verified": null,
+        "hostname_verified": null,
+        "evidence": "not_verified",
+        "scope": "rust_to_configured_database_endpoint"
+      }
+    }
+  },
+  "qualification": "release"
+}
+```
+
+En caso contrario, devuelve `503 Service Unavailable` con `"status":"not_ready"` y `checks.database.status: "failed"`, sin el bloque `tls`.
+
+- `checks.database.mode: "schema_read"` y `write_capacity_verified: false` significan que la disponibilidad demuestra que el esquema se puede leer, no que la base de datos tenga capacidad de escritura.
+- `checks.database.tls` informa de lo que garantizan para la conexión los ajustes de [TLS de la base de datos](/docs/polyglot/server-config-reference#database-tls). El ejemplo muestra SQLite, donde no se aplica TLS.
+- `development` es `false` y `qualification` es `"release"` en una imagen publicada. Una compilación desde el código fuente sin versión de publicación informa `true` y `"unpublished_execution_slice"`.
+
+El Server nativo no tiene comprobaciones de migraciones, veredicto de seguridad del despliegue ni bloqueo de inicialización. Crea o comprueba su esquema al arrancar y se niega a iniciarse contra una base de datos PHP o desconocida hasta que se haya ejecutado la [toma de control nativa](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+
+### Capacidades de Server {#server-capabilities}
+
+```bash
+curl http://localhost:8080/api/cluster/info \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Devuelve la identidad de la compilación, los indicadores de capacidad, los manifiestos de protocolo, los límites y el descubrimiento del namespace indicado por `X-Namespace` (o por el parámetro de consulta `namespace`; si no, `default`). Salida abreviada de la imagen 3.0.1:
+
+```json
+{
+  "version": "3.0.1",
+  "implementation": "rust",
+  "development": false,
+  "server_id": "2145ce2abb12",
+  "default_namespace": "default",
+  "capabilities": {
+    "workflow_tasks": true,
+    "activity_tasks": true,
+    "signals": true,
+    "queries": true,
+    "updates": true,
+    "schedules": true,
+    "timer_runtime_contract": false,
+    "payload_codecs": ["avro"],
+    "response_compression": []
+  },
+  "control_plane": {
+    "version": "2",
+    "request_contract": { "schema": "durable-workflow.v2.control-plane-request.contract", "version": 1, "...": "..." }
+  },
+  "worker_protocol": {
+    "version": "1.20",
+    "server_capabilities": {
+      "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
+      "query_tasks": true,
+      "workflow_updates": true,
+      "...": "..."
+    }
+  },
+  "namespace": { "name": "default", "exists": true, "status": "active", "...": "..." },
+  "limits": { "max_payload_bytes": 2097152, "...": "..." },
+  "structural_limits": { "...": "..." },
+  "discovery": {
+    "mode": "compatibility",
+    "operator_metrics_path": "/api/system/operator-metrics",
+    "task_repair_path": "/api/system/repair"
+  },
+  "native_unqualified": {
+    "topology": "Native runs as one process role and publishes no topology manifest.",
+    "...": "..."
+  },
+  "payload_codec": "avro",
+  "qualified_for_php_takeover": false
+}
+```
+
+Notas sobre los campos clave para el código cliente:
+
+- La versión de la compilación es `version`, no `server_version`. `implementation` es `"rust"` en el Server nativo.
+- Compruebe `control_plane.version` y `worker_protocol.version` antes de llamar a la API. El Server nativo 3.0.1 sirve el plano de control `2` y el protocolo de workers `1.20`, y acepta solicitudes de workers que envíen cualquier versión de protocolo desde `1.0` hasta `1.20`.
+- Los comandos de tareas de workflow están en `worker_protocol.server_capabilities.supported_workflow_task_commands`.
+- Un indicador de capacidad con valor `false` designa una función o un contrato publicado que el Server nativo no sirve. `response_compression` está vacío porque el Server nativo envía respuestas sin comprimir.
+- `native_unqualified` enumera cada miembro de la respuesta de PHP 2.x que el Server nativo omite, junto con el motivo. Incluye `topology`, `supported_sdk_versions` y `client_compatibility`.
+- El único codec de cargas es Avro: `capabilities.payload_codecs` es exactamente `["avro"]`.
+- La respuesta también incluye los manifiestos `auth_composition_contract`, `principal_attribution_contract`, `service_catalog_read_contract` y `message_streams_contract`.
+
+## Salud, disponibilidad y topología de PHP Server 2.x {#php-server-2x-health-readiness-and-topology}
+
+PHP Server 2.x, congelado en 2.11.8, publica una interfaz de descubrimiento más amplia que el Server nativo. Todo lo de esta sección se aplica solo a PHP 2.x; el Server nativo no publica nada de ello.
+
+### Salud de la API en PHP 2.x {#php-2x-api-health}
+
+`GET /api/health` devuelve `200 OK` con el resumen de topología del nodo:
 
 ```json
 {
@@ -378,7 +500,7 @@ Devuelve `200 OK` con:
 
 El mismo resumen aparece en `/api/ready` incluso cuando el despliegue no está listo. Así, las comprobaciones pueden distinguir respuestas de `server_http_node`, `scheduler_node`, `matching_node` y `execution_node` mientras hay bloqueos de inicialización.
 
-### Disponibilidad {#readiness}
+### Disponibilidad en PHP 2.x {#php-2x-readiness}
 
 ```bash
 curl http://localhost:8080/api/ready
@@ -414,7 +536,7 @@ Familias de rutas sujetas al bloqueo de inicialización:
 
 Las **lecturas** de programaciones están excluidas a propósito para permitir inspeccionarlas durante la recuperación: `GET /api/schedules`, `GET /api/schedules/{scheduleId}` y `GET /api/schedules/{scheduleId}/history` siguen disponibles mientras el bloqueo de inicialización impide otras rutas.
 
-### Capacidades de Server {#server-capabilities}
+### Capacidades de Server en PHP 2.x {#php-2x-server-capabilities}
 
 ```bash
 curl http://localhost:8080/api/cluster/info \
@@ -987,8 +1109,8 @@ Consulte la referencia del [protocolo de workers](/docs/polyglot/worker-protocol
 
 Los únicos endpoints que **no** requieren `X-Durable-Workflow-Control-Plane-Version` son los de descubrimiento y las comprobaciones de salud:
 
-- `GET /api/health`: comprobación de vida y resumen público `topology`, sin autenticación
-- `GET /api/ready`: comprobación de disponibilidad y el mismo resumen `topology`, sin autenticación
+- `GET /api/health`: comprobación de vida de la base de datos, sin autenticación
+- `GET /api/ready`: condición de disponibilidad, sin autenticación
 - `GET /api/cluster/info`: capacidades de Server, versiones de protocolo y el único codec de cargas Avro. Los clientes deben consultarlo primero para descubrir las versiones de plano de control y protocolo de workers admitidas.
 
 ## Resolución de problemas {#troubleshooting}

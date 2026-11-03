@@ -84,7 +84,8 @@ workflow чи activity між мовами зберігає форму payload �
 
 [Топологія ролей Server](/docs/polyglot/server-role-topology) визначає
 словник ролей, класи процесів, повноваження, області відмов і шлях міграції,
-які публікує `GET /api/cluster/info`.
+які PHP Server 2.x публікує з `GET /api/cluster/info`. Нативний Server 3.x
+працює як один процес і не публікує маніфест топології.
 
 ## Швидкий початок {#quick-start}
 
@@ -414,13 +415,171 @@ curl -X POST http://localhost:8080/api/namespaces \
 
 ## Перевірки здоров'я {#health-checks}
 
+Нативний Server публікує три endpoint виявлення. `GET /api/health` і
+`GET /api/ready` не потребують облікових даних. `GET /api/cluster/info`
+потребує токена worker, operator або admin. Жоден із трьох не вимагає
+заголовка версії площини керування.
+
 ### Здоров'я API {#api-health}
 
 ```bash
 curl http://localhost:8080/api/health
 ```
 
-Повертає `200 OK` із:
+Повертає `200 OK`, коли Server може виконати тривіальний запит до своєї бази
+даних:
+
+```json
+{"status":"serving","checks":{"database":true}}
+```
+
+Якщо запит не вдається, повертає `503 Service Unavailable` із
+`"status":"degraded"` і `"database":false`. Оскільки збій бази даних провалює
+цю перевірку, не використовуйте її як liveness-пробу, що запускає перезапуск.
+Helm chart використовує TCP liveness-пробу, а готовність перевіряє через
+`/api/ready`.
+
+### Готовність {#readiness}
+
+```bash
+curl http://localhost:8080/api/ready
+```
+
+`/api/ready` є умовою допуску розгортання до роботи. Він повертає `200 OK`
+лише якщо внутрішньопроцесний цикл таймерів і обслуговування працює справно,
+а Server може читати кожну таблицю, потрібну його схемі:
+
+```json
+{
+  "status": "ready",
+  "development": false,
+  "checks": {
+    "database": {
+      "status": "ok",
+      "mode": "schema_read",
+      "write_capacity_verified": false,
+      "tls": {
+        "mode": null,
+        "encrypted": null,
+        "ca_verified": null,
+        "hostname_verified": null,
+        "evidence": "not_verified",
+        "scope": "rust_to_configured_database_endpoint"
+      }
+    }
+  },
+  "qualification": "release"
+}
+```
+
+Інакше повертає `503 Service Unavailable` із `"status":"not_ready"` і
+`checks.database.status: "failed"`, без блоку `tls`.
+
+- `checks.database.mode: "schema_read"` і `write_capacity_verified: false`
+  означають, що готовність підтверджує можливість читати схему, а не
+  здатність бази даних приймати записи.
+- `checks.database.tls` показує, що гарантують для з'єднання налаштування
+  [TLS бази даних](/docs/polyglot/server-config-reference#database-tls).
+  Приклад показує SQLite, де TLS не застосовується.
+- `development` має значення `false`, а `qualification` — `"release"` в
+  опублікованому образі. Збірка з вихідного коду без версії релізу повідомляє
+  `true` і `"unpublished_execution_slice"`.
+
+Нативний Server не має перевірок міграцій, висновку щодо безпеки розгортання
+чи перевірки bootstrap. Він створює або перевіряє свою схему під час запуску
+й відмовляється запускатися з базою даних PHP чи невідомою базою, доки не
+виконано [перехід на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+
+### Можливості Server {#server-capabilities}
+
+```bash
+curl http://localhost:8080/api/cluster/info \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Повертає ідентичність збірки, прапорці можливостей, маніфести протоколів,
+ліміти та дані виявлення для namespace, названого в `X-Namespace` (або в
+параметрі запиту `namespace`, інакше `default`). Скорочений вивід образу 3.0.1:
+
+```json
+{
+  "version": "3.0.1",
+  "implementation": "rust",
+  "development": false,
+  "server_id": "2145ce2abb12",
+  "default_namespace": "default",
+  "capabilities": {
+    "workflow_tasks": true,
+    "activity_tasks": true,
+    "signals": true,
+    "queries": true,
+    "updates": true,
+    "schedules": true,
+    "timer_runtime_contract": false,
+    "payload_codecs": ["avro"],
+    "response_compression": []
+  },
+  "control_plane": {
+    "version": "2",
+    "request_contract": { "schema": "durable-workflow.v2.control-plane-request.contract", "version": 1, "...": "..." }
+  },
+  "worker_protocol": {
+    "version": "1.20",
+    "server_capabilities": {
+      "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
+      "query_tasks": true,
+      "workflow_updates": true,
+      "...": "..."
+    }
+  },
+  "namespace": { "name": "default", "exists": true, "status": "active", "...": "..." },
+  "limits": { "max_payload_bytes": 2097152, "...": "..." },
+  "structural_limits": { "...": "..." },
+  "discovery": {
+    "mode": "compatibility",
+    "operator_metrics_path": "/api/system/operator-metrics",
+    "task_repair_path": "/api/system/repair"
+  },
+  "native_unqualified": {
+    "topology": "Native runs as one process role and publishes no topology manifest.",
+    "...": "..."
+  },
+  "payload_codec": "avro",
+  "qualified_for_php_takeover": false
+}
+```
+
+Ключові поля для клієнтського коду:
+
+- Версія збірки міститься в `version`, а не в `server_version`. На нативному
+  Server `implementation` має значення `"rust"`.
+- Перевіряйте `control_plane.version` і `worker_protocol.version` перед
+  викликами API. Нативний 3.0.1 обслуговує площину керування `2` і протокол
+  worker `1.20`, а також приймає запити worker із будь-якою версією протоколу
+  від `1.0` до `1.20`.
+- Команди workflow-task містяться в
+  `worker_protocol.server_capabilities.supported_workflow_task_commands`.
+- Прапорець можливості зі значенням `false` позначає функцію чи опублікований
+  контракт, який нативний Server не обслуговує. `response_compression`
+  порожній, бо нативний Server надсилає нестиснені відповіді.
+- `native_unqualified` перелічує кожен член відповіді PHP 2.x, який нативний
+  Server пропускає, разом із причиною. Серед них `topology`,
+  `supported_sdk_versions` і `client_compatibility`.
+- Єдиний кодек payload — Avro: `capabilities.payload_codecs` дорівнює точно
+  `["avro"]`.
+- Відповідь також містить маніфести `auth_composition_contract`,
+  `principal_attribution_contract`, `service_catalog_read_contract` і
+  `message_streams_contract`.
+
+## Здоров'я, готовність і топологія PHP Server 2.x {#php-server-2x-health-readiness-and-topology}
+
+PHP Server 2.x, зафіксований на версії 2.11.8, публікує ширшу поверхню
+виявлення, ніж нативний Server. Усе в цьому розділі стосується лише PHP 2.x;
+нативний Server нічого з цього не публікує.
+
+### Здоров'я API PHP 2.x {#php-2x-api-health}
+
+`GET /api/health` повертає `200 OK` зі зведенням топології вузла:
 
 ```json
 {
@@ -494,7 +653,7 @@ matching пакета workflow. `poll_batch_cap` задає максимальн
 Проби можуть розрізняти відповіді `server_http_node`, `scheduler_node`,
 `matching_node`, `execution_node` за активних перешкод bootstrap.
 
-### Готовність {#readiness}
+### Готовність PHP 2.x {#php-2x-readiness}
 
 ```bash
 curl http://localhost:8080/api/ready
@@ -559,7 +718,7 @@ curl http://localhost:8080/api/ready
 `GET /api/schedules`, `GET /api/schedules/{scheduleId}` і
 `GET /api/schedules/{scheduleId}/history` працюють за блокування інших маршрутів.
 
-### Можливості Server {#server-capabilities}
+### Можливості Server PHP 2.x {#php-2x-server-capabilities}
 
 ```bash
 curl http://localhost:8080/api/cluster/info \
@@ -1278,8 +1437,8 @@ Worker виконують register, poll, heartbeat і complete.
 Лише endpoint виявлення й здоров'я не вимагають
 `X-Durable-Workflow-Control-Plane-Version`:
 
-- `GET /api/health`: перевірка життя та публічне `topology` без автентифікації
-- `GET /api/ready`: перевірка готовності й те саме `topology` без автентифікації
+- `GET /api/health`: перевірка життя бази даних без автентифікації
+- `GET /api/ready`: умова готовності без автентифікації
 - `GET /api/cluster/info`: можливості Server, версії протоколів і єдиний
   кодек Avro. Клієнт має спочатку визначити тут версії control-plane й worker.
 

@@ -16,11 +16,69 @@ keywords:
 
 # Konfigurationsreferenz für Server {#server-config-reference}
 
-Diese Seite beschreibt den Vertrag der Umgebungsvariablen `DW_*` für Betreiber des Durable Workflow Server-Images. Nutzen Sie sie für Bereitstellungsvorlagen, die Prüfung der Produktionskonfiguration und die Umstellung älterer Namen `WORKFLOW_*` / `ACTIVITY_*` auf den Server-v2-Vertrag.
+Diese Seite beschreibt den Vertrag der Umgebungsvariablen `DW_*` für Betreiber des Durable Workflow Server-Images. Nutzen Sie sie für Bereitstellungsvorlagen, die Prüfung der Produktionskonfiguration und die Umstellung älterer Namen `WORKFLOW_*` / `ACTIVITY_*` auf den Server-v2-Vertrag. Der aktuelle Server ist der native 3.x-Server; [Nativer Server 3.x](#native-server-3x) führt auf, welche Einstellungen er berücksichtigt, ignoriert oder ablehnt. PHP Server 2.x ist bei 2.11.8 eingefroren.
 
-Server verwendet außerdem gewöhnliche Laravel-Einstellungen wie `DB_*`, `REDIS_*`, `QUEUE_CONNECTION` und `CACHE_STORE`. Diese Infrastrukturvariablen sind gesondert aufgeführt, weil sie die Bereitstellung konfigurieren und keine Durable Workflow API-Einstellungen darstellen.
+Der PHP-2.x-Server verwendet außerdem gewöhnliche Laravel-Einstellungen wie `DB_*`, `REDIS_*`, `QUEUE_CONNECTION` und `CACHE_STORE`. Diese Infrastrukturvariablen sind gesondert aufgeführt, weil sie die Bereitstellung konfigurieren und keine Durable Workflow API-Einstellungen darstellen.
+
+## Nativer Server 3.x {#native-server-3x}
+
+Die Variablentabellen auf dieser Seite dokumentieren den von PHP Server 2.11.0 veröffentlichten `DW_*`-Vertrag; ihre Zweckangaben beschreiben PHP 2.x. Der native 3.x-Server liest dieselben Namen mit denselben alten Aliasen über eine Startprüfung, die jeder Vertragseinstellung genau eine Behandlung zuweist:
+
+- **Berücksichtigt:** Der native Server liest die Einstellung und wendet die PHP-Bedeutung an. Nicht unten aufgeführte Einstellungen werden berücksichtigt.
+- **Ignoriert:** Der native Server akzeptiert die Einstellung, sie ändert aber nichts, was Clients oder Betreiber beobachten.
+- **Abgelehnt, sofern nicht Standard:** Der native Server verweigert den Start, es sei denn, die Einstellung ist nicht gesetzt oder behält den PHP-Standardwert. Die Startfehlermeldung nennt die Einstellung, den akzeptierten Wert und den Grund.
+
+Der native Server liest seine Umgebung einmal beim Prozessstart und hält keinen Konfigurationscache. Um eine Einstellung zu ändern, starten oder ersetzen Sie den Server-Prozess. Wie `env:audit` unter PHP warnt die native Prüfung vor unbekannten `DW_*`-Namen und alten Namen; `DW_ENV_AUDIT_STRICT=1` macht aus diesen Warnungen eine Startverweigerung.
+
+Der native Server lehnt diese Einstellungen ab, sofern sie nicht den aufgeführten Wert behalten:
+
+| Grund | Einstellungen und akzeptierte Werte |
+| --- | --- |
+| Der native Server bindet Läufe stets an ihre gespeicherte Workflow-Definition | `DW_V2_PIN_TO_RECORDED_FINGERPRINT`: nicht gesetzt oder `true` |
+| Der native Server kann ein geändertes Nexus-Operationslimit nicht anwenden | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER`: nicht gesetzt oder `200`<br />`DW_MAX_OPERATION_NAME_LENGTH`: nicht gesetzt oder `256` |
+| Der native Server kann ein geändertes Limit für Metrikreihen nicht anwenden | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT`: nicht gesetzt oder `100`<br />`DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT`: nicht gesetzt oder `100`<br />`DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT`: nicht gesetzt oder `100`<br />`DW_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT`: nicht gesetzt oder `20` |
+| Der native Server kann eine geänderte Obergrenze für ausstehende Abfrageaufgaben nicht anwenden | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE`: nicht gesetzt oder `1024` |
+| Der native Server kann ein geändertes Strukturlimit nicht anwenden | `DW_V2_LIMIT_COMMAND_BATCH_SIZE`: nicht gesetzt oder `1000` |
+| Der native Server kann geänderte Zeitvorgaben für die Aufgabenreparatur nicht anwenden | `DW_V2_TASK_REPAIR_FAILURE_BACKOFF_MAX_SECONDS`: nicht gesetzt oder `60`<br />`DW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS`: nicht gesetzt oder `3`<br />`DW_V2_TASK_REPAIR_SCAN_LIMIT`: nicht gesetzt oder `25` |
+| Der native Server veröffentlicht keine Paketherkunft | `DW_EXPOSE_PACKAGE_PROVENANCE`: nicht gesetzt oder `false` |
+| Der native Server meldet keine Mehrknoten-Deklaration | `DW_V2_MULTI_NODE`: nicht gesetzt oder `false` |
+| Der native Server führt keine Workflow-1-Workflows aus | `DW_V1_ENABLED`: nicht gesetzt oder `false` |
+| Der native Server prüft keine Kompatibilität der Worker-Flotte | `DW_V2_FLEET_VALIDATION_MODE`: nicht gesetzt oder nicht `fail` |
+| Der native Server übergibt Aufgaben nur an pollende Worker | `DW_TASK_DISPATCH_MODE`: nicht gesetzt oder `poll` |
+| Der native Server hat keine Konfiguration für externe Executor | `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`: nicht gesetzt oder leer<br />`DW_EXTERNAL_EXECUTOR_CONFIG_PATH`: nicht gesetzt oder leer |
+| Der native Server hat keinen Wiederherstellungsmodus für die Memo-Migration | `DW_WORKFLOW_MEMO_MIGRATION_RECOVERY`: nicht gesetzt oder leer |
+| Der native Server hat keine Limits für dauerhaften Namespace-Zustand | `DW_NAMESPACE_DURABLE_HARD_LIMITS`: nicht gesetzt oder `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`: nicht gesetzt oder `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`: nicht gesetzt oder `{}` |
+| Der native Server hat keine Limits für die Anfragezulassung pro Namespace | `DW_NAMESPACE_ADMISSION_OVERRIDES`: nicht gesetzt oder `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`: nicht gesetzt oder leer<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`: nicht gesetzt oder leer<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`: nicht gesetzt oder leer<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`: nicht gesetzt oder leer |
+| Der native Server hat keine Service-Grenzrichtlinie | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`: nicht gesetzt oder `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`: nicht gesetzt oder leer<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`: nicht gesetzt oder leer<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`: nicht gesetzt oder leer<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`: nicht gesetzt oder leer<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`: nicht gesetzt oder `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`: nicht gesetzt oder leer<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`: nicht gesetzt oder leer |
+| Der native Server hat keine Speicherzulassungsdatei | `DW_STORAGE_ADMISSION_FILE`: nicht gesetzt oder leer<br />`DW_STORAGE_ADMISSION_SOURCE`: nicht gesetzt oder leer |
+| Der native Server hat keine Limits für die Aufgabenzulassung | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`: nicht gesetzt oder `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`: nicht gesetzt, leer oder keine positive Zahl<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: nicht gesetzt, leer oder keine positive Zahl |
+| Der native Server implementiert eine einzige Worker-Protokollversion | `DW_WORKER_PROTOCOL_VERSION`: nicht gesetzt oder `1.20` |
+| Der native Server vertraut weitergeleiteten Zuordnungsheadern nie | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`: nicht gesetzt oder `false` |
+| Der native Server bindet Läufe nur an registrierte Worker-Build-IDs; serverweite Kompatibilitätsmarker gibt es nicht | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL`: nicht gesetzt oder `30`<br />`DW_V2_COMPATIBILITY_NAMESPACE`: nicht gesetzt oder leer<br />`DW_V2_CURRENT_COMPATIBILITY`: nicht gesetzt oder leer<br />`DW_V2_NAMESPACE`: nicht gesetzt oder leer<br />`DW_V2_SUPPORTED_COMPATIBILITIES`: nicht gesetzt oder leer |
+| Der native Server meldet keine Payload-Codec-Probleme | `DW_SERIALIZER`: nicht gesetzt, leer oder `avro` |
+| Der native Server läuft nur als eigenständiger HTTP-Server-Prozess | `DW_MODE`: nicht gesetzt oder `service`<br />`DW_SERVER_PROCESS_CLASS`: nicht gesetzt oder keiner der Werte `scheduler_node`, `worker_node`<br />`DW_SERVER_TOPOLOGY_SHAPE`: nicht gesetzt oder keiner der Werte `embedded`, `split_control_execution` |
+| Der native Server bedient Anfragen ohne Namespace-Angabe mit `default` | `DW_DEFAULT_NAMESPACE`: nicht gesetzt oder `default` |
+| Der native Server speichert externe Payloads nur auf seinem lokalen Datenträger | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`: nicht gesetzt oder leer |
+| Der native Server unterstützt nur seine eigene Token-Authentifizierung | `DW_AUTH_BACKWARD_COMPATIBLE`: nicht gesetzt oder `true`<br />`DW_AUTH_PROVIDER`: nicht gesetzt oder leer<br />`DW_PRINCIPAL_TOKENS`: nicht gesetzt oder leer |
+
+Der native Server akzeptiert, ignoriert aber: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
+
+Die native Authentifizierung unterscheidet sich von PHP 2.x wie folgt:
+
+- `DW_AUTH_TOKEN` ist erforderlich. Ohne dieses Token verweigert der native Server den Start, und er akzeptiert das gemeinsame Token für jede Rolle zusätzlich zu allen rollenbezogenen Tokens.
+- `DW_AUTH_DRIVER` akzeptiert nur `token`. Der native Server lehnt `signature` ab, ein Release-Image lehnt außerdem `none` ab. Die Einstellungen für Signaturschlüssel werden ignoriert.
+
+Der native Server liest außerdem Einstellungen außerhalb des PHP-Vertrags:
+
+- `DW_BIND_ADDRESS`: die Lauschadresse. Das Binary verwendet standardmäßig `127.0.0.1:8080`; das veröffentlichte Image setzt `0.0.0.0:8080`.
+- `DW_RUST_MAINTENANCE_LOOP`: `1` oder `true` ergänzt die prozessinterne Timer- und Schedule-Schleife um den Reparaturdurchlauf (Aufgabenreparatur und Aktivitäts-Timeouts). Das veröffentlichte Image setzt `1`, weil es keinen separaten Scheduler hat.
+- `DW_RUST_EXPERIMENTAL`: nur von Entwicklungs-Builds ohne Release-Version als `1` verlangt. Release-Images benötigen die Einstellung nicht.
+- `DW_UPGRADE_BACKUP_FINGERPRINT` und `DW_RUST_UPGRADE_QUEUE_*`: Eingaben für die einseitige [native Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md) einer PHP-Datenbank.
+- `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (alter Name `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): wird berücksichtigt, bevor die Einstellung in den PHP-Vertrag aufgenommen ist.
 
 ## Wann Änderungen wirksam werden {#how-changes-take-effect}
+
+Der native 3.x-Server liest seine Umgebung nur beim Prozessstart; starten oder ersetzen Sie den Server-Prozess, um eine Änderung anzuwenden. Der Rest dieses Abschnitts beschreibt PHP 2.x.
 
 Das veröffentlichte PHP Server-Image führt in seinem Einstiegsskript `php artisan config:cache` aus. Die Umgebungswerte werden beim Start aufgelöst und in den Laravel-Konfigurationscache geschrieben. Änderungen an einer Umgebungsdatei, an der Umgebungsdeklaration des Orchestrators oder an einer eingebundenen Konfigurationsdatei laden eine laufende Bereitstellung nicht neu.
 
@@ -44,7 +102,7 @@ Die `DW_*`-Standardwerte und Obergrenzen dieser Referenz bleiben Prozesskonfigur
 
 ## Prüfung des Vertrags {#how-the-contract-is-enforced}
 
-Im Server-Repository liegt der maßgebliche Vertrag in `config/dw-contract.php`. Beim Containerstart warnt `php artisan env:audit` vor unbekannten `DW_*`-Variablen und alten Namen. Mit `DW_ENV_AUDIT_STRICT=1` schlägt das Einstiegsskript fehl, anstatt mit Warnungen zu starten.
+Im Server-Repository liegt der maßgebliche Vertrag in `config/dw-contract.php`. Der native 3.x-Server führt die entsprechende Prüfung beim Start aus, wie unter [Nativer Server 3.x](#native-server-3x) beschrieben. Unter PHP 2.x warnt beim Containerstart `php artisan env:audit` vor unbekannten `DW_*`-Variablen und alten Namen. Mit `DW_ENV_AUDIT_STRICT=1` schlägt das Einstiegsskript fehl, anstatt mit Warnungen zu starten.
 
 ```bash
 DW_ENV_AUDIT_STRICT=1
@@ -75,20 +133,20 @@ Alte Namen dienen nur als Rückfalloption. Verwenden Sie bei neuen Bereitstellun
 
 | Variable | Standardwert | Zweck | Alter Alias |
 | --- | --- | --- | --- |
-| `DW_AUTH_PROVIDER` | nicht gesetzt | Durch Laravel auflösbare Klasse, die `App\Contracts\AuthProvider` implementiert. | `WORKFLOW_SERVER_AUTH_PROVIDER` |
-| `DW_AUTH_DRIVER` | `token` | Authentifizierungstreiber: `none`, `token` oder `signature`. | `WORKFLOW_SERVER_AUTH_DRIVER` |
-| `DW_AUTH_TOKEN` | nicht gesetzt | Gemeinsames Bearer-Token, wenn kein rollenbezogenes Token konfiguriert ist. | `WORKFLOW_SERVER_AUTH_TOKEN` |
-| `DW_SIGNATURE_KEY` | nicht gesetzt | Gemeinsamer HMAC-Signaturschlüssel, wenn kein rollenbezogener Schlüssel konfiguriert ist. | `WORKFLOW_SERVER_SIGNATURE_KEY` |
+| `DW_AUTH_PROVIDER` | nicht gesetzt | PHP 2.x: durch Laravel auflösbare Klasse, die `App\Contracts\AuthProvider` implementiert. Native 3.x verweigert den Start, wenn sie gesetzt ist. | `WORKFLOW_SERVER_AUTH_PROVIDER` |
+| `DW_AUTH_DRIVER` | `token` | Authentifizierungstreiber unter PHP 2.x: `none`, `token` oder `signature`. Native 3.x akzeptiert nur `token`. | `WORKFLOW_SERVER_AUTH_DRIVER` |
+| `DW_AUTH_TOKEN` | nicht gesetzt | PHP 2.x: gemeinsames Bearer-Token, wenn kein rollenbezogenes Token konfiguriert ist. Native 3.x: erforderlich und für jede Rolle akzeptiert. | `WORKFLOW_SERVER_AUTH_TOKEN` |
+| `DW_SIGNATURE_KEY` | nicht gesetzt | PHP 2.x: gemeinsamer HMAC-Signaturschlüssel, wenn kein rollenbezogener Schlüssel konfiguriert ist. Von native 3.x ignoriert, da es keine Signaturauthentifizierung hat. | `WORKFLOW_SERVER_SIGNATURE_KEY` |
 | `DW_WORKER_TOKEN` | nicht gesetzt | Bearer-Token für Worker-Registrierung, Polling, Heartbeats und Abschlüsse. | `WORKFLOW_SERVER_WORKER_TOKEN` |
 | `DW_OPERATOR_TOKEN` | nicht gesetzt | Bearer-Token für Lesezugriffe und Betriebsaktionen der Steuerungsebene. | `WORKFLOW_SERVER_OPERATOR_TOKEN` |
 | `DW_ADMIN_TOKEN` | nicht gesetzt | Bearer-Token für Namespace-, Aufbewahrungs- und andere administrative Änderungen. | `WORKFLOW_SERVER_ADMIN_TOKEN` |
-| `DW_PRINCIPAL_TOKENS` | nicht gesetzt | JSON-Tokenzuordnung für benannte Principals. Jeder Eintrag enthält `token`, `subject`, `roles` sowie optional `tenant`, `label` und nicht geheime `claims`. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
+| `DW_PRINCIPAL_TOKENS` | nicht gesetzt | PHP 2.x: JSON-Tokenzuordnung für benannte Principals. Jeder Eintrag enthält `token`, `subject`, `roles` sowie optional `tenant`, `label` und nicht geheime `claims`. Native 3.x verweigert den Start, wenn sie gesetzt ist. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
 | `DW_WORKER_SIGNATURE_KEY` | nicht gesetzt | HMAC-Schlüssel für Worker-Anfragen mit Signaturauthentifizierung. | `WORKFLOW_SERVER_WORKER_SIGNATURE_KEY` |
 | `DW_OPERATOR_SIGNATURE_KEY` | nicht gesetzt | HMAC-Schlüssel für Operator-Anfragen mit Signaturauthentifizierung. | `WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY` |
 | `DW_ADMIN_SIGNATURE_KEY` | nicht gesetzt | HMAC-Schlüssel für Admin-Anfragen mit Signaturauthentifizierung. | `WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY` |
-| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | Berücksichtigt gemeinsame `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` als Rückfalloption, wenn rollenbezogene Zugangsdaten fehlen. | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
+| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | PHP 2.x: berücksichtigt gemeinsame `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` als Rückfalloption, wenn rollenbezogene Zugangsdaten fehlen. Native 3.x akzeptiert das gemeinsame Token immer und verweigert den Start, wenn der Wert `false` ist. | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
 
-Verwenden Sie in Produktion rollenbezogene Zugangsdaten. `DW_AUTH_DRIVER=none` ist nur für lokale Funktionstests vorgesehen, weil dann alle Endpunkte ohne Bearer-Token oder Signatur erreichbar sind.
+Verwenden Sie in Produktion rollenbezogene Zugangsdaten. Unter PHP 2.x ist `DW_AUTH_DRIVER=none` nur für lokale Funktionstests vorgesehen, weil dann alle Endpunkte ohne Bearer-Token oder Signatur erreichbar sind; native Release-Images lehnen diesen Wert ab.
 
 Verwenden Sie `DW_PRINCIPAL_TOKENS`, wenn Prüfprotokolle stabile Akteurskennungen statt bloßer Rollenbezeichnungen benötigen. Server leitet den gespeicherten Principal aus dem passenden Tokeneintrag ab. Clients können ihn nicht mit Anfrage-Payloads oder Headern überschreiben.
 
@@ -341,7 +399,7 @@ Diese Referenz beschreibt den veröffentlichten Vertrag von **PHP Server 2.11.0*
 
 ## Infrastrukturvariablen der Laufzeitumgebung {#runtime-infrastructure-variables}
 
-Infrastrukturvariablen konfigurieren Framework und Abhängigkeiten. Die Server-Prüfung erkennt sie und warnt deshalb nicht, sie sind aber keine stabilen Durable Workflow API-Einstellungen.
+Infrastrukturvariablen konfigurieren Framework und Abhängigkeiten. Die Server-Prüfung erkennt sie und warnt deshalb nicht, sie sind aber keine stabilen Durable Workflow API-Einstellungen. Der native 3.x-Server liest die Gruppe Datenbank einschließlich der unten beschriebenen TLS-Einstellungen. Er hat weder Redis noch Cache oder Laravel-Queue, schreibt seine Protokolle nach Standardfehler und liest weder `LOG_CHANNEL` noch `LOG_LEVEL`.
 
 | Gruppe | Variablen | Verwendung |
 | --- | --- | --- |
@@ -354,8 +412,11 @@ Infrastrukturvariablen konfigurieren Framework und Abhängigkeiten. Die Server-P
 
 ## Datenbank-TLS {#database-tls}
 
-Setzen Sie dieselben TLS-Einstellungen für API-Server, Queue-Worker,
-Bootstrap-/Migrationsjob und Scheduler. PostgreSQL verwendet standardmäßig
+Der native 3.x-Server löst diese Einstellungen wie PHP 2.x auf: mit denselben
+Eingaben, Aliasen, Modusnamen und Ablehnungen. Zu konfigurieren sind ein
+Server-Prozess sowie jeder Befehl `schema-upgrade` oder jede Übernahme, die gegen
+dieselbe Datenbank läuft. Unter PHP 2.x setzen Sie dieselben TLS-Einstellungen
+für API-Server, Queue-Worker, Bootstrap-/Migrationsjob und Scheduler. PostgreSQL verwendet standardmäßig
 `prefer`; MySQL/MariaDB behalten ohne Modus ihre Verbindungsstandards. Keiner
 dieser Standards garantiert eine authentifizierte, verschlüsselte Verbindung.
 
@@ -391,7 +452,8 @@ Rollen nach Umgebungsänderungen neu, da die Konfiguration beim Start gecacht wi
 
 ## Container-Protokolle {#container-logs}
 
-Setzen Sie `LOG_CHANNEL=stderr` für API-, Worker- und Scheduler-Container, damit
+Der native 3.x-Server schreibt seine Protokolle immer nach Standardfehler. Unter
+PHP 2.x setzen Sie `LOG_CHANNEL=stderr` für API-, Worker- und Scheduler-Container, damit
 `docker logs` oder `kubectl logs` die Anwendungsprotokolle erfassen kann. Setzen
 Sie die Variable bei bestehenden Versionen ausdrücklich. Mit `LOG_LEVEL` wählen
 Sie den Mindestschweregrad. Für JSON mit einem Datensatz pro Zeile setzen Sie zusätzlich:

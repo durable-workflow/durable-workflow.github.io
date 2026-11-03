@@ -16,11 +16,69 @@ keywords:
 
 # Server 設定リファレンス {#server-config-reference}
 
-このページは Durable Workflow Server イメージの運用者向け `DW_*` 環境変数の契約を説明します。デプロイ用テンプレートの作成、本番設定の確認、従来の `WORKFLOW_*` / `ACTIVITY_*` 名から v2 Server の契約への移行に使用してください。
+このページは Durable Workflow Server イメージの運用者向け `DW_*` 環境変数の契約を説明します。デプロイ用テンプレートの作成、本番設定の確認、従来の `WORKFLOW_*` / `ACTIVITY_*` 名から v2 Server の契約への移行に使用してください。現在の Server はネイティブ 3.x Server です。どの設定を適用、無視、拒否するかは [ネイティブ Server 3.x](#native-server-3x) に記載しています。PHP Server 2.x は 2.11.8 で凍結されています。
 
-Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` など、通常の Laravel 実行時設定も使用します。これらは Durable Workflow API の設定ではなくデプロイ基盤の設定なので、別の表に記載しています。
+PHP 2.x Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` など、通常の Laravel 実行時設定も使用します。これらは Durable Workflow API の設定ではなくデプロイ基盤の設定なので、別の表に記載しています。
+
+## ネイティブ Server 3.x {#native-server-3x}
+
+このページの変数表は PHP Server 2.11.0 が公開した `DW_*` 契約を記録したもので、用途の説明は PHP 2.x を対象としています。ネイティブ 3.x Server は同じ名前を同じ従来の別名とともに読み込み、起動時の監査ですべての契約設定に次のいずれかの扱いを決めます。
+
+- **適用：** ネイティブは設定を読み込み、PHP と同じ意味で適用します。以下に記載のない設定は適用されます。
+- **無視：** ネイティブは設定を受け付けますが、クライアントや運用者から観測できる動作は何も変わりません。
+- **既定値以外は拒否：** 設定が未設定か PHP の既定値のままでない限り、ネイティブは起動を拒否します。起動エラーには設定名、受け付ける値、理由が示されます。
+
+ネイティブはプロセス起動時に一度だけ環境変数を読み込み、設定キャッシュを持ちません。設定を変更するには、Server プロセスを再起動または置換してください。PHP の `env:audit` と同様に、ネイティブの監査は未知の `DW_*` 名と従来の名前について警告し、`DW_ENV_AUDIT_STRICT=1` を設定するとそれらの警告で起動を拒否します。
+
+ネイティブは、次の設定が記載の値でない限り起動を拒否します。
+
+| 理由 | 設定と受け付ける値 |
+| --- | --- |
+| ネイティブは常に、記録済みのワークフロー定義に実行を固定します | `DW_V2_PIN_TO_RECORDED_FINGERPRINT`：未設定または `true` |
+| ネイティブは変更された Nexus 操作の上限を適用できません | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER`：未設定または `200`<br />`DW_MAX_OPERATION_NAME_LENGTH`：未設定または `256` |
+| ネイティブは変更されたメトリクス系列の上限を適用できません | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT`：未設定または `100`<br />`DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT`：未設定または `100`<br />`DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT`：未設定または `100`<br />`DW_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT`：未設定または `20` |
+| ネイティブは変更された保留中クエリタスクの上限を適用できません | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE`：未設定または `1024` |
+| ネイティブは変更された構造上の制限を適用できません | `DW_V2_LIMIT_COMMAND_BATCH_SIZE`：未設定または `1000` |
+| ネイティブは変更されたタスク修復のタイミングを適用できません | `DW_V2_TASK_REPAIR_FAILURE_BACKOFF_MAX_SECONDS`：未設定または `60`<br />`DW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS`：未設定または `3`<br />`DW_V2_TASK_REPAIR_SCAN_LIMIT`：未設定または `25` |
+| ネイティブはパッケージの出所情報を公開しません | `DW_EXPOSE_PACKAGE_PROVENANCE`：未設定または `false` |
+| ネイティブは複数ノード構成の宣言を報告しません | `DW_V2_MULTI_NODE`：未設定または `false` |
+| ネイティブは Workflow 1 のワークフローを実行しません | `DW_V1_ENABLED`：未設定または `false` |
+| ネイティブは Worker 群の互換性を検証しません | `DW_V2_FLEET_VALIDATION_MODE`：未設定または `fail` 以外 |
+| ネイティブはポーリングする Worker にだけタスクを渡します | `DW_TASK_DISPATCH_MODE`：未設定または `poll` |
+| ネイティブには外部実行環境の設定がありません | `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`：未設定または空<br />`DW_EXTERNAL_EXECUTOR_CONFIG_PATH`：未設定または空 |
+| ネイティブには memo 移行の復旧モードがありません | `DW_WORKFLOW_MEMO_MIGRATION_RECOVERY`：未設定または空 |
+| ネイティブには Namespace の永続状態の制限がありません | `DW_NAMESPACE_DURABLE_HARD_LIMITS`：未設定または `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`：未設定または `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`：未設定または `{}` |
+| ネイティブには Namespace のリクエスト受付制限がありません | `DW_NAMESPACE_ADMISSION_OVERRIDES`：未設定または `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`：未設定または空<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`：未設定または空<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`：未設定または空<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`：未設定または空 |
+| ネイティブにはサービス境界のポリシーがありません | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`：未設定または `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`：未設定または空<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`：未設定または空<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`：未設定または空<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`：未設定または空<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`：未設定または `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`：未設定または空<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`：未設定または空 |
+| ネイティブにはストレージ受付ファイルがありません | `DW_STORAGE_ADMISSION_FILE`：未設定または空<br />`DW_STORAGE_ADMISSION_SOURCE`：未設定または空 |
+| ネイティブにはタスクの受付制限がありません | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`：未設定、空、または正の数以外<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`：未設定、空、または正の数以外<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`：未設定、空、または正の数以外<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`：未設定、空、または正の数以外<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`：未設定または `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`：未設定、空、または正の数以外<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`：未設定、空、または正の数以外<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`：未設定、空、または正の数以外<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`：未設定、空、または正の数以外 |
+| ネイティブが実装する Worker プロトコルのバージョンは一つだけです | `DW_WORKER_PROTOCOL_VERSION`：未設定または `1.20` |
+| ネイティブは転送された実行主体ヘッダーを決して信頼しません | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`：未設定または `false` |
+| ネイティブは登録済みの Worker ビルド ID にだけ実行を固定し、Server 全体の互換性マーカーを持ちません | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL`：未設定または `30`<br />`DW_V2_COMPATIBILITY_NAMESPACE`：未設定または空<br />`DW_V2_CURRENT_COMPATIBILITY`：未設定または空<br />`DW_V2_NAMESPACE`：未設定または空<br />`DW_V2_SUPPORTED_COMPATIBILITIES`：未設定または空 |
+| ネイティブはペイロードコーデックの問題を報告しません | `DW_SERIALIZER`：未設定、空、または `avro` |
+| ネイティブは単独の HTTP Server プロセスとしてのみ動作します | `DW_MODE`：未設定または `service`<br />`DW_SERVER_PROCESS_CLASS`：未設定、または `scheduler_node`、`worker_node` 以外<br />`DW_SERVER_TOPOLOGY_SHAPE`：未設定、または `embedded`、`split_control_execution` 以外 |
+| ネイティブは Namespace を指定しないリクエストに `default` を提供します | `DW_DEFAULT_NAMESPACE`：未設定または `default` |
+| ネイティブは外部ペイロードをローカルディスクにだけ保存します | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`：未設定または空 |
+| ネイティブは独自のトークン認証だけに対応します | `DW_AUTH_BACKWARD_COMPATIBLE`：未設定または `true`<br />`DW_AUTH_PROVIDER`：未設定または空<br />`DW_PRINCIPAL_TOKENS`：未設定または空 |
+
+ネイティブが受け付けるが無視する設定：`DW_ADMIN_SIGNATURE_KEY`、`DW_AUTH_METHOD_HEADER`、`DW_AUTH_STATUS_HEADER`、`DW_BOOTSTRAP_DELAY_SECONDS`、`DW_BOOTSTRAP_RETRIES`、`DW_CALLER_LABEL_HEADER`、`DW_CALLER_TYPE_HEADER`、`DW_COMPRESSION_ENABLED`、`DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`、`DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`、`DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`、`DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`、`DW_EXTERNAL_PAYLOAD_S3_REGION`、`DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`、`DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`、`DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`、`DW_MAX_HISTORY_EVENTS`、`DW_MAX_TASKS_PER_POLL`、`DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`、`DW_OBSERVABILITY_CONTEXT_ENABLED`、`DW_OPERATOR_SIGNATURE_KEY`、`DW_PACKAGE_PROVENANCE_PATH`、`DW_POLLING_CACHE_PATH`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_SIGNATURE_KEY`、`DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`、`DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`、`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`、`DW_V2_CACHE_VALIDATION_MODE`、`DW_V2_GUARDRAILS_BOOT`、`DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`、`DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`、`DW_V2_MATCHING_ROLE_QUEUE_WAKE`、`DW_V2_TASK_DISPATCH_MODE`、`DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`、`DW_V2_TENANCY_ENVIRONMENT`、`DW_V2_TENANCY_ORGANIZATION`、`DW_V2_TENANCY_PROJECT`、`DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`、`DW_V2_VALIDATE_CACHE_BACKEND`、`DW_WAKE_SIGNAL_TTL_SECONDS`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`、`DW_WORKER_POLL_INTERVAL_MS`、`DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`、`DW_WORKER_SIGNATURE_KEY`。
+
+ネイティブの認証は、次の点で PHP 2.x と異なります。
+
+- `DW_AUTH_TOKEN` は必須です。未設定ではネイティブは起動を拒否し、ロール別トークンに加えて、共有トークンをすべてのロールで受け付けます。
+- `DW_AUTH_DRIVER` は `token` だけを受け付けます。ネイティブは `signature` を拒否し、リリースイメージは `none` も拒否します。署名キーの設定は無視されます。
+
+ネイティブは PHP の契約外の設定も読み込みます。
+
+- `DW_BIND_ADDRESS`：待ち受けアドレス。バイナリの既定値は `127.0.0.1:8080` で、公開イメージは `0.0.0.0:8080` を設定します。
+- `DW_RUST_MAINTENANCE_LOOP`：`1` または `true` で、プロセス内のタイマー・スケジュールループに修復処理（タスク修復とアクティビティのタイムアウト）を追加します。公開イメージには独立したスケジューラーがないため、`1` を設定しています。
+- `DW_RUST_EXPERIMENTAL`：リリースバージョンを持たない開発ビルドでのみ `1` が必要です。リリースイメージでは不要です。
+- `DW_UPGRADE_BACKUP_FINGERPRINT` と `DW_RUST_UPGRADE_QUEUE_*`：PHP データベースを一方向に移行する[ネイティブへの引き継ぎ](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)への入力です。
+- `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`（従来名 `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`）：PHP の契約に追加される前から適用されます。
 
 ## 変更が反映されるタイミング {#how-changes-take-effect}
+
+ネイティブ 3.x はプロセス起動時にだけ環境変数を読み込みます。変更を反映するには、Server プロセスを再起動または置換してください。この節の以降の説明は PHP 2.x を対象とします。
 
 公開済みの PHP Server イメージは、エントリーポイントで `php artisan config:cache` を実行します。環境変数はその起動時に解決され、Laravel の設定キャッシュに書き込まれます。環境ファイル、オーケストレーターの環境変数定義、マウントされた設定ファイルを変更しても、実行中のデプロイには自動反映されません。
 
@@ -44,7 +102,7 @@ Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` など、通�
 
 ## 契約の適用方法 {#how-the-contract-is-enforced}
 
-Server リポジトリの `config/dw-contract.php` が正式な契約です。コンテナ起動時の `php artisan env:audit` は、未知の `DW_*` 変数や従来の名前を検出すると警告します。警告を出して起動する代わりにエントリーポイントを失敗させるには、`DW_ENV_AUDIT_STRICT=1` を設定します。
+Server リポジトリの `config/dw-contract.php` が正式な契約です。ネイティブ 3.x は、[ネイティブ Server 3.x](#native-server-3x) で説明したとおり、同等の監査を起動時に実行します。PHP 2.x では、コンテナ起動時の `php artisan env:audit` が、未知の `DW_*` 変数や従来の名前を検出すると警告します。警告を出して起動する代わりにエントリーポイントを失敗させるには、`DW_ENV_AUDIT_STRICT=1` を設定します。
 
 ```bash
 DW_ENV_AUDIT_STRICT=1
@@ -75,20 +133,20 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 
 | 変数 | 既定値 | 用途 | 従来の別名 |
 | --- | --- | --- | --- |
-| `DW_AUTH_PROVIDER` | 未設定 | `App\Contracts\AuthProvider` を実装し、Laravel で解決可能なクラス。 | `WORKFLOW_SERVER_AUTH_PROVIDER` |
-| `DW_AUTH_DRIVER` | `token` | 認証ドライバー。`none`、`token`、`signature`。 | `WORKFLOW_SERVER_AUTH_DRIVER` |
-| `DW_AUTH_TOKEN` | 未設定 | ロール別トークンが未設定の場合の、単一の共有 Bearer トークン。 | `WORKFLOW_SERVER_AUTH_TOKEN` |
-| `DW_SIGNATURE_KEY` | 未設定 | ロール別署名キーが未設定の場合の共有 HMAC 署名キー。 | `WORKFLOW_SERVER_SIGNATURE_KEY` |
+| `DW_AUTH_PROVIDER` | 未設定 | PHP 2.x：`App\Contracts\AuthProvider` を実装し、Laravel で解決可能なクラス。ネイティブ 3.x は設定されていると起動を拒否します。 | `WORKFLOW_SERVER_AUTH_PROVIDER` |
+| `DW_AUTH_DRIVER` | `token` | PHP 2.x の認証ドライバー。`none`、`token`、`signature`。ネイティブ 3.x は `token` だけを受け付けます。 | `WORKFLOW_SERVER_AUTH_DRIVER` |
+| `DW_AUTH_TOKEN` | 未設定 | PHP 2.x：ロール別トークンが未設定の場合の、単一の共有 Bearer トークン。ネイティブ 3.x：必須で、すべてのロールで受け付けます。 | `WORKFLOW_SERVER_AUTH_TOKEN` |
+| `DW_SIGNATURE_KEY` | 未設定 | PHP 2.x：ロール別署名キーが未設定の場合の共有 HMAC 署名キー。署名認証を持たないネイティブ 3.x では無視されます。 | `WORKFLOW_SERVER_SIGNATURE_KEY` |
 | `DW_WORKER_TOKEN` | 未設定 | Worker の登録、ポーリング、ハートビート、完了用 Bearer トークン。 | `WORKFLOW_SERVER_WORKER_TOKEN` |
 | `DW_OPERATOR_TOKEN` | 未設定 | 読み取りおよび運用者向けコントロールプレーン操作用 Bearer トークン。 | `WORKFLOW_SERVER_OPERATOR_TOKEN` |
 | `DW_ADMIN_TOKEN` | 未設定 | Namespace、保持設定などの管理変更用 Bearer トークン。 | `WORKFLOW_SERVER_ADMIN_TOKEN` |
-| `DW_PRINCIPAL_TOKENS` | 未設定 | 名前付き主体の Bearer トークンを定義する JSON マップ。各項目には `token`、`subject`、`roles` と、任意の `tenant`、`label`、秘密ではない `claims` を指定します。 | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
+| `DW_PRINCIPAL_TOKENS` | 未設定 | PHP 2.x：名前付き主体の Bearer トークンを定義する JSON マップ。各項目には `token`、`subject`、`roles` と、任意の `tenant`、`label`、秘密ではない `claims` を指定します。ネイティブ 3.x は設定されていると起動を拒否します。 | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
 | `DW_WORKER_SIGNATURE_KEY` | 未設定 | 署名認証で Worker ロールのリクエストに使用する HMAC キー。 | `WORKFLOW_SERVER_WORKER_SIGNATURE_KEY` |
 | `DW_OPERATOR_SIGNATURE_KEY` | 未設定 | 署名認証で運用者ロールのリクエストに使用する HMAC キー。 | `WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY` |
 | `DW_ADMIN_SIGNATURE_KEY` | 未設定 | 署名認証で管理者ロールのリクエストに使用する HMAC キー。 | `WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY` |
-| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | ロール別の認証情報がない場合、共有 `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` をフォールバックとして使用します。 | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
+| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | PHP 2.x：ロール別の認証情報がない場合、共有 `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` をフォールバックとして使用します。ネイティブ 3.x は常に共有トークンを受け付け、この値が `false` の場合は起動を拒否します。 | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
 
-本番ではロールごとの認証情報を使用してください。`DW_AUTH_DRIVER=none` では全エンドポイントに Bearer トークンや署名なしでアクセスできるため、ローカルの簡易動作確認にのみ使用します。
+本番ではロールごとの認証情報を使用してください。PHP 2.x の `DW_AUTH_DRIVER=none` では全エンドポイントに Bearer トークンや署名なしでアクセスできるため、ローカルの簡易動作確認にのみ使用します。ネイティブのリリースイメージはこの設定を拒否します。
 
 監査記録にロール名ではなく安定した実行主体が必要な場合は、`DW_PRINCIPAL_TOKENS` を使用します。Server は一致したトークン項目から記録する主体を決定します。クライアントはリクエストのペイロードやヘッダーでそれを上書きできません。
 
@@ -341,7 +399,7 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 
 ## 実行基盤の変数 {#runtime-infrastructure-variables}
 
-実行基盤の変数は、フレームワークや依存ライブラリの設定です。Server の監査はこれらを認識して警告を抑えますが、安定した Durable Workflow API の設定項目ではありません。
+実行基盤の変数は、フレームワークや依存ライブラリの設定です。Server の監査はこれらを認識して警告を抑えますが、安定した Durable Workflow API の設定項目ではありません。ネイティブ 3.x は、下記の TLS 設定を含むデータベースの分類を読み込みます。Redis、キャッシュ、Laravel キューは持たず、ログを標準エラーに書き込み、`LOG_CHANNEL` と `LOG_LEVEL` は読み込みません。
 
 | 分類 | 変数 | 用途 |
 | --- | --- | --- |
@@ -354,10 +412,7 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 
 ## データベース TLS {#database-tls}
 
-API サーバー、キューワーカー、初期化・マイグレーションジョブ、スケジューラーに
-同じ TLS 設定を適用してください。PostgreSQL の既定値は `prefer` です。
-MySQL/MariaDB はモード未指定時に従来の接続設定を使います。いずれの既定値も、
-認証された暗号化接続を保証しません。
+ネイティブ 3.x は、これらの設定を PHP 2.x と同じように解決します。入力、別名、モード名、拒否条件はすべて同じです。設定対象は一つの Server プロセスと、同じデータベースに対して実行する `schema-upgrade` や引き継ぎコマンドだけです。PHP 2.x では、API サーバー、キューワーカー、初期化・マイグレーションジョブ、スケジューラーに同じ TLS 設定を適用してください。PostgreSQL の既定値は `prefer` です。MySQL/MariaDB はモード未指定時に従来の接続設定を使います。いずれの既定値も、認証された暗号化接続を保証しません。
 
 | `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
 | --- | --- | --- |
@@ -390,10 +445,7 @@ DB_SSLROOTCERT=/run/database-ca/ca.pem
 
 ## コンテナのログ {#container-logs}
 
-API、ワーカー、スケジューラーの各コンテナで `LOG_CHANNEL=stderr` を設定すると、
-`docker logs` または `kubectl logs` でアプリケーションログを収集できます。
-既存のリリースでは明示的に設定してください。`LOG_LEVEL` で最低重大度を選択します。
-1 行に 1 レコードの JSON を出力するには、次も設定します。
+ネイティブ 3.x は常にログを標準エラーに書き込みます。PHP 2.x では、API、ワーカー、スケジューラーの各コンテナで `LOG_CHANNEL=stderr` を設定すると、`docker logs` または `kubectl logs` でアプリケーションログを収集できます。既存のリリースでは明示的に設定してください。`LOG_LEVEL` で最低重大度を選択します。1 行に 1 レコードの JSON を出力するには、次も設定します。
 
 ```dotenv
 LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"

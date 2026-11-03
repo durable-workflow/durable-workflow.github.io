@@ -19,14 +19,101 @@ keywords:
 Ця сторінка описує операторський контракт змінних середовища `DW_*`
 для образу Durable Workflow Server. Використовуйте її для шаблонів
 розгортання, перевірки production-конфігурації або переходу від старих
-назв `WORKFLOW_*` / `ACTIVITY_*` до контракту Server v2.
+назв `WORKFLOW_*` / `ACTIVITY_*` до контракту Server v2. Поточний Server —
+нативний Server 3.x; у розділі [Нативний Server 3.x](#native-server-3x)
+перелічено, які налаштування він враховує, ігнорує чи відхиляє. PHP Server 2.x
+зафіксовано на версії 2.11.8.
 
-Server також використовує звичайні налаштування Laravel runtime,
+PHP Server 2.x також використовує звичайні налаштування Laravel runtime,
 зокрема `DB_*`, `REDIS_*`, `QUEUE_CONNECTION` та `CACHE_STORE`.
 Ці інфраструктурні змінні перелічено окремо як налаштування розгортання,
 що не є керуванням Durable Workflow API.
 
+## Нативний Server 3.x {#native-server-3x}
+
+Таблиці змінних на цій сторінці фіксують контракт `DW_*`, опублікований
+PHP Server 2.11.0, а їхні описи призначення стосуються PHP 2.x. Нативний
+Server 3.x читає ті самі назви з тими самими застарілими aliases через аудит
+під час старту, який присвоює кожному налаштуванню контракту одну з таких дій:
+
+- **Враховується:** нативний Server читає налаштування й застосовує його
+  значення з PHP. Налаштування, не перелічені нижче, враховуються.
+- **Ігнорується:** нативний Server приймає налаштування, але воно не змінює
+  нічого, що бачать клієнти чи оператори.
+- **Відхиляється, якщо не стандартне:** нативний Server відмовляється
+  стартувати, якщо налаштування задано й воно не зберігає стандартне значення
+  PHP. Помилка старту називає налаштування, прийнятне значення та причину.
+
+Нативний Server читає середовище один раз під час старту процесу й не має
+кешу конфігурації. Щоб змінити налаштування, перезапустіть або замініть процес
+Server. Як і `env:audit` у PHP, нативний аудит попереджає про невідомі назви
+`DW_*` та застарілі назви, а `DW_ENV_AUDIT_STRICT=1` перетворює ці
+попередження на відмову старту.
+
+Нативний Server відхиляє ці налаштування, якщо вони не зберігають наведене
+значення:
+
+| Причина | Налаштування та прийнятні значення |
+| --- | --- |
+| Нативний Server завжди прив'язує runs до записаного визначення workflow | `DW_V2_PIN_TO_RECORDED_FINGERPRINT`: не задано або `true` |
+| Нативний Server не може застосувати змінений ліміт операцій Nexus | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER`: не задано або `200`<br />`DW_MAX_OPERATION_NAME_LENGTH`: не задано або `256` |
+| Нативний Server не може застосувати змінений ліміт серій метрик | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT`: не задано або `100`<br />`DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT`: не задано або `100`<br />`DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT`: не задано або `100`<br />`DW_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT`: не задано або `20` |
+| Нативний Server не може застосувати змінену межу query tasks в очікуванні | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE`: не задано або `1024` |
+| Нативний Server не може застосувати змінений структурний ліміт | `DW_V2_LIMIT_COMMAND_BATCH_SIZE`: не задано або `1000` |
+| Нативний Server не може застосувати змінені інтервали відновлення tasks | `DW_V2_TASK_REPAIR_FAILURE_BACKOFF_MAX_SECONDS`: не задано або `60`<br />`DW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS`: не задано або `3`<br />`DW_V2_TASK_REPAIR_SCAN_LIMIT`: не задано або `25` |
+| Нативний Server не публікує походження пакета | `DW_EXPOSE_PACKAGE_PROVENANCE`: не задано або `false` |
+| Нативний Server не повідомляє оголошення багатовузловості | `DW_V2_MULTI_NODE`: не задано або `false` |
+| Нативний Server не виконує workflows Workflow 1 | `DW_V1_ENABLED`: не задано або `false` |
+| Нативний Server не перевіряє сумісність парку workers | `DW_V2_FLEET_VALIDATION_MODE`: не задано або не `fail` |
+| Нативний Server передає tasks лише workers, що виконують polling | `DW_TASK_DISPATCH_MODE`: не задано або `poll` |
+| Нативний Server не має конфігурації зовнішнього виконавця | `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`: не задано або порожнє<br />`DW_EXTERNAL_EXECUTOR_CONFIG_PATH`: не задано або порожнє |
+| Нативний Server не має режиму відновлення міграції memo | `DW_WORKFLOW_MEMO_MIGRATION_RECOVERY`: не задано або порожнє |
+| Нативний Server не має лімітів durable-стану namespace | `DW_NAMESPACE_DURABLE_HARD_LIMITS`: не задано або `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`: не задано або `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`: не задано або `{}` |
+| Нативний Server не має лімітів admission запитів namespace | `DW_NAMESPACE_ADMISSION_OVERRIDES`: не задано або `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`: не задано або порожнє<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`: не задано або порожнє<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`: не задано або порожнє<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`: не задано або порожнє |
+| Нативний Server не має політики меж сервісів | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`: не задано або `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`: не задано або порожнє<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`: не задано або порожнє<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`: не задано або порожнє<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`: не задано або порожнє<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`: не задано або `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`: не задано або порожнє<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`: не задано або порожнє |
+| Нативний Server не має файлу admission сховища | `DW_STORAGE_ADMISSION_FILE`: не задано або порожнє<br />`DW_STORAGE_ADMISSION_SOURCE`: не задано або порожнє |
+| Нативний Server не має лімітів admission tasks | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: не задано, порожнє або не додатне число<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: не задано, порожнє або не додатне число<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`: не задано, порожнє або не додатне число<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: не задано, порожнє або не додатне число<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`: не задано або `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: не задано, порожнє або не додатне число<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: не задано, порожнє або не додатне число<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`: не задано, порожнє або не додатне число<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: не задано, порожнє або не додатне число |
+| Нативний Server реалізує одну версію worker-протоколу | `DW_WORKER_PROTOCOL_VERSION`: не задано або `1.20` |
+| Нативний Server ніколи не довіряє пересланим заголовкам атрибуції | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`: не задано або `false` |
+| Нативний Server прив'язує runs лише до зареєстрованих build id workers; він не має загальносерверних маркерів сумісності | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL`: не задано або `30`<br />`DW_V2_COMPATIBILITY_NAMESPACE`: не задано або порожнє<br />`DW_V2_CURRENT_COMPATIBILITY`: не задано або порожнє<br />`DW_V2_NAMESPACE`: не задано або порожнє<br />`DW_V2_SUPPORTED_COMPATIBILITIES`: не задано або порожнє |
+| Нативний Server не повідомляє про проблеми кодека payload | `DW_SERIALIZER`: не задано, порожнє або `avro` |
+| Нативний Server працює лише як окремий процес HTTP-сервера | `DW_MODE`: не задано або `service`<br />`DW_SERVER_PROCESS_CLASS`: не задано або не одне з `scheduler_node`, `worker_node`<br />`DW_SERVER_TOPOLOGY_SHAPE`: не задано або не одне з `embedded`, `split_control_execution` |
+| Нативний Server обслуговує `default` для запитів, що не називають namespace | `DW_DEFAULT_NAMESPACE`: не задано або `default` |
+| Нативний Server зберігає external payloads лише на своєму локальному диску | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`: не задано або порожнє |
+| Нативний Server підтримує лише власну автентифікацію за токеном | `DW_AUTH_BACKWARD_COMPATIBLE`: не задано або `true`<br />`DW_AUTH_PROVIDER`: не задано або порожнє<br />`DW_PRINCIPAL_TOKENS`: не задано або порожнє |
+
+Нативний Server приймає, але ігнорує: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
+
+Автентифікація нативного Server відрізняється від PHP 2.x так:
+
+- `DW_AUTH_TOKEN` обов'язковий. Без нього нативний Server не стартує, а
+  спільний токен приймається для кожної ролі поряд із будь-якими токенами
+  окремих ролей.
+- `DW_AUTH_DRIVER` приймає лише `token`. Нативний Server відхиляє
+  `signature`, а образ випуску також відхиляє `none`. Налаштування ключів
+  підпису ігноруються.
+
+Нативний Server також читає налаштування поза контрактом PHP:
+
+- `DW_BIND_ADDRESS`: адреса прослуховування. Бінарний файл типово використовує
+  `127.0.0.1:8080`; опублікований образ задає `0.0.0.0:8080`.
+- `DW_RUST_MAINTENANCE_LOOP`: `1` або `true` додає прохід відновлення
+  (відновлення tasks і тайм-аути activity) до внутрішньопроцесного циклу
+  таймерів і розкладів. Опублікований образ задає `1`, бо не має окремого
+  scheduler.
+- `DW_RUST_EXPERIMENTAL`: потрібне зі значенням `1` лише для development-збірок
+  без версії випуску. Образам випуску воно не потрібне.
+- `DW_UPGRADE_BACKUP_FINGERPRINT` і `DW_RUST_UPGRADE_QUEUE_*`: вхідні дані
+  одностороннього [переходу бази PHP на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+- `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (застаріла назва
+  `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): враховується ще до її
+  додавання до контракту PHP.
+
 ## Як застосовуються зміни {#how-changes-take-effect}
+
+Нативний Server 3.x читає середовище лише під час старту процесу; щоб
+застосувати зміну, перезапустіть або замініть процес Server. Решта цього
+розділу описує PHP 2.x.
 
 Опублікований образ PHP Server виконує `php artisan config:cache` у своєму
 entrypoint. Значення середовища зчитуються під час цього старту й записуються
@@ -72,7 +159,9 @@ workers перезапускайте окремо, коли змінюєте ї�
 ## Застосування контракту {#how-the-contract-is-enforced}
 
 Канонічний контракт зберігається в `config/dw-contract.php`
-репозиторію Server. Під час старту контейнера `php artisan env:audit`
+репозиторію Server. Нативний Server 3.x виконує еквівалентний аудит під
+час старту, як описано в розділі [Нативний Server 3.x](#native-server-3x).
+У PHP 2.x під час старту контейнера `php artisan env:audit`
 попереджає про невідомі змінні `DW_*` та застарілі назви.
 Установіть `DW_ENV_AUDIT_STRICT=1`, щоб entrypoint завершувався
 з помилкою замість старту з попередженнями.
@@ -108,22 +197,23 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 
 | Змінна | Стандартне значення | Призначення | Застарілий alias |
 | --- | --- | --- | --- |
-| `DW_AUTH_PROVIDER` | не задано | Клас, який може створити Laravel і який реалізує `App\Contracts\AuthProvider`. | `WORKFLOW_SERVER_AUTH_PROVIDER` |
-| `DW_AUTH_DRIVER` | `token` | Driver автентифікації: `none`, `token` або `signature`. | `WORKFLOW_SERVER_AUTH_DRIVER` |
-| `DW_AUTH_TOKEN` | не задано | Один спільний bearer token, якщо токени окремих ролей не налаштовані. | `WORKFLOW_SERVER_AUTH_TOKEN` |
-| `DW_SIGNATURE_KEY` | не задано | Спільний ключ HMAC-підпису, якщо ключі окремих ролей не налаштовані. | `WORKFLOW_SERVER_SIGNATURE_KEY` |
+| `DW_AUTH_PROVIDER` | не задано | PHP 2.x: клас, який може створити Laravel і який реалізує `App\Contracts\AuthProvider`. Нативний Server 3.x відмовляється стартувати, якщо його задано. | `WORKFLOW_SERVER_AUTH_PROVIDER` |
+| `DW_AUTH_DRIVER` | `token` | Driver автентифікації PHP 2.x: `none`, `token` або `signature`. Нативний Server 3.x приймає лише `token`. | `WORKFLOW_SERVER_AUTH_DRIVER` |
+| `DW_AUTH_TOKEN` | не задано | PHP 2.x: один спільний bearer token, якщо токени окремих ролей не налаштовані. Нативний Server 3.x: обов'язковий і приймається для кожної ролі. | `WORKFLOW_SERVER_AUTH_TOKEN` |
+| `DW_SIGNATURE_KEY` | не задано | PHP 2.x: спільний ключ HMAC-підпису, якщо ключі окремих ролей не налаштовані. Нативний Server 3.x ігнорує його, бо не має автентифікації підписами. | `WORKFLOW_SERVER_SIGNATURE_KEY` |
 | `DW_WORKER_TOKEN` | не задано | Bearer token для реєстрації worker, polling, heartbeats і завершення tasks. | `WORKFLOW_SERVER_WORKER_TOKEN` |
 | `DW_OPERATOR_TOKEN` | не задано | Bearer token для читання та операторських дій площини керування. | `WORKFLOW_SERVER_OPERATOR_TOKEN` |
 | `DW_ADMIN_TOKEN` | не задано | Bearer token для змін namespaces, retention та інших адміністративних дій. | `WORKFLOW_SERVER_ADMIN_TOKEN` |
-| `DW_PRINCIPAL_TOKENS` | не задано | JSON map токенів іменованих principals. Кожен запис надає `token`, `subject`, `roles`, необов'язкові `tenant`, `label` і несекретні `claims`. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
+| `DW_PRINCIPAL_TOKENS` | не задано | PHP 2.x: JSON map токенів іменованих principals. Кожен запис надає `token`, `subject`, `roles`, необов'язкові `tenant`, `label` і несекретні `claims`. Нативний Server 3.x відмовляється стартувати, якщо його задано. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
 | `DW_WORKER_SIGNATURE_KEY` | не задано | Ключ HMAC для запитів ролі worker за автентифікації підписами. | `WORKFLOW_SERVER_WORKER_SIGNATURE_KEY` |
 | `DW_OPERATOR_SIGNATURE_KEY` | не задано | Ключ HMAC для запитів ролі operator за автентифікації підписами. | `WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY` |
 | `DW_ADMIN_SIGNATURE_KEY` | не задано | Ключ HMAC для запитів ролі admin за автентифікації підписами. | `WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY` |
-| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | Використання спільних `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` як fallback, якщо немає облікових даних окремої ролі. | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
+| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | PHP 2.x: використання спільних `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` як fallback, якщо немає облікових даних окремої ролі. Нативний Server 3.x завжди приймає спільний токен і відмовляється стартувати, якщо тут `false`. | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
 
-Для production використовуйте облікові дані з окремими ролями.
+Для production використовуйте облікові дані з окремими ролями. У PHP 2.x
 `DW_AUTH_DRIVER=none` призначений лише для локальних smoke-перевірок:
-з ним кожен endpoint доступний без bearer token чи підпису.
+з ним кожен endpoint доступний без bearer token чи підпису; нативні образи
+випуску його відхиляють.
 
 Використовуйте `DW_PRINCIPAL_TOKENS`, коли журнал аудиту потребує сталих
 ідентифікаторів виконавців замість назв ролей. Server визначає записаного
@@ -399,7 +489,10 @@ workers, які виконують ті самі workflows.
 
 Інфраструктурні змінні runtime керують фреймворком та залежностями.
 Аудит Server розпізнає їх і не попереджає, але вони не є сталими
-налаштуваннями Durable Workflow API.
+налаштуваннями Durable Workflow API. Нативний Server 3.x читає групу «База
+даних», включно з наведеними нижче параметрами TLS. Він не має Redis, кешу чи
+черги Laravel, пише журнали до стандартного потоку помилок і не читає
+`LOG_CHANNEL` або `LOG_LEVEL`.
 
 | Група | Змінні | Використання |
 | --- | --- | --- |
@@ -412,7 +505,11 @@ workers, які виконують ті самі workflows.
 
 ## TLS бази даних {#database-tls}
 
-Задайте однакові параметри TLS для API-сервера, воркера черги, завдання
+Нативний Server 3.x обробляє ці параметри так само, як PHP 2.x: ті самі
+вхідні дані, псевдоніми, назви режимів і відмови. У ньому потрібно налаштувати
+один процес Server, а також будь-яку команду `schema-upgrade` або переходу на
+нативний Server, що працює з тією самою базою даних. У PHP 2.x задайте
+однакові параметри TLS для API-сервера, воркера черги, завдання
 початкового налаштування/міграції та планувальника. PostgreSQL за замовчуванням
 використовує `prefer`; MySQL/MariaDB без явного режиму зберігають стандартні
 налаштування з'єднання. Жоден із цих варіантів не гарантує автентифіковане
@@ -449,7 +546,8 @@ DB_SSLROOTCERT=/run/database-ca/ca.pem
 
 ## Журнали контейнерів {#container-logs}
 
-Задайте `LOG_CHANNEL=stderr` у контейнерах API, воркерів і планувальника, щоб
+Нативний Server 3.x завжди пише журнали до стандартного потоку помилок. У
+PHP 2.x задайте `LOG_CHANNEL=stderr` у контейнерах API, воркерів і планувальника, щоб
 `docker logs` або `kubectl logs` збирали журнали застосунку. Для наявних випусків
 задайте це явно. `LOG_LEVEL` визначає мінімальний рівень важливості. Для JSON
 з одним записом у рядку також задайте:
