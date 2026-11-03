@@ -4,21 +4,9 @@ title: "Durable Workflow Server 3.0: One Native Process"
 description: "Server 3.x is a native (Rust) implementation of the standalone Durable Workflow Server. It runs as one container plus a database. You no longer deploy Redis, a queue worker, a scheduler or a bootstrap job."
 authors: [richard]
 tags: [server, self-hosting, rust, release]
-draft: true
 ---
 
 import ProductPromotion from '@site/src/components/ProductPromotion';
-
-{/*
-  Release-day checklist:
-  - The Server version is written as the literal 3.0.4 in the prose, the
-    commands and the Compose URL. Replace every occurrence if the release
-    number changes.
-  - Merge docs PR #426 first. This post links to its native install guides.
-  - The takeover section states exactly the scope Security accepted for 3.0.4
-    (server#992). Do not widen it without new evidence.
-  - Remove `draft: true` to publish.
-*/}
 
 Durable Workflow Server 3.0 is a native implementation of the standalone
 Server, written in Rust. It runs as a single process. You give it a database
