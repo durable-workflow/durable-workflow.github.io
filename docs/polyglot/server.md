@@ -87,8 +87,10 @@ when you roll worker build cohorts, drain old cohorts, or need to keep
 long-running runs pinned to compatible executors during rollback.
 
 Use [Server Role Topology](/docs/polyglot/server-role-topology) when you
-need the live role vocabulary, process classes, authority boundaries, failure
-domains, or migration path that `GET /api/cluster/info` publishes.
+need the role vocabulary, process classes, authority boundaries, failure
+domains, or migration path that PHP Server 2.x publishes from
+`GET /api/cluster/info`. The native 3.x Server runs as one process and
+publishes no topology manifest.
 
 ## Quick Start
 
@@ -421,13 +423,169 @@ curl -X POST http://localhost:8080/api/namespaces \
 
 ## Health Checks
 
+The native Server publishes three discovery endpoints. `GET /api/health` and
+`GET /api/ready` need no credentials. `GET /api/cluster/info` needs a worker,
+operator or admin token. None of the three requires the control-plane version
+header.
+
 ### API Health
 
 ```bash
 curl http://localhost:8080/api/health
 ```
 
-Returns `200 OK` with:
+Returns `200 OK` when the Server can run a trivial query against its database:
+
+```json
+{"status":"serving","checks":{"database":true}}
+```
+
+When that query fails, it returns `503 Service Unavailable` with
+`"status":"degraded"` and `"database":false`. Because a database outage fails
+this check, do not use it as a restart-triggering liveness probe. The Helm
+chart uses a TCP liveness probe and puts readiness on `/api/ready`.
+
+### Readiness
+
+```bash
+curl http://localhost:8080/api/ready
+```
+
+`/api/ready` is the deployment gate. It returns `200 OK` only when the
+in-process timer and maintenance loop is running and healthy and the Server can
+read every table its schema needs:
+
+```json
+{
+  "status": "ready",
+  "development": false,
+  "checks": {
+    "database": {
+      "status": "ok",
+      "mode": "schema_read",
+      "write_capacity_verified": false,
+      "tls": {
+        "mode": null,
+        "encrypted": null,
+        "ca_verified": null,
+        "hostname_verified": null,
+        "evidence": "not_verified",
+        "scope": "rust_to_configured_database_endpoint"
+      }
+    }
+  },
+  "qualification": "release"
+}
+```
+
+Otherwise it returns `503 Service Unavailable` with `"status":"not_ready"` and
+`checks.database.status: "failed"`, without the `tls` block.
+
+- `checks.database.mode: "schema_read"` and `write_capacity_verified: false`
+  mean readiness proves the schema can be read, not that the database has
+  write capacity.
+- `checks.database.tls` reports what the [database TLS](/docs/polyglot/server-config-reference#database-tls)
+  settings guarantee for the connection. The example shows SQLite, where no
+  TLS applies.
+- `development` is `false` and `qualification` is `"release"` on a published
+  image. A source build without a release version reports `true` and
+  `"unpublished_execution_slice"`.
+
+Native has no migration checks, rollout-safety verdict or bootstrap gate. It
+creates or checks its schema at startup, and it refuses to start against a PHP
+or unknown database until the [native takeover](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+has run.
+
+### Server Capabilities
+
+```bash
+curl http://localhost:8080/api/cluster/info \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Returns the build identity, capability flags, protocol manifests, limits and
+discovery for the namespace named by `X-Namespace` (or the `namespace` query
+parameter, else `default`). Abridged output from the 3.0.1 image:
+
+```json
+{
+  "version": "3.0.1",
+  "implementation": "rust",
+  "development": false,
+  "server_id": "2145ce2abb12",
+  "default_namespace": "default",
+  "capabilities": {
+    "workflow_tasks": true,
+    "activity_tasks": true,
+    "signals": true,
+    "queries": true,
+    "updates": true,
+    "schedules": true,
+    "timer_runtime_contract": false,
+    "payload_codecs": ["avro"],
+    "response_compression": []
+  },
+  "control_plane": {
+    "version": "2",
+    "request_contract": { "schema": "durable-workflow.v2.control-plane-request.contract", "version": 1, "...": "..." }
+  },
+  "worker_protocol": {
+    "version": "1.20",
+    "server_capabilities": {
+      "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
+      "query_tasks": true,
+      "workflow_updates": true,
+      "...": "..."
+    }
+  },
+  "namespace": { "name": "default", "exists": true, "status": "active", "...": "..." },
+  "limits": { "max_payload_bytes": 2097152, "...": "..." },
+  "structural_limits": { "...": "..." },
+  "discovery": {
+    "mode": "compatibility",
+    "operator_metrics_path": "/api/system/operator-metrics",
+    "task_repair_path": "/api/system/repair"
+  },
+  "native_unqualified": {
+    "topology": "Native runs as one process role and publishes no topology manifest.",
+    "...": "..."
+  },
+  "payload_codec": "avro",
+  "qualified_for_php_takeover": false
+}
+```
+
+Key field notes for client code:
+
+- The build version is `version`, not `server_version`. `implementation` is
+  `"rust"` on the native Server.
+- Check `control_plane.version` and `worker_protocol.version` before calling
+  the API. Native 3.0.1 serves control plane `2` and worker protocol `1.20`,
+  and accepts worker requests that send any protocol version from `1.0` to
+  `1.20`.
+- Workflow-task commands live under
+  `worker_protocol.server_capabilities.supported_workflow_task_commands`.
+- A capability flag set to `false` names a feature or published contract that
+  native does not serve. `response_compression` is empty because native sends
+  uncompressed responses.
+- `native_unqualified` lists each member of the PHP 2.x response that native
+  leaves out, with the reason. It includes `topology`,
+  `supported_sdk_versions` and `client_compatibility`.
+- The sole payload codec is Avro: `capabilities.payload_codecs` is exactly
+  `["avro"]`.
+- The response also carries `auth_composition_contract`,
+  `principal_attribution_contract`, `service_catalog_read_contract` and
+  `message_streams_contract` manifests.
+
+## PHP Server 2.x health, readiness and topology
+
+PHP Server 2.x, frozen at 2.11.8, publishes a larger discovery surface than
+native. Everything in this section applies to PHP 2.x only; the native Server
+publishes none of it.
+
+### PHP 2.x API health
+
+`GET /api/health` returns `200 OK` with the node's topology summary:
 
 ```json
 {
@@ -503,7 +661,7 @@ so probes can still distinguish `server_http_node`, `scheduler_node`,
 `matching_node`, and `execution_node` responses while bootstrap blockers are
 active.
 
-### Readiness
+### PHP 2.x readiness
 
 ```bash
 curl http://localhost:8080/api/ready
@@ -578,7 +736,7 @@ schedule state during recovery: `GET /api/schedules`,
 `GET /api/schedules/{scheduleId}/history` continue to serve while the
 bootstrap gate is blocking other routes.
 
-### Server Capabilities
+### PHP 2.x server capabilities
 
 ```bash
 curl http://localhost:8080/api/cluster/info \
@@ -1321,8 +1479,8 @@ See the [Worker Protocol](/docs/polyglot/worker-protocol) reference for details.
 
 The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Version` are discovery and health probes:
 
-- `GET /api/health` — Liveness probe plus the public `topology` summary (no auth required)
-- `GET /api/ready` — Readiness probe plus the same `topology` summary (no auth required)
+- `GET /api/health` — Database liveness check (no auth required)
+- `GET /api/ready` — Readiness gate (no auth required)
 - `GET /api/cluster/info` — Server capabilities, protocol versions, and the sole Avro payload codec. Clients should hit this first to discover which control-plane and worker-protocol versions the server supports.
 
 ## Troubleshooting
