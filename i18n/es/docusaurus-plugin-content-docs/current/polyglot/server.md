@@ -26,7 +26,8 @@ que se conserva en las versiones actuales de Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Para trasladar una base de datos PHP existente al Server nativo, siga el
 [runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-que empieza por una copia de seguridad. La configuración marcada abajo como PHP 2.x no se aplica al Server nativo.
+que empieza por una copia de seguridad. La toma de control admite bases de datos de PHP 2.5.14–2.11.8 y rechaza, antes de modificar nada, el estado que el Server nativo no puede trasladar; ensáyela primero sobre una copia de seguridad restaurada.
+La configuración marcada abajo como PHP 2.x no se aplica al Server nativo.
 
 :::
 
@@ -431,6 +432,7 @@ Notas sobre los campos clave para el código cliente:
 - Un indicador de capacidad con valor `false` designa una función o un contrato publicado que el Server nativo no sirve. `response_compression` está vacío porque el Server nativo envía respuestas sin comprimir.
 - `native_unqualified` enumera cada miembro de la respuesta de PHP 2.x que el Server nativo omite, junto con el motivo. Incluye `topology`, `supported_sdk_versions` y `client_compatibility`.
 - El único codec de cargas es Avro: `capabilities.payload_codecs` es exactamente `["avro"]`.
+- `qualified_for_php_takeover` siempre es `false`. Describe el Server en ejecución, que nunca toma el control de una base de datos al arrancar, no si `upgrade-takeover` aceptará la suya.
 - La respuesta también incluye los manifiestos `auth_composition_contract`, `principal_attribution_contract`, `service_catalog_read_contract` y `message_streams_contract`.
 
 ## Salud, disponibilidad y topología de PHP Server 2.x {#php-server-2x-health-readiness-and-topology}

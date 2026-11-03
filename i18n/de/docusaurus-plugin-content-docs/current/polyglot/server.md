@@ -26,6 +26,9 @@ und bleibt in aktuellen Server-Veröffentlichungen als
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) erhalten.
 Um eine bestehende PHP-Datenbank auf den nativen Server umzustellen, folgen Sie dem
 [Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), das mit einer Sicherung beginnt.
+Die Übernahme unterstützt Datenbanken von PHP 2.5.14–2.11.8 und verweigert sich bei
+Zuständen, die der native Server nicht übernehmen kann, bevor sie etwas ändert;
+proben Sie sie zuerst an einer wiederhergestellten Sicherung.
 Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Server.
 
 :::
@@ -471,6 +474,9 @@ Wichtige Feldhinweise für Client-Code:
   `supported_sdk_versions` und `client_compatibility`.
 - Der einzige Payload-Codec ist Avro: `capabilities.payload_codecs` ist genau
   `["avro"]`.
+- `qualified_for_php_takeover` ist immer `false`. Das Feld beschreibt den
+  laufenden Server, der beim Start nie eine Datenbank übernimmt, und nicht, ob
+  `upgrade-takeover` Ihre Datenbank akzeptiert.
 - Die Antwort enthält außerdem die Manifeste `auth_composition_contract`,
   `principal_attribution_contract`, `service_catalog_read_contract` und
   `message_streams_contract`.

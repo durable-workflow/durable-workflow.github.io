@@ -26,6 +26,7 @@ mantido nas releases atuais do Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Para migrar um banco de dados PHP existente para o Server nativo, siga o
 [runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), que começa pelo backup.
+A migração para o Server nativo aceita bancos de dados do PHP 2.5.14–2.11.8 e recusa, antes de alterar qualquer coisa, estados que o nativo não consegue transferir; ensaie-a primeiro em um backup restaurado.
 A configuração abaixo marcada como PHP 2.x não se aplica ao Server nativo.
 
 :::
@@ -431,6 +432,7 @@ Notas sobre os principais campos para o código cliente:
 - Um indicador de capacidade definido como `false` identifica um recurso ou contrato publicado que o Server nativo não oferece. `response_compression` está vazio porque o Server nativo envia respostas sem compressão.
 - `native_unqualified` lista cada membro da resposta do PHP 2.x que o Server nativo omite, com o motivo. Inclui `topology`, `supported_sdk_versions` e `client_compatibility`.
 - O único codec de payloads é Avro: `capabilities.payload_codecs` é exatamente `["avro"]`.
+- `qualified_for_php_takeover` é sempre `false`. Ele descreve o Server em execução, que nunca assume um banco de dados na inicialização, e não se o `upgrade-takeover` aceitará o seu.
 - A resposta também traz os manifestos `auth_composition_contract`, `principal_attribution_contract`, `service_catalog_read_contract` e `message_streams_contract`.
 
 ## Saúde, prontidão e topologia do PHP Server 2.x {#php-server-2x-health-readiness-and-topology}

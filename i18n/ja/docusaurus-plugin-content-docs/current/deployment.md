@@ -18,7 +18,7 @@ Server は Waterline を同梱・運用しません。運用 UI が必要な場�
 
 :::note 既存の PHP Server 2.x インストール
 
-PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は引き続き利用できます。2.11.8 のリリースタグでは[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)で、3.0.0 以降の Server リポジトリでは同じスタックを[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml)として維持しています。移行するまでは、固定した 2.x イメージで運用を続けてください。既存の PHP データベースをネイティブへ移すには、バックアップを先に取る[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)に従ってください。テイクオーバー後に PHP へロールバックすることはできません。以下の節で Redis、キュー Worker、スケジューラー、ブートストラップに触れている箇所は、PHP 2.x のトポロジーを説明しています。
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は引き続き利用できます。2.11.8 のリリースタグでは[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)で、3.0.0 以降の Server リポジトリでは同じスタックを[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml)として維持しています。移行するまでは、固定した 2.x イメージで運用を続けてください。既存の PHP データベースをネイティブへ移すには、バックアップを先に取る[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)に従ってください。テイクオーバーは PHP 2.5.14–2.11.8 のデータベースを対象とし、ネイティブへ引き継げない状態があれば、何も変更する前に拒否します。まず復元したバックアップでリハーサルしてください。テイクオーバー後に PHP へロールバックすることはできません。以下の節で Redis、キュー Worker、スケジューラー、ブートストラップに触れている箇所は、PHP 2.x のトポロジーを説明しています。
 
 :::
 

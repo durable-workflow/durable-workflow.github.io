@@ -45,7 +45,10 @@ a partir da 3.0.0, o repositório do Server mantém o mesmo stack como
 Continue executando-o com uma imagem 2.x fixada até migrar. Para migrar um
 banco de dados PHP existente para o Server nativo, siga o
 [runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-que começa pelo backup; não há reversão para PHP depois da migração. As seções
+que começa pelo backup. A migração para o Server nativo aceita bancos de dados
+do PHP 2.5.14–2.11.8 e recusa, antes de alterar qualquer coisa, estados que o
+nativo não consegue transferir; ensaie-a primeiro em um backup restaurado.
+Não há reversão para PHP depois da migração. As seções
 abaixo que mencionam Redis, um worker de fila, um agendador ou bootstrap
 descrevem a topologia do PHP 2.x.
 

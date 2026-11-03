@@ -31,8 +31,10 @@ workflow. Server 3.x — це нативна реалізація (Rust), яка
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Щоб перенести наявну базу PHP на нативний Server, виконайте
 [runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-що починається з резервної копії. Конфігурація нижче з позначкою PHP 2.x не
-стосується нативного Server.
+що починається з резервної копії. Перехід охоплює бази PHP 2.5.14–2.11.8 і ще
+до будь-яких змін відхиляє стан, який нативний Server не може перенести; спершу
+відпрацюйте його на відновленій резервній копії. Конфігурація нижче з позначкою
+PHP 2.x не стосується нативного Server.
 
 :::
 
@@ -567,6 +569,9 @@ curl http://localhost:8080/api/cluster/info \
   `supported_sdk_versions` і `client_compatibility`.
 - Єдиний кодек payload — Avro: `capabilities.payload_codecs` дорівнює точно
   `["avro"]`.
+- `qualified_for_php_takeover` завжди дорівнює `false`. Поле описує запущений
+  Server, який під час запуску ніколи не перебирає на себе базу даних, а не те,
+  чи прийме `upgrade-takeover` вашу.
 - Відповідь також містить маніфести `auth_composition_contract`,
   `principal_attribution_contract`, `service_catalog_read_contract` і
   `message_streams_contract`.

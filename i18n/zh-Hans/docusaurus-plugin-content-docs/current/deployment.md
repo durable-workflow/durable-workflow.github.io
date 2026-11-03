@@ -18,7 +18,7 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 :::note 现有 PHP Server 2.x 安装
 
-PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。迁移之前，请继续使用固定的 2.x 镜像运行它。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)；接管后无法回滚到 PHP。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。迁移之前，请继续使用固定的 2.x 镜像运行它。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)。接管支持 PHP 2.5.14–2.11.8 的数据库，并会在做出任何更改之前拒绝原生 Server 无法承接的状态；请先在恢复的备份上演练。接管后无法回滚到 PHP。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
 
 :::
 

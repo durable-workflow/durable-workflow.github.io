@@ -20,7 +20,7 @@ keywords:
 
 :::note 现有 PHP Server 2.x 安装
 
-PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)。下文标注为 PHP 2.x 的配置不适用于原生 Server。
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)。接管支持 PHP 2.5.14–2.11.8 的数据库，并会在做出任何更改之前拒绝原生 Server 无法承接的状态；请先在恢复的备份上演练。下文标注为 PHP 2.x 的配置不适用于原生 Server。
 
 :::
 
@@ -424,6 +424,7 @@ curl http://localhost:8080/api/cluster/info \
 - 值为 `false` 的能力标志表示原生 Server 不提供的功能或已发布契约。`response_compression` 为空，因为原生 Server 发送未压缩的响应。
 - `native_unqualified` 列出原生 Server 省略的每个 PHP 2.x 响应成员及其原因，其中包括 `topology`、`supported_sdk_versions` 和 `client_compatibility`。
 - 唯一的载荷编解码器是 Avro：`capabilities.payload_codecs` 恰好为 `["avro"]`。
+- `qualified_for_php_takeover` 始终为 `false`。它描述的是正在运行的 Server（启动时从不接管数据库），而不是表示 `upgrade-takeover` 是否会接受某个数据库。
 - 响应还携带 `auth_composition_contract`、`principal_attribution_contract`、`service_catalog_read_contract` 和 `message_streams_contract` 清单。
 
 ## PHP Server 2.x 健康、就绪与拓扑 {#php-server-2x-health-readiness-and-topology}

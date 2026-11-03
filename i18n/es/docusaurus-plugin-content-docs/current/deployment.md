@@ -43,9 +43,12 @@ desde la 3.0.0, el repositorio de Server conserva el mismo stack como
 Sigue ejecutándolo con una imagen 2.x fijada hasta que migres. Para trasladar una
 base de datos PHP existente al Server nativo, sigue el
 [runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-que empieza por una copia de seguridad; después de la toma de control no hay
-reversión a PHP. Las secciones siguientes que mencionan Redis, un worker de
-cola, un programador o la inicialización describen la topología de PHP 2.x.
+que empieza por una copia de seguridad. La toma de control admite bases de datos
+de PHP 2.5.14–2.11.8 y rechaza, antes de modificar nada, el estado que el Server
+nativo no puede trasladar; ensáyala primero sobre una copia de seguridad
+restaurada. Después de la toma de control no hay reversión a PHP. Las secciones
+siguientes que mencionan Redis, un worker de cola, un programador o la
+inicialización describen la topología de PHP 2.x.
 
 :::
 

@@ -26,6 +26,7 @@ conservé dans les versions actuelles de Server sous le nom
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Pour faire passer une base PHP existante au Server natif, suivez le
 [runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), qui commence par une sauvegarde.
+La reprise prend en charge les bases PHP 2.5.14–2.11.8 et refuse, avant de modifier quoi que ce soit, tout état que le Server natif ne peut pas reprendre ; entraînez-vous d’abord sur une sauvegarde restaurée.
 La configuration marquée PHP 2.x ci-dessous ne s’applique pas au Server natif.
 
 :::
@@ -431,6 +432,7 @@ Points clés pour le code client :
 - Un indicateur de capacité à `false` désigne une fonctionnalité ou un contrat publié que le natif ne sert pas. `response_compression` est vide, car le natif envoie des réponses non compressées.
 - `native_unqualified` liste chaque membre de la réponse PHP 2.x que le natif omet, avec la raison. On y trouve `topology`, `supported_sdk_versions` et `client_compatibility`.
 - Le seul codec de payload est Avro : `capabilities.payload_codecs` vaut exactement `["avro"]`.
+- `qualified_for_php_takeover` vaut toujours `false`. Il décrit le Server en cours d’exécution, qui ne reprend jamais une base au démarrage, et n’indique pas si `upgrade-takeover` acceptera la vôtre.
 - La réponse contient aussi les manifestes `auth_composition_contract`, `principal_attribution_contract`, `service_catalog_read_contract` et `message_streams_contract`.
 
 ## Santé, disponibilité et topologie de PHP Server 2.x {#php-server-2x-health-readiness-and-topology}

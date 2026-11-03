@@ -44,9 +44,12 @@ Redis) reste disponible. Au tag de publication 2.11.8, il s'agit de
 Continuez à l'exécuter avec une image 2.x épinglée jusqu'à votre migration. Pour
 faire passer une base PHP existante au Server natif, suivez le
 [runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-qui commence par une sauvegarde ; aucun retour vers PHP n'est possible après la
-reprise. Les sections ci-dessous qui mentionnent Redis, un worker de file, un
-ordonnanceur ou l'initialisation décrivent la topologie PHP 2.x.
+qui commence par une sauvegarde. La reprise prend en charge les bases PHP
+2.5.14–2.11.8 et refuse, avant de modifier quoi que ce soit, tout état que le
+Server natif ne peut pas reprendre ; entraînez-vous d'abord sur une sauvegarde
+restaurée. Aucun retour vers PHP n'est possible après la reprise. Les sections
+ci-dessous qui mentionnent Redis, un worker de file, un ordonnanceur ou
+l'initialisation décrivent la topologie PHP 2.x.
 
 :::
 
