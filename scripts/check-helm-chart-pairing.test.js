@@ -30,3 +30,17 @@ test('render the paired chart identity and resolve URLs before MDX URI decoding'
   assert.doesNotThrow(() => decodeURIComponent(link.url));
   assert.equal(link.url, buildArtifactPins().helmChartSourceUrl);
 });
+
+test('derive the Server Git tag that exists for the selected release', () => {
+  const {serverGitTag} = require('./public-artifact-versions');
+  assert.equal(serverGitTag('2.11.8'), '2.11.8');
+  assert.equal(serverGitTag('3.0.1'), 'native-3.0.1');
+  assert.equal(serverGitTag('3.0.2'), 'native-3.0.2');
+  assert.equal(serverGitTag('3.0.3'), '3.0.3');
+  const pins = buildArtifactPins();
+  const tag = serverGitTag(source.artifacts.server);
+  assert.equal(pins.serverGitTag, tag);
+  assert.equal(pins.serverComposeUrl, `https://raw.githubusercontent.com/durable-workflow/server/${tag}/docker-compose.published.yml`);
+  assert.equal(pins.helmChartUpgradeUrl, `https://github.com/durable-workflow/server/blob/${source.helm_chart.source_commit}/k8s/helm/durable-workflow/docs/UPGRADING.md`);
+  assert.equal(pins.serverTagEnv, undefined);
+});

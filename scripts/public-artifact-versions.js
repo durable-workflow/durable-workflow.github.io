@@ -127,6 +127,16 @@ function buildRustPackageAuthority(versions = ARTIFACT_VERSIONS) {
   });
 }
 
+// Native Server releases 3.0.0 through 3.0.2 are tagged `native-X.Y.Z` in the
+// Server repository. PHP 2.x releases and native releases from 3.0.3 use the
+// plain version as their Git tag.
+const NATIVE_PREFIXED_SERVER_TAGS = Object.freeze(['3.0.0', '3.0.1', '3.0.2']);
+
+function serverGitTag(version) {
+  assertStableVersion('Server', version);
+  return NATIVE_PREFIXED_SERVER_TAGS.includes(version) ? `native-${version}` : version;
+}
+
 function productTrainVersion(versions = ARTIFACT_VERSIONS) {
   return assertStableVersion('Python SDK', versions['sdk-python']);
 }
@@ -137,6 +147,7 @@ function buildArtifactPins(versions = ARTIFACT_VERSIONS, helmChart = HELM_CHART)
   }
   const python = buildPythonPackageAuthority(versions);
   const rust = buildRustPackageAuthority(versions);
+  const serverTag = serverGitTag(versions.server);
 
   return Object.freeze({
     cliPackageUrl: `https://github.com/durable-workflow/cli/releases/tag/${versions.cli}`,
@@ -172,13 +183,15 @@ function buildArtifactPins(versions = ARTIFACT_VERSIONS, helmChart = HELM_CHART)
     helmChartRepository: helmChart.repository,
     helmChartInstallIdentity: `${helmChart.repository} --version ${versions['helm-chart']}`,
     helmChartSourceUrl: `https://github.com/durable-workflow/server/blob/${helmChart.source_commit}/k8s/helm/durable-workflow/Chart.yaml`,
-    helmChartUpgradeUrl: `https://github.com/durable-workflow/server/blob/${versions.server}/k8s/helm/durable-workflow/docs/UPGRADING.md`,
+    helmChartUpgradeUrl: `https://github.com/durable-workflow/server/blob/${helmChart.source_commit}/k8s/helm/durable-workflow/docs/UPGRADING.md`,
     helmChartQualificationUrl: helmChart.qualification_url,
     serverPackageUrl: `https://hub.docker.com/r/durableworkflow/server/tags?name=${versions.server}`,
     serverDockerHubImage: `durableworkflow/server:${versions.server}`,
     serverGhcrImage: `ghcr.io/durable-workflow/server:${versions.server}`,
     serverImageEnv: `DW_SERVER_IMAGE=durableworkflow/server:${versions.server}`,
-    serverTagEnv: `DW_SERVER_TAG=${versions.server}`,
+    serverGitTag: serverTag,
+    serverComposeUrl: `https://raw.githubusercontent.com/durable-workflow/server/${serverTag}/docker-compose.published.yml`,
+    serverComposeSourceUrl: `https://github.com/durable-workflow/server/blob/${serverTag}/docker-compose.published.yml`,
     waterlineVersion: versions.waterline,
     waterlinePackageUrl: `https://packagist.org/packages/durable-workflow/waterline#${versions.waterline}`,
     waterlineComposerPackage: composerPackagePin('durable-workflow/waterline', versions.waterline),
@@ -340,4 +353,5 @@ module.exports = {
   readStableReleases,
   replaceArtifactTokens,
   resolveArtifactAlias,
+  serverGitTag,
 };

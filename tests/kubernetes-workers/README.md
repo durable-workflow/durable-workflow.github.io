@@ -15,7 +15,8 @@ removal of all six original registrations. Active-task interruption, forced
 kill, recovery, provider networking, production database operations and HA
 are separate controls and are not claimed by this fixture.
 
-The Server fixture uses ephemeral SQLite and a real scheduler. Its contents
+The Server fixture runs the native Server as one process on ephemeral SQLite;
+that process creates its schema and fires timers and maintenance itself. Its contents
 are synthetic test data. The strings named `website336-worker` and
 `website336-control` are test-only role credentials. The public guide keeps
 actual credentials outside manifests and images.

@@ -17,10 +17,23 @@ keywords:
 # Server
 
 The published Durable Workflow server is a standalone workflow-orchestration
-service implemented in PHP. It exposes the same durable engine used by the
-embedded PHP package through a language-neutral HTTP+JSON control plane and
-worker protocol. PHP is an implementation fact at this boundary, not an
-application-language requirement.
+service. Server 3.x is a native (Rust) implementation that runs as one process
+and exposes a language-neutral HTTP+JSON control plane and worker protocol.
+The implementation language is not an application-language requirement. PHP
+Server 2.x, which ran the embedded PHP engine behind this boundary, is frozen at
+2.11.8 and receives no further releases.
+
+:::note Existing PHP Server 2.x installations
+
+The PHP 2.x stack (server, queue worker, scheduler, bootstrap job and Redis) is
+[`docker-compose.published.yml` at the 2.11.8 tag](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
+kept on current Server releases as
+[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
+To move an existing PHP database to native, follow the backup-first
+[native takeover runbook](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+Configuration below marked as PHP 2.x does not apply to the native Server.
+
+:::
 
 ## Is this only for PHP teams?
 
@@ -33,7 +46,7 @@ not become a Laravel application.
 The adoption paths are separate:
 
 - **Standalone adoption:** operators deploy the published server image and its
-  database, queue/cache, scheduler, and API roles. Application teams run PHP,
+  database. Application teams run PHP,
   Python, or Rust workers against that endpoint. The server owns orchestration
   state and the public control-plane/worker boundary.
 - **Embedded adoption:** a Laravel application installs the PHP workflow
@@ -91,9 +104,8 @@ SLA. HA plans are planned and not yet available to provision.
 ### Published Image + SQLite
 
 The fastest source-free way to run the server is the published Docker image.
-This quickstart uses SQLite, database queues, and file cache inside the
-container. Mount `/app/database` so bootstrap and the API server share the same
-SQLite file:
+The native image defaults to SQLite at `/app/database/database.sqlite`; mount
+`/app/database` on a volume so the database survives container replacement:
 
 ```bash
 server_image=%%artifact.serverDockerHubImage%%
@@ -101,78 +113,64 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-server-quickstart
 
-docker run --rm \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
 
-This creates the default namespace and starts the API plus its infrastructure
-queue worker. The Laravel queue is `default`, separate from your SDK's named
-task queues. The queue worker advances durable timers while SDK workers are
-stopped. Schedule evaluation and production maintenance need the additional
-roles in the published Compose stack below.
+On first start the Server creates its schema and the `default` namespace. The
+same process fires durable timers and schedules and runs its maintenance
+passes, including activity-timeout enforcement, while SDK workers are stopped.
+There is no bootstrap command, queue worker or scheduler. The Server refuses
+to start without `DW_AUTH_TOKEN`.
 
 The API is bound to loopback and `dev-token` is for this local exercise. For
 remote access, use the Compose deployment with your own credentials, TLS and
-network access controls. Use that stack with MySQL and shared Redis for a
-production rehearsal.
+network access controls.
 
-Remove these local exercise containers and database when finished:
+Remove this local exercise container and database when finished:
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-server-quickstart
 ```
 
 ### Published Image + Compose
 
-Use the published Compose artifact when you want the source-free
-multi-container stack backed by MySQL and Redis:
+Use the published Compose artifact when you want the source-free stack backed
+by MySQL. Fetch it from the selected release and pin the image:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-server_image=%%artifact.serverDockerHubImage%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
-env DW_SERVER_IMAGE="$server_image" docker compose \
-  -f docker-compose.published.yml up -d --wait
+docker compose -f docker-compose.published.yml up -d --wait
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
+
+The stack is the native Server and MySQL. Compose refuses to start until
+`DW_AUTH_TOKEN` is set. The [deployment guide](/docs/deployment#single-node-production)
+covers the production env file, backups and upgrades.
 
 ### Ports
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| Server API | 8080 | Control-plane and worker-protocol endpoints |
-| MySQL | 3306 | Database (exposed for development convenience) |
-| Redis | 6379 | Cache and queue (exposed for development convenience) |
+| Server API | 8080 | Control-plane and worker-protocol endpoints, published on `127.0.0.1` by default (`SERVER_BIND_ADDRESS`, `SERVER_PORT`) |
+| MySQL | 3306 | Database, reachable only on the Compose network |
 
 ## Configuration
 
@@ -191,9 +189,14 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Supported: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+.
+Supported: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+. The native Server
+accepts `DB_CONNECTION=sqlite` (its default), `mysql`, `mariadb` or `pgsql`, and
+waits for a MySQL or PostgreSQL database that is not accepting connections yet.
 
-### Cache and Queue
+### Cache and Queue (PHP 2.x only)
+
+The native Server has no cache store, Laravel queue or Redis connection; these
+settings apply only to PHP Server 2.x.
 
 ```bash
 CACHE_STORE=redis
@@ -207,16 +210,16 @@ REDIS_DB=0
 
 Cache must support [atomic locks](https://laravel.com/docs/12.x/cache#atomic-locks). Queue drivers: Redis, Amazon SQS, Beanstalkd, database.
 
-Atomic cache locks are required for server-side
+On PHP 2.x, atomic cache locks are required for server-side
 [task queue admission caps](/docs/polyglot/task-queue-admission) and
-query-task backpressure. Use Redis for multi-node deployments that need
+query-task backpressure. Use Redis for PHP multi-node deployments that need
 workflow, activity, or query admission to hold across every server process.
 
 ### Authentication
 
-The server supports three auth modes:
-
-**Token-based** (default):
+The native Server uses token authentication. A shared `DW_AUTH_TOKEN` is
+required: the Server refuses to start without it, and it accepts that token for
+every role.
 
 ```bash
 DW_AUTH_DRIVER=token
@@ -225,11 +228,14 @@ DW_AUTH_TOKEN=your-secret-token-here
 
 All requests must send `Authorization: Bearer your-secret-token-here`.
 
-For least-privilege deployments, configure role-scoped tokens instead of one
-shared token:
+For least-privilege clients, add role-scoped tokens and give workers and
+applications the narrower token. Keep the shared token secret, like the admin
+token; native refuses `DW_AUTH_BACKWARD_COMPATIBLE=false`, so it cannot be
+disabled.
 
 ```bash
 DW_AUTH_DRIVER=token
+DW_AUTH_TOKEN=shared-secret
 DW_WORKER_TOKEN=worker-secret
 DW_OPERATOR_TOKEN=operator-secret
 DW_ADMIN_TOKEN=admin-secret
@@ -240,7 +246,10 @@ Operator tokens can start, list, signal, query, update, repair, cancel,
 terminate, archive, and observe workflows. Admin tokens can use administrative
 endpoints such as namespace and retention management.
 
-**HMAC signature**:
+The native Server refuses the `signature` driver. A release image also refuses
+`DW_AUTH_DRIVER=none`, which would admit every request as an administrator.
+
+**PHP 2.x only — HMAC signature:**
 
 ```bash
 DW_AUTH_DRIVER=signature
@@ -248,7 +257,7 @@ DW_SIGNATURE_KEY=your-signature-secret
 ```
 
 Requests must include `X-Signature`, calculated as
-`hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`. The server
+`hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`. PHP 2.x
 also accepts role-scoped signature keys:
 
 ```bash
@@ -258,7 +267,7 @@ DW_OPERATOR_SIGNATURE_KEY=operator-signature-secret
 DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 ```
 
-**No auth** (development only):
+**PHP 2.x only — no auth** (development only):
 
 ```bash
 DW_AUTH_DRIVER=none
@@ -266,9 +275,10 @@ DW_AUTH_DRIVER=none
 
 ⚠️ **Do not use `none` in production.** All endpoints become publicly accessible.
 
-### Workflow Package
+### Workflow Package (PHP 2.x only)
 
-The Docker image installs the `durable-workflow/workflow` package. Control which version:
+The PHP 2.x Docker image installs the `durable-workflow/workflow` package. The
+native image does not. For PHP 2.x builds, control which version:
 
 ```bash
 # Build-time arg (set in docker-compose.yml or pass to docker build)
@@ -384,9 +394,12 @@ verify its retention behavior before applying this PHP Server procedure.
 
 ### Namespaces
 
-The `server-bootstrap` command runs migrations and seeds the `default`
-namespace. Use `DW_DEFAULT_NAMESPACE` to change the namespace used when a
-request omits the namespace header:
+The native Server creates the `default` namespace when it creates its schema at
+startup, and a request that omits the namespace header uses `default`. Native
+refuses to start if `DW_DEFAULT_NAMESPACE` is set to anything other than
+`default`. On PHP 2.x, the `server-bootstrap` command runs migrations and seeds
+the namespace, and `DW_DEFAULT_NAMESPACE` changes the namespace used when a
+request omits the header:
 
 ```bash
 DW_DEFAULT_NAMESPACE=default
@@ -1194,16 +1207,18 @@ supported topology before deploying production traffic. It separates local
 development, single-node production, small clustered deployments, raw
 Kubernetes manifests, and support-led topologies.
 
-The self-serve small-cluster contract is deliberately narrow: 2-3 stateless API
-nodes behind a load balancer, one shared external MySQL or PostgreSQL database,
+The self-serve small-cluster contract is a PHP Server 2.x contract and is
+deliberately narrow: 2-3 stateless API nodes behind a load balancer, one shared external MySQL or PostgreSQL database,
 shared Redis, independently scaled workers, and exactly one scheduler or
 maintenance runner. Choose stop-the-world upgrades or
 [rolling upgrades](/docs/rolling-upgrades) per release; the rolling-upgrade
 contract names the version-skew, schema, drain, readiness, and rollback
 guarantees that must hold. SQLite clustering, Redis-less multi-node mode,
 duplicate schedulers, active/active multi-region, and provider-specific
-failover are outside that contract until separately validated. The separately
-versioned Helm path is documented in the
+failover are outside that contract until separately validated. No native
+Compose small-cluster recipe has been published; for more than one native
+Server replica, use the separately versioned Helm chart's native mode,
+documented in the
 [deployment guide](/docs/deployment#helm-chart-for-kubernetes). Active/passive
 multi-region material in the
 [self-hosting guide](/docs/deployment#activepassive-multi-region) is
@@ -1217,13 +1232,14 @@ source-tree builds:
 - Docker Hub: `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
 - Published-image Compose:
-  [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
-- Raw Kubernetes manifests:
+  [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%)
+- Helm chart: `%%artifact.helmChartInstallIdentity%%`
+- Raw Kubernetes manifests (PHP 2.x shape):
   [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 Production deployments should pin a version tag or image digest, use
-role-scoped credentials, run bootstrap/migrations before serving traffic, and
-prove readiness with `/api/ready`, `/api/cluster/info`, and worker
+role-scoped credentials, let the native Server check its schema at startup
+(PHP 2.x: run bootstrap/migrations) before serving traffic, and prove readiness with `/api/ready`, `/api/cluster/info`, and worker
 registration. Do not shift production traffic based on `/api/health` alone.
 
 ## API Reference
@@ -1317,14 +1333,14 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 1. Workers registered? `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Durable-Workflow-Control-Plane-Version: 2" -H "X-Namespace: default"`
 2. Workers polling correct task queue?
 3. Workflow started with matching task queue?
-4. Cache backend shared across server instances?
+4. PHP 2.x only: cache backend shared across server instances?
 
 ### Long-poll connections timing out immediately
 
 **Check:**
-1. Cache driver supports atomic locks? Test with `php artisan workflow:v2:doctor --strict`
-2. Redis reachable from server?
-3. Load balancer timeout set higher than long-poll timeout (default: 60s)?
+1. Load balancer timeout set higher than long-poll timeout (default: 60s)?
+2. PHP 2.x only: cache driver supports atomic locks? Test with `php artisan workflow:v2:doctor --strict`
+3. PHP 2.x only: Redis reachable from server?
 
 ### Database connection errors
 
@@ -1332,13 +1348,15 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 1. Database host and port correct?
 2. Credentials valid?
 3. Database exists?
-4. Migrations run? `php artisan migrate:status`
+4. Native: does the Server log a schema refusal at startup? It refuses a PHP
+   or unknown database until the [native takeover](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+   has run. PHP 2.x: migrations run? `php artisan migrate:status`
 
 ### Auth failures
 
 **Check:**
 1. `DW_AUTH_DRIVER` matches client auth method?
-2. Token/HMAC secret matches between server and client?
+2. Token (or, on PHP 2.x, HMAC secret) matches between server and client?
 3. Auth headers present? `Authorization: Bearer $TOKEN` or HMAC signature headers?
 
 ## Learn More

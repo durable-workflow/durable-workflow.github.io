@@ -226,7 +226,9 @@ and image digests used for each completed check.
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-The Helm chart's recorded `appVersion` is `%%artifact.helmChartAppVersion%%`, matching the selected Server. Its [published pairing receipt](%%artifact.helmChartQualificationUrl%%) verifies OCI/package digests and source identity; it is not a fresh cluster-install result. See [chart selection and upgrades](./deployment.md#helm-chart-selection) before installing or overriding the image.
+The selected Server is the native 3.x Server. PHP Server 2.x is frozen at 2.11.8 and receives no further releases; existing PHP installations keep their pinned 2.x image until they follow the [native takeover runbook](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+
+The Helm chart's recorded `appVersion` is `%%artifact.helmChartAppVersion%%`, matching the selected Server, and the chart runs the native Server by default. Its [published release receipt](%%artifact.helmChartQualificationUrl%%) records the chart release run, OCI/package digests, source identity, and a kind install in that run; it is not a production cluster qualification. See [chart selection and upgrades](./deployment.md#helm-chart-selection) before installing or overriding the image.
 
 PyPI renders the Python distribution version as
 `%%artifact.pythonRegistryVersion%%`; the documented PEP 440 install spelling
