@@ -486,6 +486,8 @@ Verwenden Sie für den Selbsthosting-Import das vollständige [Migrationsverfahr
 
 Ein altes Paket, eine Warteschlange, Tabelle, ein Geheimnis oder eine Waterline-Bereitstellung wird zuletzt stillgelegt. Dies ist nie der Umstellungsmechanismus.
 
+Für Wechsel zwischen Laufzeiten im Service-Modus verwenden Sie [Workloads zwischen Laufzeiten verschieben](/docs/polyglot/runtime-migration/). Server-Verlaufsexport ist kein Import laufenden Zustands.
+
 ## Mit dem gewählten Weg fortfahren {#continue-with-the-chosen-path}
 
 - [Stabile v1-Installation](/docs/1.x/installation/)

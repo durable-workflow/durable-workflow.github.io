@@ -563,6 +563,8 @@ that explicit validated import operation creates Server-owned state.
 Retiring an old package, queue, table, secret, or Waterline deployment is the
 last step, never the cutover mechanism.
 
+For moves between service-mode runtimes, use [moving between runtimes](/docs/polyglot/runtime-migration/). Server-sourced history export is not live-state import.
+
 ## Continue with the chosen path
 
 - [Stable v1 installation](/docs/1.x/installation/)

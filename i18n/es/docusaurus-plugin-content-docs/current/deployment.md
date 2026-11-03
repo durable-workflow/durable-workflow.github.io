@@ -8,6 +8,8 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Despliegues autogestionados {#self-hosting-deployments}
 
+Para cambiar entre runtimes autogestionados o Cloud, siga [trasladar cargas entre runtimes](/docs/polyglot/runtime-migration/). Las ejecuciones existentes permanecen en el origen mientras se trasladan los nuevos inicios.
+
 Durable Workflow v2 admite varias topologías autogestionadas. Elige la más
 sencilla que corresponda al entorno que operas y define explícitamente el
 contrato de imagen, base de datos, caché, autenticación, disponibilidad y actualización.

@@ -548,6 +548,8 @@ pause/resume operation. Planned SLA terms use the same provisioned-time model at
 own rates, minimums and caps. Use the plan's returned `billing_terms` when
 interpreting usage; historical invoices keep their accepted terms.
 
+Before deprovisioning, follow [moving between runtimes](/docs/polyglot/runtime-migration/#preserve-evidence): retain verified history and payload evidence, and confirm that all source-owned runs are terminal. Capacity billing continues while the source remains provisioned.
+
 Export the same evidence as CSV or a JSON report when a downstream finance
 system needs a file handoff:
 

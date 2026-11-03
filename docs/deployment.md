@@ -8,6 +8,8 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Self-Hosting Deployments
 
+For self-hosted or Cloud runtime changes, follow [moving between runtimes](/docs/polyglot/runtime-migration/). Keep existing runs at their source while new starts move.
+
 Durable Workflow v2 supports several self-hosted shapes. Pick the smallest path
 that matches the environment you operate, then keep the image, database, cache,
 auth, readiness, and upgrade contract explicit.

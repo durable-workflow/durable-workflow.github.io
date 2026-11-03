@@ -16,6 +16,7 @@ const sidebars = {
       },
       items: [
         'polyglot/deployment-modes',
+        'polyglot/runtime-migration',
         'polyglot/cloud-control-plane',
         'polyglot/server',
         'polyglot/cancellation',

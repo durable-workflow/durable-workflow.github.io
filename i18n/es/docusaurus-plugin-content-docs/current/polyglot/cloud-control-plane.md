@@ -367,6 +367,8 @@ El contador de tiempo de Cloud Dev comienza al activar el runtime aislado y term
 
 Los runtimes inactivos siguen generando cargos de capacidad. Retirarlos detiene esa facturación y elimina datos activos y credenciales; no es una pausa reanudable. Los SLA previstos utilizan el mismo modelo de tiempo aprovisionado con sus propias tasas, mínimos y máximos. Interpreta el uso según los `billing_terms` devueltos; las facturas históricas conservan sus condiciones aceptadas.
 
+Antes de desaprovisionar, siga [trasladar cargas entre runtimes](/docs/polyglot/runtime-migration/#preserve-evidence): conserve evidencia verificada de historial y payloads y confirme que todas las ejecuciones del origen son terminales. La facturación de capacidad continúa mientras el origen siga aprovisionado.
+
 Exporta la misma evidencia como CSV o informe JSON si un sistema financiero posterior necesita un archivo:
 
 ```bash
