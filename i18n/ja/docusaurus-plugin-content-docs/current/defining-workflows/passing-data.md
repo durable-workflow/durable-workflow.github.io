@@ -95,13 +95,9 @@ class MyActivity extends Activity
 
 モデルはワークフローのコードではなくアクティビティで読み込んでください。ワークフローのコードはリプレイで再実行され、後のリプレイではデータベースクエリが別の行を返す可能性があります。
 
-`start()` にモデルを渡すと `InvalidArgumentException` がスローされます。`activity()` にモデルを渡すと、ワークフローの実行が失敗します。どちらのエラーもモデルクラスを示します。
+`start()` にモデルを渡すと `InvalidArgumentException` がスローされます。`activity()` にモデルを渡すと、ワークフローの実行が失敗します。どちらのエラーメッセージも `unsupported_value_type` で始まります。
 
-```
-unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
-```
-
-同じルールは Eloquent コレクションにも適用されます。代わりにキーの配列を渡してください。アクティビティが一部の属性だけを必要とする場合は、それらを配列として渡してください。
+同じルールは Eloquent コレクションにも適用されます。代わりにキーの配列を渡してください。アクティビティが一部の属性だけを必要とする場合は、必要な値だけを配列として渡してください。これらの値はワークフロー履歴に保存されるため、認証情報やその他の秘密情報は決して含めないでください。
 
 v1 では、ワークフローとアクティビティは `SerializesModels` を通じてモデルを受け取っていました。これはモデル識別子を保存し、ジョブの実行時にモデルを再読み込みする仕組みです。V2 はこれを行いません。
 

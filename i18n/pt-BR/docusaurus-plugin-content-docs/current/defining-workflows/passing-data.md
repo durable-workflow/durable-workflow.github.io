@@ -95,13 +95,9 @@ class MyActivity extends Activity
 
 Carregue modelos em atividades, não no código do workflow. O código do workflow é executado de novo no replay, e uma consulta ao banco de dados pode retornar linhas diferentes em um replay posterior.
 
-Passar um modelo para `start()` lança uma `InvalidArgumentException`. Passar um modelo para `activity()` faz a execução do workflow falhar. Os dois erros informam a classe do modelo:
+Passar um modelo para `start()` lança uma `InvalidArgumentException`. Passar um modelo para `activity()` faz a execução do workflow falhar. As duas mensagens de erro começam com `unsupported_value_type`.
 
-```
-unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
-```
-
-A mesma regra vale para coleções do Eloquent. Passe um array de chaves no lugar. Se a atividade precisa apenas de alguns atributos, passe-os como array.
+A mesma regra vale para coleções do Eloquent. Passe um array de chaves no lugar. Se a atividade precisa apenas de alguns atributos, passe só esses valores como array. O histórico do workflow os guarda, então nunca inclua credenciais ou outros segredos.
 
 Na v1, workflows e atividades recebiam modelos por meio de `SerializesModels`, que armazenava um identificador do modelo e recarregava o modelo quando o job era executado. A V2 não faz isso.
 

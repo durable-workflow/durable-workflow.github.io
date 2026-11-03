@@ -104,13 +104,9 @@ class MyActivity extends Activity
 
 Завантажуйте моделі в activity, а не в коді workflow. Код workflow виконується повторно під час replay, і запит до бази даних може повернути інші рядки під час пізнішого replay.
 
-Передавання моделі в `start()` викидає `InvalidArgumentException`. Передавання моделі в `activity()` завершує запуск workflow з помилкою. Обидві помилки називають клас моделі:
+Передавання моделі в `start()` викидає `InvalidArgumentException`. Передавання моделі в `activity()` завершує запуск workflow з помилкою. Обидва повідомлення про помилку починаються з `unsupported_value_type`.
 
-```
-unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
-```
-
-Те саме правило діє для колекцій Eloquent. Натомість передавайте масив ключів. Якщо activity потрібні лише кілька атрибутів, передайте їх масивом.
+Те саме правило діє для колекцій Eloquent. Натомість передавайте масив ключів. Якщо activity потрібні лише кілька атрибутів, передайте масивом лише ці значення. Історія workflow їх зберігає, тому ніколи не додавайте облікові дані чи інші секрети.
 
 У v1 workflow та activity отримували моделі через `SerializesModels`, який зберігав ідентифікатор моделі й повторно завантажував модель під час виконання job. V2 цього не робить.
 

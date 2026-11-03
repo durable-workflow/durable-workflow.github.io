@@ -259,7 +259,7 @@ SDK nuevas. Si usabas uno propio, drena v1 antes o recodifica el historial a
 señala otros valores `workflows.serializer` como deuda de migración. Omitir el
 códec en ejecuciones nuevas resuelve a `avro`.
 
-**Los modelos Eloquent no son valores de carga útil de v2.** v1 pasaba modelos a workflows y actividades mediante `SerializesModels`. En v2, pasa la clave del modelo y carga el modelo dentro de la actividad. Un argumento de modelo falla con un error `unsupported_value_type` que nombra la clase del modelo. Consulta [Pasar datos](/docs/defining-workflows/passing-data/#models).
+**Los modelos Eloquent no son valores de carga útil de v2.** v1 pasaba modelos a workflows y actividades mediante `SerializesModels`. En v2, pasa la clave del modelo y carga el modelo dentro de la actividad. Un argumento de modelo falla con un error `unsupported_value_type`. Consulta [Pasar datos](/docs/defining-workflows/passing-data/#models).
 
 **Las subclases de modelos solo se admiten si conservan el contrato de columnas y
 claves del paquete.** La [matriz de personalización](/docs/configuration/customization-matrix/)

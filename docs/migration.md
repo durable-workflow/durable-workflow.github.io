@@ -250,7 +250,7 @@ Keep a legacy codec (`'workflow-serializer-y'` or `'workflow-serializer-base64'`
 
 **Custom serializer classes from v1 are unsupported in v2.** The public v2 registry resolves only `avro`. The legacy `workflow-serializer-y` and `workflow-serializer-base64` readers are confined to the internal v1 import/drain path and cannot be selected for a new v2 run or SDK payload. If you had a custom serializer, drain v1 runs before upgrading or re-encode historical payloads into `avro` — the custom class is not consulted. `php artisan workflow:v2:doctor` flags any other `workflows.serializer` value as migration debt; new-run codec omission resolves to `avro`.
 
-**Eloquent models are not v2 payload values.** v1 passed models to workflows and activities through `SerializesModels`. In v2, pass the model key and load the model inside the activity. A model argument fails with an `unsupported_value_type` error that names the model class. See [Passing Data](/docs/defining-workflows/passing-data/#models).
+**Eloquent models are not v2 payload values.** v1 passed models to workflows and activities through `SerializesModels`. In v2, pass the model key and load the model inside the activity. A model argument fails with an `unsupported_value_type` error. See [Passing Data](/docs/defining-workflows/passing-data/#models).
 
 **Custom model subclasses are supported only when they keep the package's column and key contract.** The frozen support matrix in
 [Customization Matrix](/docs/configuration/customization-matrix/) is

@@ -95,13 +95,9 @@ class MyActivity extends Activity
 
 Chargez les modèles dans les activités, pas dans le code du workflow. Le code du workflow est rejoué lors de la relecture, et une requête à la base de données peut renvoyer d’autres lignes lors d’une relecture ultérieure.
 
-Transmettre un modèle à `start()` lève une `InvalidArgumentException`. Transmettre un modèle à `activity()` fait échouer l’exécution du workflow. Les deux erreurs nomment la classe du modèle :
+Transmettre un modèle à `start()` lève une `InvalidArgumentException`. Transmettre un modèle à `activity()` fait échouer l’exécution du workflow. Les deux messages d’erreur commencent par `unsupported_value_type`.
 
-```
-unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
-```
-
-La même règle s’applique aux collections Eloquent. Transmettez plutôt un tableau de clés. Si l’activité n’a besoin que de quelques attributs, transmettez-les sous forme de tableau.
+La même règle s’applique aux collections Eloquent. Transmettez plutôt un tableau de clés. Si l’activité n’a besoin que de quelques attributs, transmettez uniquement ces valeurs sous forme de tableau. L’historique du workflow les conserve : n’y incluez jamais d’identifiants de connexion ni d’autres secrets.
 
 En v1, les workflows et les activités recevaient les modèles via `SerializesModels`, qui stockait un identifiant de modèle et rechargeait le modèle à l’exécution du job. V2 ne le fait pas.
 

@@ -95,13 +95,9 @@ class MyActivity extends Activity
 
 请在活动中加载模型，而不是在工作流代码中加载。工作流代码会在重放时重新执行，之后的重放中数据库查询可能返回不同的行。
 
-向 `start()` 传递模型会抛出 `InvalidArgumentException`。向 `activity()` 传递模型会使工作流运行失败。两种错误都会指出模型类：
+向 `start()` 传递模型会抛出 `InvalidArgumentException`。向 `activity()` 传递模型会使工作流运行失败。两种错误消息都以 `unsupported_value_type` 开头。
 
-```
-unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
-```
-
-同样的规则适用于 Eloquent 集合。请改为传递键数组。如果活动只需要少数几个属性，请以数组形式传递这些属性。
+同样的规则适用于 Eloquent 集合。请改为传递键数组。如果活动只需要少数几个属性，请只以数组形式传递这些值。工作流历史会保存它们，因此切勿包含凭据或其他机密信息。
 
 在 v1 中，工作流和活动通过 `SerializesModels` 接收模型：它保存模型标识符，并在任务运行时重新加载模型。V2 不会这样做。
 
