@@ -96,26 +96,29 @@ class MyNonRetryableActivity extends Activity
 
 仍有有效活动重试机会的运行会保持等待；如果原始预算尚未过期，修正后的代码成功后就可以继续执行。这并不保证所有失败的工作流都能原地修复：未处理的最后一次活动失败、工作流代码失败、结构限制或工作流超时都可能使运行进入终态。
 
-对于失败终态的运行，应保留历史并核对所有外部副作用，再决定应用是否应启动新工作流。重复业务操作需要应用层幂等性。系统不会自动重试整个工作流，也不会重新打开终态运行；参见[工作流级重试](#workflow-level-retry)。如果运行因未捕获的活动失败而结束，请在部署修复后检查能否对它执行 [redrive](#redrive)。redrive 会在一个新运行中继续，并复用已完成活动的结果。
+对于失败终态的运行，应保留历史并核对所有外部副作用，再决定应用是否应启动新工作流。重复业务操作需要应用层幂等性。如果运行因未捕获的活动失败、工作流代码失败或结构限制而结束，请在部署修复后检查能否对它执行 [redrive](#redrive)。redrive 会在一个新运行中继续，并复用已完成的步骤。工作流代码失败需要修正后的代码以及 Workflow 2.19.0 或更高版本；参见[在修正后的工作流代码上执行 redrive](#redrive-corrected-definition)。系统不会自动重试整个工作流，也不会重新打开终态运行；参见[工作流级重试](#workflow-level-retry)。
 
 ## 对失败的运行执行 redrive {#redrive}
 
-redrive 会在同一工作流实例的新运行中继续一个失败的运行。新运行复用失败之前已完成活动的记录结果，并重新调度失败的活动。修复活动失败的原因后使用它，这样付款或电子邮件这类已完成的工作就不会重复执行。
+redrive 会在同一工作流实例的新运行中继续一个失败的运行。新运行复用失败之前已完成步骤的记录结果，并重新执行工作流的其余部分。修复失败的原因后使用它，这样付款或电子邮件这类已完成的工作就不会重复执行。
 
 失败的运行保持关闭且不变。新运行称为后继运行，它获得下一个运行编号，并成为实例的当前运行。它的 `continued_from_run_id` 指向失败的运行。它的 `WorkflowStarted` 事件记录 `recovery_kind: redrive` 和 `resume_step_sequence`，后者是恢复执行的步骤。
 
-本节介绍 Workflow 2.18.0 及更高版本中的 redrive。更早的 Workflow 版本以及原生 Server 中的 redrive 接受的运行更少，并且只复用活动结果。请参阅[更早的版本与原生 Server](#redrive-earlier-releases)。
+本节介绍 Workflow 2.19.0 及更高版本中的 redrive。更早的 Workflow 版本以及原生 Server 中的 redrive 接受的运行更少。请参阅[更早的版本与原生 Server](#redrive-earlier-releases)。
 
 后继运行从头重放工作流代码：
 
 - 在失败运行中已完成的每个活动调用都返回其记录结果。该活动不会再次运行。
 - 失败步骤之前的副作用或版本标记会按步骤顺序复用。副作用不会再次运行，版本检查返回记录的版本。
 - 在失败步骤之前已触发的 `timer()` 会在后继运行中记录为已触发。后继运行不会再次等待它。
-- 失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
+- 工作流代码在失败步骤之前 upsert 的备忘录或搜索属性会按步骤顺序复用，后继运行保留相同的值。
+- 已接收并应用其信号的信号等待（`await('name')`）会连同该信号的值一起复用。该信号不会再次投递。
+- 如果运行因活动失败而结束，失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
+- 如果运行在工作流代码中失败或因结构限制失败，后继运行会从工作流代码未曾到达的步骤处恢复执行。
 - 失败步骤之后的所有内容都像在新运行中一样执行。
 - 运行开始时设置的备忘录和搜索属性会像 continue-as-new 一样传递给后继运行。
 - 后继运行保留失败运行的执行截止时间。它的运行超时从 redrive 时重新开始计算。
-- 每个被复用的活动结果、副作用、版本标记和已触发计时器都带有 `reused_from_run_id` 和 `reused_recorded_at`。
+- 每个被复用的步骤都带有 `reused_from_run_id` 和 `reused_recorded_at`。
 - 在嵌入式模式下，后继运行中的 `Workflow::now()` 从失败运行的开始时间起算。重放使用 `reused_recorded_at`，因此复用步骤之后的 `Workflow::now()` 与失败运行中的时间一致。被第二次 redrive 复用的步骤保留其首次运行的时间。
 
 ### 请求 redrive {#request-a-redrive}
@@ -149,16 +152,34 @@ if ($result['accepted']) {
 
 服务模式 Worker 会上报工作流定义指纹。redrive 会将其与运行开始时记录的指纹进行比较。在 Rust SDK 中，请为每个需要支持 redrive 的工作流调用 `Worker::set_workflow_definition_sources()`。未注册源码标识的工作流仍可运行，但 redrive 会拒绝它。
 
+### 在修正后的工作流代码上执行 redrive {#redrive-corrected-definition}
+
+如果运行因工作流代码抛出异常而失败，同样的代码会在同一步骤再次抛出异常，因此 redrive 会以 `workflow_code_failure_requires_corrected_definition` 拒绝它。请先部署修复，再附带 `allow_definition_change` 请求 redrive：
+
+```php
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+    'allow_definition_change' => true,
+]);
+```
+
+在写入任何内容之前，redrive 会在内存中使用新代码重放已完成的步骤。新代码必须以相同的顺序执行相同的步骤，并到达旧代码失败的那个步骤。否则，redrive 会以 `definition_incompatible_with_prefix` 拒绝，并由 `definition_mismatch` 指出第一个不同的步骤（`sequence`）以及 `kind`，例如 `step_shape` 或 `version_range`。如果已完成的历史超出历史预算，redrive 会以 `definition_check_over_budget` 拒绝。
+
+被接受的变更会运行修正后的代码，并在后继运行的 `WorkflowStarted` 上将被替换定义的指纹记录为 `definition_changed_from`。之后在同一定义上执行的 redrive 不会记录该字段。
+
+`allow_definition_change` 适用于嵌入式运行。对于由服务模式 Worker 启动的运行，redrive 会以 `definition_change_requires_replay_check` 拒绝定义变更。未传入 `allow_definition_change` 时，已变更的定义会以 `workflow_definition_unavailable_or_changed` 被拒绝。
+
 ### 失败的运行何时可以 redrive {#redrive-eligibility}
 
 满足以下全部条件时，redrive 才会接受失败的运行：
 
 - 该运行是实例的当前运行。
-- 运行失败的原因是活动失败到达工作流代码且未被捕获。在工作流代码中失败、因结构限制失败或因工作流超时失败的运行会被拒绝。
-- 失败活动之前的每个步骤都是已完成的活动、副作用、版本标记或已触发的 `timer()`。活动和副作用的结果必须以内联方式存储。存放在外部负载存储中的结果会被拒绝。
-- 工作流定义与运行开始时记录的指纹一致。如果修复改动了工作流代码，redrive 会拒绝该运行。
+- 运行失败的原因是活动失败到达工作流代码且未被捕获，或者是工作流代码抛出异常或结构限制使其停止。因工作流超时失败的运行会被拒绝。
+- 失败步骤之前的每个步骤都是已完成的活动、副作用、版本标记、已触发的 `timer()`、备忘录或搜索属性的 upsert，或者已接收并应用其信号的信号等待。活动、副作用和信号的负载必须以内联方式存储。存放在外部负载存储中的负载会被拒绝。
+- 工作流定义与运行开始时记录的指纹一致，或者你传入了 `allow_definition_change` 且修正后的代码能够重放已完成的步骤。同一定义上的工作流代码失败会被拒绝。
 - 执行截止时间尚未过去。
-- 工作流代码没有 upsert 备忘录或搜索属性。运行没有父工作流、子工作流或本地活动，且其输入以内联方式存储。
+- 运行没有父工作流、子工作流或本地活动，且其输入以内联方式存储。
+- 如果运行由服务模式 Worker 启动，失败之前的步骤只能是活动、副作用、版本标记和已触发的计时器。
 
 拒绝结果会指出第一条未满足的规则：
 
@@ -166,21 +187,31 @@ if ($result['accepted']) {
 | --- | --- |
 | `run_not_failed` | 运行不处于 `failed` 状态。 |
 | `source_run_not_current` | 该实例存在更新的运行。 |
-| `unrecorded_failure_boundary` | 运行并非因工作流代码未捕获的活动失败而失败。在工作流代码中失败的运行返回此原因。 |
-| `unsupported_history` | 失败之前的历史中包含 redrive 无法复用的步骤，例如信号、更新、子工作流或已取消的计时器。 |
+| `unrecorded_failure_boundary` | 运行的失败没有记录对应的步骤，例如 2.19.0 之前的版本记录的工作流代码失败。 |
+| `workflow_code_failure_requires_corrected_definition` | 工作流代码抛出了异常，且定义没有变化，因此同样的代码会再次抛出异常。 |
+| `unsupported_history` | 失败之前的历史中包含 redrive 无法复用的步骤，例如更新、子工作流或已取消的计时器。 |
 | `unsupported_local_activity` | 历史中包含本地活动。 |
 | `unsupported_timer` | 历史中包含条件或信号超时、取消清理计时器，或位于取消作用域或并行组中的计时器。 |
 | `incomplete_timer_step` | 某个计时器步骤没有同时具备调度事件和触发事件。 |
-| `invalid_step_sequence` | 某个副作用、版本标记或计时器没有有效的步骤编号。 |
-| `duplicate_step_sequence` | 两个副作用、版本标记或计时器使用了同一个步骤编号。 |
+| `unsupported_signal_wait` | 某个信号等待设置了超时，或位于取消作用域或并行组中。 |
+| `unsupported_pending_signal` | 运行收到了一个从未应用的信号。 |
+| `incomplete_signal_step` | 某个信号等待没有同时具备接收和应用记录，或者应用记录中没有记录的值。 |
+| `mismatched_signal_receipt` | 某个信号接收记录指向另一个运行、实例、命令或等待，或者同一条接收记录被应用到两个等待上。 |
+| `invalid_step_sequence` | 某个被复用的步骤没有有效的步骤编号。 |
+| `duplicate_step_sequence` | 两个被复用的步骤使用了同一个步骤编号。 |
 | `external_activity_result_not_supported` | 某个已完成活动的结果存放在外部负载存储中。 |
 | `external_side_effect_result_not_supported` | 某个副作用的结果存放在外部负载存储中。 |
+| `external_signal_payload_not_supported` | 某个信号的参数或已应用的值存放在外部负载存储中。 |
 | `missing_activity_result`, `unavailable_activity_result` | 某个已完成活动的结果缺失或无法解码。 |
-| `unsupported_visibility_metadata` | 工作流代码 upsert 了备忘录或搜索属性。 |
+| `unsupported_visibility_metadata` | 工作流代码在后继运行不会复用的步骤上写入了备忘录或搜索属性。 |
 | `unsupported_source_metadata` | 运行是作为另一个工作流的子工作流启动的。 |
 | `unsupported_source_link_or_payload` | 运行作为另一个工作流的子工作流被关联，或其输入存放在外部负载存储中。 |
 | `execution_deadline_elapsed` | 执行截止时间已过。 |
-| `workflow_definition_unavailable_or_changed` | 定义指纹缺失，或与开始时记录的指纹不同。 |
+| `workflow_definition_unavailable_or_changed` | 定义指纹缺失，或与开始时记录的指纹不同且未传入 `allow_definition_change`。 |
+| `definition_incompatible_with_prefix` | 修正后的代码无法重放已完成的步骤。`definition_mismatch` 指出第一个不同的步骤。 |
+| `definition_check_over_budget` | 已完成的历史超出了重放检查允许的历史预算。 |
+| `definition_change_requires_replay_check` | 运行由服务模式 Worker 启动，因此 redrive 无法检查已变更的定义。 |
+| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert 或信号等待。服务模式 SDK 目前尚不支持重放这些被复用的步骤。 |
 | `request_id_already_used` | 该 `request_id` 已用于该实例的另一次 redrive。 |
 | `invalid_request_id` | `request_id` 超过 191 个字符。 |
 | `run_not_found`, `instance_not_found` | 该命名空间中不存在此运行或实例。 |
@@ -193,13 +224,19 @@ if ($result['accepted']) {
 
 在 Workflow 2.18.0 及更高版本中，运行详情会报告 `can_redrive` 和 `redrive_blocked_reason`。Waterline 的所选运行详情会读取这些字段。`WorkflowControlPlane::describe()` 在 `actions` 下报告相同字段。它们来自 `redrive()` 所应用的同一检查，因此你可以在请求之前看到某个运行能否 redrive，以及不能的原因。
 
-未失败的运行报告 `run_not_failed`。已经执行过 redrive 的运行报告 `already_redriven`。对于服务模式的运行，该报告只检查是否记录了指纹。`redrive()` 仍会将其与 Worker 的指纹进行比较。
+未失败的运行报告 `run_not_failed`。已经执行过 redrive 的运行报告 `already_redriven`。对于服务模式的运行，该报告只检查是否记录了指纹。`redrive()` 仍会将其与 Worker 的指纹进行比较。该报告不会执行针对修正后代码的重放检查，因此在你附带 `allow_definition_change` 请求 redrive 之前，已变更的定义会显示 `workflow_definition_unavailable_or_changed`。
+
+在 Workflow 2.19.0 及更高版本中，运行修正后代码的后继运行会在运行详情中以 `workflow_definition_changed_from`、在 `describe()` 中以 `run.definition_changed_from` 报告被替换的指纹。
 
 ### 更早的版本与原生 Server {#redrive-earlier-releases}
 
+Workflow 2.18.0 会复用已完成的活动、副作用、版本标记和已触发的计时器。它会拒绝工作流代码 upsert 的备忘录或搜索属性（`unsupported_history`）、信号等待（`unsupported_history`）、在工作流代码中失败的运行（`unrecorded_failure_boundary`）以及已变更的定义（`workflow_definition_unavailable_or_changed`）。
+
 2.18.0 之前的 Workflow 版本接受的运行范围更窄。失败活动之前的每个步骤都必须是已完成的活动。该历史中的副作用、版本标记或计时器会以 `unsupported_history` 被拒绝，任何备忘录或搜索属性都会以 `unsupported_visibility_metadata` 被拒绝。运行详情和 `describe()` 不会报告 `can_redrive` 或 `redrive_blocked_reason`。
 
-原生 Server 中的 redrive 仍适用这些较早的规则。原生 Server 对 Workflow 2.18.0 规则的支持在 [server#980](https://github.com/durable-workflow/server/issues/980) 中跟踪。
+2.19.0 之前的版本会忽略被复用的信号、备忘录和搜索属性步骤上的 `reused_recorded_at`。在 Workflow 2.19.0 的后继运行复用这些步骤之后，如需回滚，请先确保继续使用 2.19.0 或更高版本的 Worker，或者确认不会有此类历史被重放。
+
+原生 Server 中的 redrive 仍适用 2.18.0 之前的规则。原生 Server 对当前规则的支持在 [server#980](https://github.com/durable-workflow/server/issues/980) 中跟踪。
 
 ## 服务模式入口拒绝与恢复 {#service-entry-recovery}
 
