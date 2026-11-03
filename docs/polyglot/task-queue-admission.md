@@ -26,6 +26,20 @@ Task queue admission keeps one queue, tenant, or downstream dependency from cons
 
 Use admission controls when a queue is tied to a rate-limited dependency, tenants share the same server, or operators need to prove why a workflow is waiting.
 
+:::note Native Server 3.x
+
+The native 3.x Server enforces none of the server-side admission controls on this page, and there is no native equivalent of them yet. It refuses to start when any of these sets a limit:
+
+- a workflow-task or activity-task lease or dispatch cap, or `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- a namespace request-admission setting
+- a namespace durable-state limit
+
+It ignores `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` and their per-namespace variants. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` must stay unset or `1024`. Native instead applies a fixed bound of 16 pending or leased query tasks per namespace and refuses further queries with HTTP `503` and `query_task_queue_full`.
+
+On native, bound task concurrency with each SDK worker's configured slots and the number of workers. `GET /api/task-queues/{name}` reports the registered slots and the leased and ready counts under `admission`, with every server-side limit and remaining-capacity field `null`. See the [native configuration reference](./server-config-reference.md#native-server-3x). The rest of this page describes PHP Server 2.x.
+
+:::
+
 Admission sits on top of the matching contract. Read
 [Task Matching and Dispatch](/docs/polyglot/task-matching-dispatch) for
 how ready work is discovered and leased before these budgets decide whether the
@@ -126,6 +140,8 @@ The JSON `retry_after_seconds` and `Retry-After` header agree. Unavailable confi
 
 ## Namespace durable-state quotas {#namespace-durable-state}
 
+These quotas are a PHP Server 2.x control; native 3.x refuses to start when they set a limit.
+
 `DW_NAMESPACE_DURABLE_LIMITS` sets default retained-row limits, `DW_NAMESPACE_DURABLE_OVERRIDES` changes them per namespace, and `DW_NAMESPACE_DURABLE_HARD_LIMITS` adds non-bypassable ceilings. Empty objects add no limits. Overrides can raise or lower defaults; null falls back to the default. Unlike HTTP admission, a durable limit of zero is valid and prevents new allocations. In this example, existing `payments` can hold 250 open runs, other namespaces 100, under a 500 hard ceiling.
 
 ```dotenv
@@ -154,6 +170,8 @@ Exhaustion returns 429 `namespace_<resource>_exhausted`. Read `retryable`: some 
 Select the namespace with the request header when reading admin metrics. `dw_namespace_durable_state_usage` and the JSON `limits`, `usage`, `remaining`, `configuration_status` and `measurement_status` expose that scope; namespace is request scope rather than an unbounded metric label. Unavailable measurements are not zero usage or unlimited capacity. See the [complete configuration reference](./server-config-reference.md#namespace-durable-controls).
 
 ## Server Configuration
+
+These settings apply to PHP Server 2.x. Native 3.x refuses to start when a lease or dispatch cap or `DW_TASK_QUEUE_ADMISSION_OVERRIDES` sets a limit.
 
 Set global caps when every queue should share the same ceiling:
 

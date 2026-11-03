@@ -82,6 +82,16 @@ Native refuses these settings unless they keep the listed value:
 
 Native accepts but ignores: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
 
+Native has no server-side task-queue lease or dispatch caps, budget groups,
+namespace request admission, namespace durable-state quotas or held-poll caps,
+and no native equivalent of them yet. Each native Server process opens at most
+four database connections. Query tasks have a fixed bound of 16 pending or
+leased tasks per namespace, beyond which new queries are refused with HTTP
+`503` and `query_task_queue_full`; it is not configurable. To bound task
+concurrency on native, size each SDK worker's slots and the number of workers.
+[Task queue admission](/docs/polyglot/task-queue-admission) describes the PHP
+2.x controls.
+
 Native authentication differs from PHP 2.x in these ways:
 
 - `DW_AUTH_TOKEN` is required. Native refuses to start without it, and it
@@ -239,20 +249,20 @@ admission caps, and bounded task dispatch budgets.
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Milliseconds between wake-signal checks while a poll is held open. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Directory for worker-poll coordination state when using file-backed polling cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | TTL for per-queue wake signals that short-circuit a pending poll. | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held workflow/activity worker long-poll waits on this server node. Query-task polls use a separate wait budget. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
-| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | PHP CLI server workers reserved for health and control-plane requests when deriving the workflow/activity long-poll wait cap. | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held workflow/activity worker long-poll waits on this server node. Query-task polls use a separate wait budget. Native 3.x ignores it; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
+| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | PHP CLI server workers reserved for health and control-plane requests when deriving the workflow/activity long-poll wait cap. Native 3.x ignores it; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | Maximum tasks returned per worker poll. | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
 | `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS` | `10` | Seconds the SQLite quickstart backend holds the cache-backed worker poll claim gate before the lock expires. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_TTL_SECONDS` |
 | `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS` | `5` | Seconds SQLite worker poll claims wait for the cache-backed claim gate before returning backend lock pressure. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_WAIT_SECONDS` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | unset | Active workflow-task lease cap per namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | unset | Active workflow-task lease cap across all queues in a namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | unset | Per-minute workflow-task dispatch cap per namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | unset | Per-minute workflow-task dispatch cap across a namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | unset | Active activity-task lease cap per namespace/task queue. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | unset | Active activity-task lease cap across all queues in a namespace. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | unset | Per-minute activity-task dispatch cap per namespace/task queue. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | unset | Per-minute activity-task dispatch cap across a namespace. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | JSON overrides keyed by `namespace:task_queue`, `namespace:*`, `task_queue`, or `*` for active leases, dispatch rate, namespace caps, and downstream budget groups. | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | unset | Active workflow-task lease cap per namespace/task queue. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | unset | Active workflow-task lease cap across all queues in a namespace. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | unset | Per-minute workflow-task dispatch cap per namespace/task queue. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | unset | Per-minute workflow-task dispatch cap across a namespace. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | unset | Active activity-task lease cap per namespace/task queue. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | unset | Active activity-task lease cap across all queues in a namespace. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | unset | Per-minute activity-task dispatch cap per namespace/task queue. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | unset | Per-minute activity-task dispatch cap across a namespace. Native 3.x refuses to start when it is a positive number; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | JSON overrides keyed by `namespace:task_queue`, `namespace:*`, `task_queue`, or `*` for active leases, dispatch rate, namespace caps, and downstream budget groups. Native 3.x refuses to start unless it is unset or `{}`; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
 | `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT` | `5` | Maximum due service-mode timer tasks recovered per worker poll pass. | `WORKFLOW_SERVER_DUE_TIMER_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` | `5` | Maximum expired workflow tasks recovered per pass. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | Minimum seconds between expired-task recovery passes per queue. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
@@ -294,9 +304,9 @@ Example admission override:
 | `DW_QUERY_TASK_TIMEOUT` | `DW_WORKER_POLL_TIMEOUT` | Seconds the control plane waits for a query task response from the worker. | `WORKFLOW_SERVER_QUERY_TASK_TIMEOUT` |
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Lease timeout for ephemeral query tasks handed to workers. | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | How long the server retains query-task result rows before reaping them. | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
-| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Maximum pending cache-backed query tasks per namespace/task queue before new queries are rejected. | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Maximum pending cache-backed query tasks per namespace/task queue before new queries are rejected. Native 3.x refuses any value other than `1024` and applies its own fixed query-task bound instead; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
 | `DW_QUERY_TASK_POLL_TIMEOUT` | `5` | Maximum seconds each idle query-task worker poll waits before rechecking workflow-task pressure and control-plane availability. | `WORKFLOW_SERVER_QUERY_TASK_POLL_TIMEOUT` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held idle query-task worker long-poll waits on this server node. Pending query tasks can still be claimed immediately before an idle poll waits. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | unset; derived for `PHP_CLI_SERVER_WORKERS` | Optional cap for concurrent held idle query-task worker long-poll waits on this server node. Pending query tasks can still be claimed immediately before an idle poll waits. Native 3.x ignores it; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Default workflow-task lease timeout in seconds. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Default activity-task lease timeout in seconds. | `ACTIVITY_TASK_TIMEOUT` |
 | `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Seconds after a worker heartbeat before the worker registration is stale. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
@@ -423,11 +433,11 @@ This reference covers the published **PHP Server 2.11.0** contract, including th
 
 | Variable | Default | Purpose | Legacy alias |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Optional per-minute control-plane request cap for each namespace. Unset means unlimited. | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Optional concurrent control-plane request cap for each namespace. Unset means unlimited. | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Non-bypassable ceiling for namespace control-plane requests per minute, including namespace overrides. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Non-bypassable ceiling for concurrent namespace control-plane requests, including namespace overrides. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON object keyed by namespace with optional request-rate and concurrent-request overrides. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Optional per-minute control-plane request cap for each namespace. Unset means unlimited. Native 3.x refuses to start when it is non-empty; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Optional concurrent control-plane request cap for each namespace. Unset means unlimited. Native 3.x refuses to start when it is non-empty; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Non-bypassable ceiling for namespace control-plane requests per minute, including namespace overrides. Native 3.x refuses to start when it is non-empty; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Non-bypassable ceiling for concurrent namespace control-plane requests, including namespace overrides. Native 3.x refuses to start when it is non-empty; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON object keyed by namespace with optional request-rate and concurrent-request overrides. Native 3.x refuses to start unless it is unset or `{}`; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
 [Namespace request admission](./task-queue-admission.md#namespace-request-admission).
 
@@ -435,9 +445,9 @@ This reference covers the published **PHP Server 2.11.0** contract, including th
 
 | Variable | Default | Purpose | Legacy alias |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON object of default per-namespace durable row limits across workflow instances, runs, history, tasks, timers, waits, commands, schedules, workers, and streams. Lifetime and pending/open limits are independent; pending workflow tasks count queued ready rows because active leases have separate admission limits. An empty object is unlimited. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
-| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON object of non-bypassable ceilings for the namespace durable row limit fields, including per-namespace overrides. An empty object adds no operator hard ceilings. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
-| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON object keyed by namespace with optional namespace durable row limit overrides. Hard limits remain authoritative. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON object of default per-namespace durable row limits across workflow instances, runs, history, tasks, timers, waits, commands, schedules, workers, and streams. Lifetime and pending/open limits are independent; pending workflow tasks count queued ready rows because active leases have separate admission limits. An empty object is unlimited. Native 3.x refuses to start unless it is unset or `{}`; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON object of non-bypassable ceilings for the namespace durable row limit fields, including per-namespace overrides. An empty object adds no operator hard ceilings. Native 3.x refuses to start unless it is unset or `{}`; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON object keyed by namespace with optional namespace durable row limit overrides. Hard limits remain authoritative. Native 3.x refuses to start unless it is unset or `{}`; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
 
 [Namespace durable-state quotas](./task-queue-admission.md#namespace-durable-state).
 
@@ -479,8 +489,8 @@ This reference covers the published **PHP Server 2.11.0** contract, including th
 | `DW_STORAGE_ADMISSION_SOURCE` | `unset` | Expected storage resource identity in the admission observation. | - |
 | `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | Maximum age of a storage observation in seconds (1-300). | - |
 | `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | Enable durable, database-backed, namespace-bound runtime bearer credentials managed through the admin API. | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Optional per-node cap for concurrent held workflow/activity long-poll waits from one namespace. The effective cap cannot exceed the global worker wait cap. Configured namespace isolation fails closed when shared cache authority is unavailable. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Optional per-node cap for concurrent held query-task long-poll waits from one namespace. The effective cap cannot exceed the global query-task wait cap. Configured namespace isolation fails closed when shared cache authority is unavailable. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Optional per-node cap for concurrent held workflow/activity long-poll waits from one namespace. The effective cap cannot exceed the global worker wait cap. Configured namespace isolation fails closed when shared cache authority is unavailable. Native 3.x ignores it; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Optional per-node cap for concurrent held query-task long-poll waits from one namespace. The effective cap cannot exceed the global query-task wait cap. Configured namespace isolation fails closed when shared cache authority is unavailable. Native 3.x ignores it; see [Native Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
 | `DW_V1_ENABLED` | `false` | Enable legacy embedded v1 migration and queue-drain behavior. Standalone Server defaults to v2-only; enable only when deliberately preserving v1 state. | `WORKFLOW_V1_ENABLED` |
 
 ## Runtime Infrastructure Variables

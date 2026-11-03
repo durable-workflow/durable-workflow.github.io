@@ -399,6 +399,11 @@ write/commit latency, HTTP request capacity and retained storage growth.
 
 ### Count every SQL-owning process {#count-every-sql-owning-process}
 
+A native 3.x Server process opens at most four database connections, and a
+`schema-upgrade` or takeover command opens one more while it runs. Budget four
+sessions per native Server replica at the highest replica count, plus the
+operational tools below. The rest of this section describes PHP 2.x.
+
 The published PHP Compose deployment has these possible SQL clients:
 
 | Role | What to count |
@@ -471,11 +476,15 @@ database memory and workload review.
    bootstrap only in the planned migration window. If safe overlap cannot fit,
    use the documented stop-the-world upgrade posture.
 
-[Task-queue admission](/docs/polyglot/task-queue-admission) limits selected
-dispatch and lease activity. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` and
-`DW_QUERY_TASK_POLL_MAX_CONCURRENT` bound held poll waits on a node. None is a
-global SQL-session, database-byte or commit-latency limit; keep capacity for
-completions, heartbeats, operator requests and health checks as well.
+On PHP 2.x, [task-queue admission](/docs/polyglot/task-queue-admission) limits
+selected dispatch and lease activity, and `DW_WORKER_LONG_POLL_MAX_CONCURRENT`
+and `DW_QUERY_TASK_POLL_MAX_CONCURRENT` bound held poll waits on a node. None is
+a global SQL-session, database-byte or commit-latency limit; keep capacity for
+completions, heartbeats, operator requests and health checks as well. Native
+3.x refuses to start with task-queue admission caps and ignores both poll caps;
+it has no native equivalent yet. Its fixed pool of four connections per process
+bounds its SQL sessions; size SDK worker slots and worker counts for task
+concurrency.
 
 Use a direct writable database endpoint as the baseline. A connection proxy must be qualified with the exact Server release, pool mode and settings for prepared statements, transaction boundaries, session state and locking. **PgBouncer transaction pooling requires fixed Server 2.9.8 or later.** The [published 2.9.8 acceptance](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifies PostgreSQL 16.15 with PgBouncer 1.26.1: direct PostgreSQL, session pooling, and transaction pooling with either `max_prepared_statements=0` or `max_prepared_statements=200`. This is a compatibility floor and an exact tested configuration, not a latest-version pin or capacity guarantee; qualify other combinations separately. Before admitting traffic, run PHP 2.x's ordinary `server-bootstrap` initialization against the selected endpoint, or let native 3.x check its schema at startup through that endpoint.
 
