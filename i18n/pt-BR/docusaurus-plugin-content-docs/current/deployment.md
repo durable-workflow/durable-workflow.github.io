@@ -4,6 +4,8 @@ title: Implantações sob sua administração
 description: Escolha um caminho suportado de implantação do Durable Workflow v2 sob sua administração e o artefato inicial.
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Implantações sob sua administração {#self-hosting-deployments}
 
 O Durable Workflow v2 suporta várias topologias sob sua administração. Escolha
@@ -60,6 +62,12 @@ descrevem a topologia do PHP 2.x.
 | Manifestos Kubernetes diretos (formato PHP 2.x) | Os manifestos [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) do repositório Server, com imagens PHP 2.x publicadas do servidor e seu banco de dados, Redis, ingress e gerenciamento de segredos existentes | Equipes que já operam Kubernetes e querem manifestos inspecionáveis para API, worker, agendador, bootstrap, serviço, verificações, configuração e segredos | O ciclo de vida separado do Helm, validação de provedor Kubernetes gerenciado, múltiplas regiões ativo/ativo, operadores personalizados, decisões de armazenamento/rede/segurança específicas do ambiente e failover de alta disponibilidade em região única por conta própria até que seu [critério de evidência da release](#release-evidence-status) seja atendido | Você precisa de overlays, validação de cluster gerenciado, planejamento de produção específico de provedor ou pretende afirmar o comportamento de alta disponibilidade em região única sujeito a esse critério |
 | Avaliação de múltiplas regiões ativo/passivo | Uma implantação validada em nó único ou cluster pequeno por região, replicação assíncrona do banco de dados do ativo para a reserva e um manual revisado de failover/retorno | Avaliação de arquitetura conduzida pelo suporte e ensaio específico do ambiente para recuperação regional de desastres | Um contrato 2.0 comprovado para operação por conta própria, múltiplas regiões ativo/ativo, failover regional automático ou sem intervenção, replicação síncrona entre regiões (RPO=0), visibilidade ativa entre regiões ou busca federada, ou filas de tarefas fixadas por região como eixo de roteamento imposto pelo mecanismo | Antes de depender de replicação entre regiões, failover, retorno, RPO ou RTO em produção |
 | Topologias conduzidas pelo suporte | Um projeto revisado com base no seu ambiente | Múltiplas regiões ativo/passivo ou ativo/ativo sob sua administração, failover regional sem intervenção, replicação entre escritores com RPO=0, agendadores duplicados como topologia permanente, segurança/rede sob medida, SLOs privados, overlays personalizados, planejamento de migração | Operação por conta própria apenas copiando e colando | A própria topologia faz parte do risco do produto |
+
+<ProductPromotion source="docs-v2-deployment">
+Dispense operá-lo você mesmo: o Cloud opera o runtime, a persistência, o
+posicionamento e a recuperação de um namespace gerenciado, e seus workers PHP,
+Python ou Rust se conectam com credenciais com escopo por papel.
+</ProductPromotion>
 
 A distribuição pública é intencionalmente otimizada para desenvolvimento local,
 produção em nó único e implantações em cluster pequeno. Manifestos Kubernetes

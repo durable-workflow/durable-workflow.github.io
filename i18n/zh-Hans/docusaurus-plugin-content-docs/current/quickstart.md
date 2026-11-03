@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Durable Workflow 2.0 快速入门 {#durable-workflow-20-quickstart}
 
@@ -49,6 +50,10 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 下面的完整程序使用本地自托管 Server，无需账户或源码检出即可运行。Cloud 使用相同的 SDK 和 Worker 模型，将本地开发连接替换为 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane/)提供的连接信息即可。
 
 ## 2. 启动本地 Server {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+无需运行本地 Server：Cloud 负责运营运行时、持久化和 Managed Waterline，同样的 PHP、Python 或 Rust Worker 使用角色限定凭据连接到已预配的命名空间。
+</ProductPromotion>
 
 如果选择 Cloud，跳过这一步。自托管路径请展开并执行下面固定版本的配置。它会启动一个不挂载源码的原生 Server，使用 SQLite 和开发令牌。
 

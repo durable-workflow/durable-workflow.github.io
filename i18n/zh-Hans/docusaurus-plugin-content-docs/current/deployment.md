@@ -4,6 +4,8 @@ title: 自托管部署
 description: 选择受支持的 Durable Workflow v2 自托管路径及起始产物。
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # 自托管部署 {#self-hosting-deployments}
 
 Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符的最小路径，然后明确镜像、数据库、缓存、身份验证、就绪和升级契约。
@@ -31,6 +33,10 @@ PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）�
 | 原始 Kubernetes 清单（PHP 2.x 形态） | Server 仓库 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) 清单，使用已发布 PHP 2.x Server 镜像及已有数据库、Redis、ingress 和密钥管理 | 已运维 Kubernetes，希望使用可检查的 API、Worker、调度器、bootstrap、Service、探针、配置和密钥清单的团队 | 独立 Helm 生命周期、托管 Kubernetes 提供商验证、双活多区域、自定义 operator、环境特定存储/网络/安全决策，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要覆盖配置、托管集群验证、提供商特定生产规划，或打算宣称受门槛限制的单区域高可用行为 |
 | 主备多区域评估 | 每区域一个已验证单节点或小型集群部署，加主区域到备用区域的异步数据库复制，以及已审查的故障转移/回切手册 | 支持团队指导下的区域灾难恢复架构评估和环境特定演练 | 已验证的自助 2.0 契约、双活多区域、自动或无人值守区域故障转移、同步跨区域复制（RPO=0）、跨区域活动可见性或联合搜索，或引擎强制的区域固定任务队列路由轴 | 在生产中依赖跨区域复制、故障转移、回切、RPO 或 RTO 之前 |
 | 支持团队指导的拓扑 | 针对你的环境审查过的设计 | 自托管主备或双活多区域、无人值守区域故障转移、RPO=0 跨写入方复制、以重复调度器运行器作为稳态拓扑、定制安全/网络、私有 SLO、自定义覆盖配置、迁移规划 | 自助复制粘贴式运维 | 拓扑本身属于产品风险的一部分 |
+
+<ProductPromotion source="docs-v2-deployment">
+无需自行运营：Cloud 负责运营托管命名空间的运行时、持久化、放置和恢复，你的 PHP、Python 或 Rust Worker 使用角色限定凭据连接。
+</ProductPromotion>
 
 公开发行版重点优化本地开发、单节点生产和小型集群部署。Kubernetes 清单面向已运维 Kubernetes 的团队。主备多区域材料是支持团队指导的评估指南（参见下方[主备多区域](#activepassive-multi-region)），不是已验证的自助 2.0 契约。
 单区域高可用故障转移，即区域内的托管数据库故障转移、托管 Redis 故障转移、API 节点丢失、Worker 丢失和调度器运行器重启，在确切发布证据门槛未开放时仍需支持团队指导（参见下方[单区域高可用与故障转移](#single-region-high-availability-and-failover)）。对自托管 Server，双活多区域、自动区域故障转移、以重复调度器运行器作为稳态拓扑，以及提供商特定托管 Kubernetes 验证仍需支持团队指导，因为它们依赖你的数据库、缓存、网络、安全、运行器和升级选择。已发布 Helm chart 是这些相同操作人员负责边界内的自助打包路径。Cloud 当前提供单区域托管运维和恢复，不提供多区域复制或区域故障转移，参见 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane)。商业支持模型参见[支持边界](/docs/support)。

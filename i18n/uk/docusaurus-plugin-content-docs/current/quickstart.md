@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Швидкий старт Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -56,6 +57,13 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 надані значення з [керованого runtime Cloud](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Запустіть локальний Server {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+Не запускайте локальний Server: Cloud керує середовищем виконання,
+збереженням стану та Managed Waterline, а ті самі PHP-, Python- або
+Rust-workers підключаються до наданого namespace з обліковими даними для
+кожної ролі.
+</ProductPromotion>
 
 Пропустіть цю дію, якщо обрали Cloud. Для власного розгортання розгорніть
 і виконайте точне закріплене налаштування. Воно запускає нативний Server без

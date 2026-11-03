@@ -4,6 +4,8 @@ title: セルフホストのデプロイ
 description: サポートする Durable Workflow v2 のセルフホスト経路と、出発点となる成果物を選びます。
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # セルフホストのデプロイ {#self-hosting-deployments}
 
 Durable Workflow v2 は複数のセルフホスト構成に対応します。運用環境に合う最小の経路を選び、イメージ、DB、キャッシュ、認証、準備状態、アップグレードの契約を明示してください。
@@ -31,6 +33,10 @@ PHP 2.x のスタック（Server、キュー Worker、スケジューラー、�
 | 生の Kubernetes マニフェスト（PHP 2.x の構成） | Server の [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)、公開 PHP 2.x イメージ、既存 DB・Redis・ingress・秘密管理 | Kubernetes 運用済みチーム向けの、API、Worker、スケジューラー、bootstrap、service、probe、config、secret の調査可能な定義 | 別の Helm ライフサイクル、マネージド Kubernetes 検証、アクティブ/アクティブのマルチリージョン、独自 operator、環境固有ストレージ・ネットワーク・セキュリティ判断、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | オーバーレイ、管理クラスター検証、プロバイダー固有本番計画、ゲート対象 HA が必要 |
 | アクティブ/パッシブのマルチリージョン評価 | リージョンごとの検証済み単一ノード・小規模クラスター、アクティブから待機側への非同期 DB 複製、レビュー済み切替・復帰手順 | サポート主導の地域災害復旧設計評価と環境固有リハーサル | 実証済みセルフサービス 2.0 契約、アクティブ/アクティブ、自動・無人リージョン切替、同期複製（RPO=0）、リージョン間アクティブ可視性・連合検索、エンジン強制の地域固定キュー | 本番で複製、切替、復帰、RPO、RTO に依存する前 |
 | サポート主導のトポロジー | 環境に基づくレビュー済み設計 | セルフホストの複数リージョン、無人切替、RPO=0 複数書込複製、定常重複スケジューラー、独自セキュリティ・ネットワーク、非公開 SLO、オーバーレイ、移行計画 | コピーして実行するだけのセルフサービス | トポロジー自体が製品リスクの一部となる |
+
+<ProductPromotion source="docs-v2-deployment">
+自分で運用する必要はありません。Cloud が管理対象の名前空間のランタイム、永続化、配置、復旧を運用し、PHP、Python、Rust の Worker はロール別認証情報で接続します。
+</ProductPromotion>
 
 公開配布は、ローカル、単一ノード本番、小規模クラスターに最適化しています。Kubernetes マニフェストは既存運用チーム向けです。[アクティブ/パッシブのマルチリージョン](#activepassive-multi-region)はサポート主導の評価用で、実証済みセルフサービス契約ではありません。
 

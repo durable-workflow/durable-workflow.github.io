@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Inicio rápido de Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -56,6 +57,12 @@ conexión local de desarrollo por los datos provisionados que aparecen en
 [Entorno gestionado de Cloud](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Inicia el Server local {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+Omite ejecutar un Server local: Cloud opera el runtime, la persistencia y
+Managed Waterline, y los mismos workers PHP, Python o Rust se conectan a un
+espacio de nombres aprovisionado con credenciales separadas por rol.
+</ProductPromotion>
 
 Si elegiste Cloud, pasa al siguiente paso. Para la ruta autogestionada,
 despliega y ejecuta la configuración fijada. Inicia el Server nativo con SQLite

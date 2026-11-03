@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Primeiros passos com Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -57,6 +58,12 @@ valores provisionados descritos em
 [Runtime gerenciado do Cloud](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Inicie o Server local {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+Dispense a execução de um Server local: o Cloud opera o runtime, a
+persistência e o Managed Waterline, e os mesmos workers PHP, Python ou Rust se
+conectam a um namespace provisionado com credenciais com escopo por papel.
+</ProductPromotion>
 
 Pule esta etapa se escolheu Cloud. Para o caminho sob sua administração, expanda
 e execute a configuração com a versão fixada. Ela inicia um Server nativo que não

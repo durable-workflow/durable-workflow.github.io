@@ -4,6 +4,8 @@ title: Despliegues autogestionados
 description: Elige una opción admitida de alojamiento propio de Durable Workflow v2 y el artefacto del que partir.
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Despliegues autogestionados {#self-hosting-deployments}
 
 Durable Workflow v2 admite varias topologías autogestionadas. Elige la más
@@ -58,6 +60,12 @@ cola, un programador o la inicialización describen la topología de PHP 2.x.
 | Manifiestos Kubernetes sin procesar (forma de PHP 2.x) | Manifiestos [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) con imágenes PHP 2.x publicadas y tu base de datos, Redis, ingress y gestión de secretos | Equipos que ya operan Kubernetes y quieren manifiestos inspeccionables de API, worker, programador, inicialización, servicio, sondas, configuración y secretos | Ciclo de vida Helm separado, validación de proveedores Kubernetes gestionados, multirregión activo/activo, operadores propios, decisiones de almacenamiento/red/seguridad del entorno ni conmutación autónoma de alta disponibilidad regional hasta superar su [control de evidencia](#release-evidence-status) | Necesitas capas de configuración, validación de clúster gestionado, planificación del proveedor o afirmar la alta disponibilidad sujeta al control |
 | Evaluación multirregión activo/pasivo | Un despliegue validado de un nodo o clúster pequeño por región, replicación asíncrona de base de datos de activo a reserva y procedimientos revisados de conmutación y retorno | Evaluación de arquitectura con soporte y ensayo específico de recuperación de desastres regionales | Contrato 2.0 autónomo probado, multirregión activo/activo, conmutación automática o sin intervención, replicación síncrona entre regiones (RPO=0), visibilidad activa entre regiones o búsqueda federada, ni colas fijadas a región impuestas por el motor | Antes de depender en producción de replicación, conmutación, retorno, RPO o RTO entre regiones |
 | Topologías con soporte | Diseño revisado para tu entorno | Multirregión autogestionada activo/pasivo o activo/activo, conmutación regional sin intervención, replicación multiescritor RPO=0, programadores duplicados permanentes, seguridad/redes a medida, SLO privados, capas propias y planificación de migración | Operación autónoma mediante copiar y pegar | La propia topología forma parte del riesgo del producto |
+
+<ProductPromotion source="docs-v2-deployment">
+Omite operarlo tú mismo: Cloud opera el runtime, la persistencia, la ubicación
+y la recuperación de un espacio de nombres gestionado, y tus workers PHP,
+Python o Rust se conectan con credenciales separadas por rol.
+</ProductPromotion>
 
 La distribución pública está optimizada para desarrollo local, un nodo en
 producción y clústeres pequeños. Los manifiestos Kubernetes son para equipos que

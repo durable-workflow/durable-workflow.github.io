@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Schnellstart mit Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -49,6 +50,13 @@ Der Dienstmodus benötigt Laravel nicht. Der Weg für eingebettetes Laravel steh
 Das folgende Beispiel verwendet einen lokalen Server und benötigt weder ein Konto noch einen Quellcode-Checkout. Cloud nutzt dasselbe SDK- und Worker-Modell. Ersetzen Sie dort die lokale Entwicklungsverbindung durch die bereitgestellten Werte aus der [Cloud-Laufzeitumgebung](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Den lokalen Server starten {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+Sie müssen keinen lokalen Server betreiben: Cloud betreibt Laufzeit,
+Persistenz und Managed Waterline, und dieselben PHP-, Python- oder Rust-Worker
+verbinden sich mit rollenspezifischen Zugangsdaten mit einem bereitgestellten
+Namespace.
+</ProductPromotion>
 
 Überspringen Sie diesen Schritt bei Cloud. Für den Selbstbetrieb klappen Sie die festgelegte Konfiguration auf und führen sie aus. Sie startet einen nativen Server ohne Quellcode mit SQLite und einem Entwicklungstoken.
 

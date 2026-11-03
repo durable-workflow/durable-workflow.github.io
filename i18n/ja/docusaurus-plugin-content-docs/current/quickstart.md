@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Durable Workflow 2.0 クイックスタート {#durable-workflow-20-quickstart}
 
@@ -49,6 +50,10 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 以下の完全なソースは、アカウントや製品のソース取得なしで試せるローカル Server を使います。Cloud も同じ SDK と Worker モデルです。ローカル開発用の接続を、[Cloud マネージドランタイム](/docs/polyglot/cloud-control-plane/)の接続情報に置き換えてください。
 
 ## 2. ローカル Server を起動する {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+ローカル Server を実行する必要はありません。Cloud がランタイム、永続化、Managed Waterline を運用し、同じ PHP、Python、Rust の Worker がロール別認証情報でプロビジョニング済みの名前空間に接続します。
+</ProductPromotion>
 
 Cloud を選んだ場合は、この手順を省略します。セルフホストでは、固定バージョンの設定を開いて実行します。製品のソースをマウントせず、SQLite と開発用トークンを使うネイティブ Server が起動します。
 

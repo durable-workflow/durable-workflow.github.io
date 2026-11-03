@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Démarrage rapide avec Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -58,6 +59,12 @@ locale de développement par les valeurs provisionnées décrites dans le
 [runtime géré Cloud](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Démarrer le Server local {#2-start-the-local-server}
+
+<ProductPromotion source="docs-v2-quickstart">
+Évitez d’exécuter un Server local : Cloud exploite le runtime, la persistance
+et Managed Waterline, et les mêmes workers PHP, Python ou Rust se connectent à
+un espace de noms provisionné avec des identifiants limités par rôle.
+</ProductPromotion>
 
 Si vous avez choisi Cloud, sautez cette étape. Pour l’auto-hébergement,
 développez et exécutez les commandes exactes ci-dessous.

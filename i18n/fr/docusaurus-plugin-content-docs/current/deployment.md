@@ -4,6 +4,8 @@ title: Déploiements auto-hébergés
 description: Choisir un parcours d'auto-hébergement Durable Workflow v2 pris en charge et son artefact de départ.
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Déploiements auto-hébergés {#self-hosting-deployments}
 
 Durable Workflow v2 prend en charge plusieurs topologies auto-hébergées.
@@ -59,6 +61,12 @@ ordonnanceur ou l'initialisation décrivent la topologie PHP 2.x.
 | Manifestes Kubernetes bruts (forme PHP 2.x) | Manifestes [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) du serveur, avec images serveur PHP 2.x publiées, base, Redis, ingress et secrets existants | Équipes exploitant déjà Kubernetes et voulant des manifestes inspectables pour API, worker, ordonnanceur, initialisation, service, sondes, configuration et secrets | Cycle de vie Helm distinct, validation d'un fournisseur Kubernetes géré, multirégion actif/actif, opérateurs personnalisés, décisions de stockage/réseau/sécurité propres à l'environnement, et HA monorégion autonome avant réussite de sa [condition de preuves](#release-evidence-status) | Vous avez besoin de surcouches, validation de cluster géré, préparation de production propre au fournisseur ou souhaitez revendiquer le comportement HA soumis à validation |
 | Évaluation multirégion actif/passif | Déploiement validé sur un nœud ou petit cluster par région, réplication asynchrone de la base active vers le secours et procédures revues de basculement/retour | Évaluation d'architecture accompagnée et répétition propre à l'environnement pour la reprise après sinistre régional | Contrat 2.0 autonome éprouvé, multirégion actif/actif, basculement régional automatique ou sans intervention, réplication synchrone interrégion (RPO=0), visibilité active interrégion ou recherche fédérée, files fixées à une région imposée par le moteur | Avant de dépendre en production de réplication interrégion, basculement, retour, RPO ou RTO |
 | Topologies accompagnées | Conception revue pour votre environnement | Multirégion actif/passif ou actif/actif auto-hébergé, basculement sans intervention, réplication entre rédacteurs RPO=0, ordonnanceurs en double en régime établi, sécurité/réseau sur mesure, SLO privés, surcouches et planification de migration | Exploitation autonome par simple copier-coller | La topologie elle-même participe au risque produit |
+
+<ProductPromotion source="docs-v2-deployment">
+Évitez de l’exploiter vous-même : Cloud exploite le runtime, la persistance,
+le placement et la reprise d’un espace de noms géré, et vos workers PHP,
+Python ou Rust se connectent avec des identifiants limités par rôle.
+</ProductPromotion>
 
 La distribution publique est volontairement optimisée pour le développement
 local, la production sur un nœud et les petits clusters. Les manifestes
