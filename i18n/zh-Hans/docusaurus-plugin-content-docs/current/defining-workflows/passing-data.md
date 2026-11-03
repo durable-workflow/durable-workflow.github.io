@@ -63,34 +63,43 @@ $workflow->output();
 
 ## 模型 {#models}
 
-传入模型的行为类似于 `SerializesModels`。
+V2 载荷使用可移植的值格式，因此 Eloquent 模型不能作为工作流或活动的参数或结果。请传递模型的键，并在使用该模型的活动中加载模型。
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-向工作流或活动传入 Eloquent 模型时，只序列化其 `ModelIdentifier`。这可减小载荷，保持工作流效率和性能。
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-工作流或活动运行时，会从数据库获取完整模型实例，包括已加载的关联。如需避免执行期间额外访问数据库，可考虑先将模型转换为数组再传入。
+请在活动中加载模型，而不是在工作流代码中加载。工作流代码会在重放时重新执行，之后的重放中数据库查询可能返回不同的行。
+
+向 `start()` 传递模型会抛出 `InvalidArgumentException`。向 `activity()` 传递模型会使工作流运行失败。两种错误消息都以 `unsupported_value_type` 开头。
+
+同样的规则适用于 Eloquent 集合。请改为传递键数组。如果活动只需要少数几个属性，请只以数组形式传递这些值。工作流历史会保存它们，因此切勿包含凭据或其他机密信息。
+
+在 v1 中，工作流和活动通过 `SerializesModels` 接收模型：它保存模型标识符，并在任务运行时重新加载模型。V2 不会这样做。
 
 ## 依赖注入 {#dependency-injection}
 

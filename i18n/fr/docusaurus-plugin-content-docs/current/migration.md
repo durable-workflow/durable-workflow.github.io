@@ -272,6 +272,8 @@ historiques en `avro`. La classe personnalisée n'est pas consultée.
 `workflows.serializer` comme dette de migration. L'omission du codec sur une
 nouvelle exécution utilise `avro`.
 
+**Les modèles Eloquent ne sont pas des valeurs de données utiles v2.** v1 transmettait les modèles aux workflows et aux activités via `SerializesModels`. En v2, transmettez la clé du modèle et chargez le modèle dans l’activité. Un argument de modèle échoue avec une erreur `unsupported_value_type`. Voir [Transmettre des données](/docs/defining-workflows/passing-data/#models).
+
 **Les sous-classes de modèle ne sont prises en charge que si elles conservent
 le contrat de colonnes et de clés du paquet.** La
 [matrice de personnalisation](/docs/configuration/customization-matrix/) figée

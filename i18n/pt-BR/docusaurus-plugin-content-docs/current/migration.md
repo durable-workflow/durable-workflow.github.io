@@ -256,6 +256,8 @@ Mantenha um codec legado (`'workflow-serializer-y'` ou `'workflow-serializer-bas
 
 **Classes personalizadas de serialização da v1 não são suportadas na v2.** O registro público da v2 resolve apenas `avro`. Os leitores legados `workflow-serializer-y` e `workflow-serializer-base64` são restritos ao caminho interno de importação/conclusão da v1 e não podem ser selecionados para uma nova execução v2 ou payload de SDK. Se você tinha um serializador personalizado, conclua as execuções v1 antes de atualizar ou recodifique os payloads históricos em `avro`. A classe personalizada não é consultada. `php artisan workflow:v2:doctor` sinaliza qualquer outro valor de `workflows.serializer` como dívida de migração. A omissão do codec de novas execuções resulta em `avro`.
 
+**Modelos Eloquent não são valores de payload da v2.** A v1 passava modelos para workflows e atividades por meio de `SerializesModels`. Na v2, passe a chave do modelo e carregue o modelo dentro da atividade. Um argumento de modelo falha com um erro `unsupported_value_type`. Veja [Passando dados](/docs/defining-workflows/passing-data/#models).
+
 **Subclasses personalizadas de modelos só são suportadas quando mantêm o contrato de colunas e chaves do pacote.** A matriz de suporte consolidada em
 [Matriz de personalização](/docs/configuration/customization-matrix/) é a
 referência: criar subclasses dos modelos v2 de instância, execução, tarefa,
