@@ -35,7 +35,7 @@ Os exemplos foram verificados com o PHP Server **2.9.5** publicado, seu Workflow
 1. **Estabeleça uma janela segura.** Execute a exportação com antecedência ao limite de retenção, reservando tempo para novas tentativas, interrupções e verificações pendentes. Por exemplo, uma exportação diária com retenção de 30 dias deixa mais tempo de recuperação que um job iniciado no dia 30. Antes da primeira exportação ou de reduzir a retenção, proteja temporariamente a origem: pause a limpeza incorporada ou use a política `forever` do Server. Registre a política anterior e restaure-a apenas após verificar. A limpeza pode executar assim que uma execução se tornar elegível.
 2. **Inventarie as execuções encerradas.** Fixe um limite superior em UTC e selecione valores de `closed_at` anteriores a ele. Exporte cada execução, incluindo as com falha, canceladas, terminadas e as antecessoras de continue-as-new. Uma instância pode ter várias execuções. Mantenha namespace, id da instância, id da execução e instante de encerramento de cada candidata, e percorra todas as páginas.
 3. **Exporte uma execução específica.** Use o endpoint ou comando limitado à execução mostrado abaixo, em vez de exportar a execução atual no momento do job. Mantenha as exportações candidatas separadas das cópias já verificadas.
-4. **Verifique a cópia armazenada.** Leia-a no destino. Compare sua identidade com o inventário do namespace e verifique a versão do esquema, a sequência final esperada, o intervalo completo de eventos, a política de ocultação e a soma de integridade. Verifique as assinaturas configuradas com uma chave confiável. Preserve a compilação exata da aplicação e os codecs necessários para um replay a frio. Uma soma verifica que os bytes correspondem, não que o histórico estivesse completo ao ser exportado.
+4. **Verifique a cópia armazenada.** Leia-a no destino. Compare sua identidade com o inventário do namespace e verifique a versão do esquema, a sequência final esperada, o intervalo completo de eventos, a política de ocultação e a soma de integridade. Verifique as assinaturas configuradas com uma chave confiável. Preserve a compilação exata da aplicação e os codecs necessários para um replay a frio. Uma soma verifica que os bytes correspondem, não que o histórico estivesse completo ao ser exportado. Exija `history_complete: true` e, quando presente, `workflow.details_state: retained`. Consulte [Reconhecer a exportação de uma execução sem detalhes](#recognizing-an-export-of-a-pruned-run).
 5. **Preserve os bytes externos.** As exportações preservam os envelopes de referências externas, não uma cópia independente de cada objeto. Preserve esses bytes durante toda a vida da exportação e teste sua recuperação sem um cache aquecido do runtime. Siga o [ciclo de vida dos payloads externos](../features/external-payload-storage.md#replay-retention-and-cleanup).
 6. **Reconcilie antes de limpar.** Compare o inventário das execuções encerradas com os registros verificados no destino. Alerte sobre ids ausentes, verificações com falha e exportações pendentes próximas do limite. Avance o checkpoint apenas após contabilizar cada candidata. Examine novamente janelas de encerramento sobrepostas e deduplique por namespace e id da execução. Não substitua um pacote completo verificado por uma exportação posterior incompleta.
 
@@ -43,9 +43,30 @@ Essas etapas pertencem à aplicação; não são uma operação de arquivo autos
 
 :::warning A remoção de dados é irreversível sem uma cópia de recuperação
 
-Exportar após remover os detalhes não permite reconstruir eventos excluídos. A implementação publicada ainda pode marcar uma execução terminal sem detalhes com `history_complete: true` e reutilizar seu `dedupe_key` anterior. Isso é acompanhado em [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Não confie em nenhum desses campos como prova de que a limpeza não ocorreu. Os jobs incorporados de exportação devem recusar execuções com `details_pruned_at`. Uma lista do Server deixa de mostrar uma execução quando seu resumo é removido, portanto um inventário iniciado após a limpeza não prova que todas as execuções anteriores foram capturadas. Mantenha o inventário anterior e investigue as lacunas a partir de uma cópia de recuperação.
+Exportar após remover os detalhes não permite reconstruir eventos excluídos. Mantenha o inventário anterior à limpeza e investigue as lacunas a partir de uma cópia de recuperação. Uma lista do Server deixa de mostrar uma execução quando seu resumo é removido, portanto um inventário iniciado após a limpeza não prova que todas as execuções anteriores foram capturadas.
 
 :::
+
+### Reconhecer a exportação de uma execução sem detalhes {#recognizing-an-export-of-a-pruned-run}
+
+A partir do Workflow 2.17.0, uma exportação incorporada informa se os detalhes da execução foram mantidos:
+
+| Campo | Execução com detalhes mantidos | Execução sem detalhes |
+| --- | --- | --- |
+| `workflow.details_state` | `retained` | `pruned` |
+| `workflow.details_pruned_at` | `null` | Instante em que a limpeza foi confirmada, em UTC |
+| `history_complete` | `true` para uma execução terminal | `false` |
+| `history_events` | Os eventos registrados | Vazio |
+| `dedupe_key` | Inalterado nesta versão | A chave da exportação completa seguida de `:details-pruned:{details_pruned_at}` |
+
+A execução sem detalhes mantém seu `status` terminal. Seu `dedupe_key` nunca coincide com o da exportação feita antes da limpeza, portanto um arquivo com deduplicação não substitui um pacote completo verificado pelo pacote vazio. `workflow:v2:replay-verify` informa um pacote sem detalhes como o erro `history.details_pruned`, com ou sem `--skip-replay`. `workflow:v2:history-import` o recusa como `workflow.terminal_history_incomplete`.
+
+Para fins de arquivamento, trate `history_complete: false` ou `details_state: pruned` como uma exportação com falha e mantenha a cópia completa anterior. Não dependa apenas desses campos nos casos a seguir, que ainda podem marcar como completa uma execução terminal sem detalhes:
+
+- Exportações de versões anteriores do Workflow. Elas não incluem `details_state`. Nesse caso, recuse execuções com `details_pruned_at` definido antes de exportar.
+- Exportações do Server nativo, até que [Server #976](https://github.com/durable-workflow/server/issues/976) seja publicado.
+- O fallback de exportação de histórico do Waterline, até que [Waterline #257](https://github.com/durable-workflow/waterline/issues/257) seja publicado.
+- O verificador de pacotes do Python SDK, até que [SDK Python #228](https://github.com/durable-workflow/sdk-python/issues/228) seja publicado.
 
 ### Selecionar e exportar execuções do Server {#selecting-and-exporting-server-runs}
 
