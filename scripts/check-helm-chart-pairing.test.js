@@ -36,7 +36,7 @@ test('derive the Server Git tag that exists for the selected release', () => {
   assert.equal(serverGitTag('2.11.8'), '2.11.8');
   assert.equal(serverGitTag('3.0.1'), 'native-3.0.1');
   assert.equal(serverGitTag('3.0.2'), 'native-3.0.2');
-  assert.equal(serverGitTag('3.0.3'), '3.0.3');
+  assert.equal(serverGitTag('3.0.4'), '3.0.4');
   const pins = buildArtifactPins();
   const tag = serverGitTag(source.artifacts.server);
   assert.equal(pins.serverGitTag, tag);

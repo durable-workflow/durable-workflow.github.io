@@ -128,8 +128,8 @@ function buildRustPackageAuthority(versions = ARTIFACT_VERSIONS) {
 }
 
 // Native Server releases 3.0.0 through 3.0.2 are tagged `native-X.Y.Z` in the
-// Server repository. PHP 2.x releases and native releases from 3.0.3 use the
-// plain version as their Git tag.
+// Server repository. PHP 2.x releases and later native releases (the next is
+// 3.0.4) use the plain version as their Git tag.
 const NATIVE_PREFIXED_SERVER_TAGS = Object.freeze(['3.0.0', '3.0.1', '3.0.2']);
 
 function serverGitTag(version) {

@@ -110,7 +110,7 @@ Native also reads settings outside the PHP contract:
   release version. Release images do not need it.
 - `DW_UPGRADE_BACKUP_FINGERPRINT` and `DW_RUST_UPGRADE_QUEUE_*`: inputs to the
   one-way [native takeover](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
-  of a PHP database.
+  of a PHP database, which is not yet qualified on a published image.
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (legacy
   `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): honored ahead of its addition
   to the PHP contract.
