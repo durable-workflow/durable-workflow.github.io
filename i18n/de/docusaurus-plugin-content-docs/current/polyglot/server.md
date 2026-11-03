@@ -16,7 +16,19 @@ keywords:
 
 # Server {#server}
 
-Der veröffentlichte Durable Workflow Server ist ein eigenständiger, in PHP implementierter Orchestrierungsdienst. Er stellt dieselbe dauerhafte Engine wie das eingebettete PHP-Paket über eine sprachunabhängige HTTP+JSON-Steuerung und ein Worker-Protokoll bereit. PHP ist an dieser Grenze eine Implementierungsentscheidung, keine Anforderung an die Anwendungssprache.
+Der veröffentlichte Durable Workflow Server ist ein eigenständiger Orchestrierungsdienst. Server 3.x ist eine native (Rust-)Implementierung, die als ein einzelner Prozess läuft und eine sprachunabhängige HTTP+JSON-Steuerung sowie ein Worker-Protokoll bereitstellt. Die Implementierungssprache ist keine Anforderung an die Anwendungssprache. Der PHP-Server 2.x, der hinter dieser Grenze die eingebettete PHP-Engine betrieb, ist bei 2.11.8 eingefroren und erhält keine weiteren Veröffentlichungen.
+
+:::note Bestehende Installationen des PHP-Servers 2.x
+
+Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis) ist
+[`docker-compose.published.yml` am Tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)
+und bleibt in aktuellen Server-Veröffentlichungen als
+[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) erhalten.
+Um eine bestehende PHP-Datenbank auf den nativen Server umzustellen, folgen Sie dem
+[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md), das mit einer Sicherung beginnt.
+Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Server.
+
+:::
 
 ## Ist dies nur für PHP-Teams? {#is-this-only-for-php-teams}
 
@@ -24,7 +36,7 @@ Nein. PHP, Python und Rust haben offizielle SDKs. Ein reines Python- oder Rust-T
 
 Die Einführungswege sind getrennt:
 
-- **Eigenständiger Server**: Betreiber stellen das veröffentlichte Image mit Datenbank, Queue/Cache, Scheduler und API-Rollen bereit. Anwendungsteams verbinden PHP-, Python- oder Rust-Worker. Server verantwortet Orchestrierungszustand und öffentliche Steuerungs-/Worker-Grenzen.
+- **Eigenständiger Server**: Betreiber stellen das veröffentlichte Server-Image und seine Datenbank bereit. Anwendungsteams verbinden PHP-, Python- oder Rust-Worker. Server verantwortet Orchestrierungszustand und öffentliche Steuerungs-/Worker-Grenzen.
 - **Eingebetteter Modus**: Eine Laravel-Anwendung installiert das PHP-Workflow-Paket und betreibt die Engine über eigene Queue, Datenbank, Konfiguration und Bereitstellung. Dieser Laravel-Vorteil ist keine Voraussetzung für den eigenständigen Weg.
 - **Managed Cloud**: Durable Workflow Cloud betreibt Orchestrierung, Persistenz, Platzierung und Wiederherstellung. Teams führen SDK-Clients und Worker gegen einen bereitgestellten Cloud-Namespace aus. Sie stellen diese Server-Distribution nicht für Cloud bereit und schließen keinen selbst betriebenen Server daran an. Siehe [Verwaltete Cloud-Laufzeit](/docs/polyglot/cloud-control-plane/).
 
@@ -58,7 +70,7 @@ und noch nicht buchbar.
 
 ### Veröffentlichtes Image und SQLite {#published-image--sqlite}
 
-Der schnellste Start ohne Quellcode verwendet das veröffentlichte Docker-Image. Dieses Beispiel nutzt SQLite, Datenbank-Queues und Dateicache im Container. Binden Sie `/app/database` ein, damit Initialisierung und API dieselbe SQLite-Datei verwenden:
+Der schnellste Start ohne Quellcode verwendet das veröffentlichte Docker-Image. Das native Image verwendet standardmäßig SQLite unter `/app/database/database.sqlite`; binden Sie `/app/database` als Volume ein, damit die Datenbank einen Austausch des Containers übersteht:
 
 ```bash
 server_image=%%artifact.serverDockerHubImage%%
@@ -66,70 +78,57 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-server-quickstart
 
-docker run --rm \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
 
-Dies erstellt den Standard-Namespace und startet API sowie Infrastruktur-Queue-Worker. Die Laravel-Queue heißt `default` und ist von benannten SDK-Queues getrennt. Der Queue-Worker treibt dauerhafte Timer auch bei gestoppten SDK-Workern voran. Schedule-Auswertung und Produktionswartung benötigen die zusätzlichen Rollen des unten veröffentlichten Compose-Stacks.
+Beim ersten Start legt der Server sein Schema und den Namespace `default` an. Derselbe Prozess löst dauerhafte Timer und Zeitpläne aus und führt seine Wartungsdurchläufe einschließlich der Durchsetzung von Activity-Timeouts aus, auch wenn SDK-Worker gestoppt sind. Es gibt keinen Bootstrap-Befehl, keinen Queue-Worker und keinen Scheduler. Ohne `DW_AUTH_TOKEN` verweigert der Server den Start.
 
-Die API ist an Loopback gebunden; `dev-token` dient nur dieser lokalen Übung. Verwenden Sie für Fernzugriff die Compose-Bereitstellung mit eigenen Zugangsdaten, TLS und Netzwerkschutz. Nutzen Sie den Stack mit MySQL und gemeinsamem Redis für eine Produktionsprobe.
+Die API ist an Loopback gebunden; `dev-token` dient nur dieser lokalen Übung. Verwenden Sie für Fernzugriff die Compose-Bereitstellung mit eigenen Zugangsdaten, TLS und Netzwerkschutz.
 
-Entfernen Sie nach der Übung diese Container und Datenbank:
+Entfernen Sie nach der Übung diesen Container und die Datenbank:
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-server-quickstart
 ```
 
 ### Veröffentlichtes Image und Compose {#published-image--compose}
 
-Verwenden Sie das veröffentlichte Compose-Artefakt für einen quellcodefreien Mehrcontainer-Stack mit MySQL und Redis:
+Verwenden Sie das veröffentlichte Compose-Artefakt für einen quellcodefreien Stack mit MySQL. Laden Sie es aus der ausgewählten Veröffentlichung und legen Sie das Image fest:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-server_image=%%artifact.serverDockerHubImage%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
-env DW_SERVER_IMAGE="$server_image" docker compose \
-  -f docker-compose.published.yml up -d --wait
+docker compose -f docker-compose.published.yml up -d --wait
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
+
+Der Stack besteht aus dem nativen Server und MySQL. Compose verweigert den Start, solange
+`DW_AUTH_TOKEN` nicht gesetzt ist. Der [Bereitstellungsleitfaden](/docs/deployment#single-node-production)
+behandelt die Produktions-Env-Datei, Sicherungen und Upgrades.
 
 ### Ports {#ports}
 
 | Dienst | Port | Zweck |
 |---------|------|---------|
-| Server-API | 8080 | Steuerungs- und Worker-Protokollendpunkte |
-| MySQL | 3306 | Für Entwicklung freigegebene Datenbank |
-| Redis | 6379 | Für Entwicklung freigegebener Cache und Queue |
+| Server-API | 8080 | Steuerungs- und Worker-Protokollendpunkte, standardmäßig auf `127.0.0.1` veröffentlicht (`SERVER_BIND_ADDRESS`, `SERVER_PORT`) |
+| MySQL | 3306 | Datenbank, nur im Compose-Netzwerk erreichbar |
 
 ## Konfiguration {#configuration}
 
@@ -146,9 +145,14 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Unterstützt: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+.
+Unterstützt: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+. Der native Server
+akzeptiert `DB_CONNECTION=sqlite` (seinen Standard), `mysql`, `mariadb` oder `pgsql` und
+wartet auf eine MySQL- oder PostgreSQL-Datenbank, die noch keine Verbindungen annimmt.
 
-### Cache und Queue {#cache-and-queue}
+### Cache und Queue (nur PHP 2.x) {#cache-and-queue-php-2x-only}
+
+Der native Server hat keinen Cache-Store, keine Laravel-Queue und keine Redis-Verbindung; diese
+Einstellungen gelten nur für den PHP-Server 2.x.
 
 ```bash
 CACHE_STORE=redis
@@ -162,13 +166,13 @@ REDIS_DB=0
 
 Der Cache muss [atomare Sperren](https://laravel.com/docs/12.x/cache#atomic-locks) unterstützen. Queue-Treiber: Redis, Amazon SQS, Beanstalkd, Datenbank.
 
-Atomare Cache-Sperren sind für serverseitige [Queue-Zulassungsgrenzen](/docs/polyglot/task-queue-admission) und Abfrage-Gegendruck erforderlich. Verwenden Sie Redis bei mehreren Knoten, damit Zulassung für Workflows, Aktivitäten und Abfragen über alle Server-Prozesse gilt.
+Unter PHP 2.x sind atomare Cache-Sperren für serverseitige [Queue-Zulassungsgrenzen](/docs/polyglot/task-queue-admission) und Abfrage-Gegendruck erforderlich. Verwenden Sie Redis bei PHP-Bereitstellungen mit mehreren Knoten, damit Zulassung für Workflows, Aktivitäten und Abfragen über alle Server-Prozesse gilt.
 
 ### Authentifizierung {#authentication}
 
-Server unterstützt drei Authentifizierungsmodi:
-
-**Tokenbasiert** (Standard):
+Der native Server verwendet Token-Authentifizierung. Ein gemeinsames `DW_AUTH_TOKEN` ist
+erforderlich: Ohne es verweigert der Server den Start, und er akzeptiert dieses Token für
+jede Rolle.
 
 ```bash
 DW_AUTH_DRIVER=token
@@ -177,10 +181,11 @@ DW_AUTH_TOKEN=your-secret-token-here
 
 Jede Anfrage muss `Authorization: Bearer your-secret-token-here` senden.
 
-Für minimale Berechtigungen konfigurieren Sie rollenbezogene Tokens statt eines gemeinsamen Tokens:
+Für Clients mit minimalen Berechtigungen ergänzen Sie rollenbezogene Tokens und geben Workern und Anwendungen das enger gefasste Token. Halten Sie das gemeinsame Token wie das Admin-Token geheim; der native Server lehnt `DW_AUTH_BACKWARD_COMPATIBLE=false` ab, daher lässt es sich nicht deaktivieren.
 
 ```bash
 DW_AUTH_DRIVER=token
+DW_AUTH_TOKEN=shared-secret
 DW_WORKER_TOKEN=worker-secret
 DW_OPERATOR_TOKEN=operator-secret
 DW_ADMIN_TOKEN=admin-secret
@@ -188,14 +193,16 @@ DW_ADMIN_TOKEN=admin-secret
 
 Worker-Tokens erlauben Registrierung, Polling, Heartbeats und Aufgabenabschluss. Operator-Tokens können Workflows starten, auflisten, signalisieren, abfragen, aktualisieren, reparieren, abbrechen, terminieren, archivieren und beobachten. Admin-Tokens erlauben administrative Endpunkte wie Namespace- und Aufbewahrungsverwaltung.
 
-**HMAC-Signatur**:
+Der native Server lehnt den Treiber `signature` ab. Ein Release-Image lehnt außerdem `DW_AUTH_DRIVER=none` ab, das jede Anfrage als Administrator zulassen würde.
+
+**Nur PHP 2.x – HMAC-Signatur:**
 
 ```bash
 DW_AUTH_DRIVER=signature
 DW_SIGNATURE_KEY=your-signature-secret
 ```
 
-Anfragen müssen `X-Signature` enthalten, berechnet als `hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`. Server akzeptiert auch rollenbezogene Signaturschlüssel:
+Anfragen müssen `X-Signature` enthalten, berechnet als `hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`. PHP 2.x akzeptiert auch rollenbezogene Signaturschlüssel:
 
 ```bash
 DW_AUTH_DRIVER=signature
@@ -204,7 +211,7 @@ DW_OPERATOR_SIGNATURE_KEY=operator-signature-secret
 DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 ```
 
-**Ohne Authentifizierung** (nur Entwicklung):
+**Nur PHP 2.x – ohne Authentifizierung** (nur Entwicklung):
 
 ```bash
 DW_AUTH_DRIVER=none
@@ -212,9 +219,9 @@ DW_AUTH_DRIVER=none
 
 **Verwenden Sie `none` nicht in Produktion.** Alle Endpunkte werden öffentlich zugänglich.
 
-### Workflow-Paket {#workflow-package}
+### Workflow-Paket (nur PHP 2.x) {#workflow-package-php-2x-only}
 
-Das Docker-Image installiert `durable-workflow/workflow`. So bestimmen Sie die Version:
+Das Docker-Image des PHP-Servers 2.x installiert `durable-workflow/workflow`, das native Image nicht. So bestimmen Sie die Version bei PHP-2.x-Builds:
 
 ```bash
 # Build-time arg (set in docker-compose.yml or pass to docker build)
@@ -290,7 +297,7 @@ Aktuelle Historienexporte erhalten externe Referenzen, keine unabhängigen Kopie
 
 ### Namespaces {#namespaces}
 
-`server-bootstrap` führt Migrationen aus und legt den Namespace `default` an. Mit `DW_DEFAULT_NAMESPACE` ändern Sie den bei fehlendem Namespace-Header verwendeten Namespace:
+Der native Server legt den Namespace `default` an, wenn er beim Start sein Schema erstellt, und eine Anfrage ohne Namespace-Header verwendet `default`. Der native Server verweigert den Start, wenn `DW_DEFAULT_NAMESPACE` auf einen anderen Wert als `default` gesetzt ist. Unter PHP 2.x führt der Befehl `server-bootstrap` Migrationen aus und legt den Namespace an, und `DW_DEFAULT_NAMESPACE` ändert den bei fehlendem Header verwendeten Namespace:
 
 ```bash
 DW_DEFAULT_NAMESPACE=default
@@ -922,16 +929,17 @@ Queue-Befehle enthalten die Zulassungslage für Workflow-, Aktivitäts- und Abfr
 
 Wählen Sie vor Produktionsverkehr eine unterstützte Topologie im [Leitfaden zum Selbstbetrieb](/docs/deployment). Er unterscheidet lokale Entwicklung, Einzelknotenproduktion, kleine Cluster, rohe Kubernetes-Manifeste und betreute Topologien.
 
-Der selbstbediente Kleincluster-Vertrag ist eng: 2–3 zustandslose API-Knoten hinter einem Load Balancer, eine gemeinsame externe MySQL- oder PostgreSQL-Datenbank, gemeinsames Redis, unabhängig skalierte Worker und genau ein Scheduler-/Wartungsprozess. Wählen Sie je Release Komplettstopp oder [rollende Upgrades](/docs/rolling-upgrades); deren Vertrag benennt Versionsabweichung, Schema, Drain, Bereitschaft und Rücknahme. SQLite-Cluster, Mehrknoten ohne Redis, doppelte Scheduler, aktives Multi-Region und anbieterspezifisches Failover bleiben bis gesonderter Prüfung ausgeschlossen. Helm ist separat versioniert im [Bereitstellungsleitfaden](/docs/deployment#helm-chart-for-kubernetes) beschrieben. [Aktiv/passiv über Regionen](/docs/deployment#activepassive-multi-region) ist betreute Evaluierung, kein bewiesener selbstbedienter 2.0-Vertrag; jede Region muss auf der dokumentierten Einzelregion-/Kleinclusterform aufbauen.
+Der selbstbediente Kleincluster-Vertrag ist ein Vertrag des PHP-Servers 2.x und bewusst eng gefasst: 2–3 zustandslose API-Knoten hinter einem Load Balancer, eine gemeinsame externe MySQL- oder PostgreSQL-Datenbank, gemeinsames Redis, unabhängig skalierte Worker und genau ein Scheduler-/Wartungsprozess. Wählen Sie je Release Komplettstopp oder [rollende Upgrades](/docs/rolling-upgrades); deren Vertrag benennt Versionsabweichung, Schema, Drain, Bereitschaft und Rücknahme. SQLite-Cluster, Mehrknoten ohne Redis, doppelte Scheduler, aktives Multi-Region und anbieterspezifisches Failover bleiben bis gesonderter Prüfung ausgeschlossen. Ein natives Compose-Rezept für kleine Cluster wurde nicht veröffentlicht; für mehr als ein Replikat des nativen Servers verwenden Sie den nativen Modus des separat versionierten Helm-Charts, beschrieben im [Bereitstellungsleitfaden](/docs/deployment#helm-chart-for-kubernetes). [Aktiv/passiv über Regionen](/docs/deployment#activepassive-multi-region) ist betreute Evaluierung, kein bewiesener selbstbedienter 2.0-Vertrag; jede Region muss auf der dokumentierten Einzelregion-/Kleinclusterform aufbauen.
 
 Beginnen Sie im Selbstbetrieb mit veröffentlichten Images statt Quellcode-Builds:
 
 - Docker Hub: `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
-- Compose für veröffentlichte Images: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
-- Rohe Kubernetes-Manifeste: [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
+- Compose für veröffentlichte Images: [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%)
+- Helm-Chart: `%%artifact.helmChartInstallIdentity%%`
+- Rohe Kubernetes-Manifeste (PHP-2.x-Form): [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
-Fixieren Sie in Produktion Versionstag oder Image-Digest, verwenden Sie rollenbezogene Zugangsdaten, führen Sie Initialisierung/Migrationen vor Verkehrszulassung aus und prüfen Sie `/api/ready`, `/api/cluster/info` und Worker-Registrierung. Verlagerung allein aufgrund von `/api/health` ist nicht ausreichend.
+Fixieren Sie in Produktion Versionstag oder Image-Digest, verwenden Sie rollenbezogene Zugangsdaten, lassen Sie den nativen Server sein Schema beim Start prüfen (PHP 2.x: Initialisierung/Migrationen ausführen), bevor Sie Verkehr zulassen, und prüfen Sie `/api/ready`, `/api/cluster/info` und Worker-Registrierung. Verlagerung allein aufgrund von `/api/health` ist nicht ausreichend.
 
 ## API-Referenz {#api-reference}
 
@@ -999,14 +1007,14 @@ Nur Erkennungs- und Gesundheitsendpunkte benötigen **kein** `X-Durable-Workflow
 1. Sind Worker registriert? `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Durable-Workflow-Control-Plane-Version: 2" -H "X-Namespace: default"`
 2. Pollen sie die richtige Queue?
 3. Startete der Workflow mit passender Queue?
-4. Teilen Server-Instanzen dasselbe Cache-Backend?
+4. Nur PHP 2.x: Teilen Server-Instanzen dasselbe Cache-Backend?
 
 ### Long-Poll-Verbindungen laufen sofort ab {#long-poll-connections-timing-out-immediately}
 
 **Prüfen:**
-1. Unterstützt der Cache atomare Sperren? Testen Sie mit `php artisan workflow:v2:doctor --strict`.
-2. Ist Redis von Server erreichbar?
-3. Liegt das Load-Balancer-Zeitlimit über dem Long-Poll-Zeitlimit, standardmäßig 60 s?
+1. Liegt das Load-Balancer-Zeitlimit über dem Long-Poll-Zeitlimit, standardmäßig 60 s?
+2. Nur PHP 2.x: Unterstützt der Cache atomare Sperren? Testen Sie mit `php artisan workflow:v2:doctor --strict`.
+3. Nur PHP 2.x: Ist Redis von Server erreichbar?
 
 ### Datenbankverbindungsfehler {#database-connection-errors}
 
@@ -1014,13 +1022,15 @@ Nur Erkennungs- und Gesundheitsendpunkte benötigen **kein** `X-Durable-Workflow
 1. Datenbankhost und Port richtig?
 2. Zugangsdaten gültig?
 3. Datenbank vorhanden?
-4. Migrationen ausgeführt? `php artisan migrate:status`
+4. Nativ: Meldet der Server beim Start im Log eine Schema-Ablehnung? Er lehnt eine PHP-
+   oder unbekannte Datenbank ab, bis die [native Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+   ausgeführt wurde. PHP 2.x: Migrationen ausgeführt? `php artisan migrate:status`
 
 ### Authentifizierungsfehler {#auth-failures}
 
 **Prüfen:**
 1. Entspricht `DW_AUTH_DRIVER` dem Client-Verfahren?
-2. Stimmen Token/HMAC-Geheimnis zwischen Server und Client überein?
+2. Stimmt das Token (oder unter PHP 2.x das HMAC-Geheimnis) zwischen Server und Client überein?
 3. Sind `Authorization: Bearer $TOKEN` oder HMAC-Signaturheader vorhanden?
 
 ## Weitere Informationen {#learn-more}

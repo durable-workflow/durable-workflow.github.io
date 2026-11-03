@@ -50,7 +50,7 @@ Das folgende Beispiel verwendet einen lokalen Server und benötigt weder ein Kon
 
 ## 2. Den lokalen Server starten {#2-start-the-local-server}
 
-Überspringen Sie diesen Schritt bei Cloud. Für den Selbstbetrieb klappen Sie die festgelegte Konfiguration auf und führen sie aus. Sie startet das veröffentlichte Server-Image mit SQLite und einem Entwicklungstoken.
+Überspringen Sie diesen Schritt bei Cloud. Für den Selbstbetrieb klappen Sie die festgelegte Konfiguration auf und führen sie aus. Sie startet einen nativen Server ohne Quellcode mit SQLite und einem Entwicklungstoken.
 
 <details>
 <summary>Das festgelegte Server-Image starten</summary>
@@ -62,27 +62,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -96,13 +81,14 @@ ist ausschließlich für dieses lokale Beispiel gedacht. Für Fernzugriff nutzen
 Sie die [Compose-Bereitstellung](/docs/polyglot/server/#published-image--compose)
 mit eigenen Zugangsdaten, TLS und Netzwerkzugriffskontrollen.
 
-Der zweite Container verarbeitet die Infrastrukturwarteschlange des Servers und
-führt dauerhafte Timer auch bei gestoppten SDK-Workern weiter. Seine
-Laravel-Warteschlange heißt `default` und ist von den SDK-Aufgabenwarteschlangen
-unten getrennt. Lassen Sie beide Container laufen. Zeitplan-Auswertung und
-Produktionswartung nutzen zusätzliche Rollen im Compose-Stack.
+Der native Server ist ein einzelner Prozess. Beim ersten Start legt er sein
+SQLite-Schema und den Namespace `default` im eingebundenen Volume an. Dauerhafte
+Timer und Zeitpläne löst er ebenso selbst aus wie seine Wartungsdurchläufe, auch
+wenn SDK-Worker gestoppt sind. Es gibt keinen Bootstrap-Befehl, keinen
+Queue-Worker und keinen Scheduler, die Sie starten müssten. Ohne `DW_AUTH_TOKEN`
+verweigert der Server den Start.
 
-**Erwartetes Ergebnis:** Die Bereitschaftsabfrage ist erfolgreich und die Clusterinformationen nennen den lokalen eigenständigen Server. Lassen Sie ihn laufen, während Sie einen Sprachpfad abschließen.
+**Erwartetes Ergebnis:** Die Bereitschaftsabfrage ist erfolgreich und die Clusterinformationen melden `"implementation":"rust"` mit der Version `%%artifact.serverVersion%%`. Lassen Sie ihn laufen, während Sie einen Sprachpfad abschließen.
 
 ## 3. Eine Sprache wählen {#choose-one-language}
 
@@ -410,7 +396,7 @@ Fahren Sie mit dem [Rust-SDK-Leitfaden](/docs/polyglot/rust/) fort.
 Cloud-Nutzer haben keinen lokalen Server zu entfernen. Für das lokale Beispiel:
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 

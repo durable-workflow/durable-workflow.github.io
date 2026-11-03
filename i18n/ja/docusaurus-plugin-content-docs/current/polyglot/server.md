@@ -16,7 +16,13 @@ keywords:
 
 # Server {#server}
 
-公開済みの Durable Workflow Server は、PHP で実装された独立型のワークフローオーケストレーションサービスです。組み込み PHP パッケージと同じ永続エンジンを、言語に依存しない HTTP+JSON のコントロールプレーンと Worker プロトコルとして提供します。PHP は Server の実装言語であり、アプリケーション側の使用言語の条件ではありません。
+公開済みの Durable Workflow Server は、独立型のワークフローオーケストレーションサービスです。Server 3.x はネイティブ（Rust）実装で、単一プロセスとして動作し、言語に依存しない HTTP+JSON のコントロールプレーンと Worker プロトコルを提供します。実装言語はアプリケーション側の使用言語の条件ではありません。この境界の背後で組み込み PHP エンジンを実行していた PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。
+
+:::note 既存の PHP Server 2.x インストール
+
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。既存の PHP データベースをネイティブへ移すには、バックアップを先に取る[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)に従ってください。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
+
+:::
 
 ## PHP チーム専用ですか？ {#is-this-only-for-php-teams}
 
@@ -24,7 +30,7 @@ keywords:
 
 導入方法はそれぞれ異なります。
 
-- **独立 Server**：運用者は公開イメージとデータベース、キュー・キャッシュ、スケジューラー、API をデプロイします。アプリケーションはその接続先に PHP、Python、Rust Worker を接続します。オーケストレーション状態と公開コントロールプレーン・Worker 境界は Server が管理します。
+- **独立 Server**：運用者は公開 Server イメージとそのデータベースをデプロイします。アプリケーションはその接続先に PHP、Python、Rust Worker を接続します。オーケストレーション状態と公開コントロールプレーン・Worker 境界は Server が管理します。
 - **組み込み**：Laravel アプリケーションが PHP Workflow パッケージを導入し、自身のキュー、データベース、設定、デプロイでエンジンを管理します。これは Laravel 固有の利点であり、独立 Server の前提ではありません。
 - **マネージド Cloud**：Durable Workflow Cloud が runtime、永続化、配置、復旧を管理します。アプリケーションは払い出された Cloud Namespace に SDK クライアントと Worker を接続します。Cloud 用にこの Server をデプロイしたり、自社 Server を接続したりはしません。[Cloud マネージド runtime](/docs/polyglot/cloud-control-plane/)を参照してください。
 
@@ -57,7 +63,7 @@ HA プランは計画中で、まだプロビジョニングできません。
 
 ### 公開イメージと SQLite {#published-image--sqlite}
 
-ソースなしで最も簡単に動かす方法は公開 Docker イメージです。この例はコンテナ内の SQLite、データベースキュー、ファイルキャッシュを使います。初期化と API が同じ SQLite ファイルを使うように、`/app/database` をマウントします。
+ソースなしで最も簡単に動かす方法は公開 Docker イメージです。ネイティブイメージの既定は `/app/database/database.sqlite` の SQLite です。コンテナを置き換えてもデータベースが残るように、`/app/database` をボリュームにマウントします。
 
 ```bash
 server_image=%%artifact.serverDockerHubImage%%
@@ -65,70 +71,55 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-server-quickstart
 
-docker run --rm \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
 
-これで既定 Namespace、API、基盤用キューワーカーが起動します。Laravel キューの `default` は、SDK の名前付きタスクキューとは別です。SDK Worker が停止中も、このワーカーが永続タイマーを進めます。スケジュール評価と本番の保守には、下記公開 Compose の追加ロールが必要です。
+初回起動時に、Server はスキーマと `default` Namespace を作成します。SDK Worker が停止していても、同じプロセスが永続タイマーとスケジュールを発火し、アクティビティのタイムアウト適用を含むメンテナンス処理を実行します。ブートストラップコマンド、キュー Worker、スケジューラーはありません。`DW_AUTH_TOKEN` がないと Server は起動を拒否します。
 
-API はループバックにのみ公開され、`dev-token` はこのローカル演習用です。リモートアクセスには独自認証情報、TLS、ネットワーク制御を設定した Compose を使用してください。本番リハーサルでは MySQL と共有 Redis を使います。
+API はループバックにのみ公開され、`dev-token` はこのローカル演習用です。リモートアクセスには独自認証情報、TLS、ネットワーク制御を設定した Compose を使用してください。
 
-演習が終わったら、コンテナとデータベースを削除します。
+演習が終わったら、このコンテナとデータベースを削除します。
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-server-quickstart
 ```
 
 ### 公開イメージと Compose {#published-image--compose}
 
-ソースなしで MySQL と Redis を使う複数コンテナ構成には、公開 Compose アーティファクトを使用します。
+ソースなしで MySQL を使う構成には、公開 Compose アーティファクトを使用します。選択したリリースから取得し、イメージを固定します。
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-server_image=%%artifact.serverDockerHubImage%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
-env DW_SERVER_IMAGE="$server_image" docker compose \
-  -f docker-compose.published.yml up -d --wait
+docker compose -f docker-compose.published.yml up -d --wait
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
+
+このスタックはネイティブ Server と MySQL で構成されます。`DW_AUTH_TOKEN` が設定されるまで Compose は起動を拒否します。本番用 env ファイル、バックアップ、アップグレードは [デプロイガイド](/docs/deployment#single-node-production)で説明しています。
 
 ### ポート {#ports}
 
 | サービス | ポート | 用途 |
 |---------|------|---------|
-| Server API | 8080 | コントロールプレーンと Worker プロトコル |
-| MySQL | 3306 | データベース（開発の便宜のため公開） |
-| Redis | 6379 | キャッシュとキュー（開発の便宜のため公開） |
+| Server API | 8080 | コントロールプレーンと Worker プロトコル。既定では `127.0.0.1` に公開（`SERVER_BIND_ADDRESS`、`SERVER_PORT`） |
+| MySQL | 3306 | データベース。Compose ネットワーク内からのみ到達可能 |
 
 ## 設定 {#configuration}
 
@@ -145,9 +136,11 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-対応：MySQL 8.0 以降、PostgreSQL 13 以降、SQLite 3.35 以降。
+対応：MySQL 8.0 以降、PostgreSQL 13 以降、SQLite 3.35 以降。ネイティブ Server は `DB_CONNECTION=sqlite`（既定）、`mysql`、`mariadb`、`pgsql` を受け付け、まだ接続を受け付けていない MySQL・PostgreSQL データベースの準備を待ちます。
 
-### キャッシュとキュー {#cache-and-queue}
+### キャッシュとキュー（PHP 2.x のみ） {#cache-and-queue-php-2x-only}
+
+ネイティブ Server にはキャッシュストア、Laravel キュー、Redis 接続がありません。これらの設定は PHP Server 2.x にのみ適用されます。
 
 ```bash
 CACHE_STORE=redis
@@ -161,13 +154,11 @@ REDIS_DB=0
 
 キャッシュには[アトミックロック](https://laravel.com/docs/12.x/cache#atomic-locks)が必要です。キュードライバーは Redis、Amazon SQS、Beanstalkd、database に対応します。
 
-Server 側の[タスクキュー受付上限](/docs/polyglot/task-queue-admission)とクエリタスクのバックプレッシャーには、キャッシュのアトミックロックが必要です。複数ノードで全 Server プロセスにわたるワークフロー・アクティビティ・クエリの制限を適用するには Redis を使用します。
+PHP 2.x では、Server 側の[タスクキュー受付上限](/docs/polyglot/task-queue-admission)とクエリタスクのバックプレッシャーに、キャッシュのアトミックロックが必要です。PHP の複数ノード構成で全 Server プロセスにわたるワークフロー・アクティビティ・クエリの制限を適用するには Redis を使用します。
 
 ### 認証 {#authentication}
 
-Server は三つの認証モードに対応します。
-
-**トークン認証**（既定）：
+ネイティブ Server はトークン認証を使います。共有の `DW_AUTH_TOKEN` は必須です。これがないと Server は起動を拒否し、このトークンはすべてのロールで受け付けられます。
 
 ```bash
 DW_AUTH_DRIVER=token
@@ -176,10 +167,11 @@ DW_AUTH_TOKEN=your-secret-token-here
 
 すべてのリクエストに `Authorization: Bearer your-secret-token-here` が必要です。
 
-最小権限の構成では、共有トークン一つではなくロール別トークンを設定します。
+最小権限のクライアントには、ロール別トークンを追加し、Worker とアプリケーションには権限の狭いトークンを渡します。共有トークンは管理者トークンと同様に秘密にしてください。ネイティブ Server は `DW_AUTH_BACKWARD_COMPATIBLE=false` を拒否するため、共有トークンを無効にはできません。
 
 ```bash
 DW_AUTH_DRIVER=token
+DW_AUTH_TOKEN=shared-secret
 DW_WORKER_TOKEN=worker-secret
 DW_OPERATOR_TOKEN=operator-secret
 DW_ADMIN_TOKEN=admin-secret
@@ -187,14 +179,16 @@ DW_ADMIN_TOKEN=admin-secret
 
 Worker トークンは登録、ポーリング、ハートビート、完了を行えます。運用者トークンは開始、一覧、シグナル、クエリ、Update、修復、キャンセル、強制終了、アーカイブ、観測を行えます。管理者トークンは Namespace や保持管理などの管理エンドポイントを使用できます。
 
-**HMAC 署名**：
+ネイティブ Server は `signature` ドライバーを拒否します。リリースイメージは、すべてのリクエストを管理者として受け入れてしまう `DW_AUTH_DRIVER=none` も拒否します。
+
+**PHP 2.x のみ — HMAC 署名：**
 
 ```bash
 DW_AUTH_DRIVER=signature
 DW_SIGNATURE_KEY=your-signature-secret
 ```
 
-リクエストには `hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)` で計算した `X-Signature` を含めます。ロール別署名キーにも対応します。
+リクエストには `hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)` で計算した `X-Signature` を含めます。PHP 2.x はロール別署名キーにも対応します。
 
 ```bash
 DW_AUTH_DRIVER=signature
@@ -203,7 +197,7 @@ DW_OPERATOR_SIGNATURE_KEY=operator-signature-secret
 DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 ```
 
-**認証なし**（開発専用）：
+**PHP 2.x のみ — 認証なし**（開発専用）：
 
 ```bash
 DW_AUTH_DRIVER=none
@@ -211,9 +205,9 @@ DW_AUTH_DRIVER=none
 
 ⚠️ **本番で `none` を使用しないでください。** 全エンドポイントが公開アクセス可能になります。
 
-### Workflow パッケージ {#workflow-package}
+### Workflow パッケージ（PHP 2.x のみ） {#workflow-package-php-2x-only}
 
-Docker イメージは `durable-workflow/workflow` を導入します。バージョンは次で指定します。
+PHP 2.x の Docker イメージは `durable-workflow/workflow` を導入します。ネイティブイメージは導入しません。PHP 2.x のビルドでは、バージョンを次で指定します。
 
 ```bash
 # Build-time arg (set in docker-compose.yml or pass to docker build)
@@ -289,7 +283,7 @@ PHP Server に `run_ids` を指定すると、有限保持期間より新しい�
 
 ### Namespace {#namespaces}
 
-`server-bootstrap` はマイグレーションと `default` Namespace の初期化を行います。Namespace ヘッダーを省略したリクエストの既定値は、`DW_DEFAULT_NAMESPACE` で変更します。
+ネイティブ Server は、起動時にスキーマを作成するときに `default` Namespace も作成します。Namespace ヘッダーを省略したリクエストは `default` を使います。`DW_DEFAULT_NAMESPACE` に `default` 以外の値を設定すると、ネイティブ Server は起動を拒否します。PHP 2.x では、`server-bootstrap` コマンドがマイグレーションと Namespace の初期化を行い、ヘッダーを省略したリクエストが使う Namespace を `DW_DEFAULT_NAMESPACE` で変更できます。
 
 ```bash
 DW_DEFAULT_NAMESPACE=default
@@ -921,16 +915,17 @@ dw workflow:start --type=my-workflow --input-file=input.json
 
 本番に送る前に、[セルフホストのデプロイガイド](/docs/deployment)で対応トポロジーを選びます。ローカル開発、単一ノード本番、小規模クラスタ、Kubernetes マニフェスト、サポート主導の構成を区別しています。
 
-セルフサービスの小規模クラスタは、ロードバランサー下の 2～3 台のステートレス API、一つの外部 MySQL/PostgreSQL、共有 Redis、独立拡張の Worker、一つだけのスケジューラー・保守プロセスに限定します。リリースごとに全停止または [ローリング更新](/docs/rolling-upgrades)を選びます。ローリング契約のバージョン差、スキーマ、ドレイン、準備、ロールバック要件が必要です。SQLite クラスタ、Redis なし複数ノード、重複スケジューラー、active/active 複数リージョン、プロバイダー別フェイルオーバーは別途検証まで対象外です。独立バージョンの Helm は [デプロイガイド](/docs/deployment#helm-chart-for-kubernetes)にあります。[active/passive 複数リージョン](/docs/deployment#activepassive-multi-region)はサポート主導の評価資料であり、実証済みセルフサービス契約ではありません。各候補リージョンも単一リージョン・小規模クラスタから始める必要があります。
+セルフサービスの小規模クラスタ契約は PHP Server 2.x の契約で、ロードバランサー下の 2～3 台のステートレス API、一つの外部 MySQL/PostgreSQL、共有 Redis、独立拡張の Worker、一つだけのスケジューラー・保守プロセスに限定します。リリースごとに全停止または [ローリング更新](/docs/rolling-upgrades)を選びます。ローリング契約のバージョン差、スキーマ、ドレイン、準備、ロールバック要件が必要です。SQLite クラスタ、Redis なし複数ノード、重複スケジューラー、active/active 複数リージョン、プロバイダー別フェイルオーバーは別途検証まで対象外です。ネイティブ用の Compose 小規模クラスタ手順は公開されていません。ネイティブ Server を複数レプリカで動かす場合は、独立バージョンの Helm チャートのネイティブモードを使います。詳しくは [デプロイガイド](/docs/deployment#helm-chart-for-kubernetes)を参照してください。[active/passive 複数リージョン](/docs/deployment#activepassive-multi-region)はサポート主導の評価資料であり、実証済みセルフサービス契約ではありません。各候補リージョンも単一リージョン・小規模クラスタから始める必要があります。
 
 セルフホストでは、ソースビルドではなく公開イメージから始めます。
 
 - Docker Hub：`%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry：`%%artifact.serverGhcrImage%%`
-- 公開イメージ用 Compose：[ `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
-- Kubernetes マニフェスト：[`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
+- 公開イメージ用 Compose：[`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%)
+- Helm チャート：`%%artifact.helmChartInstallIdentity%%`
+- Kubernetes マニフェスト（PHP 2.x の構成）：[`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
-本番はバージョンタグやダイジェストに固定し、ロール別認証情報を使い、受付前に初期化・マイグレーションを実行してください。`/api/ready`、`/api/cluster/info`、Worker 登録で準備を実証します。`/api/health` だけでトラフィックを切り替えないでください。
+本番はバージョンタグやダイジェストに固定し、ロール別認証情報を使い、受付前にネイティブ Server の起動時スキーマ確認を完了させてください（PHP 2.x では初期化・マイグレーションを実行）。`/api/ready`、`/api/cluster/info`、Worker 登録で準備を実証します。`/api/health` だけでトラフィックを切り替えないでください。
 
 ## API リファレンス {#api-reference}
 
@@ -1000,14 +995,14 @@ Worker が登録、ポーリング、ハートビート、完了に使います�
 1. Worker は登録済みですか？ `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Durable-Workflow-Control-Plane-Version: 2" -H "X-Namespace: default"`
 2. 正しいタスクキューをポーリングしていますか？
 3. 開始したワークフローのキューと一致しますか？
-4. キャッシュは Server 間で共有されていますか？
+4. PHP 2.x のみ：キャッシュは Server 間で共有されていますか？
 
 ### ロングポーリングが直ちにタイムアウトする {#long-poll-connections-timing-out-immediately}
 
 **確認：**
-1. キャッシュはアトミックロックに対応していますか？ `php artisan workflow:v2:doctor --strict` で確認します。
-2. Server から Redis に到達できますか？
-3. ロードバランサーのタイムアウトはロングポーリング（既定 60 秒）より長いですか？
+1. ロードバランサーのタイムアウトはロングポーリング（既定 60 秒）より長いですか？
+2. PHP 2.x のみ：キャッシュはアトミックロックに対応していますか？ `php artisan workflow:v2:doctor --strict` で確認します。
+3. PHP 2.x のみ：Server から Redis に到達できますか？
 
 ### データベース接続エラー {#database-connection-errors}
 
@@ -1015,13 +1010,13 @@ Worker が登録、ポーリング、ハートビート、完了に使います�
 1. データベースのホストとポートは正しいですか？
 2. 認証情報は有効ですか？
 3. データベースは存在しますか？
-4. マイグレーションは実行済みですか？ `php artisan migrate:status`
+4. ネイティブ：起動時に Server がスキーマ拒否をログに出していませんか？ [ネイティブ移行（テイクオーバー）](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)を実行するまで、PHP のデータベースや不明なデータベースは拒否されます。PHP 2.x：マイグレーションは実行済みですか？ `php artisan migrate:status`
 
 ### 認証の失敗 {#auth-failures}
 
 **確認：**
 1. `DW_AUTH_DRIVER` はクライアントの認証方式に一致しますか？
-2. Server とクライアントのトークン・HMAC 秘密は一致しますか？
+2. Server とクライアントのトークン（PHP 2.x では HMAC 秘密）は一致しますか？
 3. `Authorization: Bearer $TOKEN` または HMAC 署名ヘッダーがありますか？
 
 ## 関連情報 {#learn-more}

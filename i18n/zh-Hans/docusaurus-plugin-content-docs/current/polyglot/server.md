@@ -16,7 +16,13 @@ keywords:
 
 # Server {#server}
 
-已发布的 Durable Workflow Server 是用 PHP 实现的独立工作流编排服务。它通过语言中立的 HTTP+JSON 控制平面和 Worker 协议，公开与嵌入式 PHP 包相同的持久化引擎。PHP 是此边界的实现语言，不是应用语言要求。
+已发布的 Durable Workflow Server 是独立的工作流编排服务。Server 3.x 是原生（Rust）实现，以单个进程运行，公开语言中立的 HTTP+JSON 控制平面和 Worker 协议。实现语言不是应用语言要求。PHP Server 2.x 在此边界之后运行嵌入式 PHP 引擎，已冻结在 2.11.8，不再发布新版本。
+
+:::note 现有 PHP Server 2.x 安装
+
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)。下文标注为 PHP 2.x 的配置不适用于原生 Server。
+
+:::
 
 ## 只适用于 PHP 团队吗？ {#is-this-only-for-php-teams}
 
@@ -24,7 +30,7 @@ keywords:
 
 采用方式分为：
 
-- **独立部署**：运维部署已发布的 Server 镜像及其数据库、队列/缓存、调度器和 API 角色。应用团队运行 PHP、Python 或 Rust Worker 连接该端点。Server 拥有编排状态及公开控制平面/Worker 边界。
+- **独立部署**：运维部署已发布的 Server 镜像及其数据库。应用团队运行 PHP、Python 或 Rust Worker 连接该端点。Server 拥有编排状态及公开控制平面/Worker 边界。
 - **嵌入式部署**：Laravel 应用安装 PHP Workflow 包，通过自己的队列、数据库、配置和部署管理引擎。这是 Laravel 原生方案的优势，不是独立部署的前提。
 - **托管 Cloud**：Durable Workflow Cloud 管理编排运行时、持久化、资源放置及恢复。应用团队将 SDK 客户端和 Worker 连接到已配置的 Cloud 命名空间，不为 Cloud 部署此 Server，也不把自托管 Server 接入 Cloud。参阅 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane/)。
 
@@ -56,7 +62,7 @@ keywords:
 
 ### 已发布镜像与 SQLite {#published-image--sqlite}
 
-无需源码运行 Server 的最快方式是已发布的 Docker 镜像。本示例在容器内使用 SQLite、数据库队列与文件缓存。挂载 `/app/database`，让引导过程和 API 共享同一 SQLite 文件：
+无需源码运行 Server 的最快方式是已发布的 Docker 镜像。原生镜像默认使用 `/app/database/database.sqlite` 处的 SQLite；将 `/app/database` 挂载到卷上，使数据库在替换容器后仍得以保留：
 
 ```bash
 server_image=%%artifact.serverDockerHubImage%%
@@ -64,70 +70,55 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-server-quickstart
 
-docker run --rm \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-server-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$server_image"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-server-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$server_image" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl http://localhost:8080/api/health
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
 
-这会创建默认命名空间，并启动 API 及基础设施队列 Worker。Laravel 队列 `default` 与 SDK 的命名任务队列不同。SDK Worker 停止时，队列 Worker 仍推进持久定时器。调度评估和生产维护还需要下方已发布 Compose 栈的其他角色。
+首次启动时，Server 会创建数据库模式和 `default` 命名空间。即使 SDK Worker 已停止，同一进程也会触发持久定时器和计划，并执行维护任务，包括活动超时处理。无需 bootstrap 命令、队列 Worker 或调度器。未设置 `DW_AUTH_TOKEN` 时，Server 会拒绝启动。
 
-API 绑定回环地址，`dev-token` 只用于此本地练习。远程访问应使用带自有凭据、TLS 和网络访问控制的 Compose 部署。生产演练应使用 MySQL 与共享 Redis。
+API 绑定回环地址，`dev-token` 只用于此本地练习。远程访问应使用带自有凭据、TLS 和网络访问控制的 Compose 部署。
 
-练习结束后删除这些本地容器和数据库：
+练习结束后删除此本地容器和数据库：
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-server-quickstart
 ```
 
 ### 已发布镜像与 Compose {#published-image--compose}
 
-需要由 MySQL 与 Redis 支持的、无需源码的多容器栈时，使用已发布的 Compose 制品：
+需要由 MySQL 支持的、无需源码的栈时，使用已发布的 Compose 制品。从所选发布获取该文件并固定镜像：
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-server_image=%%artifact.serverDockerHubImage%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
-env DW_SERVER_IMAGE="$server_image" docker compose \
-  -f docker-compose.published.yml up -d --wait
+docker compose -f docker-compose.published.yml up -d --wait
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info \
-  | jq '.topology | {current_shape, current_roles, execution_mode}'
+  | jq '{version, implementation}'
 ```
+
+该栈包含原生 Server 和 MySQL。未设置 `DW_AUTH_TOKEN` 时，Compose 会拒绝启动。生产 env 文件、备份和升级见[部署指南](/docs/deployment#single-node-production)。
 
 ### 端口 {#ports}
 
 | 服务 | 端口 | 用途 |
 |---------|------|---------|
-| Server API | 8080 | 控制平面与 Worker 协议端点 |
-| MySQL | 3306 | 数据库（为开发方便而公开） |
-| Redis | 6379 | 缓存和队列（为开发方便而公开） |
+| Server API | 8080 | 控制平面与 Worker 协议端点，默认在 `127.0.0.1` 上发布（`SERVER_BIND_ADDRESS`、`SERVER_PORT`） |
+| MySQL | 3306 | 数据库，仅可在 Compose 网络内访问 |
 
 ## 配置 {#configuration}
 
@@ -144,9 +135,11 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-支持 MySQL 8.0+、PostgreSQL 13+、SQLite 3.35+。
+支持 MySQL 8.0+、PostgreSQL 13+、SQLite 3.35+。原生 Server 接受 `DB_CONNECTION=sqlite`（默认值）、`mysql`、`mariadb` 或 `pgsql`，并会等待尚未接受连接的 MySQL 或 PostgreSQL 数据库。
 
-### 缓存与队列 {#cache-and-queue}
+### 缓存与队列（仅 PHP 2.x） {#cache-and-queue-php-2x-only}
+
+原生 Server 没有缓存存储、Laravel 队列或 Redis 连接；这些设置仅适用于 PHP Server 2.x。
 
 ```bash
 CACHE_STORE=redis
@@ -160,13 +153,11 @@ REDIS_DB=0
 
 缓存必须支持[原子锁](https://laravel.com/docs/12.x/cache#atomic-locks)。队列驱动包括 Redis、Amazon SQS、Beanstalkd 和 database。
 
-Server 端[任务队列准入上限](/docs/polyglot/task-queue-admission)及查询任务背压需要原子缓存锁。多节点部署若需在全部 Server 进程间统一执行工作流、活动或查询准入，请使用 Redis。
+在 PHP 2.x 上，Server 端[任务队列准入上限](/docs/polyglot/task-queue-admission)及查询任务背压需要原子缓存锁。PHP 多节点部署若需在全部 Server 进程间统一执行工作流、活动或查询准入，请使用 Redis。
 
 ### 身份验证 {#authentication}
 
-Server 支持三种认证模式：
-
-**令牌认证**（默认）：
+原生 Server 使用令牌认证。必须设置共享 `DW_AUTH_TOKEN`：未设置时 Server 会拒绝启动，且该令牌对所有角色均有效。
 
 ```bash
 DW_AUTH_DRIVER=token
@@ -175,10 +166,11 @@ DW_AUTH_TOKEN=your-secret-token-here
 
 所有请求必须发送 `Authorization: Bearer your-secret-token-here`。
 
-最小权限部署应配置角色令牌，而不是共享单一令牌：
+如需为客户端实现最小权限，请添加角色令牌，并为 Worker 和应用分配权限更窄的令牌。请像对待管理员令牌一样对共享令牌保密；原生 Server 拒绝 `DW_AUTH_BACKWARD_COMPATIBLE=false`，因此无法禁用共享令牌。
 
 ```bash
 DW_AUTH_DRIVER=token
+DW_AUTH_TOKEN=shared-secret
 DW_WORKER_TOKEN=worker-secret
 DW_OPERATOR_TOKEN=operator-secret
 DW_ADMIN_TOKEN=admin-secret
@@ -186,14 +178,16 @@ DW_ADMIN_TOKEN=admin-secret
 
 Worker 令牌允许注册、轮询、心跳和完成工作。运维令牌允许启动、列出、发送信号、查询、更新、修复、取消、终止、归档和观察工作流。管理员令牌可访问命名空间、保留管理等管理端点。
 
-**HMAC 签名**：
+原生 Server 拒绝 `signature` 驱动。发布镜像也拒绝 `DW_AUTH_DRIVER=none`，因为它会将每个请求都作为管理员放行。
+
+**仅 PHP 2.x — HMAC 签名：**
 
 ```bash
 DW_AUTH_DRIVER=signature
 DW_SIGNATURE_KEY=your-signature-secret
 ```
 
-请求必须包含 `X-Signature`，计算方式为 `hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`。Server 也接受角色签名密钥：
+请求必须包含 `X-Signature`，计算方式为 `hash_hmac('sha256', request_body, DW_SIGNATURE_KEY)`。PHP 2.x 也接受角色签名密钥：
 
 ```bash
 DW_AUTH_DRIVER=signature
@@ -202,7 +196,7 @@ DW_OPERATOR_SIGNATURE_KEY=operator-signature-secret
 DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 ```
 
-**无认证**（仅开发）：
+**仅 PHP 2.x — 无认证**（仅开发）：
 
 ```bash
 DW_AUTH_DRIVER=none
@@ -210,9 +204,9 @@ DW_AUTH_DRIVER=none
 
 ⚠️ **生产环境禁止使用 `none`。** 所有端点将公开可访问。
 
-### Workflow 包 {#workflow-package}
+### Workflow 包（仅 PHP 2.x） {#workflow-package-php-2x-only}
 
-Docker 镜像安装 `durable-workflow/workflow` 包，可如下控制版本：
+PHP 2.x Docker 镜像会安装 `durable-workflow/workflow` 包，原生镜像不会。对于 PHP 2.x 构建，可如下控制版本：
 
 ```bash
 # Build-time arg (set in docker-compose.yml or pass to docker build)
@@ -288,7 +282,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
 
 ### 命名空间 {#namespaces}
 
-`server-bootstrap` 执行迁移并初始化 `default` 命名空间。使用 `DW_DEFAULT_NAMESPACE` 更改请求省略命名空间请求头时采用的命名空间：
+原生 Server 在启动时创建数据库模式的同时创建 `default` 命名空间，省略命名空间请求头的请求使用 `default`。如果 `DW_DEFAULT_NAMESPACE` 设为 `default` 以外的值，原生 Server 会拒绝启动。在 PHP 2.x 上，`server-bootstrap` 命令执行迁移并初始化命名空间，`DW_DEFAULT_NAMESPACE` 可更改请求省略该请求头时采用的命名空间：
 
 ```bash
 DW_DEFAULT_NAMESPACE=default
@@ -920,16 +914,17 @@ dw workflow:start --type=my-workflow --input-file=input.json
 
 生产部署前，请使用[自托管部署指南](/docs/deployment)选择支持的拓扑。该指南区分本地开发、单节点生产、小集群、原始 Kubernetes 清单及由支持团队协助的拓扑。
 
-自助小集群契约刻意限制为：负载均衡后 2 至 3 个无状态 API 节点、一个共享外部 MySQL 或 PostgreSQL、共享 Redis、独立扩缩的 Worker，以及恰好一个调度器或维护进程。每个版本选择全停升级或[滚动升级](/docs/rolling-upgrades)，后者必须满足版本差、模式、排空、就绪和回滚契约。SQLite 集群、无 Redis 多节点、重复调度器、active/active 多区域和提供方特定故障转移，未经单独验证均不在此契约内。独立版本的 Helm 路径见[部署指南](/docs/deployment#helm-chart-for-kubernetes)。[active/passive 多区域内容](/docs/deployment#activepassive-multi-region)属于支持团队协助评估，并非已验证的自助 2.0 契约；候选区域仍须从文档中的单区域或小集群形态开始。
+自助小集群契约是 PHP Server 2.x 契约，刻意限制为：负载均衡后 2 至 3 个无状态 API 节点、一个共享外部 MySQL 或 PostgreSQL、共享 Redis、独立扩缩的 Worker，以及恰好一个调度器或维护进程。每个版本选择全停升级或[滚动升级](/docs/rolling-upgrades)，后者必须满足版本差、模式、排空、就绪和回滚契约。SQLite 集群、无 Redis 多节点、重复调度器、active/active 多区域和提供方特定故障转移，未经单独验证均不在此契约内。尚未发布原生 Compose 小集群配方；如需多个原生 Server 副本，请使用独立版本的 Helm chart 原生模式，见[部署指南](/docs/deployment#helm-chart-for-kubernetes)。[active/passive 多区域内容](/docs/deployment#activepassive-multi-region)属于支持团队协助评估，并非已验证的自助 2.0 契约；候选区域仍须从文档中的单区域或小集群形态开始。
 
 自托管 Server 应从已发布镜像开始，而非源码树构建：
 
 - Docker Hub：`%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry：`%%artifact.serverGhcrImage%%`
-- 已发布镜像 Compose：[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
-- 原始 Kubernetes 清单：[`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
+- 已发布镜像 Compose：[`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%)
+- Helm chart：`%%artifact.helmChartInstallIdentity%%`
+- 原始 Kubernetes 清单（PHP 2.x 形态）：[`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
-生产部署应固定版本标签或镜像摘要、使用角色凭据、提供流量前先运行引导/迁移，并通过 `/api/ready`、`/api/cluster/info` 与 Worker 注册证明就绪。不要仅依据 `/api/health` 切换生产流量。
+生产部署应固定版本标签或镜像摘要、使用角色凭据、提供流量前让原生 Server 在启动时检查数据库模式（PHP 2.x：运行引导/迁移），并通过 `/api/ready`、`/api/cluster/info` 与 Worker 注册证明就绪。不要仅依据 `/api/health` 切换生产流量。
 
 ## API 参考 {#api-reference}
 
@@ -999,14 +994,14 @@ Worker 注册、轮询、发送心跳并完成任务，需要 `X-Durable-Workflo
 1. Worker 已注册？ `curl http://localhost:8080/api/workers -H "Authorization: Bearer $TOKEN" -H "X-Durable-Workflow-Control-Plane-Version: 2" -H "X-Namespace: default"`
 2. Worker 是否轮询正确任务队列？
 3. 工作流是否使用匹配的任务队列启动？
-4. Server 实例之间是否共享缓存后端？
+4. 仅 PHP 2.x：Server 实例之间是否共享缓存后端？
 
 ### 长轮询连接立即超时 {#long-poll-connections-timing-out-immediately}
 
 **检查：**
-1. 缓存驱动是否支持原子锁？用 `php artisan workflow:v2:doctor --strict` 验证。
-2. Server 能否连接 Redis？
-3. 负载均衡超时是否高于长轮询超时（默认 60 秒）？
+1. 负载均衡超时是否高于长轮询超时（默认 60 秒）？
+2. 仅 PHP 2.x：缓存驱动是否支持原子锁？用 `php artisan workflow:v2:doctor --strict` 验证。
+3. 仅 PHP 2.x：Server 能否连接 Redis？
 
 ### 数据库连接错误 {#database-connection-errors}
 
@@ -1014,13 +1009,13 @@ Worker 注册、轮询、发送心跳并完成任务，需要 `X-Durable-Workflo
 1. 数据库主机和端口正确吗？
 2. 凭据有效吗？
 3. 数据库存在吗？
-4. 是否执行迁移？ `php artisan migrate:status`
+4. 原生：Server 启动时是否记录了数据库模式拒绝？在完成[原生接管](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)之前，它会拒绝 PHP 或未知数据库。PHP 2.x：是否执行迁移？ `php artisan migrate:status`
 
 ### 身份验证失败 {#auth-failures}
 
 **检查：**
 1. `DW_AUTH_DRIVER` 与客户端认证方式匹配吗？
-2. Server 与客户端的令牌/HMAC 密钥是否相同？
+2. Server 与客户端的令牌（在 PHP 2.x 上也可能是 HMAC 密钥）是否相同？
 3. 是否发送 `Authorization: Bearer $TOKEN` 或 HMAC 签名请求头？
 
 ## 了解更多 {#learn-more}

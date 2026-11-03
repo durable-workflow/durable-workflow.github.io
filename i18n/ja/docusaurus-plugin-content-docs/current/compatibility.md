@@ -171,7 +171,9 @@ Durable Workflow の各公開インターフェースは、次の安定性レベ
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-Helm チャートに記録された `appVersion` は `%%artifact.helmChartAppVersion%%` で、選択した Server と一致します。[公開済みの組み合わせの検証記録](%%artifact.helmChartQualificationUrl%%)は OCI/パッケージのダイジェストとソース識別子を確認したもので、新たなクラスターインストールの結果ではありません。インストールやイメージの上書き前に、[チャートの選択とアップグレード](./deployment.md#helm-chart-selection)を確認してください。
+選択した Server はネイティブ 3.x Server です。PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。既存の PHP インストールは、[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)に従うまで、固定した 2.x イメージを使い続けます。
+
+Helm チャートに記録された `appVersion` は `%%artifact.helmChartAppVersion%%` で、選択した Server と一致し、チャートは既定でネイティブ Server を実行します。[公開済みのリリース記録](%%artifact.helmChartQualificationUrl%%)には、チャートのリリース実行、OCI/パッケージのダイジェスト、ソース識別子、その実行内での kind へのインストールが記録されています。本番クラスターでの適格性確認ではありません。インストールやイメージの上書き前に、[チャートの選択とアップグレード](./deployment.md#helm-chart-selection)を確認してください。
 
 
 PyPI は Python 配布版を `%%artifact.pythonRegistryVersion%%` と表示します。文書化した PEP 440 のインストール表記 `%%artifact.pythonSdkVersion%%` は、同じリリースに解決します。この正規化が別のサポート対象バージョンを作ることはありません。

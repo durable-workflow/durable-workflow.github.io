@@ -50,7 +50,7 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 
 ## 2. ローカル Server を起動する {#2-start-the-local-server}
 
-Cloud を選んだ場合は、この手順を省略します。セルフホストでは、固定バージョンの設定を開いて実行します。製品のソースをマウントせず、SQLite と開発用トークンを使う Server が起動します。
+Cloud を選んだ場合は、この手順を省略します。セルフホストでは、固定バージョンの設定を開いて実行します。製品のソースをマウントせず、SQLite と開発用トークンを使うネイティブ Server が起動します。
 
 <details>
 <summary>固定バージョンの Server イメージを起動する</summary>
@@ -62,27 +62,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -93,9 +78,9 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 API はこのマシンのループバックアドレスだけに公開されます。`dev-token` はこのローカル演習専用です。リモートアクセスには、独自の認証情報、TLS、ネットワークアクセス制御を設定した [Compose デプロイ](/docs/polyglot/server/#published-image--compose)を使用してください。
 
-2 つ目のコンテナは Server のインフラストラクチャキューを処理し、SDK Worker が停止していても永続タイマーを進めます。Laravel キューは `default` で、以下の SDK タスクキューとは別です。両方のコンテナを稼働させてください。スケジュール評価と本番環境のメンテナンスには、Compose スタックの追加ロールを使用します。
+ネイティブ Server は単一のプロセスです。初回起動時に、マウントしたボリューム内に SQLite スキーマと `default` Namespace を作成し、SDK Worker が停止していても、永続タイマーとスケジュールの発火やメンテナンス処理を自ら実行します。実行が必要なブートストラップコマンド、キュー Worker、スケジューラーはありません。`DW_AUTH_TOKEN` がないと Server は起動を拒否します。
 
-**期待する結果：** readiness リクエストが成功し、クラスタ情報がローカルの独立 Server を示します。一つの言語の手順を終えるまで、そのまま実行してください。
+**期待する結果：** readiness リクエストが成功し、クラスタ情報がバージョン `%%artifact.serverVersion%%` の `"implementation":"rust"` を報告します。一つの言語の手順を終えるまで、そのまま実行してください。
 
 ## 3. 一つの言語を選ぶ {#choose-one-language}
 
@@ -403,7 +388,7 @@ cargo run
 Cloud 利用者には、削除するローカル Server はありません。セルフホストの例を終えたら、次を実行します。
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 

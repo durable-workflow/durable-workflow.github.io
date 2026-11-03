@@ -120,24 +120,17 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-認証ドライバー、データベース設定、TLS など本番デプロイは [Server セットアップガイド](/docs/polyglot/server)を参照してください。
+ネイティブ Server は初回起動時に SQLite スキーマと `default` Namespace を作成するため、別途ブートストラップ手順は不要です。認証、データベース設定、TLS など本番デプロイは [Server セットアップガイド](/docs/polyglot/server)を参照してください。
 
 より大きな例として、SDK リポジトリは Python Worker で注文ワークフローを端から端まで実行する Docker Compose スタック [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)を含みます。
 
@@ -1211,7 +1204,7 @@ await worker.run()
 
 保持者の喪失やリース切れの後は、`allow_reacquire_after_failure=True` により、条件を満たす別の Worker がセッションを再取得できます。その Worker はローカルリソースを再構築する必要があります。確定済みのアクティビティ結果はリプレイされますが、未確定の副作用は繰り返される可能性があります。永続的なリソース識別子と冪等な外部操作を使用してください。セッションはメモリ、ファイル、開いたハンドルを移行しません。
 
-明示的なクローズと絶対 TTL の満了は、そのセッション ID に対する終端状態です。後続のアクティビティは再度開けず、設定したタイムアウトが適用されるまで実行が許可されない場合があります。[公開済みのデプロイ手順](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml)にある Server のスケジューラー/メンテナンスロールを実行してください。API プロセスだけではタイムアウトは適用されません。ワークフローは試行を使い切ったアクティビティの失敗を `ActivityFailed` で処理し、`resource_unavailable` を返します。その後、アプリケーションは新しいセッションを選び、業務入力からリソースを再構築できます。この例は、セッション終了例外の即時送出や終端セッションの自動再開を保証しません。
+明示的なクローズと絶対 TTL の満了は、そのセッション ID に対する終端状態です。後続のアクティビティは再度開けず、設定したタイムアウトが適用されるまで実行が許可されない場合があります。ネイティブ Server は自身のメンテナンスループでアクティビティのタイムアウトを適用し、公開イメージではこれが有効になっています。PHP Server 2.x では、[PHP デプロイ手順](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)にあるスケジューラー/メンテナンスロールを実行してください。PHP の API プロセスだけではタイムアウトは適用されません。ワークフローは試行を使い切ったアクティビティの失敗を `ActivityFailed` で処理し、`resource_unavailable` を返します。その後、アプリケーションは新しいセッションを選び、業務入力からリソースを再構築できます。この例は、セッション終了例外の即時送出や終端セッションの自動再開を保証しません。
 
 保持者のライフサイクルを明示的に操作するには、`worker.worker_session(options)` とその `create()`、`renew()`、`close(reason)` を使用します。Worker の正常なシャットダウンでは、保持中のセッションを閉じます。[共通のライフサイクル契約](../features/worker-sessions.md#lifecycle)を参照してください。
 

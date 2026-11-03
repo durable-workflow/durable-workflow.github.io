@@ -153,24 +153,19 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-Production розгортання, драйвери автентифікації, базу й TLS описано в
+Нативний Server створює схему SQLite та namespace `default` під час
+першого запуску, тому окремого кроку bootstrap немає. Production розгортання,
+автентифікацію, налаштування бази й TLS описано в
 [посібнику налаштування Server](/docs/polyglot/server).
 
 Більший приклад: [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)
@@ -1408,7 +1403,7 @@ await worker.run()
 
 Після втрати власника або завершення lease параметр `allow_reacquire_after_failure=True` дозволяє іншому придатному worker отримати сесію повторно. Він має відновити локальний ресурс. Уже зафіксовані результати activity відтворюються, але незафіксовані ефекти можуть повторитися: використовуйте надійні ідентифікатори ресурсів та ідемпотентні зовнішні операції. Сесія не переносить пам’ять, файли чи відкриті дескриптори.
 
-Явне закриття та завершення абсолютного TTL є остаточними для цього ідентифікатора сесії. Наступна activity не відкриє його повторно й може залишатися недопущеною, доки runtime не застосує налаштований таймаут. Запускайте роль scheduler/maintenance Server з [опублікованого рецепта розгортання](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml); лише API-процесу недостатньо для застосування таймаутів. Workflow обробляє остаточну помилку activity через `ActivityFailed` і повертає `resource_unavailable`; тоді застосунок може вибрати нову сесію й відновити ресурс із бізнес-вхідних даних. Приклад не обіцяє негайного винятку закритої сесії чи автоматичного відкриття завершеної сесії.
+Явне закриття та завершення абсолютного TTL є остаточними для цього ідентифікатора сесії. Наступна activity не відкриє його повторно й може залишатися недопущеною, доки runtime не застосує налаштований таймаут. Нативний Server застосовує таймаути activity у власному циклі обслуговування, який увімкнено в опублікованому образі. Для PHP Server 2.x запускайте роль scheduler/maintenance з [рецепта розгортання PHP](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml); лише API-процесу PHP недостатньо для застосування таймаутів. Workflow обробляє остаточну помилку activity через `ActivityFailed` і повертає `resource_unavailable`; тоді застосунок може вибрати нову сесію й відновити ресурс із бізнес-вхідних даних. Приклад не обіцяє негайного винятку закритої сесії чи автоматичного відкриття завершеної сесії.
 
 Для явного життєвого циклу власника використовуйте `worker.worker_session(options)` та методи `create()`, `renew()` і `close(reason)`. Коректне завершення worker закриває утримувані ним сесії. Див. [спільний контракт життєвого циклу](../features/worker-sessions.md#lifecycle).
 
