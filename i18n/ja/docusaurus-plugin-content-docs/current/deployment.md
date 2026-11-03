@@ -247,6 +247,8 @@ API レプリカの追加や、[ローリング更新](/docs/rolling-upgrades)�
 
 ### SQL を使う全プロセスを数える {#count-every-sql-owning-process}
 
+ネイティブ 3.x Server のプロセスは最大4本のデータベース接続を開き、`schema-upgrade` またはネイティブ移行（テイクオーバー）コマンドは実行中にさらに1本を開きます。レプリカ数が最大のときのネイティブ Server レプリカ1台につき4セッションに、以下の運用ツールの分を加えて見積もってください。この節の残りは PHP 2.x について説明します。
+
 公開 PHP Compose 構成では、次の役割が SQL クライアントになり得ます。
 
 | 役割 | 数える対象 |
@@ -308,10 +310,7 @@ DB のメモリと負荷を評価する必要があります。
    後継を起動します。復旧アクセスを残し、初期化は計画したマイグレーション時間帯だけに
    実行します。安全な重複が収まらなければ、文書化された全停止の更新手順を使います。
 
-[タスクキューの受付制御](/docs/polyglot/task-queue-admission)は一部の配信・リース処理を
-制限します。`DW_WORKER_LONG_POLL_MAX_CONCURRENT` と `DW_QUERY_TASK_POLL_MAX_CONCURRENT` は
-ノード内の待機 poll を制限します。いずれも SQL セッション全体、DB バイト数、commit 遅延の
-上限ではありません。完了、heartbeat、運用リクエスト、ヘルスチェック用の容量も残します。
+PHP 2.x では、[タスクキューの受付制御](/docs/polyglot/task-queue-admission)が一部の配信・リース処理を制限し、`DW_WORKER_LONG_POLL_MAX_CONCURRENT` と `DW_QUERY_TASK_POLL_MAX_CONCURRENT` がノード内の待機 poll を制限します。いずれも SQL セッション全体、DB バイト数、commit 遅延の上限ではありません。完了、heartbeat、運用リクエスト、ヘルスチェック用の容量も残します。ネイティブ 3.x は、タスクキューの受付制御の上限が設定されていると起動を拒否し、両方の poll 上限を無視します。現時点ではネイティブの代替手段はありません。ネイティブの SQL セッション数は、プロセスごとに4本で固定された接続プールで制限されます。タスクの並行数に合わせて、SDK Worker のスロット数と Worker 数を調整してください。
 
 まず書き込み可能な DB への直接接続を基準にします。接続プロキシは、正確な Server リリース、プールモード、準備済み文、トランザクション境界、セッション状態、ロックの設定で検証する必要があります。**PgBouncer のトランザクションプールには、修正済みの Server 2.9.8 以降が必要です。** [公開版 2.9.8 の受け入れ結果](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)では、PostgreSQL 16.15 と PgBouncer 1.26.1 について、PostgreSQL への直接接続、セッションプール、`max_prepared_statements=0` または `max_prepared_statements=200` のトランザクションプールを検証しました。これは互換性のある最低バージョンと正確な検証済み構成を示すもので、最新バージョンへの固定指定や容量の保証ではありません。他の組み合わせは別途検証してください。トラフィックを受け入れる前に、PHP 2.x では選択したエンドポイントに対して通常の `server-bootstrap` 初期化を実行し、ネイティブ 3.x ではそのエンドポイント経由で起動時にスキーマを確認させます。
 

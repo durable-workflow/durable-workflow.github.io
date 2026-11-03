@@ -63,6 +63,8 @@ PHP 2.x Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` な�
 
 ネイティブが受け付けるが無視する設定：`DW_ADMIN_SIGNATURE_KEY`、`DW_AUTH_METHOD_HEADER`、`DW_AUTH_STATUS_HEADER`、`DW_BOOTSTRAP_DELAY_SECONDS`、`DW_BOOTSTRAP_RETRIES`、`DW_CALLER_LABEL_HEADER`、`DW_CALLER_TYPE_HEADER`、`DW_COMPRESSION_ENABLED`、`DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`、`DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`、`DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`、`DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`、`DW_EXTERNAL_PAYLOAD_S3_REGION`、`DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`、`DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`、`DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`、`DW_MAX_HISTORY_EVENTS`、`DW_MAX_TASKS_PER_POLL`、`DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`、`DW_OBSERVABILITY_CONTEXT_ENABLED`、`DW_OPERATOR_SIGNATURE_KEY`、`DW_PACKAGE_PROVENANCE_PATH`、`DW_POLLING_CACHE_PATH`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_SIGNATURE_KEY`、`DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`、`DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`、`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`、`DW_V2_CACHE_VALIDATION_MODE`、`DW_V2_GUARDRAILS_BOOT`、`DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`、`DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`、`DW_V2_MATCHING_ROLE_QUEUE_WAKE`、`DW_V2_TASK_DISPATCH_MODE`、`DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`、`DW_V2_TENANCY_ENVIRONMENT`、`DW_V2_TENANCY_ORGANIZATION`、`DW_V2_TENANCY_PROJECT`、`DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`、`DW_V2_VALIDATE_CACHE_BACKEND`、`DW_WAKE_SIGNAL_TTL_SECONDS`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`、`DW_WORKER_POLL_INTERVAL_MS`、`DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`、`DW_WORKER_SIGNATURE_KEY`。
 
+ネイティブには、Server 側のタスクキューのリース上限・ディスパッチ上限、予算グループ、namespace のリクエスト受付制限、namespace の永続状態クォータ、保持中の poll の上限がなく、現時点ではネイティブの代替手段もありません。ネイティブ Server の各プロセスは最大4本のデータベース接続を開きます。クエリタスクには namespace ごとに保留中またはリース中16件という固定の上限があり、それを超える新規クエリは HTTP `503` と `query_task_queue_full` で拒否されます。この上限は設定できません。ネイティブでタスクの並行数を制限するには、各 SDK Worker のスロット数と Worker 数を調整してください。PHP 2.x の制御は[タスクキューの受け入れ制御](/docs/polyglot/task-queue-admission)で説明しています。
+
 ネイティブの認証は、次の点で PHP 2.x と異なります。
 
 - `DW_AUTH_TOKEN` は必須です。未設定ではネイティブは起動を拒否し、ロール別トークンに加えて、共有トークンをすべてのロールで受け付けます。
@@ -173,20 +175,20 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | ポーリングを保持している間の、起床通知の確認間隔（ミリ秒）。 | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | ファイルベースのポーリングキャッシュで、Worker ポーリングの調整状態を保存するディレクトリ。 | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | 保留中のポーリングを早く返すための、キューごとの起床通知の TTL。 | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | 未設定。`PHP_CLI_SERVER_WORKERS` から算出 | この Server ノードで保持するワークフロー・アクティビティのロングポーリング待機数の任意の上限。クエリタスクには別の待機予算があります。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
-| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | ワークフロー・アクティビティのロングポーリング待機上限を計算する際、ヘルスとコントロールプレーン用に確保する PHP CLI Server Worker 数。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | 未設定。`PHP_CLI_SERVER_WORKERS` から算出 | この Server ノードで保持するワークフロー・アクティビティのロングポーリング待機数の任意の上限。クエリタスクには別の待機予算があります。ネイティブ 3.x はこの設定を無視します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
+| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | ワークフロー・アクティビティのロングポーリング待機上限を計算する際、ヘルスとコントロールプレーン用に確保する PHP CLI Server Worker 数。ネイティブ 3.x はこの設定を無視します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | Worker の一回のポーリングで返すタスクの最大数。 | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
 | `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS` | `10` | SQLite クイックスタートで、キャッシュによる Worker ポーリング取得ゲートをロックの期限まで保持する秒数。 | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_TTL_SECONDS` |
 | `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS` | `5` | SQLite の Worker ポーリング取得が、バックエンドのロック負荷を返すまでにキャッシュの取得ゲートを待つ秒数。 | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_WAIT_SECONDS` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未設定 | Namespace とタスクキューごとの、ワークフロータスクの有効リース数の上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未設定 | Namespace 内の全キューにまたがる、ワークフロータスクの有効リース数の上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | 未設定 | Namespace とタスクキューごとの、毎分のワークフロータスク配信上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未設定 | Namespace 全体の、毎分のワークフロータスク配信上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未設定 | Namespace とタスクキューごとの、アクティビティタスクの有効リース数の上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未設定 | Namespace 内の全キューにまたがる、アクティビティタスクの有効リース数の上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | 未設定 | Namespace とタスクキューごとの、毎分のアクティビティタスク配信上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未設定 | Namespace 全体の、毎分のアクティビティタスク配信上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | 有効リース、配信レート、Namespace 上限、下流予算グループの JSON 上書き。キーは `namespace:task_queue`、`namespace:*`、`task_queue`、`*`。 | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未設定 | Namespace とタスクキューごとの、ワークフロータスクの有効リース数の上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未設定 | Namespace 内の全キューにまたがる、ワークフロータスクの有効リース数の上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | 未設定 | Namespace とタスクキューごとの、毎分のワークフロータスク配信上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未設定 | Namespace 全体の、毎分のワークフロータスク配信上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未設定 | Namespace とタスクキューごとの、アクティビティタスクの有効リース数の上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未設定 | Namespace 内の全キューにまたがる、アクティビティタスクの有効リース数の上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | 未設定 | Namespace とタスクキューごとの、毎分のアクティビティタスク配信上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未設定 | Namespace 全体の、毎分のアクティビティタスク配信上限。正の数を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | 有効リース、配信レート、Namespace 上限、下流予算グループの JSON 上書き。キーは `namespace:task_queue`、`namespace:*`、`task_queue`、`*`。未設定または `{}` でない限り、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
 | `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT` | `5` | Worker の各ポーリング処理で回収する、期限に達した service モードのタイマータスク数の上限。 | `WORKFLOW_SERVER_DUE_TIMER_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` | `5` | 各処理で回収する、リース切れのワークフロータスク数の上限。 | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | キューごとに期限切れタスクの回収を行う最小間隔（秒）。 | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
@@ -226,9 +228,9 @@ Sticky 実行には Server イメージ専用の環境変数はありません�
 | `DW_QUERY_TASK_TIMEOUT` | `DW_WORKER_POLL_TIMEOUT` | コントロールプレーンが Worker からのクエリタスク応答を待つ秒数。 | `WORKFLOW_SERVER_QUERY_TASK_TIMEOUT` |
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Worker に渡す一時クエリタスクのリースタイムアウト。 | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | クエリタスクの結果行を削除前に保持する秒数。 | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
-| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | 新規クエリを拒否する前に許可する、Namespace とタスクキューごとのキャッシュ内保留クエリタスク数の上限。 | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | 新規クエリを拒否する前に許可する、Namespace とタスクキューごとのキャッシュ内保留クエリタスク数の上限。ネイティブ 3.x は `1024` 以外の値を拒否し、代わりに独自の固定されたクエリタスク上限を適用します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
 | `DW_QUERY_TASK_POLL_TIMEOUT` | `5` | アイドル状態のクエリタスクポーリングが、ワークフロータスク負荷とコントロールプレーンの可用性を再確認するまで待つ最大秒数。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_TIMEOUT` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | 未設定。`PHP_CLI_SERVER_WORKERS` から算出 | この Server ノードで保持するアイドル状態のクエリタスクのロングポーリング待機数の任意の上限。保留タスクは待機に入る前に即座に取得できます。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | 未設定。`PHP_CLI_SERVER_WORKERS` から算出 | この Server ノードで保持するアイドル状態のクエリタスクのロングポーリング待機数の任意の上限。保留タスクは待機に入る前に即座に取得できます。ネイティブ 3.x はこの設定を無視します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | ワークフロータスクの既定リースタイムアウト（秒）。 | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | アクティビティタスクの既定リースタイムアウト（秒）。 | `ACTIVITY_TASK_TIMEOUT` |
 | `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Worker のハートビート後、その登録が古いと見なされるまでの秒数。 | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
@@ -337,11 +339,11 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 
 | 変数 | 既定値 | 目的 | 旧名 |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | namespace ごとの1分間の制御プレーン要求数の任意上限。未設定なら無制限です。 | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | namespace ごとの同時制御プレーン要求数の任意上限。未設定なら無制限です。 | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | namespace の上書きにも適用される、回避できない1分間の要求数上限。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | namespace の上書きにも適用される、回避できない同時要求数上限。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | namespace をキーに、要求頻度と同時数を上書きする JSON オブジェクト。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | namespace ごとの1分間の制御プレーン要求数の任意上限。未設定なら無制限です。空でない値を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | namespace ごとの同時制御プレーン要求数の任意上限。未設定なら無制限です。空でない値を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | namespace の上書きにも適用される、回避できない1分間の要求数上限。空でない値を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | namespace の上書きにも適用される、回避できない同時要求数上限。空でない値を設定すると、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | namespace をキーに、要求頻度と同時数を上書きする JSON オブジェクト。未設定または `{}` でない限り、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
 [namespace ごとのリクエスト受付制限](./task-queue-admission.md#namespace-request-admission).
 
@@ -349,9 +351,9 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 
 | 変数 | 既定値 | 目的 | 旧名 |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | namespace の永続行数の既定クォータを指定する JSON。総数と pending/open の制限は独立です。pending tasks はキューの ready 行を数え、active lease は別に制限します。空オブジェクトは無制限です。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
-| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 上書きにも適用される、回避できない永続行数の上限を指定する JSON。空オブジェクトは運用者の上限を追加しません。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
-| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | namespace ごとの永続行数クォータの上書き JSON。hard limit は引き続き適用されます。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | namespace の永続行数の既定クォータを指定する JSON。総数と pending/open の制限は独立です。pending tasks はキューの ready 行を数え、active lease は別に制限します。空オブジェクトは無制限です。未設定または `{}` でない限り、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 上書きにも適用される、回避できない永続行数の上限を指定する JSON。空オブジェクトは運用者の上限を追加しません。未設定または `{}` でない限り、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | namespace ごとの永続行数クォータの上書き JSON。hard limit は引き続き適用されます。未設定または `{}` でない限り、ネイティブ 3.x は起動を拒否します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
 
 [namespace の永続状態クォータ](./task-queue-admission.md#namespace-durable-state).
 
@@ -393,8 +395,8 @@ CI とデプロイ用マニフェストには `DW_V2_GUARDRAILS_BOOT` を使用�
 | `DW_STORAGE_ADMISSION_SOURCE` | `unset` | 受付判断用の観測に含まれるストレージリソースの想定識別子。 | - |
 | `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | ストレージ観測の最大経過秒数。1〜300秒です。 | - |
 | `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | データベースに永続化され namespace に束縛された runtime bearer 認証情報を admin API で管理できるようにします。 | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 単一 namespace の workflow/activity long-poll 待機数のノード単位上限。全体の worker 上限以下で、共有 cache authority が使えない場合は拒否します。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 単一 namespace の query-task long-poll 待機数のノード単位上限。全体の query 上限以下で、共有 cache authority が使えない場合は拒否します。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 単一 namespace の workflow/activity long-poll 待機数のノード単位上限。全体の worker 上限以下で、共有 cache authority が使えない場合は拒否します。ネイティブ 3.x はこの設定を無視します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 単一 namespace の query-task long-poll 待機数のノード単位上限。全体の query 上限以下で、共有 cache authority が使えない場合は拒否します。ネイティブ 3.x はこの設定を無視します。[ネイティブ Server 3.x](#native-server-3x) を参照してください。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
 | `DW_V1_ENABLED` | `false` | v1 状態を意図的に維持する場合のみ embedded v1 の移行とキューの drain を有効にします。standalone Server は既定で v2 専用です。 | `WORKFLOW_V1_ENABLED` |
 
 ## 実行基盤の変数 {#runtime-infrastructure-variables}

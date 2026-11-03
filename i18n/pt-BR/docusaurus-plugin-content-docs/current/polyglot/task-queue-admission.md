@@ -26,6 +26,20 @@ A admissão de filas de tarefas impede que uma fila, tenant ou dependência down
 
 Use controles de admissão quando uma fila estiver vinculada a uma dependência com limite de taxa, tenants compartilharem o mesmo servidor ou operadores precisarem comprovar por que um workflow está esperando.
 
+:::note Server nativo 3.x
+
+O Server nativo 3.x não aplica nenhum dos controles de admissão no servidor descritos nesta página, e ainda não há equivalente nativo para eles. Ele se recusa a iniciar quando qualquer um destes define um limite:
+
+- um limite de lease ou de despacho de tarefas de workflow ou de atividade, ou `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- uma configuração de admissão de requisições por namespace
+- um limite de estado durável por namespace
+
+Ele ignora `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` e suas variantes por namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` deve permanecer não definida ou com `1024`. Em vez disso, o Server nativo aplica um limite fixo de 16 tarefas de consulta pendentes ou com lease por namespace e recusa novas consultas com HTTP `503` e `query_task_queue_full`.
+
+No Server nativo, limite a concorrência de tarefas com os slots configurados em cada worker do SDK e com o número de workers. `GET /api/task-queues/{name}` informa os slots registrados e as contagens de tarefas com lease e prontas em `admission`, com todos os campos de limite no servidor e de capacidade restante como `null`. Consulte a [referência de configuração nativa](./server-config-reference.md#native-server-3x). O restante desta página descreve o PHP Server 2.x.
+
+:::
+
 A admissão se aplica sobre o contrato de matching. Leia
 [Matching e despacho de tarefas](/docs/polyglot/task-matching-dispatch) para
 entender como trabalho pronto é descoberto e recebe leases antes que esses
@@ -126,6 +140,8 @@ O JSON `retry_after_seconds` coincide com o cabeçalho `Retry-After`. Coordenaç
 
 ## Cotas de estado durável por namespace {#namespace-durable-state}
 
+Essas cotas são um controle do PHP Server 2.x; o Server nativo 3.x se recusa a iniciar quando elas definem um limite.
+
 `DW_NAMESPACE_DURABLE_LIMITS` define limites padrão de linhas retidas, `DW_NAMESPACE_DURABLE_OVERRIDES` os altera por namespace e `DW_NAMESPACE_DURABLE_HARD_LIMITS` adiciona tetos obrigatórios. Objetos vazios não acrescentam limites. Overrides podem elevar ou reduzir os padrões; null volta ao padrão. Ao contrário da admissão HTTP, cota durável zero é válida e impede novas alocações. Aqui `payments` existente pode manter 250 runs abertos e os demais namespaces 100, sob um teto de 500.
 
 ```dotenv
@@ -154,6 +170,8 @@ O esgotamento retorna 429 `namespace_<resource>_exhausted`. Leia `retryable`: al
 Selecione o namespace pelo cabeçalho ao consultar métricas admin. `dw_namespace_durable_state_usage` e os campos JSON `limits`, `usage`, `remaining`, `configuration_status` e `measurement_status` mostram esse escopo; namespace pertence à requisição, não é um label ilimitado. Medições indisponíveis não significam uso zero nem capacidade ilimitada. Veja a [referência completa](./server-config-reference.md#namespace-durable-controls).
 
 ## Configuração do servidor {#server-configuration}
+
+Estas configurações se aplicam ao PHP Server 2.x. O Server nativo 3.x se recusa a iniciar quando um limite de lease ou de despacho, ou `DW_TASK_QUEUE_ADMISSION_OVERRIDES`, define um limite.
 
 Defina limites globais quando todas as filas devam compartilhar o mesmo teto:
 

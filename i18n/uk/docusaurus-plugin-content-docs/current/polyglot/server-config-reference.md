@@ -84,6 +84,17 @@ Server. Як і `env:audit` у PHP, нативний аудит попередж
 
 Нативний Server приймає, але ігнорує: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
 
+Нативний Server не має серверних обмежень leases чи dispatch для task queues,
+budget-груп, admission запитів namespace, квот сталого стану namespace чи
+обмежень утримуваних polls, і нативного еквівалента для них поки немає. Кожен
+процес нативного Server відкриває щонайбільше чотири з'єднання з базою даних.
+Для query tasks діє фіксована межа: 16 незавершених або орендованих tasks на
+namespace; понад неї нові queries відхиляються з HTTP `503` і
+`query_task_queue_full`. Ця межа не налаштовується. Щоб обмежити паралельність
+tasks на нативному Server, визначте кількість slots кожного SDK worker і
+кількість workers. [Допуск черги завдань](/docs/polyglot/task-queue-admission)
+описує засоби керування PHP 2.x.
+
 Автентифікація нативного Server відрізняється від PHP 2.x так:
 
 - `DW_AUTH_TOKEN` обов'язковий. Без нього нативний Server не стартує, а
@@ -247,20 +258,20 @@ principal за відповідним записом токена. Клієнт�
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Мілісекунди між перевірками wake signals під час відкритого poll. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Каталог стану координації polling worker за файлового polling cache. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | TTL wake signals кожної черги, які достроково завершують очікування poll. | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | не задано; визначається для `PHP_CLI_SERVER_WORKERS` | Необов'язкове обмеження одночасних відкритих long-poll очікувань workflow/activity workers на цьому вузлі Server. Polls query tasks мають окремий budget. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
-| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | PHP CLI server workers, зарезервовані для health і площини керування під час визначення обмеження long-poll очікування workflow/activity. | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | не задано; визначається для `PHP_CLI_SERVER_WORKERS` | Необов'язкове обмеження одночасних відкритих long-poll очікувань workflow/activity workers на цьому вузлі Server. Polls query tasks мають окремий budget. Нативний Server 3.x ігнорує його; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
+| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | PHP CLI server workers, зарезервовані для health і площини керування під час визначення обмеження long-poll очікування workflow/activity. Нативний Server 3.x ігнорує його; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | Максимальна кількість tasks у відповіді на poll worker. | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
 | `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS` | `10` | Секунди утримання кешованої claim-блокади polling worker у SQLite quickstart backend до спливу lock. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_TTL_SECONDS` |
 | `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS` | `5` | Секунди очікування SQLite claims polling worker на кешовану claim-блокаду до повернення тиску блокувань backend. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_WAIT_SECONDS` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | не задано | Обмеження активних leases workflow tasks на namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | не задано | Обмеження активних leases workflow tasks у всіх чергах namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | не задано | Обмеження dispatch workflow tasks за хвилину на namespace/task queue. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | не задано | Обмеження dispatch workflow tasks за хвилину в namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | не задано | Обмеження активних leases activity tasks на namespace/task queue. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | не задано | Обмеження активних leases activity tasks у всіх чергах namespace. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | не задано | Обмеження dispatch activity tasks за хвилину на namespace/task queue. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | не задано | Обмеження dispatch activity tasks за хвилину в namespace. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | JSON-перевизначення за ключами `namespace:task_queue`, `namespace:*`, `task_queue` чи `*` для активних leases, швидкості dispatch, обмежень namespace і budget-груп downstream. | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | не задано | Обмеження активних leases workflow tasks на namespace/task queue. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | не задано | Обмеження активних leases workflow tasks у всіх чергах namespace. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | не задано | Обмеження dispatch workflow tasks за хвилину на namespace/task queue. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | не задано | Обмеження dispatch workflow tasks за хвилину в namespace. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | не задано | Обмеження активних leases activity tasks на namespace/task queue. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | не задано | Обмеження активних leases activity tasks у всіх чергах namespace. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | не задано | Обмеження dispatch activity tasks за хвилину на namespace/task queue. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | не задано | Обмеження dispatch activity tasks за хвилину в namespace. Нативний Server 3.x відмовляється стартувати, якщо значення є додатним числом; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | JSON-перевизначення за ключами `namespace:task_queue`, `namespace:*`, `task_queue` чи `*` для активних leases, швидкості dispatch, обмежень namespace і budget-груп downstream. Нативний Server 3.x відмовляється стартувати, якщо значення задано й воно не дорівнює `{}`; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
 | `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT` | `5` | Максимальна кількість належних до виконання timer tasks service mode, відновлених за прохід polling worker. | `WORKFLOW_SERVER_DUE_TIMER_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` | `5` | Максимальна кількість спливлих workflow tasks, відновлених за прохід. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | Мінімальні секунди між проходами відновлення спливлих tasks на чергу. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
@@ -303,9 +314,9 @@ Sticky execution не має окремих змінних середовища 
 | `DW_QUERY_TASK_TIMEOUT` | `DW_WORKER_POLL_TIMEOUT` | Секунди очікування площиною керування відповіді worker на query task. | `WORKFLOW_SERVER_QUERY_TASK_TIMEOUT` |
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Timeout lease тимчасових query tasks, переданих workers. | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | Час зберігання Server рядків результатів query tasks перед видаленням. | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
-| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Максимальна кількість незавершених query tasks у cache на namespace/task queue перед відхиленням нових queries. | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Максимальна кількість незавершених query tasks у cache на namespace/task queue перед відхиленням нових queries. Нативний Server 3.x відхиляє будь-яке значення, крім `1024`, і натомість застосовує власну фіксовану межу query tasks; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
 | `DW_QUERY_TASK_POLL_TIMEOUT` | `5` | Максимальні секунди очікування кожного idle poll query task worker перед повторною перевіркою тиску workflow tasks та доступності площини керування. | `WORKFLOW_SERVER_QUERY_TASK_POLL_TIMEOUT` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | не задано; визначається для `PHP_CLI_SERVER_WORKERS` | Необов'язкове обмеження одночасних idle long-poll очікувань query task workers на цьому вузлі Server. Незавершені query tasks можна отримати негайно перед idle-очікуванням poll. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | не задано; визначається для `PHP_CLI_SERVER_WORKERS` | Необов'язкове обмеження одночасних idle long-poll очікувань query task workers на цьому вузлі Server. Незавершені query tasks можна отримати негайно перед idle-очікуванням poll. Нативний Server 3.x ігнорує його; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Стандартний timeout lease workflow task у секундах. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Стандартний timeout lease activity task у секундах. | `ACTIVITY_TASK_TIMEOUT` |
 | `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Секунди після heartbeat worker, коли реєстрація worker стає застарілою. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
@@ -425,11 +436,11 @@ workers, які виконують ті самі workflows.
 
 | Змінна | Типове значення | Призначення | Застарілий псевдонім |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Необов’язкова кількість запитів control plane за хвилину для namespace; без значення межі немає. | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Необов’язкова кількість одночасних запитів control plane для namespace; без значення межі немає. | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Непереборна верхня межа запитів за хвилину, зокрема для перевизначень namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Непереборна верхня межа одночасних запитів, зокрема для перевизначень namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON-об’єкт за namespace із перевизначеннями частоти та одночасності запитів. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Необов’язкова кількість запитів control plane за хвилину для namespace; без значення межі немає. Нативний Server 3.x відмовляється стартувати, якщо значення непорожнє; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Необов’язкова кількість одночасних запитів control plane для namespace; без значення межі немає. Нативний Server 3.x відмовляється стартувати, якщо значення непорожнє; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Непереборна верхня межа запитів за хвилину, зокрема для перевизначень namespace. Нативний Server 3.x відмовляється стартувати, якщо значення непорожнє; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Непереборна верхня межа одночасних запитів, зокрема для перевизначень namespace. Нативний Server 3.x відмовляється стартувати, якщо значення непорожнє; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | JSON-об’єкт за namespace із перевизначеннями частоти та одночасності запитів. Нативний Server 3.x відмовляється стартувати, якщо значення задано й воно не дорівнює `{}`; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
 [Допуск запитів namespace](./task-queue-admission.md#namespace-request-admission).
 
@@ -437,9 +448,9 @@ workers, які виконують ті самі workflows.
 
 | Змінна | Типове значення | Призначення | Застарілий псевдонім |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON типових квот сталих рядків namespace. Загальні та pending/open-квоти незалежні; pending tasks — готові рядки черги, активні leases обмежуються окремо. Порожній об’єкт не задає меж. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
-| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON непереборних верхніх меж сталих рядків, зокрема для перевизначень namespace; порожній об’єкт не додає операторських обмежень. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
-| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON перевизначень квот сталих рядків за namespace; жорсткі межі залишаються чинними. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON типових квот сталих рядків namespace. Загальні та pending/open-квоти незалежні; pending tasks — готові рядки черги, активні leases обмежуються окремо. Порожній об’єкт не задає меж. Нативний Server 3.x відмовляється стартувати, якщо значення задано й воно не дорівнює `{}`; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON непереборних верхніх меж сталих рядків, зокрема для перевизначень namespace; порожній об’єкт не додає операторських обмежень. Нативний Server 3.x відмовляється стартувати, якщо значення задано й воно не дорівнює `{}`; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON перевизначень квот сталих рядків за namespace; жорсткі межі залишаються чинними. Нативний Server 3.x відмовляється стартувати, якщо значення задано й воно не дорівнює `{}`; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
 
 [Квоти сталого стану namespace](./task-queue-admission.md#namespace-durable-state).
 
@@ -481,8 +492,8 @@ workers, які виконують ті самі workflows.
 | `DW_STORAGE_ADMISSION_SOURCE` | `unset` | Очікувана ідентичність ресурсу сховища в спостереженні допуску. | - |
 | `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | Максимальний вік спостереження сховища в секундах, від 1 до 300. | - |
 | `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | Увімкнути сталі namespace-bound runtime bearer credentials у базі даних, керовані через admin API. | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Межа утримуваних workflow/activity long polls одного namespace на цьому вузлі; не перевищує глобальну worker-межу. Недоступний спільний cache authority спричиняє відмову. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Межа утримуваних query-task long polls одного namespace на цьому вузлі; не перевищує глобальну query-межу. Недоступний спільний cache authority спричиняє відмову. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Межа утримуваних workflow/activity long polls одного namespace на цьому вузлі; не перевищує глобальну worker-межу. Недоступний спільний cache authority спричиняє відмову. Нативний Server 3.x ігнорує його; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Межа утримуваних query-task long polls одного namespace на цьому вузлі; не перевищує глобальну query-межу. Недоступний спільний cache authority спричиняє відмову. Нативний Server 3.x ігнорує його; див. [Нативний Server 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
 | `DW_V1_ENABLED` | `false` | Увімкнути міграцію та спорожнення черги embedded v1 лише для свідомого збереження v1-стану; standalone Server типово працює лише з v2. | `WORKFLOW_V1_ENABLED` |
 
 ## Змінні інфраструктури runtime {#runtime-infrastructure-variables}

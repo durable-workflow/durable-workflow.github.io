@@ -26,6 +26,20 @@ La admisión en colas de tareas impide que una cola, un inquilino o una dependen
 
 Utiliza controles de admisión cuando una cola dependa de un servicio con límite de tasa, varios inquilinos compartan servidor o los operadores necesiten demostrar por qué espera un workflow.
 
+:::note Server nativo 3.x
+
+El Server nativo 3.x no aplica ninguno de los controles de admisión del lado del servidor descritos en esta página, y todavía no existe un equivalente nativo. Se niega a arrancar cuando cualquiera de estos fija un límite:
+
+- un límite de leases o de despachos de tareas de workflow o de actividad, o `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- un ajuste de admisión de peticiones por namespace
+- un límite de estado duradero por namespace
+
+Ignora `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` y sus variantes por namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` debe quedar sin definir o en `1024`. En su lugar, el Server nativo aplica un límite fijo de 16 tareas de consulta pendientes o arrendadas por namespace y rechaza las consultas adicionales con HTTP `503` y `query_task_queue_full`.
+
+En el Server nativo, acota la concurrencia de tareas con los slots configurados en cada worker del SDK y con el número de workers. `GET /api/task-queues/{name}` informa en `admission` de los slots registrados y de los recuentos de tareas arrendadas y listas, con todos los campos de límites del lado del servidor y de capacidad restante en `null`. Consulta la [referencia de configuración nativa](./server-config-reference.md#native-server-3x). El resto de esta página describe PHP Server 2.x.
+
+:::
+
 La admisión se aplica sobre el contrato de asignación. Consulta
 [Asignación y despacho de tareas](/docs/polyglot/task-matching-dispatch) para
 entender cómo se descubre y arrienda el trabajo listo antes de que estos
@@ -126,6 +140,8 @@ El JSON `retry_after_seconds` coincide con la cabecera `Retry-After`. Una coordi
 
 ## Cuotas de estado duradero por namespace {#namespace-durable-state}
 
+Estas cuotas son un control de PHP Server 2.x; el Server nativo 3.x se niega a arrancar cuando fijan un límite.
+
 `DW_NAMESPACE_DURABLE_LIMITS` fija límites predeterminados de filas conservadas, `DW_NAMESPACE_DURABLE_OVERRIDES` los cambia por namespace y `DW_NAMESPACE_DURABLE_HARD_LIMITS` añade techos obligatorios. Los objetos vacíos no añaden límites. Las excepciones pueden subir o bajar valores; null vuelve al predeterminado. A diferencia de la admisión HTTP, una cuota duradera cero es válida e impide nuevas asignaciones. Aquí `payments` existente puede mantener 250 runs abiertos y los demás namespaces 100, bajo un techo de 500.
 
 ```dotenv
@@ -154,6 +170,8 @@ El agotamiento devuelve 429 `namespace_<resource>_exhausted`. Lee `retryable`: a
 Selecciona el namespace mediante la cabecera al consultar métricas admin. `dw_namespace_durable_state_usage` y los campos JSON `limits`, `usage`, `remaining`, `configuration_status` y `measurement_status` muestran ese ámbito; el namespace pertenece a la petición, no es una etiqueta de métricas ilimitada. Una medición no disponible no significa uso cero ni capacidad ilimitada. Consulta la [referencia completa](./server-config-reference.md#namespace-durable-controls).
 
 ## Configuración del servidor {#server-configuration}
+
+Estos ajustes se aplican a PHP Server 2.x. El Server nativo 3.x se niega a arrancar si se configura un límite de leases o de despachos, o si `DW_TASK_QUEUE_ADMISSION_OVERRIDES` fija algún límite.
 
 Configura límites globales cuando todas las colas deban tener el mismo techo:
 

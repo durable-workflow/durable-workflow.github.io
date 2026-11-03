@@ -33,6 +33,20 @@ keywords:
 частоти, орендарі мають спільний Server або оператору потрібно
 довести причину очікування workflow.
 
+:::note Нативний Server 3.x
+
+Нативний Server 3.x не застосовує жодного із серверних засобів допуску, описаних на цій сторінці, і нативного еквівалента для них поки немає. Він відмовляється стартувати, якщо ліміт задає будь-що з переліченого:
+
+- ліміт оренд або диспетчеризації завдань workflow чи activity або `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- налаштування допуску запитів namespace
+- ліміт сталого стану namespace
+
+Він ігнорує `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` та їхні варіанти для namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` має залишатися незаданим або дорівнювати `1024`. Натомість нативний Server застосовує фіксовану межу: 16 незавершених або орендованих завдань query на простір імен, а подальші query відхиляє з HTTP `503` і `query_task_queue_full`.
+
+На нативному Server обмежуйте паралельність завдань налаштованими слотами кожного SDK worker і кількістю worker. `GET /api/task-queues/{name}` показує в `admission` зареєстровані слоти та кількість орендованих і готових завдань, а всі поля серверних лімітів і залишкової місткості мають значення `null`. Див. [довідник нативної конфігурації](./server-config-reference.md#native-server-3x). Решта сторінки описує PHP Server 2.x.
+
+:::
+
 Допуск працює поверх контракту matching.
 [Зіставлення й диспетчеризація завдань](/docs/polyglot/task-matching-dispatch)
 описує виявлення й оренду готової роботи до рішення цих бюджетів
@@ -150,6 +164,8 @@ JSON-поле `retry_after_seconds` узгоджене із заголовком
 
 ## Квоти сталого стану namespace {#namespace-durable-state}
 
+Ці квоти є засобом керування PHP Server 2.x; нативний Server 3.x відмовляється стартувати, якщо вони задають ліміт.
+
 `DW_NAMESPACE_DURABLE_LIMITS` задає типові межі збережених рядків, `DW_NAMESPACE_DURABLE_OVERRIDES` змінює їх за namespace, а `DW_NAMESPACE_DURABLE_HARD_LIMITS` додає непереборні стелі. Порожні об’єкти не додають меж. Перевизначення можуть підвищувати чи знижувати типове значення; null повертає типове. На відміну від HTTP-допуску, нульова стала квота валідна та забороняє нові виділення. Тут наявний `payments` може мати 250 відкритих run, інші namespace — 100, за жорсткої межі 500.
 
 ```dotenv
@@ -178,6 +194,8 @@ DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
 Обирайте namespace заголовком запиту адміністративних метрик. `dw_namespace_durable_state_usage` і JSON-поля `limits`, `usage`, `remaining`, `configuration_status`, `measurement_status` показують цю область; namespace — контекст запиту, а не необмежена мітка метрик. Недоступні вимірювання не означають нульове використання чи необмежену місткість. Див. [повний довідник конфігурації](./server-config-reference.md#namespace-durable-controls).
 
 ## Налаштування Server {#server-configuration}
+
+Ці налаштування стосуються PHP Server 2.x. Нативний Server 3.x відмовляється стартувати, якщо ліміт задає обмеження оренд чи диспетчеризації або `DW_TASK_QUEUE_ADMISSION_OVERRIDES`.
 
 Задайте глобальні ліміти для однакової стелі кожної черги:
 

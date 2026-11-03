@@ -244,6 +244,8 @@ Worker 重连不证明原代理配置健康。确认轮询和任务完成是否�
 
 ### 统计所有使用 SQL 的进程 {#count-every-sql-owning-process}
 
+原生 3.x Server 进程最多打开四个数据库连接，`schema-upgrade` 或接管命令运行期间还会再打开一个。请按最高副本数计算，为每个原生 Server 副本预留四个会话，再加上下面的运维工具。本节其余部分描述 PHP 2.x。
+
 已发布的 PHP Compose 部署包含以下潜在 SQL 客户端：
 
 | 角色 | 统计对象 |
@@ -297,9 +299,7 @@ Worker 重连不证明原代理配置健康。确认轮询和任务完成是否�
 5. 接近上限时，减少重叠数量，或先排空并退役一组旧 API/Worker，再启动替代组。
    保留恢复访问，只在计划的迁移窗口执行初始化。安全重叠无法容纳时，使用文档中的全停机升级方式。
 
-[任务队列准入](/docs/polyglot/task-queue-admission)限制特定的分发和租约活动。
-`DW_WORKER_LONG_POLL_MAX_CONCURRENT` 和 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` 限制每个节点等待中的轮询。
-它们都不是全局 SQL 会话、数据库字节数或 commit 延迟上限。也要为完成提交、心跳、运维请求和健康检查保留容量。
+在 PHP 2.x 上，[任务队列准入](/docs/polyglot/task-queue-admission)限制特定的分发和租约活动，`DW_WORKER_LONG_POLL_MAX_CONCURRENT` 和 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` 限制每个节点等待中的轮询。它们都不是全局 SQL 会话、数据库字节数或 commit 延迟上限。也要为完成提交、心跳、运维请求和健康检查保留容量。原生 3.x 在设置了任务队列准入上限时拒绝启动，并忽略这两个轮询上限；目前尚无原生替代方案。原生 Server 的 SQL 会话由每个进程固定四个连接的连接池限制；请根据任务并发来调整 SDK Worker 执行槽数量和 Worker 数量。
 
 以直接连接可写数据库端点为基线。连接代理必须按准确的 Server 版本、连接池模式，以及预处理语句、事务边界、会话状态和锁设置进行验证。**PgBouncer 事务池需要已修复的 Server 2.9.8 或更高版本。** [已发布 2.9.8 的验收记录](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)验证了 PostgreSQL 16.15 与 PgBouncer 1.26.1：直接连接 PostgreSQL、会话池，以及 `max_prepared_statements=0` 或 `max_prepared_statements=200` 的事务池。这表示最低兼容版本和准确的已测配置，并非要求固定到最新版本，也不保证容量；其他组合需单独验证。接纳流量之前，请针对所选端点执行 PHP 2.x 的正常 `server-bootstrap` 初始化，或让原生 3.x 在启动时通过该端点检查其数据库模式。
 

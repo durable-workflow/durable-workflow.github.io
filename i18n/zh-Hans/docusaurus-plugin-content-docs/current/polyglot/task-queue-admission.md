@@ -26,6 +26,20 @@ keywords:
 
 队列关联限流依赖、多个租户共享服务器，或运维人员需要证明工作流为何等待时，使用准入控制。
 
+:::note 原生 Server 3.x
+
+原生 3.x Server 不执行本页介绍的任何服务器端准入控制，目前也没有对应的原生替代方案。以下任一项设置了限制时，它会拒绝启动：
+
+- 工作流任务或活动任务的租约上限或派发上限，或 `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- 命名空间请求准入设置
+- 命名空间持久状态限制
+
+它会忽略 `DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT` 及其按命名空间设置的变体。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` 必须保持未设置或 `1024`。原生 Server 改为对每个命名空间施加固定上限：待处理或已租用的查询任务最多16个，超出后以 HTTP `503` 返回 `query_task_queue_full`，拒绝后续查询。
+
+在原生 Server 上，通过每个 SDK Worker 配置的执行槽数量和 Worker 数量来限制任务并发。`GET /api/task-queues/{name}` 在 `admission` 下报告已注册执行槽以及已租用和就绪的任务数，所有服务器端限制和剩余容量字段均为 `null`。参见[原生配置参考](./server-config-reference.md#native-server-3x)。本页其余部分描述 PHP Server 2.x。
+
+:::
+
 准入控制位于匹配契约之上。就绪工作如何被发现和租用，以及预算如何决定是否放行下一个任务，见[任务匹配与派发](/docs/polyglot/task-matching-dispatch)。
 
 ## 如何应用预算 {#how-the-budget-is-applied}
@@ -123,6 +137,8 @@ JSON `retry_after_seconds` 与 `Retry-After` 头一致。已配置协调不可�
 
 ## 命名空间持久状态配额 {#namespace-durable-state}
 
+这些配额是 PHP Server 2.x 的控制项；设置了限制时，原生 3.x 会拒绝启动。
+
 `DW_NAMESPACE_DURABLE_LIMITS` 设置保留行数默认限制，`DW_NAMESPACE_DURABLE_OVERRIDES` 按命名空间覆盖，`DW_NAMESPACE_DURABLE_HARD_LIMITS` 增加不可绕过的硬上限。空对象不增加限制。覆盖值可提高或降低默认值，null 退回默认值。与 HTTP 准入不同，持久配额0有效，会阻止新分配。此例中已有 `payments` 可持有250个开放 run，其他命名空间为100，硬上限为500。
 
 ```dotenv
@@ -151,6 +167,8 @@ DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
 读取管理员指标时，用请求头选择命名空间。`dw_namespace_durable_state_usage` 及 JSON 字段 `limits`、`usage`、`remaining`、`configuration_status`、`measurement_status` 显示该范围；命名空间是请求范围，而非无界指标标签。测量不可用不表示使用量为0或容量无限。另见[完整配置参考](./server-config-reference.md#namespace-durable-controls)。
 
 ## Server 配置 {#server-configuration}
+
+这些设置适用于 PHP Server 2.x。租约上限、派发上限或 `DW_TASK_QUEUE_ADMISSION_OVERRIDES` 设置了限制时，原生 3.x 会拒绝启动。
 
 所有队列应采用同一上限时，设置全局上限：
 

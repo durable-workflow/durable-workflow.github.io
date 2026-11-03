@@ -390,6 +390,12 @@ croissance des données conservées.
 
 ### Compter chaque processus utilisant SQL {#count-every-sql-owning-process}
 
+Un processus Server natif 3.x ouvre au plus quatre connexions à la base de
+données, et une commande `schema-upgrade` ou de reprise en ouvre une de plus
+pendant son exécution. Prévoyez quatre sessions par réplica Server natif au
+nombre maximal de réplicas, plus les outils d’exploitation ci-dessous. La suite
+de cette section décrit PHP 2.x.
+
 Le déploiement PHP Compose publié comporte ces clients SQL possibles :
 
 | Rôle | Éléments à compter |
@@ -469,12 +475,17 @@ de la base et de la charge.
    Si une coexistence sûre ne tient pas dans le budget, utilisez la procédure
    documentée avec arrêt complet.
 
-L'[admission des queues de tâches](/docs/polyglot/task-queue-admission) borne
-certaines opérations de dispatch et de lease.
-`DW_WORKER_LONG_POLL_MAX_CONCURRENT` et `DW_QUERY_TASK_POLL_MAX_CONCURRENT`
-bornent les polls en attente par nœud. Aucun ne plafonne globalement sessions
-SQL, octets de la base ou latence de commit. Gardez aussi de la capacité pour
-les complétions, heartbeats, requêtes opérateur et contrôles de santé.
+Sous PHP 2.x, l'[admission des queues de
+tâches](/docs/polyglot/task-queue-admission) borne certaines opérations de
+dispatch et de lease, et `DW_WORKER_LONG_POLL_MAX_CONCURRENT` et
+`DW_QUERY_TASK_POLL_MAX_CONCURRENT` bornent les polls en attente par nœud. Aucun
+ne plafonne globalement sessions SQL, octets de la base ou latence de commit.
+Gardez aussi de la capacité pour les complétions, heartbeats, requêtes opérateur
+et contrôles de santé. Le Server natif 3.x refuse de démarrer avec des plafonds
+d’admission des queues de tâches et ignore les deux plafonds de polls ; il n’en
+a encore aucun équivalent natif. Son pool fixe de quatre connexions par
+processus borne ses sessions SQL ; dimensionnez les emplacements des workers SDK
+et le nombre de workers selon la concurrence des tâches.
 
 Prenez comme référence un point d’accès direct à la base en écriture. Un proxy doit être qualifié avec la version exacte du Server, son mode de pool et ses réglages de requêtes préparées, frontières transactionnelles, état de session et verrous. **Le pool transactionnel PgBouncer exige le Server corrigé, version 2.9.8 ou ultérieure.** L’[acceptation de la version publiée 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifie PostgreSQL 16.15 avec PgBouncer 1.26.1 : PostgreSQL direct, pool de sessions et pool transactionnel avec `max_prepared_statements=0` ou `max_prepared_statements=200`. C’est une version minimale compatible et une configuration précise testée, pas un choix automatique de la dernière version ni une garantie de capacité ; qualifiez séparément les autres combinaisons. Avant d’admettre du trafic, exécutez l’initialisation habituelle `server-bootstrap` de PHP 2.x sur le point d’accès choisi, ou laissez le natif 3.x vérifier son schéma au démarrage via ce point d’accès.
 

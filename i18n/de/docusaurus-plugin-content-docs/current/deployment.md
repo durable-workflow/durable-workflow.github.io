@@ -264,6 +264,12 @@ HTTP-Anfragekapazität und dem Wachstum gespeicherter Daten.
 
 ### Alle Prozesse mit SQL-Verbindungen erfassen {#count-every-sql-owning-process}
 
+Ein nativer 3.x-Server-Prozess öffnet höchstens vier Datenbankverbindungen; ein
+`schema-upgrade`- oder Übernahmebefehl öffnet während seiner Ausführung eine
+weitere. Planen Sie vier Sitzungen pro Replikat des nativen Servers bei der
+höchsten Replikatzahl ein, zuzüglich der unten aufgeführten Betriebswerkzeuge.
+Der Rest dieses Abschnitts beschreibt PHP 2.x.
+
 Die veröffentlichte PHP-Compose-Bereitstellung umfasst diese möglichen SQL-Clients:
 
 | Rolle | Zu berücksichtigen |
@@ -345,12 +351,17 @@ des Datenbankspeichers und der Arbeitslast.
    Migrationsfenster aus. Passt eine sichere Überlappung nicht, verwenden Sie
    das dokumentierte Upgrade-Verfahren mit vollständiger Unterbrechung.
 
-[Task-Queue-Zulassung](/docs/polyglot/task-queue-admission) begrenzt ausgewählte
-Dispatch- und Lease-Aktivität. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` und
+Unter PHP 2.x begrenzt die
+[Task-Queue-Zulassung](/docs/polyglot/task-queue-admission) ausgewählte
+Dispatch- und Lease-Aktivität, und `DW_WORKER_LONG_POLL_MAX_CONCURRENT` und
 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` begrenzen wartende Polls je Knoten. Keine
 dieser Einstellungen begrenzt global SQL-Sitzungen, Datenbankbytes oder
 Commit-Latenz. Halten Sie auch Kapazität für Abschlüsse, Heartbeats,
-Operatoranfragen und Zustandsprüfungen frei.
+Operatoranfragen und Zustandsprüfungen frei. Der native 3.x-Server verweigert
+den Start mit Grenzen der Task-Queue-Zulassung und ignoriert beide Poll-Grenzen;
+ein natives Gegenstück gibt es dafür noch nicht. Sein fester Pool von vier
+Verbindungen pro Prozess begrenzt seine SQL-Sitzungen; dimensionieren Sie
+SDK-Worker-Slots und Worker-Anzahl nach der benötigten Task-Nebenläufigkeit.
 
 Verwenden Sie einen direkt erreichbaren beschreibbaren Datenbankendpunkt als Ausgangspunkt. Ein Verbindungsproxy muss mit exakter Server-Version, Poolmodus und Einstellungen für vorbereitete Anweisungen, Transaktionsgrenzen, Sitzungszustand und Sperren qualifiziert werden. **PgBouncer-Transaktionspooling erfordert den korrigierten Server ab Version 2.9.8.** Die [Abnahme der veröffentlichten Version 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifiziert PostgreSQL 16.15 mit PgBouncer 1.26.1: direkte PostgreSQL-Verbindung, Sitzungspooling und Transaktionspooling mit `max_prepared_statements=0` oder `max_prepared_statements=200`. Das bezeichnet eine Kompatibilitätsuntergrenze und eine exakt geprüfte Konfiguration, keine Empfehlung zur neuesten Version oder Kapazitätsgarantie; prüfen Sie andere Kombinationen gesondert. Führen Sie vor der Verkehrsfreigabe unter PHP 2.x die normale Initialisierung mit `server-bootstrap` über den gewählten Endpunkt aus, oder lassen Sie den nativen Server 3.x sein Schema beim Start über diesen Endpunkt prüfen.
 
