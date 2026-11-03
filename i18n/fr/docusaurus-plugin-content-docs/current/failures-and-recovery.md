@@ -104,7 +104,105 @@ Pour une exécution qui attend encore une activité réessayable :
 
 Une exécution disposant d’une tentative d’activité admissible reste en attente et peut continuer après le succès du code corrigé, si ses budgets d’origine n’ont pas expiré. Cela ne garantit pas de corriger tout workflow sur place : un échec final d’activité non géré, un échec du code du workflow, une limite structurelle ou un délai de workflow dépassé peuvent rendre l’exécution terminale.
 
-Pour une exécution échouée terminale, conservez son historique et rapprochez les effets externes avant de décider si l’application doit lancer un nouveau workflow. Rendez les opérations métier répétées idempotentes dans l’application. Il n’y a ni nouvelle tentative automatique de tout le workflow ni réouverture d’une exécution terminale ; consultez [Nouvelles tentatives au niveau du workflow](#workflow-level-retry).
+Pour une exécution échouée terminale, conservez son historique et rapprochez les effets externes avant de décider si l’application doit lancer un nouveau workflow. Rendez les opérations métier répétées idempotentes dans l’application. Il n’y a ni nouvelle tentative automatique de tout le workflow ni réouverture d’une exécution terminale ; consultez [Nouvelles tentatives au niveau du workflow](#workflow-level-retry). Si un échec d’activité non intercepté a mis fin à l’exécution, vérifiez après le déploiement du correctif si vous pouvez la [relancer par redrive](#redrive). Le redrive reprend dans une nouvelle exécution qui réutilise les résultats des activités terminées.
+
+## Relancer une exécution échouée par redrive {#redrive}
+
+Le redrive poursuit une exécution échouée dans une nouvelle exécution de la même instance de workflow. La nouvelle exécution réutilise les résultats enregistrés des activités terminées avant l’échec et planifie à nouveau l’activité échouée. Utilisez-le après avoir corrigé la cause d’un échec d’activité, pour que le travail déjà terminé, comme un paiement ou un e-mail, ne soit pas répété.
+
+L’exécution échouée reste fermée et inchangée. La nouvelle exécution, appelée successeur, reçoit le numéro d’exécution suivant et devient l’exécution courante de l’instance. Son `continued_from_run_id` désigne l’exécution échouée. Son événement `WorkflowStarted` enregistre `recovery_kind: redrive` et `resume_step_sequence`, l’étape où l’exécution reprend.
+
+Le successeur rejoue le code du workflow depuis le début :
+
+- Chaque appel d’activité terminé dans l’exécution échouée renvoie son résultat enregistré. L’activité ne s’exécute pas à nouveau.
+- L’appel d’activité échoué est planifié comme une nouvelle exécution d’activité, avec la politique de nouvelles tentatives du code du workflow. Ses tentatives repartent de zéro.
+- Tout ce qui suit l’étape échouée s’exécute comme dans une nouvelle exécution.
+- Le successeur conserve l’échéance d’exécution de l’exécution échouée. Son délai d’exécution repart au moment du redrive.
+- En mode embedded, `Workflow::now()` dans le successeur commence à l’heure de démarrage de l’exécution échouée. Un résultat d’activité réutilisé garde l’heure de son premier enregistrement. Le temps du workflow pendant le rejeu correspond donc à l’exécution échouée.
+
+### Demander un redrive {#request-a-redrive}
+
+En mode embedded, résolvez le contrat `Workflow\V2\Contracts\WorkflowControlPlane` depuis le conteneur Laravel et appelez `redrive()` avec l’identifiant de l’instance de workflow et celui de l’exécution échouée :
+
+```php
+use Workflow\V2\Contracts\WorkflowControlPlane;
+
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+]);
+
+if ($result['accepted']) {
+    $successorRunId = $result['workflow_run_id'];
+} else {
+    $reason = $result['reason'];
+}
+```
+
+En mode service, envoyez `POST /api/workflows/{workflowId}/runs/{runId}/redrive` avec un `request_id` facultatif dans le corps. Les clients encapsulent la même route :
+
+| Interface | Appel |
+| --- | --- |
+| CLI | `dw workflow:redrive <workflow-id> <run-id> --request-id <id>` |
+| PHP SDK | `Client::redriveWorkflow($workflowId, $failedRunId, $requestId)` |
+| Python SDK | `await client.redrive_workflow(workflow_id, failed_run_id, request_id=...)` ou `await handle.redrive()` |
+| Rust SDK | `client.redrive_workflow_run(workflow_id, failed_run_id, request_id)` ou `handle.redrive(request_id)` |
+
+Un redrive accepté renvoie l’identifiant d’exécution du successeur et `resume_step_sequence`. Un redrive refusé renvoie un `reason` et ne change rien. Un redrive d’une exécution déjà relancée renvoie le successeur existant au lieu d’en créer un autre. Passez un `request_id` pour qu’une requête renvoyée soit sûre. Un `request_id` déjà utilisé pour un autre redrive de la même instance est refusé avec `request_id_already_used`.
+
+Les workers de service déclarent une empreinte de la définition du workflow. Le redrive la compare à l’empreinte enregistrée au démarrage de l’exécution. Dans le SDK Rust, appelez `Worker::set_workflow_definition_sources()` pour chaque workflow que vous voulez pouvoir relancer. Un workflow enregistré sans identité de source s’exécute toujours, mais le redrive le refuse.
+
+### Quand une exécution échouée peut être relancée {#redrive-eligibility}
+
+Le redrive accepte une exécution échouée lorsque toutes ces conditions sont réunies :
+
+- L’exécution est l’exécution courante de l’instance.
+- L’exécution a échoué parce qu’un échec d’activité a atteint le code du workflow sans y être intercepté. Une exécution qui a échoué dans le code du workflow, sur une limite structurelle ou sur un délai du workflow est refusée.
+- Chaque étape avant l’activité échouée est une activité terminée dont le résultat est stocké en ligne. Un résultat conservé dans le stockage externe des payloads est refusé.
+- La définition du workflow correspond à l’empreinte enregistrée au démarrage de l’exécution. Si le correctif modifie le code du workflow, le redrive refuse l’exécution.
+- L’échéance d’exécution n’est pas dépassée.
+- L’exécution n’a ni mémos ni attributs de recherche, ni workflow parent, ni workflows enfants, ni activités locales, et son entrée est stockée en ligne.
+
+Un refus indique la première règle non respectée :
+
+| Motif | Signification |
+| --- | --- |
+| `run_not_failed` | L’exécution n’est pas dans l’état `failed`. |
+| `source_run_not_current` | Une exécution plus récente de l’instance existe. |
+| `unrecorded_failure_boundary` | L’exécution n’a pas échoué sur un échec d’activité laissé non intercepté par le code du workflow. |
+| `unsupported_history` | L’historique avant l’échec contient autre chose que des étapes d’activité, par exemple un signal, une mise à jour, un minuteur, un effet de bord, un marqueur de version ou un workflow enfant. |
+| `unsupported_local_activity` | L’historique contient une activité locale. |
+| `external_activity_result_not_supported` | Un résultat d’activité terminée se trouve dans le stockage externe des payloads. |
+| `missing_activity_result`, `unavailable_activity_result` | Un résultat d’activité terminée est absent ou ne peut pas être décodé. |
+| `unsupported_visibility_metadata` | L’exécution a des mémos ou des attributs de recherche. |
+| `unsupported_source_metadata` | L’exécution a été démarrée comme enfant d’un autre workflow. |
+| `unsupported_source_link_or_payload` | L’exécution est liée comme enfant d’un autre workflow, ou son entrée se trouve dans le stockage externe des payloads. |
+| `execution_deadline_elapsed` | L’échéance d’exécution est dépassée. |
+| `workflow_definition_unavailable_or_changed` | L’empreinte de la définition est absente ou diffère de celle enregistrée au démarrage. |
+| `request_id_already_used` | Le `request_id` a déjà servi pour un autre redrive de l’instance. |
+| `invalid_request_id` | Le `request_id` dépasse 191 caractères. |
+| `run_not_found`, `instance_not_found` | L’exécution ou l’instance n’existe pas dans l’espace de noms. |
+
+Les autres motifs signalent un historique qui n’a pas la forme attendue : `invalid_history`, `events_after_failure`, `duplicate_start`, `missing_start`, `unexpected_start`, `missing_terminal_history`, `invalid_activity_sequence`, `activity_sequence_gap`, `missing_activity_type`, `activity_type_mismatch`, `duplicate_activity_completion`, `incomplete_activity_prefix` et `invalid_failed_step`. Exportez l’historique de l’exécution et examinez-le avant de choisir comment la reprendre.
+
+Quand le redrive refuse une exécution, conservez son historique, rapprochez les effets externes et décidez si l’application doit lancer un nouveau workflow.
+
+### Changements dans la prochaine version de Workflow {#redrive-next-release}
+
+**Pas encore publié.** Les changements ci-dessous sont fusionnés dans le paquet Workflow et arrivent dans sa prochaine version. La version actuelle, ainsi que le redrive du Server natif, appliquent les règles ci-dessus. La prise en charge par le Server natif est suivie dans [server#980](https://github.com/durable-workflow/server/issues/980).
+
+- **Éligibilité dans le détail d’exécution et describe.** Le détail d’exécution, que lit le détail de l’exécution sélectionnée de Waterline, indique `can_redrive` et `redrive_blocked_reason`. `WorkflowControlPlane::describe()` indique les mêmes champs sous `actions`. Ils proviennent de la même vérification que celle appliquée par `redrive()`. Vous voyez ainsi, avant de le demander, si une exécution peut être relancée et pourquoi elle ne le peut pas. Une exécution qui n’a pas échoué indique `run_not_failed`. Une exécution déjà relancée indique `already_redriven`. Pour une exécution en mode service, le rapport vérifie seulement qu’une empreinte a été enregistrée. `redrive()` la compare toujours à l’empreinte du worker.
+- **Mémos et attributs de recherche.** Les mémos et attributs de recherche définis au démarrage de l’exécution passent au successeur, comme pour continue-as-new. Une valeur définie par le code du workflow avec un upsert est toujours refusée avec `unsupported_visibility_metadata`.
+- **Effets de bord et marqueurs de version.** Un effet de bord ou un marqueur de version avant l’étape échouée est réutilisé dans le successeur, dans l’ordre des étapes. L’effet de bord ne s’exécute pas à nouveau, et une vérification de version renvoie la version enregistrée. Un résultat d’effet de bord conservé dans le stockage externe des payloads est refusé avec `external_side_effect_result_not_supported`.
+- **Minuteurs déclenchés.** Un `timer()` déclenché avant l’étape échouée est enregistré dans le successeur comme déjà déclenché. Le successeur ne l’attend pas à nouveau.
+- **Temps du workflow.** Chaque effet de bord, marqueur de version et minuteur déclenché réutilisé porte `reused_from_run_id` et `reused_recorded_at`. Le rejeu embedded utilise `reused_recorded_at`. `Workflow::now()` après une étape réutilisée correspond donc à l’heure de l’exécution échouée. Une étape réutilisée par un second redrive garde l’heure de sa première exécution.
+
+Ces historiques sont toujours refusés :
+
+- Les signaux, mises à jour, workflows enfants, activités locales et minuteurs annulés renvoient `unsupported_history` ou `unsupported_local_activity`.
+- Les délais de condition et de signal, les minuteurs de nettoyage d’annulation et les minuteurs d’une portée d’annulation ou d’un groupe parallèle renvoient `unsupported_timer`.
+- Une étape de minuteur à laquelle il manque l’événement de planification ou de déclenchement renvoie `incomplete_timer_step`.
+- Un effet de bord, un marqueur de version ou un minuteur sans numéro d’étape valide renvoie `invalid_step_sequence`. Deux d’entre eux à la même étape renvoient `duplicate_step_sequence`.
+- Une exécution qui a échoué dans le code du workflow renvoie toujours `unrecorded_failure_boundary`.
 
 ## Refus à l’entrée en mode service et récupération {#service-entry-recovery}
 
@@ -329,6 +427,7 @@ Ce choix est délibéré :
 - **La réparation reprend les exécutions bloquées.** La commande `repair()`
   et la réparation automatique dans la boucle des workers reprennent les
   exécutions dont le transport des tâches durables a été perdu.
+- **Le redrive est une action explicite de l’opérateur.** Le [redrive](#redrive) poursuit une exécution échouée dans une nouvelle exécution uniquement à votre demande, et réutilise les résultats des activités terminées.
 
 Si votre application a besoin de nouvelles tentatives au niveau du workflow,
 modélisez-les explicitement :

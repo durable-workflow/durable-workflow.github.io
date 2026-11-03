@@ -99,7 +99,105 @@ For a run that is still waiting on a retryable activity:
 
 A run with an eligible activity retry remains waiting and can continue after the corrected code succeeds, provided its original budgets have not expired. This does not guarantee that every failing workflow can be fixed in place: an unhandled final activity failure, a workflow-code failure, a structural limit, or a workflow timeout can make the run terminal.
 
-For a terminal failed run, preserve its history and reconcile any external side effects before deciding whether the application should start a new workflow. Use application idempotency for repeated business operations. There is no automatic workflow-level retry or terminal-run reopening; see [Workflow-Level Retry](#workflow-level-retry).
+For a terminal failed run, preserve its history and reconcile any external side effects before deciding whether the application should start a new workflow. Use application idempotency for repeated business operations. If an uncaught activity failure ended the run, check whether you can [redrive](#redrive) it after the fix is deployed. Redrive continues in a new run that reuses the completed activity results. There is no automatic workflow-level retry or terminal-run reopening; see [Workflow-Level Retry](#workflow-level-retry).
+
+## Redrive a Failed Run {#redrive}
+
+Redrive continues a failed run in a new run of the same workflow instance. The new run reuses the recorded results of the activities that completed before the failure and schedules the failed activity again. Use it after you fix the cause of an activity failure, so that completed work such as a payment or an email is not repeated.
+
+The failed run stays closed and unchanged. The new run, called the successor, gets the next run number and becomes the instance's current run. Its `continued_from_run_id` names the failed run, and its `WorkflowStarted` event records `recovery_kind: redrive` and `resume_step_sequence`, the step where execution resumes.
+
+The successor replays workflow code from the start:
+
+- Each activity call that completed in the failed run returns its recorded result. The activity does not run again.
+- The failed activity call is scheduled as a new activity execution, using the retry policy in the workflow code. Its attempts start again.
+- Everything after the failed step runs as it would in a new run.
+- The successor keeps the failed run's execution deadline. Its run timeout starts again at the redrive.
+- In embedded mode, `Workflow::now()` in the successor starts at the failed run's start time. A reused activity result keeps the time it was first recorded, so workflow time during replay matches the failed run.
+
+### Request a redrive {#request-a-redrive}
+
+In embedded mode, resolve the `Workflow\V2\Contracts\WorkflowControlPlane` contract from the Laravel container and call `redrive()` with the workflow instance id and the failed run id:
+
+```php
+use Workflow\V2\Contracts\WorkflowControlPlane;
+
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+]);
+
+if ($result['accepted']) {
+    $successorRunId = $result['workflow_run_id'];
+} else {
+    $reason = $result['reason'];
+}
+```
+
+In service mode, send `POST /api/workflows/{workflowId}/runs/{runId}/redrive` with an optional `request_id` in the body. The clients wrap the same route:
+
+| Surface | Call |
+| --- | --- |
+| CLI | `dw workflow:redrive <workflow-id> <run-id> --request-id <id>` |
+| PHP SDK | `Client::redriveWorkflow($workflowId, $failedRunId, $requestId)` |
+| Python SDK | `await client.redrive_workflow(workflow_id, failed_run_id, request_id=...)` or `await handle.redrive()` |
+| Rust SDK | `client.redrive_workflow_run(workflow_id, failed_run_id, request_id)` or `handle.redrive(request_id)` |
+
+An accepted redrive returns the successor's run id and `resume_step_sequence`. A refused redrive returns a `reason` and changes nothing. Redriving a run that was already redriven returns the existing successor instead of creating another one. Pass a `request_id` so that a retried request is safe. A `request_id` already used for another redrive of the same instance is refused with `request_id_already_used`.
+
+Service workers report a workflow definition fingerprint, and redrive compares it with the fingerprint recorded when the run started. In the Rust SDK, call `Worker::set_workflow_definition_sources()` for each workflow you want to redrive. A workflow registered without source identity still runs, but redrive refuses it.
+
+### When a failed run can be redriven {#redrive-eligibility}
+
+Redrive accepts a failed run when all of these are true:
+
+- The run is the instance's current run.
+- The run failed because an activity failure reached workflow code and was not caught. A run that failed in workflow code, on a structural limit or on a workflow timeout is refused.
+- Every step before the failed activity is a completed activity whose result is stored inline. A result held in external payload storage is refused.
+- The workflow definition matches the fingerprint recorded when the run started. If the fix changes workflow code, redrive refuses the run.
+- The execution deadline has not passed.
+- The run has no memos or search attributes, no parent workflow, no child workflows and no local activities, and its input is stored inline.
+
+A refusal names the first rule that failed:
+
+| Reason | Meaning |
+| --- | --- |
+| `run_not_failed` | The run is not in the `failed` state. |
+| `source_run_not_current` | A newer run of the instance exists. |
+| `unrecorded_failure_boundary` | The run did not fail on an activity failure that escaped workflow code. |
+| `unsupported_history` | The history before the failure contains something other than activity steps, such as a signal, update, timer, side effect, version marker or child workflow. |
+| `unsupported_local_activity` | The history contains a local activity. |
+| `external_activity_result_not_supported` | A completed activity result is stored in external payload storage. |
+| `missing_activity_result`, `unavailable_activity_result` | A completed activity result is missing or cannot be decoded. |
+| `unsupported_visibility_metadata` | The run has memos or search attributes. |
+| `unsupported_source_metadata` | The run was started as a child of another workflow. |
+| `unsupported_source_link_or_payload` | The run is linked as a child of another workflow, or its input is in external payload storage. |
+| `execution_deadline_elapsed` | The execution deadline has passed. |
+| `workflow_definition_unavailable_or_changed` | The definition fingerprint is missing or differs from the one recorded at start. |
+| `request_id_already_used` | The `request_id` was already used for another redrive of the instance. |
+| `invalid_request_id` | The `request_id` is longer than 191 characters. |
+| `run_not_found`, `instance_not_found` | The run or instance does not exist in the namespace. |
+
+The remaining reasons report a history that does not have the expected shape: `invalid_history`, `events_after_failure`, `duplicate_start`, `missing_start`, `unexpected_start`, `missing_terminal_history`, `invalid_activity_sequence`, `activity_sequence_gap`, `missing_activity_type`, `activity_type_mismatch`, `duplicate_activity_completion`, `incomplete_activity_prefix` and `invalid_failed_step`. Export the run's history and inspect it before you decide how to recover.
+
+When redrive refuses a run, preserve its history, reconcile external side effects and decide whether the application should start a new workflow.
+
+### Changes in the next Workflow release {#redrive-next-release}
+
+**Not yet released.** The changes below are merged into the Workflow package and ship in its next release. The current release, and redrive in the native Server, apply the rules above. Native Server support is tracked in [server#980](https://github.com/durable-workflow/server/issues/980).
+
+- **Eligibility in run detail and describe.** Run detail, which Waterline's selected-run detail reads, reports `can_redrive` and `redrive_blocked_reason`. `WorkflowControlPlane::describe()` reports the same fields under `actions`. They come from the same check `redrive()` applies, so you can see whether a run is redrivable, and why not, before you request it. A run that is not failed reports `run_not_failed`. A run that was already redriven reports `already_redriven`. For a service-mode run, the report only checks that a fingerprint was recorded. `redrive()` still compares it with the worker's fingerprint.
+- **Memos and search attributes.** Memos and search attributes set when the run started carry over to the successor, as they do for continue-as-new. A value set by workflow code with an upsert is still refused with `unsupported_visibility_metadata`.
+- **Side effects and version markers.** A side effect or version marker before the failed step is reused in the successor in step order. The side effect does not run again, and a version check returns the recorded version. A side effect result held in external payload storage is refused with `external_side_effect_result_not_supported`.
+- **Fired timers.** A `timer()` that fired before the failed step is recorded in the successor as already fired. The successor does not wait for it again.
+- **Workflow time.** Each reused side effect, version marker and fired timer carries `reused_from_run_id` and `reused_recorded_at`. Embedded replay uses `reused_recorded_at`, so `Workflow::now()` after a reused step equals the time in the failed run. A step reused by a second redrive keeps the time it first ran.
+
+These histories are still refused:
+
+- Signals, updates, child workflows, local activities and cancelled timers return `unsupported_history` or `unsupported_local_activity`.
+- Condition and signal timeouts, cancellation cleanup timers, and timers inside a cancellation scope or parallel group return `unsupported_timer`.
+- A timer step without both its scheduled and fired events returns `incomplete_timer_step`.
+- A side effect, version marker or timer without a valid step number returns `invalid_step_sequence`. Two of them at one step return `duplicate_step_sequence`.
+- A run that failed in workflow code still returns `unrecorded_failure_boundary`.
 
 ## Service Entry Refusal and Recovery {#service-entry-recovery}
 
@@ -247,6 +345,7 @@ This is an intentional design choice:
 - **Workflow replay is the recovery primitive.** If a workflow task encounters a transient infrastructure failure (database error, worker crash), the durable task system re-dispatches the task, and replay resumes from committed history — no new run needed.
 - **Continue-as-new handles long-lived workflows.** Workflows that need fresh state or history compaction use `continueAsNew()` as an explicit workflow-level restart.
 - **Repair handles stuck runs.** The `repair()` command and automatic worker-loop repair recover runs where durable task transport was lost.
+- **Redrive is an explicit operator action.** [Redrive](#redrive) continues a failed run in a new run only when you request it, and it reuses completed activity results.
 
 If your application needs workflow-level retry semantics, model them explicitly:
 
