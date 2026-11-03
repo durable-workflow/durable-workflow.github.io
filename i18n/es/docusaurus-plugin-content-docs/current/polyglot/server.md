@@ -25,7 +25,7 @@ El stack PHP 2.x (servidor, worker de cola, planificador, tarea de inicializaci�
 que se conserva en las versiones actuales de Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Para trasladar una base de datos PHP existente al Server nativo, siga el
-[runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md),
+[runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
 que empieza por una copia de seguridad. La configuración marcada abajo como PHP 2.x no se aplica al Server nativo.
 
 :::
@@ -364,7 +364,7 @@ En caso contrario, devuelve `503 Service Unavailable` con `"status":"not_ready"`
 - `checks.database.tls` informa de lo que garantizan para la conexión los ajustes de [TLS de la base de datos](/docs/polyglot/server-config-reference#database-tls). El ejemplo muestra SQLite, donde no se aplica TLS.
 - `development` es `false` y `qualification` es `"release"` en una imagen publicada. Una compilación desde el código fuente sin versión de publicación informa `true` y `"unpublished_execution_slice"`.
 
-El Server nativo no tiene comprobaciones de migraciones, veredicto de seguridad del despliegue ni bloqueo de inicialización. Crea o comprueba su esquema al arrancar y se niega a iniciarse contra una base de datos PHP o desconocida hasta que se haya ejecutado la [toma de control nativa](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+El Server nativo no tiene comprobaciones de migraciones, veredicto de seguridad del despliegue ni bloqueo de inicialización. Crea o comprueba su esquema al arrancar y se niega a iniciarse contra una base de datos PHP o desconocida hasta que se haya ejecutado la [toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md).
 
 ### Capacidades de Server {#server-capabilities}
 
@@ -1136,7 +1136,7 @@ Los únicos endpoints que **no** requieren `X-Durable-Workflow-Control-Plane-Ver
 1. ¿Son correctos el host y el puerto de la base de datos?
 2. ¿Son válidas las credenciales?
 3. ¿Existe la base de datos?
-4. Nativo: ¿registra Server un rechazo del esquema al arrancar? Rechaza una base de datos PHP o desconocida hasta que se haya ejecutado la [toma de control nativa](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md). PHP 2.x: ¿se ejecutaron las migraciones? `php artisan migrate:status`
+4. Nativo: ¿registra Server un rechazo del esquema al arrancar? Rechaza una base de datos PHP o desconocida hasta que se haya ejecutado la [toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md). PHP 2.x: ¿se ejecutaron las migraciones? `php artisan migrate:status`
 
 ### Errores de autenticación {#auth-failures}
 

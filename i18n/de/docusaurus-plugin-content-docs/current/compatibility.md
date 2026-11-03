@@ -165,7 +165,7 @@ Die Tabelle zeigt die für diese Dokumentation geprüfte stabile Kombination aus
 | Python-SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust-SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-Der ausgewählte Server ist der native Server 3.x. Der PHP-Server 2.x ist bei 2.11.8 eingefroren und erhält keine weiteren Veröffentlichungen; bestehende PHP-Installationen behalten ihr festgelegtes 2.x-Image, bis sie dem [Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md) folgen.
+Der ausgewählte Server ist der native Server 3.x. Der PHP-Server 2.x ist bei 2.11.8 eingefroren und erhält keine weiteren Veröffentlichungen; bestehende PHP-Installationen behalten ihr festgelegtes 2.x-Image, bis sie dem [Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) folgen.
 
 Die aufgezeichnete `appVersion` des Helm-Charts ist `%%artifact.helmChartAppVersion%%` und entspricht dem ausgewählten Server; das Chart betreibt standardmäßig den nativen Server. Sein [veröffentlichter Release-Bericht](%%artifact.helmChartQualificationUrl%%) dokumentiert den Release-Lauf des Charts, OCI-/Paket-Digests, die Quellidentität und eine kind-Installation in diesem Lauf; er ist keine Qualifizierung für einen Produktionscluster. Lesen Sie vor der Installation oder einem Image-Override die [Chart-Auswahl und Upgrade-Hinweise](./deployment.md#helm-chart-selection).
 

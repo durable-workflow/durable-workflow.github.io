@@ -20,7 +20,7 @@ keywords:
 
 :::note 现有 PHP Server 2.x 安装
 
-PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)。下文标注为 PHP 2.x 的配置不适用于原生 Server。
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)。下文标注为 PHP 2.x 的配置不适用于原生 Server。
 
 :::
 
@@ -357,7 +357,7 @@ curl http://localhost:8080/api/ready
 - `checks.database.tls` 报告 [数据库 TLS](/docs/polyglot/server-config-reference#database-tls) 设置对该连接所做的保证。示例使用 SQLite，不涉及 TLS。
 - 在已发布镜像上，`development` 为 `false`，`qualification` 为 `"release"`。没有发布版本的源码构建则报告 `true` 和 `"unpublished_execution_slice"`。
 
-原生 Server 没有迁移检查、发布安全判断或引导准入门。它在启动时创建或检查自身 schema；在 [原生接管](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md) 执行之前，它拒绝针对 PHP 数据库或未知数据库启动。
+原生 Server 没有迁移检查、发布安全判断或引导准入门。它在启动时创建或检查自身 schema；在 [原生接管](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) 执行之前，它拒绝针对 PHP 数据库或未知数据库启动。
 
 ### Server 能力 {#server-capabilities}
 
@@ -1131,7 +1131,7 @@ Worker 注册、轮询、发送心跳并完成任务，需要 `X-Durable-Workflo
 1. 数据库主机和端口正确吗？
 2. 凭据有效吗？
 3. 数据库存在吗？
-4. 原生：Server 启动时是否记录了数据库模式拒绝？在完成[原生接管](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)之前，它会拒绝 PHP 或未知数据库。PHP 2.x：是否执行迁移？ `php artisan migrate:status`
+4. 原生：Server 启动时是否记录了数据库模式拒绝？在完成[原生接管](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)之前，它会拒绝 PHP 或未知数据库。PHP 2.x：是否执行迁移？ `php artisan migrate:status`
 
 ### 身份验证失败 {#auth-failures}
 

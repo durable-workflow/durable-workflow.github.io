@@ -43,7 +43,7 @@ Cloud натомість містить Managed Waterline для свого ке
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Продовжуйте запускати його із закріпленим образом 2.x, доки не перейдете. Щоб
 перенести наявну базу PHP на нативний Server, виконайте
-[runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md),
+[runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
 що починається з резервної копії; після переходу повернутися до PHP неможливо.
 Розділи нижче, де згадано Redis, worker черги, планувальник або початкове
 налаштування, описують топологію PHP 2.x.
@@ -511,7 +511,7 @@ helm install durable-workflow \
 
 Чарт 1.x типово запускає нативний Server (`runtime: native`): один Deployment Server без worker, планувальника, Job міграцій чи Redis. Файл values має вказувати на зовнішню базу MySQL, MariaDB або PostgreSQL, передавати `DW_AUTH_TOKEN` і токени з обмеженням за ролями через наявні Kubernetes Secrets та налаштовувати ingress/TLS для вашого середовища. Без спільного `DW_AUTH_TOKEN` чарт відмовляється генерувати маніфести, а SQLite він не приймає. Нативне встановлення типово запускає одну репліку; для кількох реплік або автомасштабування `native.storage.existingClaim` має вказувати на том ReadWriteMany для об’єктів зовнішніх payload. Чарт не створює сховище чи керовану провайдером інфраструктуру. Для відтворюваного розгортання закріпіть образ Server за digest.
 
-Наявний випуск PHP 2.x не переходить на нативний Server під час звичайного оновлення: чарт відмовляє, доки ви явно не задасте `runtime`. Задайте `runtime: php`, щоб зберегти worker, планувальник, Job початкового налаштування та Redis PHP 2.x, або виконайте [runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md) перед тим, як задати `runtime: native`. Дивіться [нотатки UPGRADING](%%artifact.helmChartUpgradeUrl%%) чарта.
+Наявний випуск PHP 2.x не переходить на нативний Server під час звичайного оновлення: чарт відмовляє, доки ви явно не задасте `runtime`. Задайте `runtime: php`, щоб зберегти worker, планувальник, Job початкового налаштування та Redis PHP 2.x, або виконайте [runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) перед тим, як задати `runtime: native`. Дивіться [нотатки UPGRADING](%%artifact.helmChartUpgradeUrl%%) чарта.
 
 ### Вибір випуску чарту {#helm-chart-selection}
 

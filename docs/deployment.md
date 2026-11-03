@@ -43,8 +43,10 @@ from 3.0.0 the Server repository keeps the same stack as
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Keep running it with a pinned 2.x image until you move. To move an existing PHP
 database to native, follow the backup-first
-[native takeover runbook](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md);
-there is no PHP rollback after takeover. Sections below that mention Redis, a
+[native takeover runbook](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md).
+Takeover covers PHP 2.5.14–2.11.8 databases and refuses state native can't
+carry over before changing anything; rehearse it on a restored backup first.
+There is no PHP rollback after takeover. Sections below that mention Redis, a
 queue worker, a scheduler or bootstrap describe the PHP 2.x topology.
 
 :::
@@ -526,7 +528,7 @@ infrastructure. Pin the Server image by digest for a reproducible deployment.
 An existing PHP 2.x release does not move to native on an ordinary upgrade:
 the chart refuses until you set `runtime` explicitly. Set `runtime: php` to keep
 the PHP 2.x worker, scheduler, bootstrap job and Redis, or follow the
-[native takeover runbook](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+[native takeover runbook](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
 before setting `runtime: native`. See the chart's
 [UPGRADING notes](%%artifact.helmChartUpgradeUrl%%).
 

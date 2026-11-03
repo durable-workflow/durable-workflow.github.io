@@ -44,7 +44,7 @@ a partir da 3.0.0, o repositório do Server mantém o mesmo stack como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Continue executando-o com uma imagem 2.x fixada até migrar. Para migrar um
 banco de dados PHP existente para o Server nativo, siga o
-[runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md),
+[runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
 que começa pelo backup; não há reversão para PHP depois da migração. As seções
 abaixo que mencionam Redis, um worker de fila, um agendador ou bootstrap
 descrevem a topologia do PHP 2.x.
@@ -524,7 +524,7 @@ helm install durable-workflow \
 
 O chart 1.x executa o Server nativo por padrão (`runtime: native`): um único Deployment do Server, sem worker, agendador, Job de migração nem Redis. O arquivo de valores deve apontar para um banco de dados MySQL, MariaDB ou PostgreSQL externo, fornecer `DW_AUTH_TOKEN` e os tokens com escopo por papel por Kubernetes Secrets existentes e configurar ingress/TLS para o ambiente. O chart se recusa a gerar os manifestos sem o `DW_AUTH_TOKEN` compartilhado e recusa SQLite. Uma instalação nativa executa uma réplica por padrão; mais de uma réplica, ou escalonamento automático, exige que `native.storage.existingClaim` indique um volume ReadWriteMany para os objetos de payload externo. O chart não cria persistência ou infraestrutura gerenciada pelo provedor. Fixe a imagem do Server por digest para uma implantação reproduzível.
 
-Uma release PHP 2.x existente não passa para o modo nativo em uma atualização comum: o chart recusa a atualização até que você defina `runtime` explicitamente. Defina `runtime: php` para manter o worker, o agendador, o job de bootstrap e o Redis do PHP 2.x, ou siga o [runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md) antes de definir `runtime: native`. Consulte as [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) do chart.
+Uma release PHP 2.x existente não passa para o modo nativo em uma atualização comum: o chart recusa a atualização até que você defina `runtime` explicitamente. Defina `runtime: php` para manter o worker, o agendador, o job de bootstrap e o Redis do PHP 2.x, ou siga o [runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) antes de definir `runtime: native`. Consulte as [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) do chart.
 
 ### Escolher uma versão do chart {#helm-chart-selection}
 

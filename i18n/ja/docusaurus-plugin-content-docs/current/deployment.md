@@ -18,7 +18,7 @@ Server は Waterline を同梱・運用しません。運用 UI が必要な場�
 
 :::note 既存の PHP Server 2.x インストール
 
-PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は引き続き利用できます。2.11.8 のリリースタグでは[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)で、3.0.0 以降の Server リポジトリでは同じスタックを[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml)として維持しています。移行するまでは、固定した 2.x イメージで運用を続けてください。既存の PHP データベースをネイティブへ移すには、バックアップを先に取る[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)に従ってください。テイクオーバー後に PHP へロールバックすることはできません。以下の節で Redis、キュー Worker、スケジューラー、ブートストラップに触れている箇所は、PHP 2.x のトポロジーを説明しています。
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は引き続き利用できます。2.11.8 のリリースタグでは[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)で、3.0.0 以降の Server リポジトリでは同じスタックを[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml)として維持しています。移行するまでは、固定した 2.x イメージで運用を続けてください。既存の PHP データベースをネイティブへ移すには、バックアップを先に取る[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)に従ってください。テイクオーバー後に PHP へロールバックすることはできません。以下の節で Redis、キュー Worker、スケジューラー、ブートストラップに触れている箇所は、PHP 2.x のトポロジーを説明しています。
 
 :::
 
@@ -336,7 +336,7 @@ helm install durable-workflow \
 
 チャート 1.x は既定でネイティブ Server を実行します（`runtime: native`）。一つの Server Deployment で構成され、Worker、スケジューラー、マイグレーション Job、Redis はありません。values ファイルでは、外部の MySQL、MariaDB、PostgreSQL データベースを指定し、既存の Kubernetes Secret で `DW_AUTH_TOKEN` とロール別トークンを渡し、環境に合った ingress/TLS を設定してください。共有の `DW_AUTH_TOKEN` がないとチャートはレンダリングを拒否し、SQLite も拒否します。ネイティブ導入は既定で一つのレプリカを実行します。複数レプリカやオートスケーリングには、外部ペイロードオブジェクト用の ReadWriteMany ボリュームを `native.storage.existingClaim` で指定する必要があります。チャートは永続ストレージやプロバイダー管理のインフラを作成しません。再現可能なデプロイのため、Server イメージをダイジェストで固定してください。
 
-既存の PHP 2.x リリースは、通常のアップグレードではネイティブへ移行しません。`runtime` を明示的に設定するまで、チャートはアップグレードを拒否します。PHP 2.x の Worker、スケジューラー、bootstrap Job、Redis を維持するには `runtime: php` を設定します。ネイティブへ移す場合は、`runtime: native` を設定する前に[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)に従ってください。チャートの[UPGRADING ノート](%%artifact.helmChartUpgradeUrl%%)も参照してください。
+既存の PHP 2.x リリースは、通常のアップグレードではネイティブへ移行しません。`runtime` を明示的に設定するまで、チャートはアップグレードを拒否します。PHP 2.x の Worker、スケジューラー、bootstrap Job、Redis を維持するには `runtime: php` を設定します。ネイティブへ移す場合は、`runtime: native` を設定する前に[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)に従ってください。チャートの[UPGRADING ノート](%%artifact.helmChartUpgradeUrl%%)も参照してください。
 
 ### チャートのリリースを選ぶ {#helm-chart-selection}
 

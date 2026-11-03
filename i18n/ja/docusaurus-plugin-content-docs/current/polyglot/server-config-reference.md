@@ -75,7 +75,7 @@ PHP 2.x Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` な�
 - `DW_BIND_ADDRESS`：待ち受けアドレス。バイナリの既定値は `127.0.0.1:8080` で、公開イメージは `0.0.0.0:8080` を設定します。
 - `DW_RUST_MAINTENANCE_LOOP`：`1` または `true` で、プロセス内のタイマー・スケジュールループに修復処理（タスク修復とアクティビティのタイムアウト）を追加します。公開イメージには独立したスケジューラーがないため、`1` を設定しています。
 - `DW_RUST_EXPERIMENTAL`：リリースバージョンを持たない開発ビルドでのみ `1` が必要です。リリースイメージでは不要です。
-- `DW_UPGRADE_BACKUP_FINGERPRINT` と `DW_RUST_UPGRADE_QUEUE_*`：PHP データベースを一方向に移行する[ネイティブへの引き継ぎ](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)への入力です。
+- `DW_UPGRADE_BACKUP_FINGERPRINT` と `DW_RUST_UPGRADE_QUEUE_*`：PHP データベースを一方向に移行する[ネイティブへの引き継ぎ](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)への入力です。
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`（従来名 `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`）：PHP の契約に追加される前から適用されます。
 
 ## 変更が反映されるタイミング {#how-changes-take-effect}

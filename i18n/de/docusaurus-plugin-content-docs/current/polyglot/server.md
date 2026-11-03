@@ -25,7 +25,7 @@ Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis) ist
 und bleibt in aktuellen Server-Veröffentlichungen als
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) erhalten.
 Um eine bestehende PHP-Datenbank auf den nativen Server umzustellen, folgen Sie dem
-[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md), das mit einer Sicherung beginnt.
+[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), das mit einer Sicherung beginnt.
 Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Server.
 
 :::
@@ -390,7 +390,7 @@ Andernfalls liefert sie `503 Service Unavailable` mit `"status":"not_ready"` und
 Der native Server hat keine Migrationsprüfungen, kein Rollout-Sicherheitsurteil und keine
 Initialisierungsschranke. Er legt sein Schema beim Start an oder prüft es,
 und er verweigert den Start gegen eine PHP- oder unbekannte Datenbank, bis die
-[native Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+[native Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
 ausgeführt wurde.
 
 ### Server-Fähigkeiten {#server-capabilities}
@@ -1181,7 +1181,7 @@ Nur Erkennungs- und Gesundheitsendpunkte benötigen **kein** `X-Durable-Workflow
 2. Zugangsdaten gültig?
 3. Datenbank vorhanden?
 4. Nativ: Meldet der Server beim Start im Log eine Schema-Ablehnung? Er lehnt eine PHP-
-   oder unbekannte Datenbank ab, bis die [native Übernahme](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+   oder unbekannte Datenbank ab, bis die [native Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
    ausgeführt wurde. PHP 2.x: Migrationen ausgeführt? `php artisan migrate:status`
 
 ### Authentifizierungsfehler {#auth-failures}

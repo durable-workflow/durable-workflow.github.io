@@ -30,7 +30,7 @@ workflow. Server 3.x — це нативна реалізація (Rust), яка
 який у поточних випусках Server зберігається як
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Щоб перенести наявну базу PHP на нативний Server, виконайте
-[runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md),
+[runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
 що починається з резервної копії. Конфігурація нижче з позначкою PHP 2.x не
 стосується нативного Server.
 
@@ -488,7 +488,7 @@ curl http://localhost:8080/api/ready
 Нативний Server не має перевірок міграцій, висновку щодо безпеки розгортання
 чи перевірки bootstrap. Він створює або перевіряє свою схему під час запуску
 й відмовляється запускатися з базою даних PHP чи невідомою базою, доки не
-виконано [перехід на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+виконано [перехід на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md).
 
 ### Можливості Server {#server-capabilities}
 
@@ -1467,7 +1467,7 @@ Worker виконують register, poll, heartbeat і complete.
 3. База існує?
 4. Нативний Server: чи журналює Server відмову через схему під час запуску?
    Він відхиляє базу PHP або невідому базу, доки не виконано
-   [перехід на нативний Server](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md).
+   [перехід на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md).
    PHP 2.x: міграції виконані? `php artisan migrate:status`
 
 ### Помилки автентифікації {#auth-failures}

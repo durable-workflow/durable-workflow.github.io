@@ -109,7 +109,7 @@ Native also reads settings outside the PHP contract:
 - `DW_RUST_EXPERIMENTAL`: required as `1` only by development builds without a
   release version. Release images do not need it.
 - `DW_UPGRADE_BACKUP_FINGERPRINT` and `DW_RUST_UPGRADE_QUEUE_*`: inputs to the
-  one-way [native takeover](https://github.com/durable-workflow/server/blob/main/docs/rust-server-upgrade-takeover.md)
+  one-way [native takeover](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
   of a PHP database.
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (legacy
   `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): honored ahead of its addition
