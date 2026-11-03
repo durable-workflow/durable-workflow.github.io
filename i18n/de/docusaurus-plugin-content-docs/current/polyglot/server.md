@@ -414,11 +414,11 @@ curl http://localhost:8080/api/cluster/info \
 
 Liefert Build-Identität, Fähigkeitsflags, Protokollmanifeste, Limits und
 Erkennungsdaten für den Namespace aus `X-Namespace` (oder dem Abfrageparameter
-`namespace`, sonst `default`). Gekürzte Ausgabe des Images 3.0.4:
+`namespace`, sonst `default`). Gekürzte Ausgabe des Images 3.0.5:
 
 ```json
 {
-  "version": "3.0.4",
+  "version": "3.0.5",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -469,7 +469,7 @@ Wichtige Feldhinweise für Client-Code:
 - Die Build-Version steht in `version`, nicht in `server_version`.
   `implementation` ist auf dem nativen Server `"rust"`.
 - Prüfen Sie `control_plane.version` und `worker_protocol.version`, bevor Sie die
-  API aufrufen. Der native Server 3.0.4 bedient Steuerungsebene `2` und Worker-Protokoll
+  API aufrufen. Der native Server 3.0.5 bedient Steuerungsebene `2` und Worker-Protokoll
   `1.20` und akzeptiert Worker-Anfragen mit jeder Protokollversion von `1.0` bis
   `1.20`.
 - Workflow-Aufgabenbefehle stehen unter
