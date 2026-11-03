@@ -145,6 +145,7 @@ for (const [name, oldVersion] of [
   ["undici", "7.29.1"], ["body-parser", "1.20.6"], ["fast-uri", "3.1.8"],
   ["qs", "6.16.0"], ["serialize-javascript", "7.0.7"],
   ["follow-redirects", "1.16.1"], ["joi", "17.13.8"],
+  ["minimatch", "10.2.6"],
 ]) {
   test(`the dependency preflight rejects old root ${name}`, () => {
     const fixture = structuredClone(lockfile);
