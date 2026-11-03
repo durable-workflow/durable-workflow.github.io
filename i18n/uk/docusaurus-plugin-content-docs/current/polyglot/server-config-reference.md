@@ -115,7 +115,8 @@ tasks на нативному Server, визначте кількість slots 
 - `DW_RUST_EXPERIMENTAL`: потрібне зі значенням `1` лише для development-збірок
   без версії випуску. Образам випуску воно не потрібне.
 - `DW_UPGRADE_BACKUP_FINGERPRINT` і `DW_RUST_UPGRADE_QUEUE_*`: вхідні дані
-  одностороннього [переходу бази PHP на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md).
+  одностороннього [переходу бази PHP на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md);
+  цей перехід ще не кваліфіковано на опублікованому образі.
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (застаріла назва
   `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): враховується ще до її
   додавання до контракту PHP.

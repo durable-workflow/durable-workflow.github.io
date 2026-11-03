@@ -75,7 +75,7 @@ PHP 2.x Server 还使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_
 - `DW_BIND_ADDRESS`：监听地址。二进制文件默认为 `127.0.0.1:8080`；已发布镜像设置为 `0.0.0.0:8080`。
 - `DW_RUST_MAINTENANCE_LOOP`：设为 `1` 或 `true` 时，会在进程内定时器与调度循环中加入修复过程（任务修复和活动超时）。已发布镜像设置为 `1`，因为它没有独立的调度器。
 - `DW_RUST_EXPERIMENTAL`：仅没有发布版本的开发构建要求设为 `1`。发布镜像无需设置。
-- `DW_UPGRADE_BACKUP_FINGERPRINT` 和 `DW_RUST_UPGRADE_QUEUE_*`：对 PHP 数据库执行单向 [原生接管](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) 时的输入。
+- `DW_UPGRADE_BACKUP_FINGERPRINT` 和 `DW_RUST_UPGRADE_QUEUE_*`：对 PHP 数据库执行单向 [原生接管](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) 时的输入；该接管尚未在已发布镜像上通过资格验证。
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`（旧名称 `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`）：在加入 PHP 契约之前即已被遵循。
 
 ## 配置变更何时生效 {#how-changes-take-effect}

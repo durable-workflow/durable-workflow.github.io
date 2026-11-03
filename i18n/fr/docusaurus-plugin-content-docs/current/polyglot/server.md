@@ -24,9 +24,10 @@ La pile PHP 2.x (serveur, worker de file, planificateur, job d’initialisation 
 [`docker-compose.published.yml` au tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 conservé dans les versions actuelles de Server sous le nom
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Pour faire passer une base PHP existante au Server natif, suivez le
-[runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), qui commence par une sauvegarde.
-La reprise prend en charge les bases PHP 2.5.14–2.11.8 et refuse, avant de modifier quoi que ce soit, tout état que le Server natif ne peut pas reprendre ; entraînez-vous d’abord sur une sauvegarde restaurée.
+Le Server natif fournit `upgrade-takeover` pour les bases PHP 2.5.14–2.11.8.
+Cette commande est testée en CI sur des builds depuis les sources, mais n’est pas encore qualifiée sur une image publiée : conservez donc les installations PHP existantes sur PHP 2.11.8 jusqu’à ce que le
+[runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+soit marqué comme qualifié. D’ici là, ne vous entraînez à la reprise que sur une copie restaurée d’une sauvegarde.
 La configuration marquée PHP 2.x ci-dessous ne s’applique pas au Server natif.
 
 :::

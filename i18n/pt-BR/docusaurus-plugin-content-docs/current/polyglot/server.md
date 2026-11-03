@@ -24,9 +24,10 @@ O stack PHP 2.x (server, worker de fila, agendador, job de bootstrap e Redis) é
 [`docker-compose.published.yml` na tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 mantido nas releases atuais do Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Para migrar um banco de dados PHP existente para o Server nativo, siga o
-[runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), que começa pelo backup.
-A migração para o Server nativo aceita bancos de dados do PHP 2.5.14–2.11.8 e recusa, antes de alterar qualquer coisa, estados que o nativo não consegue transferir; ensaie-a primeiro em um backup restaurado.
+O Server nativo inclui o `upgrade-takeover` para bancos de dados do PHP 2.5.14–2.11.8.
+Ele é testado em CI com builds a partir do código-fonte, mas ainda não foi qualificado em uma imagem publicada; por isso, mantenha as instalações PHP existentes no PHP 2.11.8 até que o
+[runbook de migração para o Server nativo](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+seja marcado como qualificado. Até lá, ensaie a migração para o Server nativo apenas em uma cópia restaurada de um backup.
 A configuração abaixo marcada como PHP 2.x não se aplica ao Server nativo.
 
 :::

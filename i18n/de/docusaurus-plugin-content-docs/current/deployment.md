@@ -24,11 +24,13 @@ bleibt verfügbar. Am Veröffentlichungstag 2.11.8 ist er
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
 ab 3.0.0 führt das Serverrepository denselben Stack als
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Betreiben Sie ihn bis zur Umstellung mit einem festgelegten 2.x-Image weiter. Um eine bestehende PHP-Datenbank auf den nativen Server umzustellen, folgen Sie dem mit einer Sicherung beginnenden
-[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md).
-Die Übernahme unterstützt Datenbanken von PHP 2.5.14–2.11.8 und verweigert sich bei
-Zuständen, die der native Server nicht übernehmen kann, bevor sie etwas ändert;
-proben Sie sie zuerst an einer wiederhergestellten Sicherung.
+Behalten Sie bestehende PHP-Installationen auf einem festgelegten 2.11.8-Image. Der
+native Server enthält `upgrade-takeover` für Datenbanken von PHP 2.5.14–2.11.8. Es ist
+in CI mit Builds aus dem Quellcode getestet, aber noch nicht für ein veröffentlichtes
+Image qualifiziert; bleiben Sie daher bei PHP 2.11.8, bis das
+[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+als qualifiziert gekennzeichnet ist. Proben Sie die Übernahme bis dahin nur an einer
+wiederhergestellten Kopie einer Sicherung.
 Nach der Übernahme gibt es kein Rollback auf PHP. Abschnitte unten, die Redis, einen
 Queue-Worker, einen Scheduler oder Bootstrap erwähnen, beschreiben die PHP-2.x-Topologie.
 
@@ -393,7 +395,7 @@ helm install durable-workflow \
 
 Chart 1.x betreibt standardmäßig den nativen Server (`runtime: native`): ein Server-Deployment ohne Worker, Scheduler, Migrations-Job oder Redis. Ihre Values-Datei muss auf eine externe MySQL-, MariaDB- oder PostgreSQL-Datenbank verweisen, `DW_AUTH_TOKEN` und die rollenbezogenen Tokens über vorhandene Kubernetes Secrets bereitstellen und Ingress/TLS für Ihre Umgebung konfigurieren. Ohne das gemeinsame `DW_AUTH_TOKEN` verweigert das Chart das Rendern, und SQLite lehnt es ab. Eine native Installation läuft standardmäßig mit einem Replikat; mehr als ein Replikat oder Autoscaling erfordert, dass `native.storage.existingClaim` ein ReadWriteMany-Volume für externe Payload-Objekte benennt. Das Chart erstellt weder Persistenz noch vom Anbieter verwaltete Infrastruktur. Fixieren Sie das Server-Image für ein reproduzierbares Deployment per Digest.
 
-Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten, oder folgen Sie dem [Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), bevor Sie `runtime: native` setzen. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
+Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten. Behalten Sie diese Einstellung bei, bis das [Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) als qualifiziert gekennzeichnet ist; die Übernahme ist noch nicht für ein veröffentlichtes Image qualifiziert. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
 
 ### Einen Chart-Release auswählen {#helm-chart-selection}
 

@@ -20,7 +20,7 @@ keywords:
 
 :::note 既存の PHP Server 2.x インストール
 
-PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。既存の PHP データベースをネイティブへ移すには、バックアップを先に取る[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)に従ってください。テイクオーバーは PHP 2.5.14–2.11.8 のデータベースを対象とし、ネイティブへ引き継げない状態があれば、何も変更する前に拒否します。まず復元したバックアップでリハーサルしてください。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。ネイティブ Server には PHP 2.5.14–2.11.8 のデータベース向けの `upgrade-takeover` が含まれています。ソースビルドでは CI でテストされていますが、公開イメージではまだ適格性が確認されていないため、[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)が適格性確認済みとしてマークされるまでは、既存の PHP インストールを PHP 2.11.8 のまま維持してください。それまでは、テイクオーバーのリハーサルはバックアップから復元したコピーでのみ行ってください。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
 
 :::
 

@@ -24,11 +24,12 @@ Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis) ist
 [`docker-compose.published.yml` am Tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)
 und bleibt in aktuellen Server-Veröffentlichungen als
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) erhalten.
-Um eine bestehende PHP-Datenbank auf den nativen Server umzustellen, folgen Sie dem
-[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), das mit einer Sicherung beginnt.
-Die Übernahme unterstützt Datenbanken von PHP 2.5.14–2.11.8 und verweigert sich bei
-Zuständen, die der native Server nicht übernehmen kann, bevor sie etwas ändert;
-proben Sie sie zuerst an einer wiederhergestellten Sicherung.
+Der native Server enthält `upgrade-takeover` für Datenbanken von PHP 2.5.14–2.11.8. Es ist
+in CI mit Builds aus dem Quellcode getestet, aber noch nicht für ein veröffentlichtes Image
+qualifiziert; behalten Sie bestehende PHP-Installationen daher auf PHP 2.11.8, bis das
+[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+als qualifiziert gekennzeichnet ist. Proben Sie die Übernahme bis dahin nur an einer
+wiederhergestellten Kopie einer Sicherung.
 Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Server.
 
 :::

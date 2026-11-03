@@ -75,7 +75,7 @@ El Server nativo también lee ajustes ajenos al contrato de PHP:
 - `DW_BIND_ADDRESS`: la dirección de escucha. El binario usa `127.0.0.1:8080` por defecto; la imagen publicada establece `0.0.0.0:8080`.
 - `DW_RUST_MAINTENANCE_LOOP`: `1` o `true` añade la pasada de reparación (reparación de tareas y tiempos de espera de actividades) al bucle en proceso de temporizadores y programaciones. La imagen publicada establece `1` porque no tiene un planificador separado.
 - `DW_RUST_EXPERIMENTAL`: solo lo exigen, con valor `1`, las compilaciones de desarrollo sin versión de publicación. Las imágenes de publicación no lo necesitan.
-- `DW_UPGRADE_BACKUP_FINGERPRINT` y `DW_RUST_UPGRADE_QUEUE_*`: entradas de la [toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), de un solo sentido, de una base de datos PHP.
+- `DW_UPGRADE_BACKUP_FINGERPRINT` y `DW_RUST_UPGRADE_QUEUE_*`: entradas de la [toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md), de un solo sentido, de una base de datos PHP; la toma de control aún no está validada en una imagen publicada.
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (antiguo `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): se respeta antes de su incorporación al contrato de PHP.
 
 ## Cuándo se aplican los cambios {#how-changes-take-effect}

@@ -18,7 +18,7 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 :::note 现有 PHP Server 2.x 安装
 
-PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。迁移之前，请继续使用固定的 2.x 镜像运行它。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)。接管支持 PHP 2.5.14–2.11.8 的数据库，并会在做出任何更改之前拒绝原生 Server 无法承接的状态；请先在恢复的备份上演练。接管后无法回滚到 PHP。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。请让现有 PHP 安装继续使用固定的 2.11.8 镜像。原生 Server 提供适用于 PHP 2.5.14–2.11.8 数据库的 `upgrade-takeover`。它已在源码构建上通过 CI 测试，但尚未在已发布镜像上通过资格验证；因此，在[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)被标记为已通过资格验证之前，请继续使用 PHP 2.11.8。在此之前，只能在由备份恢复出的副本上演练接管。接管后无法回滚到 PHP。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
 
 :::
 
@@ -325,7 +325,7 @@ helm install durable-workflow \
 
 Chart 1.x 默认运行原生 Server（`runtime: native`）：一个 Server Deployment，没有 Worker、调度器、迁移 Job 或 Redis。values 文件必须指向外部 MySQL、MariaDB 或 PostgreSQL 数据库，通过已有 Kubernetes Secret 提供 `DW_AUTH_TOKEN` 和按角色限定权限的令牌，并为环境配置 ingress/TLS。缺少共享 `DW_AUTH_TOKEN` 时 Chart 会拒绝渲染，也不接受 SQLite。原生安装默认运行一个副本；运行多个副本或启用自动扩缩时，必须通过 `native.storage.existingClaim` 指定一个用于外部负载对象的 ReadWriteMany 卷。Chart 不会创建持久化存储或提供商托管基础设施。为了可复现部署，请按摘要固定 Server 镜像。
 
-现有 PHP 2.x 发布不会在普通升级中迁移到原生 Server：在你显式设置 `runtime` 之前，Chart 会拒绝升级。设置 `runtime: php` 可保留 PHP 2.x 的 Worker、调度器、bootstrap 任务和 Redis；或者先按照[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)完成接管，再设置 `runtime: native`。参见 Chart 的 [UPGRADING 说明](%%artifact.helmChartUpgradeUrl%%)。
+现有 PHP 2.x 发布不会在普通升级中迁移到原生 Server：在你显式设置 `runtime` 之前，Chart 会拒绝升级。设置 `runtime: php` 可保留 PHP 2.x 的 Worker、调度器、bootstrap 任务和 Redis。在[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)被标记为已通过资格验证之前，请保持此设置；接管尚未在已发布镜像上通过资格验证。参见 Chart 的 [UPGRADING 说明](%%artifact.helmChartUpgradeUrl%%)。
 
 ### 选择 Chart 版本 {#helm-chart-selection}
 

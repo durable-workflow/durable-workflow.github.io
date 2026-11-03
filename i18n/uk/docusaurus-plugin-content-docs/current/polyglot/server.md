@@ -29,11 +29,12 @@ workflow. Server 3.x — це нативна реалізація (Rust), яка
 [`docker-compose.published.yml` у тегу 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 який у поточних випусках Server зберігається як
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Щоб перенести наявну базу PHP на нативний Server, виконайте
-[runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-що починається з резервної копії. Перехід охоплює бази PHP 2.5.14–2.11.8 і ще
-до будь-яких змін відхиляє стан, який нативний Server не може перенести; спершу
-відпрацюйте його на відновленій резервній копії. Конфігурація нижче з позначкою
+Нативний Server містить `upgrade-takeover` для баз PHP 2.5.14–2.11.8. Його
+протестовано в CI на збірках із вихідного коду, але ще не кваліфіковано на
+опублікованому образі, тож залишайте наявні PHP-встановлення на PHP 2.11.8, доки
+[runbook переходу на нативний Server](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+не буде позначено як кваліфікований. До того часу відпрацьовуйте перехід лише на
+копії, відновленій із резервної копії. Конфігурація нижче з позначкою
 PHP 2.x не стосується нативного Server.
 
 :::

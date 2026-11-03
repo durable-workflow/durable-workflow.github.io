@@ -24,9 +24,10 @@ El stack PHP 2.x (servidor, worker de cola, planificador, tarea de inicializaci�
 [`docker-compose.published.yml` en la etiqueta 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 que se conserva en las versiones actuales de Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Para trasladar una base de datos PHP existente al Server nativo, siga el
-[runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md),
-que empieza por una copia de seguridad. La toma de control admite bases de datos de PHP 2.5.14–2.11.8 y rechaza, antes de modificar nada, el estado que el Server nativo no puede trasladar; ensáyela primero sobre una copia de seguridad restaurada.
+El Server nativo incluye `upgrade-takeover` para bases de datos de PHP 2.5.14–2.11.8.
+Está probado en CI con compilaciones desde el código fuente, pero aún no está validado en una imagen publicada, así que mantenga las instalaciones PHP existentes en PHP 2.11.8 hasta que el
+[runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+se marque como validado. Hasta entonces, ensaye la toma de control solo sobre una copia restaurada de una copia de seguridad.
 La configuración marcada abajo como PHP 2.x no se aplica al Server nativo.
 
 :::

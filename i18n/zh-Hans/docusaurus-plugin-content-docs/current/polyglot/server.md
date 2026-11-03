@@ -20,7 +20,7 @@ keywords:
 
 :::note 现有 PHP Server 2.x 安装
 
-PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。要将现有 PHP 数据库迁移到原生 Server，请遵循先备份的[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)。接管支持 PHP 2.5.14–2.11.8 的数据库，并会在做出任何更改之前拒绝原生 Server 无法承接的状态；请先在恢复的备份上演练。下文标注为 PHP 2.x 的配置不适用于原生 Server。
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。原生 Server 提供适用于 PHP 2.5.14–2.11.8 数据库的 `upgrade-takeover`。它已在源码构建上通过 CI 测试，但尚未在已发布镜像上通过资格验证；因此，在[原生接管运行手册](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)被标记为已通过资格验证之前，请让现有 PHP 安装继续使用 PHP 2.11.8。在此之前，只能在由备份恢复出的副本上演练接管。下文标注为 PHP 2.x 的配置不适用于原生 Server。
 
 :::
 
