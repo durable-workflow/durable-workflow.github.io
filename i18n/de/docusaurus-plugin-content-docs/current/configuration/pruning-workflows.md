@@ -35,7 +35,7 @@ Die Beispiele wurden mit veröffentlichtem PHP Server **2.9.5**, dessen geladene
 1. **Sicheres Zeitfenster schaffen.** Exportieren Sie deutlich vor Ende der Aufbewahrungsfrist und lassen Sie Zeit für Wiederholungen, Ausfälle und Prüfungsrückstände. Ein täglicher Export bei 30 Tagen Datenbankaufbewahrung bietet mehr Wiederherstellungszeit als ein erster Export an Tag 30. Schützen Sie vor dem ersten Export oder einer Fristverkürzung vorübergehend die Quelle: Pausieren Sie die eingebettete Bereinigung oder verwenden Sie Servers `forever`-Regel. Notieren Sie die bisherige Regel und stellen Sie sie erst nach Prüfung wieder her. Bereinigung kann sofort beginnen, sobald ein Lauf geeignet ist.
 2. **Geschlossene Läufe inventarisieren.** Legen Sie eine feste obere UTC-Grenze fest und wählen Sie frühere `closed_at`-Werte. Exportieren Sie alle Läufe einschließlich fehlgeschlagener, abgebrochener, terminierter und durch Continue-as-new ersetzter Vorgänger. Eine Instanz kann mehrere Läufe haben. Speichern Sie Namespace, Instanzkennung, Laufkennung und Abschlusszeit jedes Kandidaten und folgen Sie allen Ergebnisseiten.
 3. **Einen bestimmten Lauf exportieren.** Verwenden Sie den unten genannten laufbezogenen Endpunkt oder Befehl, nicht den zum Verarbeitungszeitpunkt gerade aktuellen Lauf. Halten Sie Kandidatenexporte von bereits geprüften Kopien getrennt.
-4. **Gespeicherte Kopie prüfen.** Lesen Sie die Kopie am Ziel zurück. Prüfen Sie Laufidentität gegen das Namespace-Inventar, Schemaversion, erwartete letzte Historiensequenz, vollständigen Ereignisbereich, Schwärzungsregel und Prüfsumme. Prüfen Sie konfigurierte Signaturen mit einem vertrauenswürdigen Schlüssel. Bewahren Sie den genauen Anwendungsbuild und erforderliche Codecs für einen kalten Replay-Test auf. Eine Prüfsumme belegt gleiche Bytes, nicht die Vollständigkeit der Historie beim Export.
+4. **Gespeicherte Kopie prüfen.** Lesen Sie die Kopie am Ziel zurück. Prüfen Sie Laufidentität gegen das Namespace-Inventar, Schemaversion, erwartete letzte Historiensequenz, vollständigen Ereignisbereich, Schwärzungsregel und Prüfsumme. Prüfen Sie konfigurierte Signaturen mit einem vertrauenswürdigen Schlüssel. Bewahren Sie den genauen Anwendungsbuild und erforderliche Codecs für einen kalten Replay-Test auf. Eine Prüfsumme belegt gleiche Bytes, nicht die Vollständigkeit der Historie beim Export. Verlangen Sie `history_complete: true` und, sofern vorhanden, `workflow.details_state: retained`. Siehe [Export eines bereinigten Laufs erkennen](#recognizing-an-export-of-a-pruned-run).
 5. **Externe Bytes erhalten.** Exporte enthalten externe Referenzhüllen, keine unabhängige Kopie jedes referenzierten Objekts. Erhalten Sie diese Bytes für die Lebensdauer des Exports und testen Sie den Abruf ohne warmen Laufzeit-Cache. Beachten Sie den [Lebenszyklus externer Payloads](../features/external-payload-storage.md#replay-retention-and-cleanup).
 6. **Vor Bereinigung abgleichen.** Vergleichen Sie das Inventar geschlossener Läufe mit geprüften Zielkopien. Alarmieren Sie bei fehlenden Laufkennungen, fehlgeschlagenen Prüfungen und Exportverzug nahe der Löschgrenze. Schreiben Sie den Exportprüfpunkt erst fort, wenn jeder Kandidat nachgewiesen ist. Prüfen Sie überlappende Abschlusszeitfenster erneut und deduplizieren Sie nach Namespace und Laufkennung. Überschreiben Sie kein geprüftes vollständiges Paket mit einem späteren unvollständigen Export.
 
@@ -43,9 +43,30 @@ Diese Schritte liegen bei der Anwendung und sind kein vom Produkt unterstützter
 
 :::warning Ohne Wiederherstellungskopie ist die Bereinigung unumkehrbar
 
-Ein Export nach der Bereinigung kann gelöschte Ereignisse nicht rekonstruieren. Die veröffentlichte Exportimplementierung kann einen bereinigten terminalen Lauf dennoch als `history_complete: true` markieren und seinen früheren `dedupe_key` wiederverwenden. Siehe [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Keines dieser Felder beweist, dass noch keine Bereinigung stattgefunden hat. Eingebettete Exportaufgaben müssen Läufe mit gesetztem `details_pruned_at` ablehnen. Die Server-Liste zeigt einen Lauf nach Bereinigung seiner Zusammenfassung nicht mehr. Ein erst danach begonnenes Inventar kann somit nicht belegen, dass alle älteren Läufe erfasst wurden. Bewahren Sie das vorherige Inventar auf und untersuchen Sie Lücken anhand einer Wiederherstellungskopie.
+Ein Export nach der Bereinigung kann gelöschte Ereignisse nicht rekonstruieren. Bewahren Sie das vorherige Inventar auf und untersuchen Sie Lücken anhand einer Wiederherstellungskopie. Die Server-Liste zeigt einen Lauf nach Bereinigung seiner Zusammenfassung nicht mehr. Ein erst danach begonnenes Inventar kann somit nicht belegen, dass alle älteren Läufe erfasst wurden.
 
 :::
+
+### Export eines bereinigten Laufs erkennen {#recognizing-an-export-of-a-pruned-run}
+
+Ab Workflow 2.17.0 meldet ein eingebetteter Export, ob die Details des Laufs erhalten wurden:
+
+| Feld | Erhaltener Lauf | Bereinigter Lauf |
+| --- | --- | --- |
+| `workflow.details_state` | `retained` | `pruned` |
+| `workflow.details_pruned_at` | `null` | Zeitpunkt, zu dem die Bereinigung festgeschrieben wurde, in UTC |
+| `history_complete` | `true` für einen terminalen Lauf | `false` |
+| `history_events` | Die aufgezeichneten Ereignisse | Leer |
+| `dedupe_key` | Durch dieses Release unverändert | Der Schlüssel des vollständigen Exports, gefolgt von `:details-pruned:{details_pruned_at}` |
+
+Der bereinigte Lauf behält seinen terminalen `status`. Sein `dedupe_key` stimmt nie mit dem vor der Bereinigung erstellten Export überein, sodass ein deduplizierendes Archiv ein geprüftes vollständiges Paket nicht durch das leere ersetzt. `workflow:v2:replay-verify` meldet ein bereinigtes Paket mit oder ohne `--skip-replay` als Fehler `history.details_pruned`. `workflow:v2:history-import` lehnt es als `workflow.terminal_history_incomplete` ab.
+
+Werten Sie `history_complete: false` oder `details_state: pruned` für Archivzwecke als fehlgeschlagenen Export und bewahren Sie die frühere vollständige Kopie auf. Verlassen Sie sich in den folgenden Fällen nicht allein auf diese Felder, da hier ein bereinigter terminaler Lauf weiterhin als vollständig gekennzeichnet sein kann:
+
+- Exporte aus früheren Workflow-Releases. Sie enthalten kein `details_state`. Lehnen Sie in diesem Fall Läufe mit gesetztem `details_pruned_at` vor dem Export ab.
+- Native Server-Exporte, bis [Server #976](https://github.com/durable-workflow/server/issues/976) ausgeliefert ist.
+- Der Historienexport-Fallback von Waterline, bis [Waterline #257](https://github.com/durable-workflow/waterline/issues/257) ausgeliefert ist.
+- Der Paketprüfer des Python SDK, bis [SDK Python #228](https://github.com/durable-workflow/sdk-python/issues/228) ausgeliefert ist.
 
 ### Server-Läufe auswählen und exportieren {#selecting-and-exporting-server-runs}
 

@@ -33,7 +33,7 @@ Server 另有命名空间保留策略，自动清理会跳过归档运行。因�
 1. **建立安全窗口。** 应远早于保留截止时间导出，为重试、停机和验证积压留出时间。例如，数据库保留 30 天、每天导出，比第 30 天才首次导出留有更多恢复时间。首次导出或缩短策略之前，暂时保护源数据：暂停嵌入式清理作业，或将 Server 设为 `forever`。记录原策略，只在验证后恢复。运行一旦符合条件就可能立即被清理。
 2. **盘点已关闭运行。** 记录固定的 UTC 上界，选择早于它的 `closed_at`。导出每次运行，包括失败、取消、终止和 continue-as-new 的前驱运行。一个工作流实例可能有多次运行。保留每个候选项的命名空间、实例 ID、运行 ID 和关闭时间，并获取全部分页。
 3. **导出指定运行。** 使用下方按运行定位的端点或命令，不要导出作业执行时碰巧处于当前状态的运行。候选导出与已验证副本分开保存。
-4. **验证已存储副本。** 从目标位置读回副本。对照命名空间范围的清单核对运行标识、模式版本、预期最后历史序号、完整事件范围、脱敏策略及完整性校验和。使用可信密钥验证已配置的签名。保留冷重放需要的准确应用构建和编解码器。校验和证明字节一致，不证明导出时历史完整。
+4. **验证已存储副本。** 从目标位置读回副本。对照命名空间范围的清单核对运行标识、模式版本、预期最后历史序号、完整事件范围、脱敏策略及完整性校验和。使用可信密钥验证已配置的签名。保留冷重放需要的准确应用构建和编解码器。校验和证明字节一致，不证明导出时历史完整。要求 `history_complete: true`，并在存在时要求 `workflow.details_state: retained`。参见[识别已清理运行的导出](#recognizing-an-export-of-a-pruned-run)。
 5. **保留外部字节。** 导出保留外部引用信封，并非每个引用对象的独立副本。为导出的完整生命周期保存这些字节，并在不使用已预热运行时缓存的情况下验证读取。遵循[外部载荷生命周期](../features/external-payload-storage.md#replay-retention-and-cleanup)。
 6. **清理前对账。** 将已关闭运行清单与目标存储中已验证记录逐一比较。对缺失运行 ID、验证失败和接近保留截止时间的积压发出告警。只有全部候选项均已确认，才能推进导出检查点。使用重叠的关闭时间窗口重复扫描，并按命名空间与运行 ID 去重。不要用后续不完整导出覆盖已验证的完整包。
 
@@ -41,9 +41,30 @@ Server 另有命名空间保留策略，自动清理会跳过归档运行。因�
 
 :::warning 没有恢复副本时，清理不可逆
 
-清理后导出无法重建已删除事件。已发布实现仍可能将终态已清理运行标记为 `history_complete: true`，并复用先前的 `dedupe_key`，该问题由 [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) 跟踪。不要把任一字段当作尚未清理的证据。嵌入式导出作业必须拒绝 `details_pruned_at` 已设置的运行。摘要被清理后，Server 列表不再显示该运行，因此清理后才建立的清单无法证明所有旧运行均已捕获。保留清理前清单，并利用恢复副本调查缺口。
+清理后导出无法重建已删除事件。保留清理前清单，并利用恢复副本调查缺口。摘要被清理后，Server 列表不再显示该运行，因此清理后才建立的清单无法证明所有旧运行均已捕获。
 
 :::
+
+### 识别已清理运行的导出 {#recognizing-an-export-of-a-pruned-run}
+
+自 Workflow 2.17.0 起，嵌入式导出会报告运行明细是否仍保留：
+
+| 字段 | 保留明细的运行 | 已清理运行 |
+| --- | --- | --- |
+| `workflow.details_state` | `retained` | `pruned` |
+| `workflow.details_pruned_at` | `null` | 清理提交的时间（UTC） |
+| `history_complete` | 终态运行为 `true` | `false` |
+| `history_events` | 已记录的事件 | 空 |
+| `dedupe_key` | 此版本未改变 | 完整导出键后接 `:details-pruned:{details_pruned_at}` |
+
+已清理运行保留其终态 `status`。其 `dedupe_key` 永远不会与清理前导出的键相同，因此去重归档不会用空包替换已验证的完整包。无论是否使用 `--skip-replay`，`workflow:v2:replay-verify` 都会将已清理的包报告为 `history.details_pruned` 错误。`workflow:v2:history-import` 会以 `workflow.terminal_history_incomplete` 拒绝它。
+
+就归档而言，应将 `history_complete: false` 或 `details_state: pruned` 视为导出失败，并保留先前的完整副本。以下情况仍可能将已清理的终态运行标记为完整，不要仅依赖这些字段：
+
+- 较早 Workflow 版本的导出。它们不含 `details_state`。此时应在导出前拒绝 `details_pruned_at` 已设置的运行。
+- 原生 Server 导出，直到 [Server #976](https://github.com/durable-workflow/server/issues/976) 发布。
+- Waterline 的历史导出回退路径，直到 [Waterline #257](https://github.com/durable-workflow/waterline/issues/257) 发布。
+- Python SDK 包验证器，直到 [SDK Python #228](https://github.com/durable-workflow/sdk-python/issues/228) 发布。
 
 ### 选择和导出 Server 运行 {#selecting-and-exporting-server-runs}
 
