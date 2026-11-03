@@ -11,12 +11,14 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 {/*
   Release-day checklist:
-  - The Server version is written as the literal 3.0.3 in the prose, the
+  - The Server version is written as the literal 3.0.4 in the prose, the
     commands and the Compose URL. Replace every occurrence if the release
     number changes.
   - Merge docs PR #426 first. This post links to its native install guides.
-  - Confirm PHP SDK 3.8.1 is published (it fixes activities with heartbeat
-    timeouts; do not recommend 3.8.0).
+  - Confirm PHP SDK 3.8.1 or later is published (3.8.1 fixes activities with
+    heartbeat timeouts; do not recommend 3.8.0).
+  - Takeover is described as not yet qualified. Update that section only when
+    the runbook is marked qualified.
   - Remove `draft: true` to publish.
 */}
 
@@ -68,7 +70,7 @@ All you need is Docker. The commands below start the Server with SQLite in a
 named volume and a local development token. The API listens on loopback only:
 
 ```bash
-export DW_SERVER_IMAGE=durableworkflow/server:3.0.3
+export DW_SERVER_IMAGE=durableworkflow/server:3.0.4
 export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
@@ -85,7 +87,7 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
   http://localhost:8080/api/cluster/info
 ```
 
-Cluster info should report `"implementation":"rust"` and version `3.0.3`. Next,
+Cluster info should report `"implementation":"rust"` and version `3.0.4`. Next,
 go to [step 3 of the quickstart](/docs/quickstart/#choose-one-language) and run
 a workflow with the PHP, Python or Rust SDK. Use `dev-token` only for this local
 exercise. When you are done, remove the container and the volume:
@@ -101,9 +103,9 @@ The published Compose file runs the native Server with MySQL. Download it from
 the release and pin the image version:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/3.0.3/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/3.0.4/docker-compose.published.yml
 
-export DW_SERVER_IMAGE=durableworkflow/server:3.0.3
+export DW_SERVER_IMAGE=durableworkflow/server:3.0.4
 export DW_AUTH_TOKEN=dev-token
 
 docker compose -f docker-compose.published.yml up -d --wait
@@ -137,38 +139,24 @@ provide the tokens through Kubernetes Secrets. Running more than one replica
 requires a ReadWriteMany volume for external payload storage. The chart is
 still marked beta. An existing PHP release never switches to native on an
 ordinary upgrade: the chart refuses to upgrade it until you set `runtime`
-explicitly. See [Helm chart for Kubernetes](/docs/deployment/#helm-chart-for-kubernetes).
+explicitly. Set `runtime: php` to keep running PHP 2.11.8. See [Helm chart for Kubernetes](/docs/deployment/#helm-chart-for-kubernetes).
 
 ## Moving from PHP Server 2.x
 
-The native Server never converts a database when it starts. You move an
-existing PHP database to native once, with an explicit, one-way takeover:
+New installations start on the native Server. If you already run PHP Server
+2.x, stay on 2.11.8 for now. It is the final PHP release and is still
+supported.
 
-1. Upgrade to PHP Server 2.5.14 or later, which adds an ownership fence. Then
-   stop every PHP role that can write: the API server, queue workers, the
-   scheduler and any bootstrap job.
-2. Inspect the stopped database with the native image's read-only
-   `upgrade-inspect` commands.
-3. Back up the database and restore the backup into a separate database. Run
-   `upgrade-fingerprint` on both. The two digests must match.
-4. Run `upgrade-takeover` with that digest. Before it changes anything, it
-   refuses if the database was written after your backup, or if the database
-   holds state that the native Server cannot carry over.
-5. Start the native Server. From then on, PHP refuses to run against that
-   database.
-
-There is no rollback to PHP after takeover, apart from restoring your verified
-backup into a new database. Takeover recognizes PHP database layouts from
-2.5.14 through 2.11.8 and refuses any other database before changing it.
-Databases created by PHP 2.8.0 through 2.11.8 are tested end to end on SQLite,
-PostgreSQL, MySQL and MariaDB. It also refuses, without changing anything, a
-database that holds external payload references, workflow-to-workflow
-messages, pending service-call work, or schedules that use search attributes or
-Laravel queue routing. Rehearse the takeover on a restored copy of your backup
-first. Takeover is planned for deprecation in the 3.1.x line, so move from PHP
-while you are on 3.0.x. Follow the
-[native takeover runbook](https://github.com/durable-workflow/server/blob/3.0.3/docs/rust-server-upgrade-takeover.md)
-step by step.
+The native image includes `upgrade-takeover`, a one-way, backup-first command
+that moves an existing PHP database (layouts from 2.5.14 through 2.11.8) to the
+native Server. It is tested in CI on source builds against SQLite, PostgreSQL,
+MySQL and MariaDB, but it has not yet been qualified on a published image, so
+we are not presenting it as a supported upgrade path today. We will announce
+when the takeover runbook is marked qualified. Takeover is planned for
+deprecation in the 3.1.x line, so plan to move from PHP during 3.0.x once it is
+qualified. Its
+[design and status](https://github.com/durable-workflow/server/blob/3.0.4/docs/rust-server-upgrade-takeover.md)
+are public.
 
 ## SDK support
 
@@ -177,11 +165,11 @@ use. These SDK releases declare support for native Server 3.x:
 
 | SDK | Release | Declares native Server 3.x support from |
 | --- | --- | --- |
-| [PHP](/docs/polyglot/php/) (`durable-workflow/sdk`) | 3.8.1 | 3.0.0 |
+| [PHP](/docs/polyglot/php/) (`durable-workflow/sdk`) | 3.8.1 or later | 3.0.0 |
 | [Python](/docs/polyglot/python/) (`durable-workflow`) | 2.13.0 | 3.0.0 |
 | [Rust](/docs/polyglot/rust/) (`durable-workflow` crate) | 4.10.3 | 3.0.2 |
 
-Server 3.0.3 meets all three declarations.
+Server 3.0.4 meets all three declarations.
 
 ## What isn't there yet
 
