@@ -45,7 +45,7 @@ Conservez les installations PHP existantes sur une image 2.11.8 épinglée. Le S
 natif fournit `upgrade-takeover` pour les bases PHP 2.5.14–2.11.8. Cette commande
 est testée en CI sur des builds depuis les sources, mais n'est pas encore qualifiée
 sur une image publiée : restez donc sur PHP 2.11.8 jusqu'à ce que le
-[runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+[runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%)
 soit marqué comme qualifié. D'ici là, ne vous entraînez à la reprise que sur une
 copie restaurée d'une sauvegarde. Aucun retour vers PHP n'est possible après la
 reprise. Les sections
@@ -519,7 +519,7 @@ helm install durable-workflow \
 
 Le chart 1.x exécute par défaut le Server natif (`runtime: native`) : un seul Deployment Server, sans worker, ordonnanceur, Job de migration ni Redis. Le fichier de valeurs doit désigner une base externe MySQL, MariaDB ou PostgreSQL, fournir `DW_AUTH_TOKEN` et les jetons par rôle via des Kubernetes Secrets existants et configurer ingress/TLS pour votre environnement. Le chart refuse de générer les manifestes sans le `DW_AUTH_TOKEN` partagé et refuse SQLite. Une installation native exécute un seul réplica par défaut ; plusieurs réplicas, ou l’autoscaling, exigent que `native.storage.existingClaim` désigne un volume ReadWriteMany pour les objets de payload externes. Le chart ne crée ni persistance ni infrastructure gérée par le fournisseur. Fixez l’image Server par digest pour un déploiement reproductible.
 
-Une version PHP 2.x existante ne passe pas au natif lors d’une mise à niveau ordinaire : le chart refuse tant que vous n’avez pas défini `runtime` explicitement. Définissez `runtime: php` pour conserver le worker, l’ordonnanceur, le job d’initialisation et Redis de PHP 2.x. Conservez cette configuration jusqu’à ce que le [runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) soit marqué comme qualifié ; la reprise n’est pas encore qualifiée sur une image publiée. Consultez les [notes UPGRADING](%%artifact.helmChartUpgradeUrl%%) du chart.
+Une version PHP 2.x existante ne passe pas au natif lors d’une mise à niveau ordinaire : le chart refuse tant que vous n’avez pas défini `runtime` explicitement. Définissez `runtime: php` pour conserver le worker, l’ordonnanceur, le job d’initialisation et Redis de PHP 2.x. Conservez cette configuration jusqu’à ce que le [runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%) soit marqué comme qualifié ; la reprise n’est pas encore qualifiée sur une image publiée. Consultez les [notes UPGRADING](%%artifact.helmChartUpgradeUrl%%) du chart.
 
 ### Choisir une version du chart {#helm-chart-selection}
 

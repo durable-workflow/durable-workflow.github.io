@@ -26,7 +26,7 @@ conservé dans les versions actuelles de Server sous le nom
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
 Le Server natif fournit `upgrade-takeover` pour les bases PHP 2.5.14–2.11.8.
 Cette commande est testée en CI sur des builds depuis les sources, mais n’est pas encore qualifiée sur une image publiée : conservez donc les installations PHP existantes sur PHP 2.11.8 jusqu’à ce que le
-[runbook de reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+[runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%)
 soit marqué comme qualifié. D’ici là, ne vous entraînez à la reprise que sur une copie restaurée d’une sauvegarde.
 La configuration marquée PHP 2.x ci-dessous ne s’applique pas au Server natif.
 
@@ -366,7 +366,7 @@ Sinon, elle renvoie `503 Service Unavailable` avec `"status":"not_ready"` et `ch
 - `checks.database.tls` indique ce que les réglages [TLS de la base](/docs/polyglot/server-config-reference#database-tls) garantissent pour la connexion. L’exemple montre SQLite, où aucun TLS ne s’applique.
 - `development` vaut `false` et `qualification` vaut `"release"` sur une image publiée. Un build depuis les sources sans version de release renvoie `true` et `"unpublished_execution_slice"`.
 
-Le Server natif n’a ni vérifications de migrations, ni verdict de sûreté de mise à jour, ni barrière d’initialisation. Il crée ou vérifie son schéma au démarrage et refuse de démarrer sur une base PHP ou inconnue tant que la [reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) n’a pas été exécutée.
+Le Server natif n’a ni vérifications de migrations, ni verdict de sûreté de mise à jour, ni barrière d’initialisation. Il crée ou vérifie son schéma au démarrage et refuse de démarrer sur une base PHP ou inconnue tant que la [reprise native](%%artifact.serverTakeoverRunbookUrl%%) n’a pas été exécutée.
 
 ### Capacités de Server {#server-capabilities}
 
@@ -1139,7 +1139,7 @@ Seuls les points de découverte et de santé n’exigent **pas** `X-Durable-Work
 1. Hôte et port corrects ?
 2. Identifiants valides ?
 3. Base existante ?
-4. Natif : Server journalise-t-il un refus de schéma au démarrage ? Il refuse une base PHP ou inconnue tant que la [reprise native](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) n’a pas été exécutée. PHP 2.x : migrations exécutées ? `php artisan migrate:status`
+4. Natif : Server journalise-t-il un refus de schéma au démarrage ? Il refuse une base PHP ou inconnue tant que la [reprise native](%%artifact.serverTakeoverRunbookUrl%%) n’a pas été exécutée. PHP 2.x : migrations exécutées ? `php artisan migrate:status`
 
 ### Échecs d’authentification {#auth-failures}
 

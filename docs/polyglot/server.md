@@ -29,12 +29,17 @@ The PHP 2.x stack (server, queue worker, scheduler, bootstrap job and Redis) is
 [`docker-compose.published.yml` at the 2.11.8 tag](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 kept on current Server releases as
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Native ships `upgrade-takeover` for PHP 2.5.14–2.11.8 databases. It is
-CI-tested on source builds but not yet qualified on a published image, so keep
-existing PHP installations on PHP 2.11.8 until the
-[native takeover runbook](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
-is marked qualified. Until then, rehearse takeover only on a restored copy of a
-backup.
+Existing PHP 2.x installations can move to native with `upgrade-takeover` by
+following the [native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%).
+It is qualified on the published 3.0.4 image (arm64) for databases written by
+PHP 2.11.8 on SQLite, MySQL 8.0 and PostgreSQL 17. MariaDB, amd64 and databases
+from other PHP releases (layouts 2.8.0–2.11.8) have source-CI coverage only.
+Takeover is one-way and backup-first, and PHP must be stopped. It refuses
+databases and state it cannot carry over; the runbook's
+[refusal tables](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+list each case. Rehearse it on a restored copy of your backup first. There is
+no PHP rollback after takeover, and takeover is planned for deprecation in the
+3.1.x line.
 Configuration below marked as PHP 2.x does not apply to the native Server.
 
 :::
@@ -497,7 +502,7 @@ Otherwise it returns `503 Service Unavailable` with `"status":"not_ready"` and
 
 Native has no migration checks, rollout-safety verdict or bootstrap gate. It
 creates or checks its schema at startup, and it refuses to start against a PHP
-or unknown database until the [native takeover](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+or unknown database until the [native takeover](%%artifact.serverTakeoverRunbookUrl%%)
 has run.
 
 ### Server Capabilities
@@ -1514,7 +1519,7 @@ The only endpoints that do **not** require `X-Durable-Workflow-Control-Plane-Ver
 2. Credentials valid?
 3. Database exists?
 4. Native: does the Server log a schema refusal at startup? It refuses a PHP
-   or unknown database until the [native takeover](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+   or unknown database until the [native takeover](%%artifact.serverTakeoverRunbookUrl%%)
    has run. PHP 2.x: migrations run? `php artisan migrate:status`
 
 ### Auth failures

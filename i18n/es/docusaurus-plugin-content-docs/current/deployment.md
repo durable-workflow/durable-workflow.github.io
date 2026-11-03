@@ -44,7 +44,7 @@ Mantén las instalaciones PHP existentes en una imagen 2.11.8 fijada. El Server
 nativo incluye `upgrade-takeover` para bases de datos de PHP 2.5.14–2.11.8. Está
 probado en CI con compilaciones desde el código fuente, pero aún no está validado
 en una imagen publicada, así que quédate en PHP 2.11.8 hasta que el
-[runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+[runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%)
 se marque como validado. Hasta entonces, ensaya la toma de control solo sobre una
 copia restaurada de una copia de seguridad. Después de la toma de control no hay
 reversión a PHP. Las secciones
@@ -506,7 +506,7 @@ helm install durable-workflow \
 
 El chart 1.x ejecuta el Server nativo de forma predeterminada (`runtime: native`): un único Deployment de Server, sin worker, programador, Job de migración ni Redis. El archivo de valores debe apuntar a una base de datos MySQL, MariaDB o PostgreSQL externa, proporcionar `DW_AUTH_TOKEN` y los tokens por rol mediante Kubernetes Secrets existentes y configurar ingress/TLS para su entorno. El chart se niega a generar manifiestos sin el `DW_AUTH_TOKEN` compartido y rechaza SQLite. Una instalación nativa ejecuta una réplica de forma predeterminada; más de una réplica, o el autoescalado, requiere que `native.storage.existingClaim` indique un volumen ReadWriteMany para los objetos de carga externa. El chart no crea almacenamiento persistente ni infraestructura administrada por el proveedor. Fije la imagen del Server por digest para un despliegue reproducible.
 
-Una versión PHP 2.x existente no pasa al Server nativo con una actualización ordinaria: el chart se niega hasta que defina `runtime` explícitamente. Defina `runtime: php` para conservar el worker, el programador, la tarea de inicialización y Redis de PHP 2.x. Mantenga esa configuración hasta que el [runbook de toma de control nativa](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) se marque como validado; la toma de control aún no está validada en una imagen publicada. Consulte las [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) del chart.
+Una versión PHP 2.x existente no pasa al Server nativo con una actualización ordinaria: el chart se niega hasta que defina `runtime` explícitamente. Defina `runtime: php` para conservar el worker, el programador, la tarea de inicialización y Redis de PHP 2.x. Mantenga esa configuración hasta que el [runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%) se marque como validado; la toma de control aún no está validada en una imagen publicada. Consulte las [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) del chart.
 
 ### Elegir una versión del chart {#helm-chart-selection}
 

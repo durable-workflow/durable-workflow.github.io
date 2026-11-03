@@ -34,7 +34,7 @@ The native 3.x Server enforces none of the server-side admission controls on thi
 - a namespace request-admission setting
 - a namespace durable-state limit
 
-It ignores `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` and their per-namespace variants. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` must stay unset or `1024`. Native instead applies a fixed bound of 16 pending or leased query tasks per namespace and refuses further queries with HTTP `503` and `query_task_queue_full`.
+It ignores `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` and their per-namespace variants. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` must stay unset or `1024`. Native instead applies a fixed bound of 16 pending or leased query tasks per namespace and refuses further queries with HTTP `429` and `query_task_queue_full`, as PHP does.
 
 On native, bound task concurrency with each SDK worker's configured slots and the number of workers. `GET /api/task-queues/{name}` reports the registered slots and the leased and ready counts under `admission`, with every server-side limit and remaining-capacity field `null`. See the [native configuration reference](./server-config-reference.md#native-server-3x). The rest of this page describes PHP Server 2.x.
 

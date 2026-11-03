@@ -41,12 +41,17 @@ remains available. At the 2.11.8 release tag it is
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
 from 3.0.0 the Server repository keeps the same stack as
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Keep existing PHP installations on a pinned 2.11.8 image. Native ships
-`upgrade-takeover` for PHP 2.5.14–2.11.8 databases. It is CI-tested on source
-builds but not yet qualified on a published image, so stay on PHP 2.11.8 until
-the [native takeover runbook](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
-is marked qualified. Until then, rehearse takeover only on a restored copy of a
-backup. There is no PHP rollback after takeover. Sections below that mention Redis, a
+Existing PHP 2.x installations can move to native with `upgrade-takeover` by
+following the [native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%).
+It is qualified on the published 3.0.4 image (arm64) for databases written by
+PHP 2.11.8 on SQLite, MySQL 8.0 and PostgreSQL 17. MariaDB, amd64 and databases
+from other PHP releases (layouts 2.8.0–2.11.8) have source-CI coverage only.
+Takeover is one-way and backup-first, and PHP must be stopped. It refuses
+databases and state it cannot carry over; the runbook's
+[refusal tables](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+list each case. Rehearse it on a restored copy of your backup first. There is
+no PHP rollback after takeover, and takeover is planned for deprecation in the
+3.1.x line. Sections below that mention Redis, a
 queue worker, a scheduler or bootstrap describe the PHP 2.x topology.
 
 :::
@@ -527,9 +532,10 @@ infrastructure. Pin the Server image by digest for a reproducible deployment.
 
 An existing PHP 2.x release does not move to native on an ordinary upgrade:
 the chart refuses until you set `runtime` explicitly. Set `runtime: php` to keep
-the PHP 2.x worker, scheduler, bootstrap job and Redis. Keep it until the
-[native takeover runbook](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
-is marked qualified; takeover is not yet qualified on a published image. See the chart's
+the PHP 2.x worker, scheduler, bootstrap job and Redis. To move to
+`runtime: native`, follow the
+[native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%)
+and keep `runtime: php` until the takeover is done. See the chart's
 [UPGRADING notes](%%artifact.helmChartUpgradeUrl%%).
 
 ### Choosing a chart release {#helm-chart-selection}

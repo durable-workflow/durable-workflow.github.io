@@ -87,7 +87,7 @@ namespace request admission, namespace durable-state quotas or held-poll caps,
 and no native equivalent of them yet. Each native Server process opens at most
 four database connections. Query tasks have a fixed bound of 16 pending or
 leased tasks per namespace, beyond which new queries are refused with HTTP
-`503` and `query_task_queue_full`; it is not configurable. To bound task
+`429` and `query_task_queue_full`, as on PHP; it is not configurable. To bound task
 concurrency on native, size each SDK worker's slots and the number of workers.
 [Task queue admission](/docs/polyglot/task-queue-admission) describes the PHP
 2.x controls.
@@ -109,8 +109,9 @@ Native also reads settings outside the PHP contract:
 - `DW_RUST_EXPERIMENTAL`: required as `1` only by development builds without a
   release version. Release images do not need it.
 - `DW_UPGRADE_BACKUP_FINGERPRINT` and `DW_RUST_UPGRADE_QUEUE_*`: inputs to the
-  one-way [native takeover](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
-  of a PHP database, which is not yet qualified on a published image.
+  one-way [native takeover](%%artifact.serverTakeoverRunbookUrl%%)
+  of a PHP database, qualified on the published 3.0.4 image within the
+  runbook's stated scope.
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (legacy
   `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): honored ahead of its addition
   to the PHP contract.

@@ -43,4 +43,5 @@ test('derive the Server Git tag that exists for the selected release', () => {
   assert.equal(pins.serverComposeUrl, `https://raw.githubusercontent.com/durable-workflow/server/${tag}/docker-compose.published.yml`);
   assert.equal(pins.helmChartUpgradeUrl, `https://github.com/durable-workflow/server/blob/${source.helm_chart.source_commit}/k8s/helm/durable-workflow/docs/UPGRADING.md`);
   assert.equal(pins.serverTagEnv, undefined);
+  assert.match(pins.serverTakeoverRunbookUrl, /^https:\/\/github\.com\/durable-workflow\/server\/blob\/[a-f0-9]{40}\/docs\/rust-server-upgrade-takeover\.md$/);
 });

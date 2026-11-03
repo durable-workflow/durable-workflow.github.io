@@ -226,7 +226,7 @@ and image digests used for each completed check.
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-The selected Server is the native 3.x Server. PHP Server 2.x is frozen at 2.11.8 and receives no further releases; existing PHP installations should stay on PHP 2.11.8. Native's `upgrade-takeover` for PHP 2.5.14–2.11.8 databases is CI-tested on source builds but not yet qualified on a published image; wait until the [native takeover runbook](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md) is marked qualified.
+The selected Server is the native 3.x Server. PHP Server 2.x is frozen at 2.11.8 and receives no further releases; existing PHP installations can move to native with `upgrade-takeover` by following the [native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%). Takeover is qualified on the published 3.0.4 image within the runbook's stated scope; it is one-way and backup-first.
 
 The Helm chart's recorded `appVersion` is `%%artifact.helmChartAppVersion%%`, matching the selected Server, and the chart runs the native Server by default. Its [published release receipt](%%artifact.helmChartQualificationUrl%%) records the chart release run, OCI/package digests, source identity, and a kind install in that run; it is not a production cluster qualification. See [chart selection and upgrades](./deployment.md#helm-chart-selection) before installing or overriding the image.
 

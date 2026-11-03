@@ -27,7 +27,7 @@ und bleibt in aktuellen Server-Veröffentlichungen als
 Der native Server enthält `upgrade-takeover` für Datenbanken von PHP 2.5.14–2.11.8. Es ist
 in CI mit Builds aus dem Quellcode getestet, aber noch nicht für ein veröffentlichtes Image
 qualifiziert; behalten Sie bestehende PHP-Installationen daher auf PHP 2.11.8, bis das
-[Runbook zur nativen Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+[Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%)
 als qualifiziert gekennzeichnet ist. Proben Sie die Übernahme bis dahin nur an einer
 wiederhergestellten Kopie einer Sicherung.
 Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Server.
@@ -394,7 +394,7 @@ Andernfalls liefert sie `503 Service Unavailable` mit `"status":"not_ready"` und
 Der native Server hat keine Migrationsprüfungen, kein Rollout-Sicherheitsurteil und keine
 Initialisierungsschranke. Er legt sein Schema beim Start an oder prüft es,
 und er verweigert den Start gegen eine PHP- oder unbekannte Datenbank, bis die
-[native Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+[native Übernahme](%%artifact.serverTakeoverRunbookUrl%%)
 ausgeführt wurde.
 
 ### Server-Fähigkeiten {#server-capabilities}
@@ -1188,7 +1188,7 @@ Nur Erkennungs- und Gesundheitsendpunkte benötigen **kein** `X-Durable-Workflow
 2. Zugangsdaten gültig?
 3. Datenbank vorhanden?
 4. Nativ: Meldet der Server beim Start im Log eine Schema-Ablehnung? Er lehnt eine PHP-
-   oder unbekannte Datenbank ab, bis die [native Übernahme](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)
+   oder unbekannte Datenbank ab, bis die [native Übernahme](%%artifact.serverTakeoverRunbookUrl%%)
    ausgeführt wurde. PHP 2.x: Migrationen ausgeführt? `php artisan migrate:status`
 
 ### Authentifizierungsfehler {#auth-failures}

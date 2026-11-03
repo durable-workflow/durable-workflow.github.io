@@ -20,7 +20,7 @@ keywords:
 
 :::note 既存の PHP Server 2.x インストール
 
-PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。ネイティブ Server には PHP 2.5.14–2.11.8 のデータベース向けの `upgrade-takeover` が含まれています。ソースビルドでは CI でテストされていますが、公開イメージではまだ適格性が確認されていないため、[ネイティブ移行（テイクオーバー）手順書](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)が適格性確認済みとしてマークされるまでは、既存の PHP インストールを PHP 2.11.8 のまま維持してください。それまでは、テイクオーバーのリハーサルはバックアップから復元したコピーでのみ行ってください。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。ネイティブ Server には PHP 2.5.14–2.11.8 のデータベース向けの `upgrade-takeover` が含まれています。ソースビルドでは CI でテストされていますが、公開イメージではまだ適格性が確認されていないため、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)が適格性確認済みとしてマークされるまでは、既存の PHP インストールを PHP 2.11.8 のまま維持してください。それまでは、テイクオーバーのリハーサルはバックアップから復元したコピーでのみ行ってください。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
 
 :::
 
@@ -358,7 +358,7 @@ curl http://localhost:8080/api/ready
 - `checks.database.tls` は、[データベース TLS](/docs/polyglot/server-config-reference#database-tls) 設定がこの接続に対して保証する内容を報告します。例は TLS が適用されない SQLite の場合です。
 - 公開イメージでは `development` が `false`、`qualification` が `"release"` です。リリースバージョンを持たないソースビルドでは `true` と `"unpublished_execution_slice"` を報告します。
 
-ネイティブにはマイグレーション確認、ロールアウト安全性の判定、初期化ゲートがありません。起動時にスキーマを作成または確認し、PHP 用または不明なデータベースに対しては、[ネイティブへの引き継ぎ](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)を実行するまで起動を拒否します。
+ネイティブにはマイグレーション確認、ロールアウト安全性の判定、初期化ゲートがありません。起動時にスキーマを作成または確認し、PHP 用または不明なデータベースに対しては、[ネイティブへの引き継ぎ](%%artifact.serverTakeoverRunbookUrl%%)を実行するまで起動を拒否します。
 
 ### Server の能力 {#server-capabilities}
 
@@ -1133,7 +1133,7 @@ Worker が登録、ポーリング、ハートビート、完了に使います�
 1. データベースのホストとポートは正しいですか？
 2. 認証情報は有効ですか？
 3. データベースは存在しますか？
-4. ネイティブ：起動時に Server がスキーマ拒否をログに出していませんか？ [ネイティブ移行（テイクオーバー）](https://github.com/durable-workflow/server/blob/%%artifact.serverGitTag%%/docs/rust-server-upgrade-takeover.md)を実行するまで、PHP のデータベースや不明なデータベースは拒否されます。PHP 2.x：マイグレーションは実行済みですか？ `php artisan migrate:status`
+4. ネイティブ：起動時に Server がスキーマ拒否をログに出していませんか？ [ネイティブ移行（テイクオーバー）](%%artifact.serverTakeoverRunbookUrl%%)を実行するまで、PHP のデータベースや不明なデータベースは拒否されます。PHP 2.x：マイグレーションは実行済みですか？ `php artisan migrate:status`
 
 ### 認証の失敗 {#auth-failures}
 
