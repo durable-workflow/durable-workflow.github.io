@@ -111,7 +111,7 @@ docker volume rm durable-workflow-server-quickstart
 Verwenden Sie das veröffentlichte Compose-Artefakt für einen quellcodefreien Mehrcontainer-Stack mit MySQL und Redis:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -928,7 +928,7 @@ Beginnen Sie im Selbstbetrieb mit veröffentlichten Images statt Quellcode-Build
 
 - Docker Hub: `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
-- Compose für veröffentlichte Images: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- Compose für veröffentlichte Images: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - Rohe Kubernetes-Manifeste: [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 Fixieren Sie in Produktion Versionstag oder Image-Digest, verwenden Sie rollenbezogene Zugangsdaten, führen Sie Initialisierung/Migrationen vor Verkehrszulassung aus und prüfen Sie `/api/ready`, `/api/cluster/info` und Worker-Registrierung. Verlagerung allein aufgrund von `/api/health` ist nicht ausreichend.

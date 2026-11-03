@@ -110,7 +110,7 @@ docker volume rm durable-workflow-server-quickstart
 Use el artefacto Compose publicado para un conjunto de varios contenedores sin código fuente respaldado por MySQL y Redis:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -927,7 +927,7 @@ Para despliegues autogestionados, comience con imágenes publicadas en vez de co
 
 - Docker Hub: `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
-- Compose de imagen publicada: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- Compose de imagen publicada: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - Manifiestos Kubernetes directos: [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 Los despliegues de producción deben fijar una etiqueta de versión o digest, usar credenciales por rol, ejecutar inicialización y migraciones antes del tráfico y demostrar disponibilidad con `/api/ready`, `/api/cluster/info` y registro de workers. No cambie el tráfico basándose solo en `/api/health`.

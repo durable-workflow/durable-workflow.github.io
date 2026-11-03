@@ -16,9 +16,9 @@ Server は Waterline を同梱・運用しません。運用 UI が必要な場�
 
 | 経路 | 出発点 | 対応する用途 | この経路が約束しないもの | 商用サポートの開始点 |
 | --- | --- | --- | --- | --- |
-| ローカル開発・社内非本番 | `%%artifact.serverTagEnv%%` または `%%artifact.serverImageEnv%%` を使う [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) | 開発マシン一台、LAN デモ、共有ステージング、SDK・Worker 統合テスト | インターネット公開本番、永続バックアップ保証、厳密な秘密ローテーション、マルチノードフェイルオーバー | 開発スタックを本番手順書にする支援が必要 |
-| 単一ノード本番 | 同じ [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) に本番 env、MySQL・Redis ボリューム、ロール別トークン、バックアップ、リバースプロキシ TLS、固定タグ・ダイジェストを設定 | 永続状態と単純な運用モデルを持つ VM、VPS、社内 Docker ホスト一台 | ホスト HA、自動 DB フェイルオーバー、マルチリージョン復旧、無停止の大規模トポロジー変更 | 本番でバックアップ、復元、認証、TLS、更新、復帰手順のレビューが必要 |
-| 小規模クラスター | 公開 `durableworkflow/server`・`ghcr.io/durable-workflow/server`、[Compose 手順](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)をプロセステンプレートにし、API 2～3 台、共有外部 MySQL/PostgreSQL、Redis、独立 Worker、厳密に一つのスケジューラー・保守ランナー | 一台では不足する API・Worker 容量の水平拡張。[順次更新契約](/docs/rolling-upgrades)の全条件成立時のローリング更新 | SQLite クラスター、Redis なしの複数ノード、定常的な重複スケジューラー、アクティブ/アクティブ複数書込 DB、無人リージョン切替、広範な「ファイブナイン」「無停止」SLA、[証拠ゲート](#release-evidence-status)通過前のセルフサービス単一リージョン HA | 複数ホストの容量、障害ドメイン、更新、復旧計画が必要、またはゲート対象 HA を主張したい |
+| ローカル開発・社内非本番 | `%%artifact.serverTagEnv%%` または `%%artifact.serverImageEnv%%` を使う [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) | 開発マシン一台、LAN デモ、共有ステージング、SDK・Worker 統合テスト | インターネット公開本番、永続バックアップ保証、厳密な秘密ローテーション、マルチノードフェイルオーバー | 開発スタックを本番手順書にする支援が必要 |
+| 単一ノード本番 | 同じ [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) に本番 env、MySQL・Redis ボリューム、ロール別トークン、バックアップ、リバースプロキシ TLS、固定タグ・ダイジェストを設定 | 永続状態と単純な運用モデルを持つ VM、VPS、社内 Docker ホスト一台 | ホスト HA、自動 DB フェイルオーバー、マルチリージョン復旧、無停止の大規模トポロジー変更 | 本番でバックアップ、復元、認証、TLS、更新、復帰手順のレビューが必要 |
+| 小規模クラスター | 公開 `durableworkflow/server`・`ghcr.io/durable-workflow/server`、[Compose 手順](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)をプロセステンプレートにし、API 2～3 台、共有外部 MySQL/PostgreSQL、Redis、独立 Worker、厳密に一つのスケジューラー・保守ランナー | 一台では不足する API・Worker 容量の水平拡張。[順次更新契約](/docs/rolling-upgrades)の全条件成立時のローリング更新 | SQLite クラスター、Redis なしの複数ノード、定常的な重複スケジューラー、アクティブ/アクティブ複数書込 DB、無人リージョン切替、広範な「ファイブナイン」「無停止」SLA、[証拠ゲート](#release-evidence-status)通過前のセルフサービス単一リージョン HA | 複数ホストの容量、障害ドメイン、更新、復旧計画が必要、またはゲート対象 HA を主張したい |
 | Kubernetes Helm チャート | `oci://ghcr.io/durable-workflow/charts/durable-workflow` の [Server 所有チャート](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)と外部 DB、Redis、ingress、秘密管理 | Server、Worker、単一スケジューラー、bootstrap、service、probe、policy の再現可能な本番導入・更新 | 永続化の同梱、プロバイダー管理インフラ、アクティブ/アクティブのマルチリージョン、独自 operator、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | プロバイダー固有設計、容量、復旧、公開 values 契約外の変更が必要 |
 | 生の Kubernetes マニフェスト | Server の [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)、公開イメージ、既存 DB・Redis・ingress・秘密管理 | Kubernetes 運用済みチーム向けの、API、Worker、スケジューラー、bootstrap、service、probe、config、secret の調査可能な定義 | 別の Helm ライフサイクル、マネージド Kubernetes 検証、アクティブ/アクティブのマルチリージョン、独自 operator、環境固有ストレージ・ネットワーク・セキュリティ判断、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | オーバーレイ、管理クラスター検証、プロバイダー固有本番計画、ゲート対象 HA が必要 |
 | アクティブ/パッシブのマルチリージョン評価 | リージョンごとの検証済み単一ノード・小規模クラスター、アクティブから待機側への非同期 DB 複製、レビュー済み切替・復帰手順 | サポート主導の地域災害復旧設計評価と環境固有リハーサル | 実証済みセルフサービス 2.0 契約、アクティブ/アクティブ、自動・無人リージョン切替、同期複製（RPO=0）、リージョン間アクティブ可視性・連合検索、エンジン強制の地域固定キュー | 本番で複製、切替、復帰、RPO、RTO に依存する前 |
@@ -76,7 +76,7 @@ Server は Waterline を同梱・運用しません。運用 UI が必要な場�
 ソース不要の MySQL・Redis スタックには公開イメージ Compose を使います。
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 export %%artifact.serverTagEnv%%
 export DW_AUTH_TOKEN=dev-token
