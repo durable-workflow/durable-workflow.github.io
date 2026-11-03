@@ -43,6 +43,7 @@ Jeder Galerieeintrag nennt das vermittelte Muster, die ausführende Workflow-Kla
 | Durch Webhook gestarteter Workflow mit Warten auf ein Signal | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Laufdetails mit `WorkflowStarted` vom Webhook-Eingang und einem Ereignis `SignalReceived` für `ready` |
 | KI-Aktivitätsschleife mit dauerhafter Wiederholung/Validierung | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Laufdetails mit wiederholten Aktivitätsversuchen und dem Ereignis `ActivityCompleted`, das den Validator erfüllt |
 | Signalgesteuerter KI-Agent mit Saga-Kompensation | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Laufdetails mit Nachrichtenstromreferenz, Update-Historie und nach einem Saga-Fehler aufgezeichneten Kompensationsaktivitäten |
+| Langlebige Konversation mit menschlicher Genehmigung und Continue-as-new | `App\Workflows\Conversation\ConversationWorkflow` | `php artisan app:conversation` | Laufliste mit einem Lauf pro Generation; Laufdetails mit Ereignissen `SignalReceived` für `message` und `decision`, den Modell- und Antwortaktivitäten sowie einem fortgesetzten Lauf |
 
 Die Spalte zur Waterline-Ansicht nennt die Ereignisse einer gesunden Ausführung. Fehlt eines in Ihrer lokalen Ausführung, lässt sich damit ein Worker- oder Umgebungsproblem am schnellsten eingrenzen.
 
@@ -55,6 +56,8 @@ Die Musterseiten dieser Website verlinken direkt den Beispiel-Workflow für den 
 | [Sagas](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
 | [Signale](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
 | [Nachrichtenströme](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Als neuer Lauf fortsetzen](/docs/features/continue-as-new) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
+| [Referenz für Konversations-Workflows](/docs/conversational-workflows) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
 | [Untergeordnete Workflows](/docs/features/child-workflows) | Noch kein eigener Galerieeintrag. Verwenden Sie den Leitfaden zu untergeordneten Workflows. |
 | [Seiteneffekte](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
 | [Webhooks](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |

@@ -43,6 +43,7 @@ https://github.com/durable-workflow/sample-app
 | シグナル待機を持つ Webhook 起動ワークフロー | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Webhook 入口からの `WorkflowStarted` と `ready` の `SignalReceived` イベントを示す実行詳細 |
 | 永続リトライ・検証を備えた AI アクティビティループ | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | 繰り返しのアクティビティ試行と、バリデーターを満たす `ActivityCompleted` を示す実行詳細 |
 | Saga 補償を備えたシグナル駆動 AI エージェント | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | メッセージストリーム参照、更新履歴、Saga 失敗後に記録された補償アクティビティを示す実行詳細 |
+| 人による承認と continue-as-new を備えた長期間続く会話 | `App\Workflows\Conversation\ConversationWorkflow` | `php artisan app:conversation` | 世代ごとに一つの実行を示す実行一覧、`message` と `decision` の `SignalReceived` イベント、モデルと応答のアクティビティ、継続した実行を示す実行詳細 |
 
 Waterline 画面欄は、正常な実行で見えるはずのイベントを示します。ローカル実行で一つ欠けていれば、その差分が Worker 側または環境の問題を絞り込む最短経路です。
 
@@ -55,6 +56,8 @@ Waterline 画面欄は、正常な実行で見えるはずのイベントを示�
 | [Saga](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow`（`php artisan app:ai`） |
 | [シグナル](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow`（`php artisan app:webhook`） |
 | [メッセージストリーム](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow`（`php artisan app:ai`） |
+| [新しい実行への継続](/docs/features/continue-as-new) | `App\Workflows\Conversation\ConversationWorkflow`（`php artisan app:conversation`） |
+| [会話型ワークフローのリファレンス](/docs/conversational-workflows) | `App\Workflows\Conversation\ConversationWorkflow`（`php artisan app:conversation`） |
 | [子ワークフロー](/docs/features/child-workflows) | 専用ギャラリー項目はまだありません。子ワークフローガイドを使ってください。 |
 | [副作用](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow`（`php artisan app:elapsed`） |
 | [Webhook](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow`（`php artisan app:webhook`） |

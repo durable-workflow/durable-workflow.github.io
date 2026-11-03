@@ -158,6 +158,7 @@ const sidebars = {
             'configuration/pruning-workflows',
           ],
         },
+        'conversational-workflows',
         'sample-app',
         'contribute-a-sample',
       ],

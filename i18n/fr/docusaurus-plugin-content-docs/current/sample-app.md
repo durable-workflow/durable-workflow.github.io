@@ -57,6 +57,7 @@ sample-app. À chaque ajout ou déplacement d'exemple, le README et cette galeri
 | Workflow démarré par webhook et attendant un signal | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Détail avec `WorkflowStarted` depuis l'entrée webhook et un `SignalReceived` pour `ready` |
 | Boucle d'activités IA avec tentatives et validation durables | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Détail avec tentatives d'activité répétées et le `ActivityCompleted` qui satisfait le validateur |
 | Agent IA piloté par signaux avec compensation saga | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Détail avec référence de flux de messages, historique de mise à jour et activités de compensation enregistrées après un échec de saga |
+| Conversation de longue durée avec approbation humaine et continuation dans une nouvelle exécution | `App\Workflows\Conversation\ConversationWorkflow` | `php artisan app:conversation` | Liste des exécutions avec une exécution par génération ; détail avec les événements `SignalReceived` pour `message` et `decision`, les activités de modèle et de réponse, et une exécution continuée |
 
 La colonne Waterline indique les événements attendus lors d'une exécution saine.
 Si l'un manque localement, cet écart est le moyen le plus rapide de localiser
@@ -72,6 +73,8 @@ exerce chaque interface. Ce tableau mène de la page au workflow exécutable ass
 | [Sagas](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
 | [Signaux](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
 | [Flux de messages](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Continuer dans une nouvelle exécution](/docs/features/continue-as-new) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
+| [Référence de workflow conversationnel](/docs/conversational-workflows) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
 | [Workflows enfants](/docs/features/child-workflows) | Pas encore d'entrée dédiée. Utilisez le guide des workflows enfants. |
 | [Effets de bord](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
 | [Webhooks](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
