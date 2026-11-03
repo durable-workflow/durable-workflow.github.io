@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Швидкий старт Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -57,8 +58,15 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 
 ## 2. Запустіть локальний Server {#2-start-the-local-server}
 
+<ProductPromotion source="docs-v2-quickstart">
+Не запускайте локальний Server: Cloud керує середовищем виконання,
+збереженням стану та Managed Waterline, а ті самі PHP-, Python- або
+Rust-workers підключаються до наданого namespace з обліковими даними для
+кожної ролі.
+</ProductPromotion>
+
 Пропустіть цю дію, якщо обрали Cloud. Для власного розгортання розгорніть
-і виконайте точне закріплене налаштування. Воно запускає Server без
+і виконайте точне закріплене налаштування. Воно запускає нативний Server без
 вихідного checkout із SQLite та токеном розробки.
 
 <details>
@@ -71,27 +79,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -105,15 +98,15 @@ API доступний лише через loopback-адресу цього ко
 використовуйте [розгортання Compose](/docs/polyglot/server/#published-image--compose)
 із власними обліковими даними, TLS та контролем мережевого доступу.
 
-Другий контейнер обробляє інфраструктурну чергу Server і просуває стійкі таймери,
-навіть коли SDK worker зупинені. Його черга Laravel має назву `default` і
-відрізняється від черг завдань SDK нижче. Залиште обидва контейнери працювати.
-Оцінювання розкладів і обслуговування production використовують додаткові ролі
-стека Compose.
+Нативний Server — це один процес. Під час першого запуску він створює схему
+SQLite та простір імен `default` у підключеному томі, а також сам обробляє
+спрацювання стійких таймерів і розкладів та виконує проходи обслуговування, навіть коли SDK
+worker зупинені. Окремої команди bootstrap, queue worker або планувальника
+запускати не потрібно. Server відмовляється запускатися без `DW_AUTH_TOKEN`.
 
-**Очікуваний результат:** запит готовності успішний, а cluster info визначає
-локальний окремий Server. Залиште його запущеним під час виконання
-шляху обраної мови.
+**Очікуваний результат:** запит готовності успішний, а cluster info повідомляє
+`"implementation":"rust"` з версією `%%artifact.serverVersion%%`. Залиште його
+запущеним під час виконання шляху обраної мови.
 
 ## 3. Оберіть одну мову {#choose-one-language}
 
@@ -441,7 +434,7 @@ cargo run
 власного розгортання:
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 

@@ -610,6 +610,35 @@ Worker はリース ID、試行、タスク ID、ハートビートエンドポ�
 
 検索属性名と型は名前空間検索契約の一部です。運用ダッシュボードやメトリクスラベルに、値の種類が多い高カーディナリティ属性を使うのは避けてください。
 
+### スケジュール一覧のフィルターと継続 {#schedule-list-filters}
+
+`GET /api/schedules` はリクエストの名前空間を読み取ります。[通常の公開 PHP Server の検証](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227)で、フィルターの組み合わせと継続取得を確認しています。次のクエリパラメーターを通常の URL エンコードで送信します。
+
+| パラメーター | 受け付ける値 |
+| --- | --- |
+| `status` | `active` または `paused`。 |
+| `workflow_type` | 空でないワークフロー型。最大255文字。空白のみは無効です。 |
+| `query` | 空でない可視性クエリ。最大2048文字。 |
+| `page_size` | 1〜200の整数。既定は50。 |
+| `next_page_token` | 空でない不透明なトークン。最大8192文字。 |
+
+ステータス、ワークフロー型、クエリ条件は `AND` で結合されます。スケジュールの可視性クエリは、`Region = "eu" AND TaskQueue = "orders"` のように、等値条件を `AND` で結合する構文に対応します。組み込みフィールドは `ScheduleId`、`Status`、`WorkflowType`、`TaskQueue`、`Note` です。それ以外はリクエストの名前空間に登録された検索属性であり、リテラルがその型に一致する必要があります。`keyword_list` 属性の等値条件は要素の包含を調べます。`OR`、`NOT`、`IN`、`LIKE`、範囲比較などは対応しておらず、`422` を返します。
+
+レスポンスには `namespace`、`schedules`、このページの `schedule_count`、`next_page_token` が含まれます。トークンが返された場合だけ継続します。同じ名前空間、ステータス、ワークフロー型、クエリを指定し、トークンを変更せずに返してください。トークンは解析済みのフィルターの組み合わせに結び付いています。ページ取得は変化するデータを読み取り、スナップショットではありません。カーソルが削除された場合やフィルターに一致しなくなった場合は、トークンなしで最初から取得する必要があります。
+
+| HTTP / 理由 | 次の操作 |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | 未対応のパラメーター名を削除してください。 |
+| `422` / `validation_failed` | フィールドの検証エラーを修正してください。 |
+| `422` / `unsupported_schedule_visibility_field` | 組み込みフィールドか、この名前空間に登録された属性を使用してください。 |
+| `422` / `unsupported_schedule_visibility_predicate` | 等値条件を `AND` で結合してください。 |
+| `400` / `malformed_schedule_page_token` | 返されたトークンを変更せずに使用するか、トークンなしで最初から取得してください。 |
+| `403` / `schedule_page_token_namespace_mismatch` | 元の名前空間を使うか、目的の名前空間で最初から取得してください。 |
+| `409` / `schedule_page_token_filter_mismatch` | フィルターを変更した後は、トークンなしで最初から取得してください。 |
+| `409` / `stale_schedule_page_token` | 現在の絞り込み結果をトークンなしで最初から取得してください。 |
+
+[CLI のスケジュール絞り込みとページ取得の例](/docs/polyglot/cli-reference#schedule-list-filters)も同じ契約に従います。一覧取得の拒否には、対象の `field` と検証の詳細が含まれます。再試行の前に理由を確認してください。
+
 ## システム操作 {#system-operations}
 
 システムルートには admin ロールが必要です。明示的な運用処理であり、自動化では pass の前に status ルートを使ってください。

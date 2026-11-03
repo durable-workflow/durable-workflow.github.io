@@ -26,6 +26,20 @@ Die Task-Warteschlangenzulassung verhindert, dass eine Warteschlange, ein Mandan
 
 Verwenden Sie Zulassungssteuerung, wenn eine Warteschlange an eine ratenbegrenzte Abhängigkeit gebunden ist, Mandanten denselben Server teilen oder der Betrieb belegen muss, warum ein Workflow wartet.
 
+:::note Nativer Server 3.x
+
+Der native 3.x-Server setzt keine der serverseitigen Zulassungssteuerungen auf dieser Seite durch, und ein natives Gegenstück gibt es dafür noch nicht. Er verweigert den Start, wenn eine der folgenden Einstellungen eine Grenze setzt:
+
+- eine Lease- oder Zustellungsgrenze für Workflow- oder Aktivitäts-Tasks oder `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- eine Einstellung der Anfragezulassung pro Namespace
+- ein Limit für dauerhaften Namespace-Zustand
+
+Er ignoriert `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` und deren Varianten pro Namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` muss nicht gesetzt oder `1024` sein. Stattdessen wendet der native Server eine feste Grenze von 16 ausstehenden oder geleasten Abfrage-Tasks pro Namespace an und lehnt weitere Abfragen wie PHP mit HTTP `429` und `query_task_queue_full` ab.
+
+Begrenzen Sie die Task-Nebenläufigkeit auf dem nativen Server über die konfigurierten Slots jedes SDK-Workers und die Anzahl der Worker. `GET /api/task-queues/{name}` meldet unter `admission` die registrierten Slots sowie die Zahl geleaster und bereiter Tasks; alle serverseitigen Grenz- und Restkapazitätsfelder sind `null`. Siehe die [native Konfigurationsreferenz](./server-config-reference.md#native-server-3x). Der Rest dieser Seite beschreibt PHP Server 2.x.
+
+:::
+
 Zulassung baut auf dem Matching-Vertrag auf. [Task-Zuordnung und -Zuweisung](/docs/polyglot/task-matching-dispatch) erklärt, wie bereite Arbeit gefunden und geleast wird, bevor diese Budgets über die Zulassung des nächsten Tasks entscheiden.
 
 ## Wie das Budget angewendet wird {#how-the-budget-is-applied}
@@ -123,6 +137,8 @@ JSON `retry_after_seconds` und Header `Retry-After` stimmen überein. Nicht verf
 
 ## Kontingente für dauerhaften Namespace-Zustand {#namespace-durable-state}
 
+Diese Kontingente sind eine Steuerung von PHP Server 2.x; der native 3.x-Server verweigert den Start, wenn sie eine Grenze setzen.
+
 `DW_NAMESPACE_DURABLE_LIMITS` setzt Vorgaben für erhaltene Zeilen, `DW_NAMESPACE_DURABLE_OVERRIDES` ändert sie pro Namespace und `DW_NAMESPACE_DURABLE_HARD_LIMITS` ergänzt unübergehbare Obergrenzen. Leere Objekte fügen keine Grenzen hinzu. Overrides dürfen Vorgaben erhöhen oder senken; null fällt auf die Vorgabe zurück. Anders als bei HTTP ist ein dauerhaftes Kontingent 0 gültig und verhindert neue Belegungen. Hier kann vorhandenes `payments` 250 offene Runs halten, andere Namespaces 100, bei harter Grenze 500.
 
 ```dotenv
@@ -151,6 +167,8 @@ Erschöpfung liefert 429 `namespace_<resource>_exhausted`. Prüfen Sie `retryabl
 Wählen Sie beim Abruf von Admin-Metriken den Namespace per Header. `dw_namespace_durable_state_usage` und JSON-Felder `limits`, `usage`, `remaining`, `configuration_status`, `measurement_status` zeigen diesen Bereich; Namespace ist Anfragekontext statt unbegrenztes Metriklabel. Nicht verfügbare Messwerte bedeuten weder Nullnutzung noch unbegrenzte Kapazität. Siehe die [vollständige Referenz](./server-config-reference.md#namespace-durable-controls).
 
 ## Server-Konfiguration {#server-configuration}
+
+Diese Einstellungen gelten für PHP Server 2.x. Der native 3.x-Server verweigert den Start, wenn eine Lease- oder Zustellungsgrenze oder `DW_TASK_QUEUE_ADMISSION_OVERRIDES` eine Grenze setzt.
 
 Setzen Sie globale Grenzen, wenn alle Warteschlangen dieselbe Obergrenze haben sollen:
 

@@ -6,7 +6,7 @@ sidebar_position: 12
 
 Los eventos de ciclo de vida se despachan en etapas clave de workflows y actividades para notificar progreso, finalización o fallos a la aplicación. Son eventos estándar de Laravel: registra listeners en `EventServiceProvider` o con `Event::listen()`.
 
-Todos los eventos de ciclo de vida V2 se despachan **después de confirmar el estado duradero** en la base de datos. Los listeners solo observan eventos respaldados por hechos confirmados: si se revierte una transacción, no se despacha ninguno.
+`WorkflowCancelled` y `WorkflowTerminated` esperan a que se confirme la transacción en la conexión donde se almacena la ejecución. Los comandos rechazados y las escrituras revertidas no emiten ninguno de estos eventos. Las demás limitaciones de transacciones del motor y orden de eventos se siguen en [workflow#893](https://github.com/durable-workflow/workflow/issues/893). Una transacción en una base de datos independiente de la aplicación no hace atómicas las escrituras del almacenamiento del workflow.
 
 ## Identidad del evento {#event-identity}
 
@@ -18,7 +18,7 @@ Cada evento V2 contiene campos de identidad duradera:
 | `runId` | ID de la ejecución concreta. |
 | `workflowType` | Clave de tipo duradera registrada mediante `#[Type('...')]`. |
 | `workflowClass` | Nombre de clase PHP del workflow. |
-| `committedAt` | Fecha ISO 8601 de confirmación del registro duradero según el reloj real. |
+| `committedAt` | Marca de tiempo ISO 8601 del reloj real, capturada al preparar la notificación del ciclo de vida. |
 
 Los eventos de actividad también incluyen:
 
@@ -69,6 +69,8 @@ Event::listen(WorkflowCompleted::class, function (WorkflowCompleted $event) {
 
 Se despacha cuando una ejecución falla de forma terminal.
 
+Los tiempos de espera agotados de una ejecución también emiten `WorkflowFailed`. Si vence el plazo de limpieza de una cancelación cooperativa, se emite `WorkflowCancelled`.
+
 Campos adicionales:
 - `exceptionClass`: nombre de clase PHP de la excepción.
 - `message`: mensaje de la excepción.
@@ -84,6 +86,49 @@ Event::listen(WorkflowFailed::class, function (WorkflowFailed $event) {
     ]);
 });
 ```
+
+### WorkflowCancelled {#workflowcancelled}
+
+Se despacha cuando una cancelación inmediata cierra una ejecución o cuando la cancelación cooperativa la cierra tras completar la limpieza o vencer su plazo. La solicitud de cancelación por sí sola no despacha este evento.
+
+Además de los campos de identidad comunes:
+
+| Campo | Descripción |
+|---|---|
+| `reason` | Motivo original del comando de cancelación, o `null`. Los mensajes de fin de limpieza o vencimiento del plazo no lo sustituyen. |
+| `closedAt` | Hora de cierre persistida de la ejecución como cadena ISO 8601 en UTC. |
+
+```php
+use Workflow\V2\Events\WorkflowCancelled;
+
+Event::listen(WorkflowCancelled::class, function (WorkflowCancelled $event) {
+    Log::info('Workflow cancelled', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+### WorkflowTerminated {#workflowterminated}
+
+Se despacha cuando una terminación cierra la ejecución. Incluye los mismos campos de identidad, `reason` y `closedAt`, con el motivo del comando de terminación. La terminación no ejecuta el código de limpieza del workflow.
+
+```php
+use Workflow\V2\Events\WorkflowTerminated;
+
+Event::listen(WorkflowTerminated::class, function (WorkflowTerminated $event) {
+    Log::info('Workflow terminated', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+Son notificaciones Laravel dentro del proceso. Un fallo del listener no puede deshacer un cierre confirmado. Estos eventos no autorizan a reanudar una ejecución cerrada ni garantizan la entrega duradera a un sistema externo.
 
 ## Eventos de actividad {#activity-events}
 
@@ -165,13 +210,13 @@ Event::listen(FailureRecorded::class, function (FailureRecorded $event) {
 
 ## Semántica de las marcas de tiempo {#timestamp-semantics}
 
-`committedAt` representa la **hora de confirmación**: el instante del reloj real en que se escribió en la base de datos el registro duradero (evento de historial o fallo). Es distinto de:
+El motor captura `committedAt` al preparar una notificación del ciclo de vida. Es una marca de tiempo del reloj real, distinta de:
 
 - **Tiempo virtual del workflow**: tiempo lógico interno, usado por los temporizadores.
 - **Tiempo del intento**: cuándo empezó o terminó un intento concreto de actividad.
 - **Latencia de reanudación**: cuánto tardó en reanudarse el workflow después de vencer un temporizador.
 
-La hora de confirmación es la más útil para integraciones externas porque refleja cuándo el estado se volvió duradero y observable.
+En cancelaciones y terminaciones, `closedAt` es la hora de cierre persistida en UTC. Una transacción externa de almacenamiento puede confirmarse después de capturar los campos del evento. Registra por separado la hora de recepción del listener para medir la latencia de entrega.
 
 ## Ciclo de vida {#lifecycle}
 
@@ -193,6 +238,22 @@ Workflow\V2\Events\ActivityFailed
 Workflow\V2\Events\FailureRecorded    (source: activity_execution)
 Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
+```
+
+Una ejecución cancelada termina con:
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowCancelled
+```
+
+La limpieza cooperativa puede emitir eventos de actividad entre estas dos notificaciones.
+
+Una ejecución terminada finaliza con:
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowTerminated
 ```
 
 ## Espacio de nombres de eventos {#event-namespace}

@@ -6,7 +6,7 @@ sidebar_position: 12
 
 生命周期事件在工作流和活动执行的关键阶段派发，向应用通知进度、完成或故障。这些是标准 Laravel 事件，可在 `EventServiceProvider` 中或通过 `Event::listen()` 注册监听器。
 
-所有 v2 生命周期事件均在**持久状态提交到数据库之后**派发。监听器只能观察由已提交事实支持的事件；事务回滚时不会派发事件。
+`WorkflowCancelled` 和 `WorkflowTerminated` 会等待运行所用存储连接上的事务提交。被拒绝的命令和已回滚的存储写入均不会派发这两种事件。引擎事务及生命周期事件顺序的其他问题仍由 [workflow#893](https://github.com/durable-workflow/workflow/issues/893) 跟踪。应用在另一数据库上开启的事务不会使工作流存储写入具有原子性。
 
 ## 事件标识 {#event-identity}
 
@@ -18,7 +18,7 @@ sidebar_position: 12
 | `runId` | 具体执行的运行 ID。 |
 | `workflowType` | 通过 `#[Type('...')]` 注册的持久类型键。 |
 | `workflowClass` | 工作流的 PHP 类名。 |
-| `committedAt` | 持久记录提交时的 ISO 8601 时间戳，即系统时钟提交时间。 |
+| `committedAt` | 准备生命周期通知时记录的系统时钟时间戳，格式为 ISO 8601。 |
 
 活动事件还包括：
 
@@ -69,6 +69,8 @@ Event::listen(WorkflowCompleted::class, function (WorkflowCompleted $event) {
 
 工作流运行发生终态失败时派发。
 
+运行超时也会派发 `WorkflowFailed`。协作取消的清理期限到期时则派发 `WorkflowCancelled`。
+
 附加字段：
 
 - `exceptionClass`：PHP 异常类名。
@@ -85,6 +87,49 @@ Event::listen(WorkflowFailed::class, function (WorkflowFailed $event) {
     ]);
 });
 ```
+
+### WorkflowCancelled {#workflowcancelled}
+
+立即取消关闭运行时，或协作取消在清理完成或清理期限到期后关闭运行时派发。仅发出取消请求不会派发此事件。
+
+除通用标识字段外，还包括：
+
+| 字段 | 说明 |
+|---|---|
+| `reason` | 取消命令的原始原因，或 `null`。清理完成或期限到期的消息不会覆盖它。 |
+| `closedAt` | 已持久保存的运行关闭时间，表示为 UTC ISO 8601 字符串。 |
+
+```php
+use Workflow\V2\Events\WorkflowCancelled;
+
+Event::listen(WorkflowCancelled::class, function (WorkflowCancelled $event) {
+    Log::info('Workflow cancelled', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+### WorkflowTerminated {#workflowterminated}
+
+终止操作关闭运行时派发。它携带相同的标识字段、`reason` 和 `closedAt`，原因取自终止命令。终止操作不执行工作流清理代码。
+
+```php
+use Workflow\V2\Events\WorkflowTerminated;
+
+Event::listen(WorkflowTerminated::class, function (WorkflowTerminated $event) {
+    Log::info('Workflow terminated', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+这些是在进程内派发的 Laravel 通知。监听器失败无法撤销已提交的关闭操作。这些事件不授予恢复已关闭运行的权限，也不保证向外部系统持久投递。
 
 ## 活动事件 {#activity-events}
 
@@ -167,13 +212,13 @@ Event::listen(FailureRecorded::class, function (FailureRecorded $event) {
 
 ## 时间戳语义 {#timestamp-semantics}
 
-所有事件的 `committedAt` 表示**提交时间**，即持久记录（历史事件或故障记录）写入数据库时的系统时钟时间。它不同于：
+引擎在准备生命周期通知时记录 `committedAt`。这是系统时钟时间戳，与以下时间不同：
 
 - **工作流虚拟时间**：工作流执行内部的逻辑时间，供定时器使用。
 - **尝试时间**：某次具体活动尝试开始或结束的时间。
 - **恢复延迟**：定时器到期至工作流实际恢复之间的时长。
 
-提交时间最适合外部集成，因为它反映状态何时变为持久且可观察。
+对于取消和终止，`closedAt` 是以 UTC 表示的、已持久保存的运行关闭时间戳。外层存储事务可能在事件字段记录之后才提交。测量投递延迟时，应单独记录监听器接收时间。
 
 ## 生命周期 {#lifecycle}
 
@@ -195,6 +240,22 @@ Workflow\V2\Events\ActivityFailed
 Workflow\V2\Events\FailureRecorded    (source: activity_execution)
 Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
+```
+
+被取消的运行以以下事件结束：
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowCancelled
+```
+
+协作清理可以在这两条通知之间派发活动事件。
+
+被终止的运行以以下事件结束：
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowTerminated
 ```
 
 ## 事件命名空间 {#event-namespace}

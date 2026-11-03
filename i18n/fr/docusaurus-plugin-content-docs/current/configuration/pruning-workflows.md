@@ -35,7 +35,7 @@ Les exemples ont été vérifiés avec PHP Server **2.9.5** publié, son Workflo
 1. **Prévoyez une fenêtre sûre.** Lancez l’export assez tôt dans la période de rétention pour permettre nouvelles tentatives, pannes et retard de vérification. Par exemple, un export quotidien avec 30 jours de rétention en base laisse plus de temps de récupération qu’un premier export au jour 30. Avant un premier export ou une réduction de rétention, protégez temporairement la source : suspendez le nettoyage intégré ou activez `forever` dans Server. Notez l’ancienne politique et ne la rétablissez qu’après vérification. Le nettoyage peut démarrer dès qu’un run est éligible.
 2. **Inventoriez les runs fermés.** Fixez une borne supérieure UTC et sélectionnez les `closed_at` antérieurs. Exportez chaque run, y compris les prédécesseurs échoués, annulés, terminés et remplacés par continue-as-new. Une instance peut avoir plusieurs runs. Conservez namespace, identifiant d’instance, identifiant de run et heure de fermeture pour chaque candidat, et parcourez toutes les pages.
 3. **Exportez un run précis.** Utilisez le point d’accès ou la commande limité au run ci-dessous, plutôt que le run courant au moment du traitement. Séparez les exports candidats des copies déjà vérifiées.
-4. **Vérifiez la copie stockée.** Relisez-la depuis sa destination. Vérifiez l’identité du run contre l’inventaire du namespace, la version de schéma, la séquence finale attendue, la plage complète d’événements, la politique d’occultation et la somme de contrôle. Vérifiez toute signature avec une clé de confiance. Préservez la version exacte de l’application et les codecs nécessaires à une relecture à froid. Une somme de contrôle prouve l’égalité des octets, pas la complétude de l’historique à l’export.
+4. **Vérifiez la copie stockée.** Relisez-la depuis sa destination. Vérifiez l’identité du run contre l’inventaire du namespace, la version de schéma, la séquence finale attendue, la plage complète d’événements, la politique d’occultation et la somme de contrôle. Vérifiez toute signature avec une clé de confiance. Préservez la version exacte de l’application et les codecs nécessaires à une relecture à froid. Une somme de contrôle prouve l’égalité des octets, pas la complétude de l’historique à l’export. Exigez `history_complete: true` et, le cas échéant, `workflow.details_state: retained`. Consultez [Reconnaître l’export d’un run nettoyé](#recognizing-an-export-of-a-pruned-run).
 5. **Préservez les objets externes.** L’export conserve les enveloppes de référence externes, pas une copie indépendante de chaque objet référencé. Conservez ces octets pendant toute la durée de vie de l’export et testez leur récupération sans cache chaud. Suivez le [cycle de vie des payloads externes](../features/external-payload-storage.md#replay-retention-and-cleanup).
 6. **Réconciliez avant suppression.** Comparez l’inventaire des runs fermés aux copies vérifiées à destination. Déclenchez une alerte pour les identifiants manquants, les échecs de vérification et un retard d’export proche de l’échéance. N’avancez le point de contrôle qu’une fois chaque candidat comptabilisé. Réexaminez des fenêtres de fermeture qui se chevauchent et dédupliquez par namespace et identifiant de run. Ne remplacez pas un bundle complet vérifié par un export ultérieur incomplet.
 
@@ -43,9 +43,30 @@ Ces étapes appartiennent à l’application ; ce ne sont pas une opération d�
 
 :::warning Sans copie de récupération, la suppression est irréversible
 
-Un export après suppression ne peut pas reconstruire les événements effacés. L’implémentation publiée peut pourtant encore marquer un run terminal nettoyé `history_complete: true` et réutiliser son ancien `dedupe_key`. Ce défaut est suivi dans [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Aucun de ces champs ne prouve donc l’absence de nettoyage. Les exports intégrés doivent refuser les runs dont `details_pruned_at` est renseigné. La liste Server cesse de montrer un run après suppression de son résumé. Un inventaire commencé après nettoyage ne peut donc pas prouver que tous les anciens runs ont été exportés. Conservez l’inventaire préalable et examinez les manques à partir d’une copie de récupération.
+Un export après suppression ne peut pas reconstruire les événements effacés. Conservez l’inventaire préalable et examinez les manques à partir d’une copie de récupération. La liste Server cesse de montrer un run après suppression de son résumé. Un inventaire commencé après nettoyage ne peut donc pas prouver que tous les anciens runs ont été exportés.
 
 :::
+
+### Reconnaître l’export d’un run nettoyé {#recognizing-an-export-of-a-pruned-run}
+
+Depuis Workflow 2.17.0, un export intégré indique si les détails du run ont été conservés :
+
+| Champ | Run conservé | Run nettoyé |
+| --- | --- | --- |
+| `workflow.details_state` | `retained` | `pruned` |
+| `workflow.details_pruned_at` | `null` | Heure de validation du nettoyage, en UTC |
+| `history_complete` | `true` pour un run terminal | `false` |
+| `history_events` | Les événements enregistrés | Vide |
+| `dedupe_key` | Inchangé par cette version | La clé de l’export complet suivie de `:details-pruned:{details_pruned_at}` |
+
+Le run nettoyé conserve son `status` terminal. Son `dedupe_key` ne correspond jamais à celui de l’export effectué avant le nettoyage : une archive qui déduplique ne remplace donc pas un bundle complet vérifié par le bundle vide. `workflow:v2:replay-verify` signale un bundle nettoyé par l’erreur `history.details_pruned`, avec ou sans `--skip-replay`. `workflow:v2:history-import` le rejette avec le motif `workflow.terminal_history_incomplete`.
+
+Pour l’archivage, traitez `history_complete: false` ou `details_state: pruned` comme un export en échec et conservez la copie complète antérieure. Ne vous fiez pas à ces seuls champs dans les cas suivants, qui peuvent encore marquer comme complet un run terminal nettoyé :
+
+- Les exports des versions antérieures de Workflow. Ils ne contiennent pas de `details_state`. Dans ce cas, refusez avant l’export les runs dont `details_pruned_at` est renseigné.
+- Les exports natifs de Server, jusqu’à la publication de [Server #976](https://github.com/durable-workflow/server/issues/976).
+- Le repli d’export d’historique de Waterline, jusqu’à la publication de [Waterline #257](https://github.com/durable-workflow/waterline/issues/257).
+- Le vérificateur de bundles du Python SDK, jusqu’à la publication de [SDK Python #228](https://github.com/durable-workflow/sdk-python/issues/228).
 
 ### Sélectionner et exporter les runs Server {#selecting-and-exporting-server-runs}
 

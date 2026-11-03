@@ -324,7 +324,7 @@ formées et transmissions acceptées.
 | Commande | Rôle | Options importantes |
 | --- | --- | --- |
 | `dw schedule:create` | Créer une planification. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, options d'entrée, `--json` |
-| `dw schedule:list` | Lister les planifications. | options globales de sortie |
+| `dw schedule:list` | Lister les planifications. | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | Décrire une planification. | `--json` |
 | `dw schedule:update <schedule-id>` | Mettre à jour la spécification de planification ou l'entrée du workflow. | options de création de planification, options d'entrée, `--json` |
 | `dw schedule:pause <schedule-id>` | Suspendre une planification. | `--note`, `--json` |
@@ -335,6 +335,35 @@ formées et transmissions acceptées.
 
 Utilisez `--cron` ou `--interval` pour créer des planifications par intervalle.
 Utilisez `--paused` pour les inscrire au déploiement sans démarrer le travail.
+
+### Filtrer et paginer les planifications {#schedule-list-filters}
+
+`dw schedule:list` renvoie une page filtrée dans l’espace de noms résolu. Sans `--namespace`, seul l’espace par défaut résolu est sélectionné, pas tous les espaces. Le statut, le type de workflow et les prédicats de visibilité se combinent avec `AND`. La [qualification des artefacts CLI et PHP Server publiés normalement](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) vérifie ces options.
+
+| Option CLI | Paramètre de requête Server | Signification |
+| --- | --- | --- |
+| `--status` | `status` | `active` ou `paused`. |
+| `--type` | `workflow_type` | Type exact de workflow. |
+| `--query` | `query` | Expression de visibilité des planifications. |
+| `--limit` | `page_size` | Taille de page de 1 à 200, 50 par défaut. |
+| `--next-page-token` | `next_page_token` | Jeton opaque de continuation de la réponse précédente. |
+
+Dans un espace `production` existant où l’attribut keyword `Region` est enregistré, listez les planifications suspendues de `orders.rollup` dans la région `eu` et la file de tâches `orders` :
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+Lisez `next_page_token` dans la réponse JSON et affectez cette valeur à `NEXT_PAGE_TOKEN`. Reprenez le même espace de noms et les mêmes filtres pour la page suivante :
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+Les jetons appartiennent à l’espace de noms et à la sélection de filtres. Recommencez sans jeton après un changement de filtres ou un refus pour curseur périmé. Chaque appel lit une page actuelle, pas un instantané fixe. Consultez les [contraintes et motifs de refus de l’API de liste des planifications](/docs/polyglot/server-api-reference#schedule-list-filters) pour la grammaire acceptée et les champs de réponse.
 
 ## Commandes des workers et files de tâches {#worker-and-task-queue-commands}
 

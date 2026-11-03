@@ -35,7 +35,7 @@ Los ejemplos se comprobaron con PHP Server **2.9.5** publicado, su Workflow **2.
 1. **Establezca una ventana segura.** Ejecute la exportación con suficiente antelación al límite de retención, dejando tiempo para reintentos, interrupciones y verificaciones pendientes. Por ejemplo, una exportación diaria con 30 días de retención deja más tiempo de recuperación que un trabajo que comienza el día 30. Antes de la primera exportación o de reducir la retención, proteja temporalmente el origen: pause la limpieza integrada o use la política `forever` de Server. Registre la política anterior y restáurela solo después de verificar. La limpieza puede ejecutarse en cuanto una ejecución sea apta.
 2. **Inventaríe las ejecuciones cerradas.** Fije un límite superior UTC y seleccione valores de `closed_at` anteriores a él. Exporte cada ejecución, incluidas las fallidas, canceladas, terminadas y las predecesoras de continue-as-new. Una instancia puede tener varias ejecuciones. Conserve el namespace, el id de instancia, el id de ejecución y el momento de cierre de cada candidata, y recorra todas las páginas.
 3. **Exporte una ejecución concreta.** Use el endpoint o comando limitado a la ejecución mostrado abajo, en vez de exportar la que sea actual cuando se ejecute el trabajo. Mantenga las exportaciones candidatas separadas de las copias ya verificadas.
-4. **Verifique la copia almacenada.** Léala desde el destino. Compare su identidad con el inventario del namespace y compruebe la versión del esquema, la secuencia final esperada, el intervalo completo de eventos, la política de ocultación y la suma de integridad. Verifique las firmas configuradas con una clave de confianza. Conserve la compilación exacta de la aplicación y los codecs necesarios para un replay en frío. Una suma verifica que los bytes coinciden, no que el historial estuviera completo al exportarlo.
+4. **Verifique la copia almacenada.** Léala desde el destino. Compare su identidad con el inventario del namespace y compruebe la versión del esquema, la secuencia final esperada, el intervalo completo de eventos, la política de ocultación y la suma de integridad. Verifique las firmas configuradas con una clave de confianza. Conserve la compilación exacta de la aplicación y los codecs necesarios para un replay en frío. Una suma verifica que los bytes coinciden, no que el historial estuviera completo al exportarlo. Exija `history_complete: true` y, cuando exista, `workflow.details_state: retained`. Consulte [Reconocer la exportación de una ejecución depurada](#recognizing-an-export-of-a-pruned-run).
 5. **Conserve los bytes externos.** Las exportaciones conservan las envolturas de referencias externas, no una copia independiente de cada objeto. Conserve esos bytes durante toda la vida de la exportación y pruebe su recuperación sin una caché caliente del runtime. Siga el [ciclo de vida de las cargas externas](../features/external-payload-storage.md#replay-retention-and-cleanup).
 6. **Concilie antes de limpiar.** Compare el inventario de ejecuciones cerradas con los registros verificados en el destino. Alerte ante ids ausentes, verificaciones fallidas y exportaciones pendientes que se acerquen al límite. Avance el punto de control solo después de contabilizar cada candidata. Vuelva a examinar ventanas superpuestas de cierre y deduplique por namespace e id de ejecución. No reemplace un paquete completo verificado por una exportación posterior incompleta.
 
@@ -43,9 +43,30 @@ Estos pasos son responsabilidad de la aplicación, no una operación de archivad
 
 :::warning La depuración es irreversible sin una copia de recuperación
 
-Exportar después de depurar no permite reconstruir los eventos eliminados. La implementación publicada aún puede marcar una ejecución terminal depurada con `history_complete: true` y reutilizar su `dedupe_key` anterior. Se sigue en [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). No confíe en ninguno de esos campos como prueba de que la limpieza no ocurrió. Los trabajos integrados de exportación deben rechazar las ejecuciones con `details_pruned_at`. Una lista de Server deja de mostrar una ejecución cuando se elimina su resumen, por lo que un inventario iniciado después de limpiar no demuestra que se capturaron todas las ejecuciones anteriores. Conserve el inventario previo y examine las ausencias desde una copia de recuperación.
+Exportar después de depurar no permite reconstruir los eventos eliminados. Conserve el inventario previo y examine las ausencias desde una copia de recuperación. Una lista de Server deja de mostrar una ejecución cuando se elimina su resumen, por lo que un inventario iniciado después de limpiar no demuestra que se capturaron todas las ejecuciones anteriores.
 
 :::
+
+### Reconocer la exportación de una ejecución depurada {#recognizing-an-export-of-a-pruned-run}
+
+Desde Workflow 2.17.0, una exportación integrada indica si se retuvieron los detalles de la ejecución:
+
+| Campo | Ejecución retenida | Ejecución depurada |
+| --- | --- | --- |
+| `workflow.details_state` | `retained` | `pruned` |
+| `workflow.details_pruned_at` | `null` | Momento en que se confirmó la limpieza, en UTC |
+| `history_complete` | `true` para una ejecución terminal | `false` |
+| `history_events` | Los eventos registrados | Vacío |
+| `dedupe_key` | Sin cambios en esta versión | La clave de la exportación completa seguida de `:details-pruned:{details_pruned_at}` |
+
+La ejecución depurada conserva su `status` terminal. Su `dedupe_key` nunca coincide con la exportación tomada antes de la limpieza, por lo que un archivo con deduplicación no reemplaza un paquete completo verificado por el vacío. `workflow:v2:replay-verify` informa de un paquete depurado con el error `history.details_pruned`, con o sin `--skip-replay`. `workflow:v2:history-import` lo rechaza como `workflow.terminal_history_incomplete`.
+
+Trate `history_complete: false` o `details_state: pruned` como una exportación fallida a efectos de archivo y conserve la copia completa anterior. No confíe solo en estos campos en los casos siguientes, que aún pueden marcar como completa una ejecución terminal depurada:
+
+- Exportaciones de versiones anteriores de Workflow. No incluyen `details_state`. En ese caso, rechace antes de exportar las ejecuciones que tengan `details_pruned_at` definido.
+- Exportaciones nativas de Server, hasta que se publique [Server #976](https://github.com/durable-workflow/server/issues/976).
+- La exportación de historial alternativa de Waterline, hasta que se publique [Waterline #257](https://github.com/durable-workflow/waterline/issues/257).
+- El verificador de paquetes del Python SDK, hasta que se publique [SDK Python #228](https://github.com/durable-workflow/sdk-python/issues/228).
 
 ### Seleccionar y exportar ejecuciones de Server {#selecting-and-exporting-server-runs}
 

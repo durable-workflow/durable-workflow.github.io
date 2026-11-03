@@ -796,6 +796,35 @@ Zeitplanrouten sind Control-Plane-Routen.
 Suchattributnamen und -typen gehören zum Namespace-Suchvertrag. Vermeiden Sie
 Attribute mit hoher Kardinalität für Betriebsdashboards oder Metrikbezeichnungen.
 
+### Filter und Fortsetzung für Zeitplanlisten {#schedule-list-filters}
+
+`GET /api/schedules` liest den Namespace der Anfrage. Die [Prüfung des regulär veröffentlichten PHP Servers](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) bestätigt kombinierte Filter und Fortsetzung. Senden Sie folgende Abfrageparameter mit normaler URL-Kodierung:
+
+| Parameter | Zulässiger Wert |
+| --- | --- |
+| `status` | `active` oder `paused`. |
+| `workflow_type` | Nicht leerer Workflow-Typ mit höchstens 255 Zeichen. Nur Leerzeichen sind ungültig. |
+| `query` | Nicht leerer Sichtbarkeitsausdruck mit höchstens 2048 Zeichen. |
+| `page_size` | Ganzzahl von 1 bis 200, Standard 50. |
+| `next_page_token` | Nicht leeres opakes Token mit höchstens 8192 Zeichen. |
+
+Status, Workflow-Typ und Abfrageprädikate werden mit `AND` verknüpft. Eine Sichtbarkeitsabfrage für Zeitpläne unterstützt Gleichheitsprädikate mit `AND`, etwa `Region = "eu" AND TaskQueue = "orders"`. Die eingebauten Felder sind `ScheduleId`, `Status`, `WorkflowType`, `TaskQueue` und `Note`. Andere Felder müssen im Namespace der Anfrage registrierte Suchattribute sein, deren Literale zum jeweiligen Typ passen. Gleichheit bei einem Attribut vom Typ `keyword_list` prüft die Mitgliedschaft. Operatoren wie `OR`, `NOT`, `IN`, `LIKE` und Bereichsvergleiche werden nicht unterstützt und liefern `422`.
+
+Die Antwort enthält `namespace`, `schedules`, `schedule_count` für diese Seite und `next_page_token`. Setzen Sie den Abruf nur fort, wenn ein Token zurückgegeben wird. Senden Sie es unverändert mit demselben Namespace, Status, Workflow-Typ und derselben Abfrage. Das Token ist an die geparste Filterauswahl gebunden. Die Seitennavigation liest veränderliche Daten statt eines Snapshots. Ein gelöschter Cursor oder einer, der nicht mehr den Filtern entspricht, erfordert einen neuen Durchlauf ohne Token.
+
+| HTTP / Grund | Nächster Schritt |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | Entfernen Sie nicht unterstützte Parameternamen. |
+| `422` / `validation_failed` | Korrigieren Sie die Validierungsfehler der Felder. |
+| `422` / `unsupported_schedule_visibility_field` | Verwenden Sie ein eingebautes Feld oder ein registriertes Attribut dieses Namespace. |
+| `422` / `unsupported_schedule_visibility_predicate` | Verwenden Sie Gleichheitsprädikate mit `AND`. |
+| `400` / `malformed_schedule_page_token` | Verwenden Sie das zurückgegebene Token unverändert oder beginnen Sie ohne Token neu. |
+| `403` / `schedule_page_token_namespace_mismatch` | Verwenden Sie den ursprünglichen Namespace oder beginnen Sie im gewünschten Namespace neu. |
+| `409` / `schedule_page_token_filter_mismatch` | Beginnen Sie nach einer Filteränderung ohne Token neu. |
+| `409` / `stale_schedule_page_token` | Beginnen Sie für die aktuelle Filterauswahl ohne Token neu. |
+
+Die [CLI-Beispiele zum Filtern und seitenweisen Abrufen von Zeitplänen](/docs/polyglot/cli-reference#schedule-list-filters) verwenden denselben Vertrag. Eine Listenablehnung enthält das betroffene `field` und Validierungsdetails. Prüfen Sie vor einem erneuten Versuch den Grund.
+
 ## Systemoperationen {#system-operations}
 
 Systemrouten benötigen die Admin-Rolle. Sie sind explizite Betriebsdurchläufe.

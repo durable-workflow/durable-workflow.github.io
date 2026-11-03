@@ -51,6 +51,23 @@ $workflow->start(
 
 As opções de `StartOptions` são consumidas pelo mecanismo de workflow e não são passadas como argumentos ao método `handle()` do workflow. Elas são persistidas com o workflow e usadas nos despachos posteriores de workflows e atividades (incluindo o comportamento de replay e continuação como nova execução).
 
+### Prioridade e distribuição justa de uma execução {#run-priority-and-fairness}
+
+No modo integrado do Workflow 2.15.14 ou mais recente, defina a prioridade de despacho e uma classe de trabalho ao iniciar a execução:
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+Quando há disputa, os menores números de prioridade são selecionados primeiro. A faixa normal para aplicações é 1–9, com padrão 5; 0 é reservado para tarefas urgentes do plano de controle. Dentro de um nível de prioridade, a chave de distribuição justa identifica uma classe de trabalho, como um locatário. Seu peso define a parcela relativa de despacho (1–1000, padrão 1). Execuções sem chave compartilham uma classe.
+
+A execução registra esses valores. Sua primeira tarefa de workflow, as tarefas de retomada após timers e sinais e as tarefas de activity os herdam. Execuções de continue-as-new e novas tentativas mantêm as configurações registradas da execução anterior. Valores explícitos de prioridade ou distribuição justa em `ActivityOptions` substituem os herdados para essa activity. Quando `signalWithStart()` cria uma nova execução, ela registra os mesmos valores de agendamento de `StartOptions`.
+
 ## ActivityOptions {#activityoptions}
 
 `Workflow\V2\Support\ActivityOptions` permite substituir roteamento, novas tentativas e limites de tempo por chamada ao invocar uma atividade, sem exigir alterações na própria classe da atividade:

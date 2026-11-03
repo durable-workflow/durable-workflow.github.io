@@ -153,24 +153,19 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-Para producción (controladores de autenticación, base, TLS), consulta la
+El Server nativo crea su esquema SQLite y el namespace `default` en el primer
+arranque, así que no hay un paso de inicialización aparte. Para producción
+(autenticación, base de datos, TLS), consulta la
 [guía de configuración de Server](/docs/polyglot/server).
 
 Para un ejemplo mayor, [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)
@@ -209,9 +204,30 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | predeterminado del SDK | Ajustar al contrato máximo de bytes de carga del servidor. |
 | `payload_size_warning_threshold_percent` | `int` | predeterminado del SDK | Avisar antes de alcanzar el límite. |
 | `payload_size_warnings` | `bool` | `True` | Desactivar avisos locales de tamaño en pruebas o scripts controlados. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Reducir el presupuesto del informe de error completamente codificado. Consulta [informes de error acotados](#bounded-failure-reports). |
 
 `token` es lo más sencillo. Si estableces `control_token` y `worker_token`, los
 métodos usan el correspondiente a su plano.
+
+### Informes de error acotados {#bounded-failure-reports}
+
+El SDK de Python **2.11.0** incorporó informes de error salientes acotados. Los valores predeterminados son **62 KiB UTF-8 para el mensaje**, **128 KiB para la pila**, **64 KiB para los detalles y diagnósticos opcionales serializados en conjunto** y **1 MiB para el cuerpo completo codificado por HTTPX**. Los marcadores, el escape JSON, la identidad de la concesión y los demás comandos del lote cuentan para ese límite del cuerpo. Tiene prioridad cualquier límite de transporte configurado o descubierto que sea menor. Se conservan el tipo, la clase y el código del error, la política de reintentos y la identidad de la concesión.
+
+Configura un presupuesto menor para el cuerpo cuando sea necesario. Los ajustes de advertencia sobre el tamaño de la carga siguen siendo informativos.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Un marcador visible de truncamiento y los recuentos originales de bytes identifican los campos recortados. Los detalles Avro se conservan íntegros o se omiten por completo. Si una envoltura obligatoria no puede representarse, se lanza `FailureReportTooLarge` antes del envío HTTP. Los errores locales se normalizan antes de que el código del workflow los observe, por lo que la primera ejecución y la reproducción en frío ven el mensaje persistido. Un mensaje local ya observado permanece inmutable durante el ajuste final del lote.
 
 ### Almacenamiento externo de cargas {#external-payload-storage}
 
@@ -837,6 +853,20 @@ no deterministas:
 
 Todo no determinismo debe pasar por el contexto o capturarse con `ctx.side_effect()`.
 
+#### Bloques finally y gestores de contexto {#workflow-cleanup}
+
+**SDK 2.12.2 y posteriores.** Una suspensión no equivale a salir del workflow.
+Al descartar una reproducción suspendida, Python puede ejecutar los bloques
+`finally` y las salidas de `with`. El SDK descarta los comandos duraderos y los
+mensajes de `ctx.logger` producidos únicamente por ese descarte; las consultas
+observan el estado en el comando pendiente. La finalización real, un fallo o
+la cancelación cooperativa ejecutan la limpieza mediante el historial normal;
+la reproducción en frío utiliza los resultados registrados.
+
+Evita operaciones de E/S directas en esos bloques. Programa la limpieza externa
+como una actividad con `yield ctx.schedule_activity(...)` y envuélvela en
+`with ctx.cancellation_shield():` si debe terminar tras la cancelación cooperativa.
+
 ### Ejecución en paralelo {#fan-out}
 
 Produce una lista de comandos para ejecutarlos concurrentemente:
@@ -1007,6 +1037,69 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### Política de reintentos recibida e intento original {#activity-retry-metadata}
+
+Requiere Python SDK **2.12.0 o posterior**. `info = activity.context().info`
+expone el `attempt_number` original y una instantánea inmutable `retry_info`.
+`info.retry_info.policy()` devuelve una copia nueva, incluidos los campos desconocidos.
+
+Una política ausente y `retry_policy: null` en la raíz tienen un límite
+desconocido. `policy_provided` las distingue (`False` y `True`).
+Un objeto de política recibido con `max_attempts: null` indica explícitamente
+intentos ilimitados: `is_unlimited()` devuelve `True` y `max_attempts()`
+sigue siendo `None`. Con un límite entero positivo, `max_attempts()` devuelve
+el límite e `is_last_configured_attempt()` lo compara con el intento original.
+Si el límite es desconocido, la comprobación del último intento devuelve `None`.
+
+La comprobación describe el presupuesto recibido. La cancelación, los plazos,
+el cierre del workflow y los errores no reintentables pueden terminar antes.
+Los callbacks remotos ordinarios y supervisados reciben la instantánea original.
+Los callbacks locales inline y preparados no heredan la política remota del padre.
+
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
+#### Enviar una señal a la ejecución original {#signal-originating-run}
+
+`info.workflow_id` e `info.run_id` conservan las identidades originales recibidas
+y pueden ser `None`. Los callbacks locales solo heredan identidades conocidas
+del padre. El SDK nunca las sustituye por un ID de tarea. Pase un cliente de la
+aplicación autorizado a este helper; el handle queda vinculado al run original:
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+Mantenga `business_event_id` estable entre reintentos y dentro del límite de
+longitud de claves de comando del Server. El Server publicado actualmente no
+conserva estas claves en todas las rutas de señales. Procese los eventos de
+negocio de forma idempotente y reconcilie las entregas inciertas. Consulte la
+[referencia canónica de actividades](https://python.durable-workflow.com/reference/activity/)
+y el [requisito de conservación de recibos de señales](https://github.com/durable-workflow/.github/issues/216).
 
 ### Peticiones de heartbeat {#activity-heartbeat-requests}
 
@@ -1300,7 +1393,7 @@ Inicie `inspect_document_workflow` en la cola de tareas `documents` con `[job_id
 
 Tras perder al titular o expirar la concesión, `allow_reacquire_after_failure=True` permite que otro worker apto readquiera la sesión. Debe reconstruir el recurso local. Los resultados de actividad ya confirmados se reproducen, pero los efectos no confirmados pueden repetirse: use identificadores duraderos e interacciones externas idempotentes. Una sesión no migra memoria, archivos ni descriptores abiertos.
 
-El cierre explícito y la expiración del TTL absoluto son terminales para ese identificador de sesión. Una actividad posterior no puede reabrirlo y puede permanecer sin admisión hasta que se aplique el timeout configurado. Ejecute el rol de planificador/mantenimiento del Server de la [receta de despliegue publicada](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml); un proceso solo de API no basta para aplicar los timeouts. El workflow maneja el fallo definitivo de actividad con `ActivityFailed` y devuelve `resource_unavailable`; la aplicación puede elegir una sesión nueva y reconstruir a partir de la entrada de negocio. Este ejemplo no promete una excepción inmediata de sesión cerrada ni reabre automáticamente una sesión terminal.
+El cierre explícito y la expiración del TTL absoluto son terminales para ese identificador de sesión. Una actividad posterior no puede reabrirlo y puede permanecer sin admisión hasta que se aplique el timeout configurado. El Server nativo aplica los timeouts de actividad en su propio bucle de mantenimiento, que la imagen publicada habilita. En PHP Server 2.x, ejecute el rol de planificador/mantenimiento de la [receta de despliegue PHP](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml); un proceso PHP solo de API no basta para aplicar los timeouts. El workflow maneja el fallo definitivo de actividad con `ActivityFailed` y devuelve `resource_unavailable`; la aplicación puede elegir una sesión nueva y reconstruir a partir de la entrada de negocio. Este ejemplo no promete una excepción inmediata de sesión cerrada ni reabre automáticamente una sesión terminal.
 
 Para gestionar explícitamente el ciclo de vida del titular, use `worker.worker_session(options)` y sus métodos `create()`, `renew()` y `close(reason)`. El apagado ordenado del worker cierra sus sesiones. Consulte el [contrato de ciclo de vida compartido](../features/worker-sessions.md#lifecycle).
 

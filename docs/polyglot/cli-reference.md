@@ -316,7 +316,7 @@ routing misses, malformed payloads, and accepted handoffs.
 | Command | Purpose | Important options |
 | --- | --- | --- |
 | `dw schedule:create` | Create a schedule. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, input options, `--json` |
-| `dw schedule:list` | List schedules. | global output options |
+| `dw schedule:list` | List schedules. | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | Describe one schedule. | `--json` |
 | `dw schedule:update <schedule-id>` | Update schedule spec or workflow input. | schedule create options, input options, `--json` |
 | `dw schedule:pause <schedule-id>` | Pause a schedule. | `--note`, `--json` |
@@ -327,6 +327,35 @@ routing misses, malformed payloads, and accepted handoffs.
 
 Use either `--cron` or `--interval` when creating interval-based schedules.
 Use `--paused` for deploy-time registration that should not start work yet.
+
+### Filter and page schedules {#schedule-list-filters}
+
+`dw schedule:list` returns one filtered page in the resolved namespace. Omitting `--namespace` selects the resolved default namespace, not every namespace. Status, workflow type and visibility predicates combine with `AND`. The [normal published CLI and PHP Server qualification](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) verifies these options.
+
+| CLI option | Server query parameter | Meaning |
+| --- | --- | --- |
+| `--status` | `status` | `active` or `paused`. |
+| `--type` | `workflow_type` | Exact workflow type. |
+| `--query` | `query` | Schedule visibility expression. |
+| `--limit` | `page_size` | Page size from 1 to 200, default 50. |
+| `--next-page-token` | `next_page_token` | Opaque continuation from the previous response. |
+
+For an existing `production` namespace with a registered keyword attribute `Region`, list paused `orders.rollup` schedules in region `eu` on task queue `orders`:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+Read `next_page_token` from the JSON response and set `NEXT_PAGE_TOKEN` to that value. Repeat the same namespace and filters for the next page:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+Tokens belong to the namespace and filter selection. Start again without a token after changing filters or receiving a stale-cursor refusal. Each call reads a live page, not a frozen snapshot. See [schedule-list API constraints and refusal reasons](/docs/polyglot/server-api-reference#schedule-list-filters) for the supported query grammar and response fields.
 
 ## Worker And Task Queue Commands
 

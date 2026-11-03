@@ -152,24 +152,17 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-Produktionsbereitstellung mit Authentifizierungstreibern, Datenbankkonfiguration und TLS erklärt der [Server-Einrichtungsleitfaden](/docs/polyglot/server).
+Der native Server legt sein SQLite-Schema und den Namespace `default` beim ersten Start an; ein separater Bootstrap-Schritt entfällt daher. Produktionsbereitstellung mit Authentifizierung, Datenbankkonfiguration und TLS erklärt der [Server-Einrichtungsleitfaden](/docs/polyglot/server).
 
 Ein größeres Beispiel enthält das SDK-Repository unter [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing): ein Docker-Compose-Stack, der einen Python-Worker durch einen vollständigen Bestell-Workflow führt.
 
@@ -207,10 +200,31 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK-Standard | Vertrag des Servers zur maximalen Nutzlastgröße abbilden. |
 | `payload_size_warning_threshold_percent` | `int` | SDK-Standard | Vor Erreichen der konfigurierten Nutzlastgrenze warnen. |
 | `payload_size_warnings` | `bool` | `True` | Lokale Nutzlastgrößenwarnungen in Tests oder kontrollierten Skripten deaktivieren. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Das Budget für den vollständig codierten Fehlerbericht verringern. Siehe [begrenzte Fehlerberichte](#bounded-failure-reports). |
 
 `token` ist die einfachste Option. Sind `control_token` und `worker_token`
 gesetzt, verwenden Control-Plane-Methoden `control_token` und
 Worker-Plane-Methoden `worker_token`.
+
+### Begrenzte Fehlerberichte {#bounded-failure-reports}
+
+Das Python SDK **2.11.0** führte begrenzte ausgehende Fehlerberichte ein. Standardmäßig gelten **62 KiB UTF-8 für die Meldung**, **128 KiB für den Stack**, **64 KiB für gemeinsam serialisierte optionale Details und Diagnosen** und **1 MiB für den vollständigen HTTPX-codierten Body**. Markierungen, JSON-Escaping, die Claim-Identität und weitere Befehle im Batch zählen zum Body-Limit. Ein niedrigeres konfiguriertes oder erkanntes Transportlimit hat Vorrang. Fehlertyp, Klasse, Code, Retry-Regeln und Claim-Identität bleiben erhalten.
+
+Bei Bedarf lässt sich das Body-Budget verkleinern. Einstellungen für Warnungen zur Payload-Größe bleiben reine Hinweise.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Eine sichtbare Kürzungsmarkierung und die ursprünglichen Byte-Anzahlen kennzeichnen gekürzte Felder. Avro-Details bleiben vollständig erhalten oder werden als Ganzes weggelassen. Ein nicht darstellbarer erforderlicher Umschlag löst vor der HTTP-Übertragung `FailureReportTooLarge` aus. Lokale Fehler werden normalisiert, bevor der Workflow-Code sie beobachtet. Dadurch sehen die erste Ausführung und ein kalter Replay dieselbe gespeicherte Meldung. Eine bereits beobachtete lokale Meldung bleibt bei der abschließenden Größenanpassung des Batches unveränderlich.
 
 ### Externer Nutzlastspeicher {#external-payload-storage}
 
@@ -858,6 +872,21 @@ Workflow-Code wird aus der Historie wiedergegeben. Er darf keine nicht determini
 
 Jeder Nichtdeterminismus muss über den Kontext laufen oder mit `ctx.side_effect()` erfasst werden.
 
+#### Finally-Blöcke und Kontextmanager {#workflow-cleanup}
+
+**SDK 2.12.2 und höher.** Eine Unterbrechung ist kein Verlassen des Workflows.
+Beim Freigeben eines angehaltenen Replays kann Python `finally`-Blöcke und
+`with`-Austritte ausführen. Das SDK verwirft dauerhafte Befehle und Meldungen von
+`ctx.logger`, die nur durch dieses Freigeben entstehen; Abfragen sehen den
+Zustand am wartenden Befehl. Ein tatsächlicher Abschluss, Fehler oder
+kooperativer Abbruch führt die Bereinigung über die normale Historie aus;
+ein kaltes Replay nutzt die aufgezeichneten Ergebnisse.
+
+Führen Sie in diesen Blöcken keine direkte E/A aus. Planen Sie externe
+Bereinigung als Aktivität mit `yield ctx.schedule_activity(...)` und umschließen
+Sie diese Aktivität mit `with ctx.cancellation_shield():`, wenn sie nach einem
+kooperativen Abbruch abgeschlossen werden muss.
+
 ### Auffächerung {#fan-out}
 
 Geben Sie eine Liste von Befehlen aus, um sie nebenläufig auszuführen:
@@ -1030,6 +1059,72 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### Empfangene Wiederholungsrichtlinie und ursprünglicher Versuch {#activity-retry-metadata}
+
+Erfordert Python SDK **2.12.0 oder neuer**. `info = activity.context().info`
+liefert die ursprüngliche `attempt_number` und einen unveränderlichen
+`retry_info`-Snapshot. `info.retry_info.policy()` gibt eine neue Kopie
+einschließlich unbekannter Felder zurück.
+
+Eine fehlende Richtlinie und `retry_policy: null` auf der obersten Ebene
+haben beide eine unbekannte Versuchsgrenze. `policy_provided` unterscheidet
+sie (`False` und `True`). Ein empfangenes Richtlinienobjekt mit
+`max_attempts: null` bedeutet ausdrücklich unbegrenzte Versuche:
+`is_unlimited()` ist `True`, während `max_attempts()` `None` bleibt.
+Bei einer positiven ganzzahligen Grenze gibt `max_attempts()` diese Grenze
+zurück. `is_last_configured_attempt()` vergleicht sie mit dem ursprünglichen
+Versuch. Bei unbekannter Grenze liefert diese Prüfung `None`.
+
+Die Prüfung beschreibt das empfangene Budget. Abbruch, Fristen, das Schließen
+des Workflows und nicht wiederholbare Fehler können die Ausführung früher beenden.
+Normale und überwachte Remote-Callbacks erhalten den ursprünglichen Snapshot.
+Lokale Inline- und vorbereitete Callbacks erben die Remote-Richtlinie des Eltern-Workflows nicht.
+
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
+#### Ein Signal an den ursprünglichen Run senden {#signal-originating-run}
+
+`info.workflow_id` und `info.run_id` bewahren die ursprünglich empfangenen
+Kennungen und können `None` sein. Lokale Callbacks erben nur bekannte
+übergeordnete Kennungen. Das SDK ersetzt sie niemals durch eine Task-ID.
+Übergeben Sie diesem Helfer einen autorisierten Anwendungsclient.
+Das Handle bleibt an den ursprünglichen Run gebunden:
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+Halten Sie `business_event_id` über Wiederholungen hinweg stabil und beachten
+Sie die Längengrenze für Command Keys des Servers. Der aktuell veröffentlichte
+Server bewahrt diese Schlüssel nicht für jeden Signalpfad auf.
+Verarbeiten Sie Geschäftsereignisse idempotent und gleichen Sie unklare
+Zustellungen ab. Siehe die [kanonische Aktivitätsreferenz](https://python.durable-workflow.com/reference/activity/)
+und die [Anforderung zur Aufbewahrung von Signalbelegen](https://github.com/durable-workflow/.github/issues/216).
 
 ### Heartbeat-Anfragen {#activity-heartbeat-requests}
 
@@ -1331,7 +1426,7 @@ Starten Sie `inspect_document_workflow` in der Task-Queue `documents` mit `[job_
 
 Nach dem Verlust des Inhabers oder Ablauf der Lease erlaubt `allow_reacquire_after_failure=True` einem anderen geeigneten Worker, die Session erneut zu erwerben. Er muss die lokale Ressource neu aufbauen. Bereits bestätigte Activity-Ergebnisse werden wiedergegeben, während unbestätigte Effekte sich wiederholen können: Verwenden Sie dauerhafte Ressourcenkennungen und idempotente externe Operationen. Eine Session migriert weder Speicher noch Dateien oder offene Handles.
 
-Explizites Schließen und der Ablauf der absoluten TTL sind für diese Session-ID endgültig. Eine spätere Activity kann sie nicht erneut öffnen und bleibt möglicherweise bis zur Durchsetzung ihres konfigurierten Timeouts unzugelassen. Führen Sie die Scheduler-/Wartungsrolle des Servers aus dem [veröffentlichten Deployment-Rezept](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml) aus; ein reiner API-Prozess reicht zur Timeout-Durchsetzung nicht aus. Der Workflow behandelt den endgültigen Activity-Fehler mit `ActivityFailed` und gibt `resource_unavailable` zurück. Die Anwendung kann dann eine neue Session wählen und die Ressource aus den Geschäftseingaben neu aufbauen. Das Beispiel verspricht weder eine sofortige Ausnahme wegen einer geschlossenen Session noch ein automatisches Wiederöffnen einer endgültig beendeten Session.
+Explizites Schließen und der Ablauf der absoluten TTL sind für diese Session-ID endgültig. Eine spätere Activity kann sie nicht erneut öffnen und bleibt möglicherweise bis zur Durchsetzung ihres konfigurierten Timeouts unzugelassen. Der native Server setzt Activity-Timeouts in seiner eigenen Wartungsschleife durch, die das veröffentlichte Image aktiviert. Beim PHP-Server 2.x führen Sie die Scheduler-/Wartungsrolle aus dem [PHP-Deployment-Rezept](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) aus; ein reiner PHP-API-Prozess reicht zur Timeout-Durchsetzung nicht aus. Der Workflow behandelt den endgültigen Activity-Fehler mit `ActivityFailed` und gibt `resource_unavailable` zurück. Die Anwendung kann dann eine neue Session wählen und die Ressource aus den Geschäftseingaben neu aufbauen. Das Beispiel verspricht weder eine sofortige Ausnahme wegen einer geschlossenen Session noch ein automatisches Wiederöffnen einer endgültig beendeten Session.
 
 Für explizite Operationen am Lebenszyklus des Inhabers verwenden Sie `worker.worker_session(options)` und dessen Methoden `create()`, `renew()` und `close(reason)`. Beim geordneten Herunterfahren schließt der Worker seine gehaltenen Sessions. Siehe den [gemeinsamen Lebenszyklusvertrag](../features/worker-sessions.md#lifecycle).
 

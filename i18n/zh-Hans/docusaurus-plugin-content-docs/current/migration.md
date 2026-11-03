@@ -162,6 +162,8 @@ v2 配置向后兼容。如果 v1 中发布了 `config/workflow.php`，它仍可
 
 **v2 不支持 v1 自定义序列化器类。** 公开 v2 注册表仅解析 `avro`。旧版 `workflow-serializer-y` 和 `workflow-serializer-base64` 读取器限制在内部 v1 导入/排空路径，不能用于新 v2 运行实例或 SDK 负载。如果曾使用自定义序列化器，应在升级前排空 v1 运行实例，或将历史负载重新编码为 `avro`；不会调用自定义类。`php artisan workflow:v2:doctor` 将其他任何 `workflows.serializer` 值标记为迁移债务；新运行实例省略编解码器时解析为 `avro`。
 
+**Eloquent 模型不是 v2 载荷值。** v1 通过 `SerializesModels` 向工作流和活动传递模型。在 v2 中，请传递模型的键，并在活动中加载模型。模型参数会以 `unsupported_value_type` 错误失败。参见[传递数据](/docs/defining-workflows/passing-data/#models)。
+
 **自定义模型子类只有保持软件包列和键契约时才受支持。** [定制矩阵](/docs/configuration/customization-matrix/)中冻结的支持矩阵是权威来源：v2 实例、运行、任务、历史事件、投影、计划、活动、失败、链接、消息、memo、搜索属性和子调用模型可派生子类，前提是保留软件包表名、主键和外键。自定义表名配合自定义外键列名超出契约。Waterline 通过 `Workflow\V2\Contracts\OperatorObservabilityRepository` 契约读取 v2 投影，因此 schema 兼容的子类无需修改 Waterline。
 
 **环境变量：**

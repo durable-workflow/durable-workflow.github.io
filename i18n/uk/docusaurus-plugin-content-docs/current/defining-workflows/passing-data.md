@@ -72,39 +72,43 @@ $workflow->output();
 
 ## Моделі {#models}
 
-Передавання моделей працює подібно до `SerializesModels`.
+Payload у V2 використовують портативний формат значень, тому модель Eloquent не може бути аргументом чи результатом workflow або activity. Передавайте ключ моделі та завантажуйте модель усередині activity, яка її використовує.
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-Коли модель Eloquent передається до workflow або activity, серіалізується лише
-її `ModelIdentifier`. Це зменшує розмір даних і допомагає workflow працювати
-ефективно.
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-Під час виконання workflow або activity отримує з бази даних повний екземпляр
-моделі, включно із завантаженими зв’язками. Якщо потрібно уникнути додаткових
-запитів до бази даних під час виконання, перетворіть модель на масив перед
-передаванням.
+Завантажуйте моделі в activity, а не в коді workflow. Код workflow виконується повторно під час replay, і запит до бази даних може повернути інші рядки під час пізнішого replay.
+
+Передавання моделі в `start()` викидає `InvalidArgumentException`. Передавання моделі в `activity()` завершує запуск workflow з помилкою. Обидва повідомлення про помилку починаються з `unsupported_value_type`.
+
+Те саме правило діє для колекцій Eloquent. Натомість передавайте масив ключів. Якщо activity потрібні лише кілька атрибутів, передайте масивом лише ці значення. Історія workflow їх зберігає, тому ніколи не додавайте облікові дані чи інші секрети.
+
+У v1 workflow та activity отримували моделі через `SerializesModels`, який зберігав ідентифікатор моделі й повторно завантажував модель під час виконання job. V2 цього не робить.
 
 ## Впровадження залежностей {#dependency-injection}
 

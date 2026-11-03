@@ -4,12 +4,24 @@ sidebar_position: 4
 
 # Conexión de base de datos {#database-connection}
 
-Estos son los pasos para personalizar la conexión de base de datos de los modelos duraderos de workflow v2. *Solo* hace falta si quieres usar una conexión distinta de la predeterminada de tu aplicación Laravel.
+Workflow usa la conexión de base de datos predeterminada de tu aplicación Laravel, salvo que selecciones otra conexión para su almacenamiento duradero.
+
+Para usar una conexión definida en `config/database.php` como almacenamiento de workflow, establece su nombre en el entorno:
+
+```dotenv
+DW_STORAGE_CONNECTION=workflows
+```
+
+Los modelos, las transacciones, los bloqueos de filas y las acciones posteriores al commit de workflow usan esa conexión. Mantén todas las tablas duraderas de workflow en la misma conexión de Laravel. Configura el transporte de la cola por separado mediante la configuración de colas de Laravel.
+
+También puedes seleccionar la conexión mediante clases de modelos personalizadas, como se explica más abajo. El `run_model` v2 configurado proporciona la conexión de almacenamiento para los metadatos v2 sin conexión explícita en su modelo. Las conexiones explícitas de los modelos deben coincidir con ella. `DW_STORAGE_CONNECTION` tiene prioridad sobre las propiedades de conexión de los modelos.
 
 Consulta la [Matriz de personalización](./customization-matrix.md) para conocer el
 contrato completo de sustituciones v2, incluidas las subclases que cambian de tabla,
 las reglas del serializador, la sustitución del repositorio, los diagnósticos de
 salud y los requisitos de migración.
+
+## Conexiones de modelos personalizados {#custom-model-connections}
 
 1. Crea clases en el directorio de modelos de tu aplicación que extiendan las clases base de modelos v2.
 2. Establece la opción `$connection` deseada en cada clase.
@@ -74,4 +86,28 @@ arrancar que hayas sustituido explícitamente las relaciones `runs()`,
 
 ## Migraciones {#migrations}
 
-Las migraciones de workflow se cargan automáticamente desde el paquete (`WorkflowServiceProvider::loadMigrationsFrom`) y se ejecutan en la conexión predeterminada de base de datos. Si diriges las tablas v2 a otra conexión, publica las migraciones con `php artisan vendor:publish --tag=migrations` y establece `protected $connection = 'mysql';` en cada clase de migración publicada para que `php artisan migrate` las ejecute en la base de datos correcta.
+Las migraciones de workflow se cargan automáticamente desde el paquete y respetan `DW_STORAGE_CONNECTION`. Las migraciones de la aplicación conservan sus propias conexiones configuradas.
+
+Si usas conexiones de modelos personalizados sin `DW_STORAGE_CONNECTION`, asigna la misma `$connection` a sus migraciones de workflow publicadas. La opción `--database` de Laravel también permite seleccionar el destino al ejecutar solo esas migraciones de workflow. Mantén las migraciones de la aplicación en su conexión de aplicación.
+
+## Límites de las transacciones {#transaction-boundaries}
+
+Cuando los datos de la aplicación y el almacenamiento de workflow usan la misma conexión de Laravel, iniciar un workflow dentro de una transacción lo incorpora a ella. Un rollback elimina las escrituras de workflow realizadas dentro de esa transacción. El motor publica las tareas de workflow en la cola y emite los eventos del ciclo de vida después del commit de la transacción de almacenamiento más externa. Un rollback descarta esas acciones.
+
+Por ejemplo, con `DW_STORAGE_CONNECTION=workflows`:
+
+```php
+use App\Workflows\OrderWorkflow;
+use Illuminate\Support\Facades\DB;
+use Workflow\V2\WorkflowStub;
+
+DB::connection('workflows')->transaction(function () {
+    WorkflowStub::make(OrderWorkflow::class, 'order-123')->start('order-123');
+});
+```
+
+Los modelos de la aplicación cuyos cambios deban confirmarse atómicamente con este inicio también deben usar la conexión `workflows`.
+
+Las transacciones en conexiones distintas de Laravel se confirman de forma independiente, aunque los nombres de conexión apunten a la misma base de datos física. Una transacción en la conexión predeterminada de la aplicación no puede revertir un workflow ya confirmado en otra conexión de almacenamiento. Coloca los cambios que requieran atomicidad en la misma conexión e inclúyelos en su transacción.
+
+La publicación posterior al commit protege el límite del almacenamiento de workflow. Una base de datos o un broker de mensajes independiente para la cola tiene sus propias reglas de transacción y entrega.

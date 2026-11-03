@@ -4,11 +4,31 @@ sidebar_position: 4
 
 # Database Connection
 
-Here is an overview of the steps needed to customize the database connection used for the workflow v2 durable models. This is *only* required if you want to use a different database connection than the default connection you specified for your Laravel application.
+Workflow uses your application's default Laravel database connection unless you
+select another connection for its durable storage.
+
+To move workflow storage to a connection defined in `config/database.php`, set
+its name in your environment:
+
+```dotenv
+DW_STORAGE_CONNECTION=workflows
+```
+
+Workflow models, transactions, row locks and after-commit callbacks use that
+connection. Keep all durable workflow tables on the same Laravel connection.
+Configure queue transport separately through Laravel's queue configuration.
+
+You can also select the connection through custom model classes as described
+below. The configured V2 `run_model` supplies the storage connection for V2
+metadata without an explicit model connection. Keep explicit model connections
+consistent with it. `DW_STORAGE_CONNECTION` takes precedence over model
+connection properties.
 
 For the full v2 override contract, including table-swapped subclasses,
 serializer rules, repository replacement, health diagnostics, and migration
 expectations, see the [Customization Matrix](./customization-matrix.md).
+
+## Custom Model Connections
 
 1. Create classes in your app models directory that extend the base v2 model classes
 2. Set the desired `$connection` option in each class
@@ -73,4 +93,44 @@ boot.
 
 ## Migrations
 
-Workflow migrations are auto-loaded from the package (`WorkflowServiceProvider::loadMigrationsFrom`) and run against the default database connection. When you route the v2 tables at a non-default connection, publish the migrations with `php artisan vendor:publish --tag=migrations` and set `protected $connection = 'mysql';` on each published migration class so `php artisan migrate` runs them against the correct database.
+Workflow migrations are auto-loaded from the package and honor
+`DW_STORAGE_CONNECTION`. Application migrations keep their own configured
+connections.
+
+When using custom model connections without `DW_STORAGE_CONNECTION`, give
+their published workflow migrations the same `$connection`. Laravel's
+`--database` option can also select the target when running only those workflow
+migrations. Keep application migrations on the application connection.
+
+## Transaction Boundaries
+
+When application data and workflow storage use the same Laravel connection,
+starting a workflow inside a transaction joins that transaction. A rollback
+removes the workflow writes made inside it. The engine publishes workflow tasks
+to the queue and emits lifecycle events after the outermost storage transaction
+commits. A rollback discards those callbacks.
+
+For example, with `DW_STORAGE_CONNECTION=workflows`:
+
+```php
+use App\Workflows\OrderWorkflow;
+use Illuminate\Support\Facades\DB;
+use Workflow\V2\WorkflowStub;
+
+DB::connection('workflows')->transaction(function () {
+    WorkflowStub::make(OrderWorkflow::class, 'order-123')->start('order-123');
+});
+```
+
+Any application models whose changes must commit atomically with this start
+must also use the `workflows` connection.
+
+Transactions on different Laravel connections commit independently, even when
+the connection names point at the same physical database. An application
+transaction on the default connection cannot roll back a workflow that already
+committed on another storage connection. Place changes requiring atomicity on
+the same connection and include them in that connection's transaction.
+
+After-commit publication protects the workflow storage boundary. A separate
+database or message broker used by the queue has its own transaction and
+delivery behavior.

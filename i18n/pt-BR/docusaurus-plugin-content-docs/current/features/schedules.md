@@ -54,6 +54,25 @@ O `scheduleId` é um identificador único escolhido pelo usuário para o agendam
 | `executionTimeoutSeconds` | `int\|null` | `null` | Tempo limite de cada execução lógica de workflow, incluindo repetições e continue-as-new |
 | `runTimeoutSeconds` | `int\|null` | `null` | Tempo limite de cada execução individual, reiniciado em continue-as-new |
 
+### Fusos horários e horário de verão {#time-zones-and-daylight-saving-time}
+
+As expressões cron selecionam horários locais no fuso `timezone` do
+agendamento. As mudanças de horário seguem estas regras:
+
+- Quando o campo de horas seleciona menos de 24 horas, um horário local
+  repetido dispara uma única vez, na primeira ocorrência. Em Nova York,
+  `30 1 * * *` dispara à 01:30 EDT no dia em que os relógios são atrasados.
+- Um horário local pulado ao adiantar os relógios dispara uma vez, deslocado
+  pela duração do salto. Em Nova York, `30 2 * * *` dispara às 03:30 nesse dia.
+- Um campo que seleciona todas as 24 horas, incluindo `*`, `*/1` e `0-23`,
+  mantém os intervalos de tempo real durante a hora repetida. Por exemplo,
+  `*/15 * * * *` continua disparando a cada 15 minutos reais durante as duas
+  ocorrências da hora repetida em Nova York.
+
+Use `timezone: 'UTC'` para evitar mudanças do horário local. Use uma
+especificação de intervalo quando uma duração fixa entre as execuções for
+mais importante do que o horário local.
+
 ### Tempos limite do workflow {#workflow-timeouts}
 
 O tempo limite de execução lógica abrange repetições e continue-as-new. O
@@ -265,11 +284,13 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` encontra todos os agendamentos ativos cujo `next_fire_at` está no passado e os dispara em ordem. O campo `occurrence_time` é o horário de disparo vencido observado pelo agendador. Após cada disparo, `next_fire_at` avança a partir da hora atual para a próxima ocorrência cron ou de intervalo.
+`tick()` dispara os agendamentos vencidos, isto é, os agendamentos ativos cujo `next_fire_at` está no passado. Cada chamada inicia no máximo `$limit` deles (`tick(int $limit = 100)`), começando pelos mais antigos e repartidos em round-robin entre namespaces. Agendamentos vencidos além do limite continuam vencidos para a próxima chamada. O campo `occurrence_time` é o horário de disparo vencido observado pelo agendador. Após cada disparo, `next_fire_at` avança a partir da hora atual para a próxima ocorrência cron ou de intervalo.
 
 ### Política para disparos perdidos {#missed-fire-policy}
 
 A avaliação ao vivo dos agendamentos usa a semântica **disparar uma vez e retomar**. Se o agendador ficar indisponível durante um ou mais horários nominais de disparo, o primeiro tick após a recuperação inicia um workflow para o `next_fire_at` vencido, registra esse horário como `occurrence_time` e então avança `next_fire_at` a partir da hora atual. Ocorrências nominais adicionais que passaram durante a indisponibilidade são ignoradas pela avaliação ao vivo.
+
+A mesma regra se aplica quando o agendador está em execução, mas não consegue acompanhar a demanda. Um agendamento que ainda aguarda uma passagem quando chega seu próximo horário nominal dispara uma vez e ignora as ocorrências intermediárias. Consulte [Tamanho da passagem e rajadas](#pass-size-and-bursts).
 
 Use `backfill()` quando todas as ocorrências perdidas precisarem executar. O preenchimento retroativo enumera explicitamente a janela solicitada e registra cada ocorrência separadamente.
 
@@ -280,12 +301,7 @@ Execute um único tick pela linha de comando:
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-O servidor independente expõe a mesma passagem de avaliação com seu próprio comando:
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 Para avaliar agendamentos continuamente, chame esse comando pelo agendador de tarefas do Laravel:
@@ -294,6 +310,78 @@ Para avaliar agendamentos continuamente, chame esse comando pelo agendador de ta
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### Tamanho da passagem e rajadas {#pass-size-and-bursts}
+
+Cada passagem de `workflow:v2:schedule-tick` inicia no máximo `limit`
+agendamentos vencidos e, separadamente, esvazia no máximo `limit` ações em
+buffer. `limit` vem da opção `--limit`; na falta dela, de
+`workflows.v2.schedules.tick_limit` (`DW_V2_SCHEDULE_TICK_LIMIT`); o padrão é
+100. Um valor que não seja um inteiro positivo faz o comando falhar sem avaliar
+nenhum agendamento; ele nunca é substituído por outro tamanho. A configuração e
+a opção exigem Workflow 2.16.0 ou posterior.
+
+Os dois lotes são repartidos em round-robin entre namespaces, começando pelos
+mais antigos, de modo que um namespace muito ativo não atrasa os demais.
+Agendamentos vencidos além de `limit` continuam vencidos e são processados na
+próxima passagem. Quando `N` agendamentos vencem juntos, não há nenhum vencido
+mais antigo e todos os inícios têm sucesso, todos eles disparam em até
+`ceil(N / limit)` passagens. Com a receita de execução a cada minuto, o último
+inicia até `ceil(N / limit) - 1` minutos após o primeiro. Defina `limit` com um
+valor igual ou maior que a maior rajada esperada.
+
+O limite de tempo é maior quando:
+
+- um início falha: a ocorrência continua vencida e é tentada novamente nas
+  passagens seguintes, de modo que um agendamento que continua falhando segue
+  ocupando uma vaga enquanto for o mais antigo;
+- agendamentos que venceram antes, ou outros agendamentos que vencem antes de a
+  rajada ser concluída, são selecionados primeiro;
+- ticks são executados com atraso ou deixam de ser executados.
+
+Sob sobrecarga contínua, um agendamento que espera além do seu próximo horário
+nominal dispara uma vez e ignora as ocorrências intermediárias, conforme descrito
+em [Política para disparos perdidos](#missed-fire-policy). Use `backfill()` se
+essas ocorrências precisarem executar.
+
+Configure alertas para as métricas de operador `schedules.missed`,
+`schedules.oldest_overdue_at` e `schedules.max_overdue_ms`, e para aumentos em
+`schedules.failures_total`.
+
+:::note Atualização de uma aplicação que publicou sua configuração antes da 2.16.0
+
+O Laravel mescla a configuração de um pacote a um arquivo de configuração
+publicado uma chave de nível superior por vez. Uma aplicação que publicou
+`config/workflows.php` antes da 2.16.0 mantém seu próprio array `v2`, portanto
+`DW_V2_SCHEDULE_TICK_LIMIT` não é lido: o comando usa 100 e continua aceitando
+`--limit`. Para usar a configuração, publique novamente o arquivo de
+configuração ou adicione esta entrada ao array `v2` do arquivo publicado:
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### Server nativo {#native-server}
+
+O Server nativo 3.x avalia os agendamentos por conta própria, portanto não há
+comando para executar nem agendar. Cada processo do Server executa um loop de
+manutenção: aguarda 250 ms, depois esvazia até 100 ações em buffer e inicia até
+100 agendamentos vencidos, ordenados por `next_fire_at`, e então aguarda
+novamente. O tamanho do lote é fixo; não há configuração para ele. As passagens
+de agendamento são serializadas entre os nós do Server, portanto adicionar nós
+não aumenta a vazão. Uma rajada de `N` agendamentos vencidos dispara em até
+`ceil(N / 100)` passagens, na ordem de vencimento.
+
+Um início recusado pelo Server é registrado como falha, e o agendamento passa
+para sua próxima ocorrência, de modo que um agendamento com falha não mantém
+sua vaga. Um agendamento cuja especificação não pode ser avaliada continua
+vencido e é tentado novamente a cada passagem. O comando
+`schedule:evaluate --limit` do Server PHP congelado não se aplica ao Server
+nativo.
 
 ## Máximo de execuções {#max-runs}
 

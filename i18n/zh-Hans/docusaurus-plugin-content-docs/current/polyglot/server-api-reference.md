@@ -609,6 +609,35 @@ Worker 应将租约 ID、尝试、任务 ID 和心跳端点视为 Server 签发�
 
 搜索属性名称和类型是命名空间搜索契约的一部分。避免在运维仪表盘或指标标签中使用高基数属性。
 
+### 计划列表筛选与继续读取 {#schedule-list-filters}
+
+`GET /api/schedules` 读取请求所属的命名空间。[常规发布 PHP Server 的验证](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227)已确认组合筛选和继续读取行为。以下查询参数使用正常的 URL 编码发送：
+
+| 参数 | 允许的值 |
+| --- | --- |
+| `status` | `active` 或 `paused`。 |
+| `workflow_type` | 非空工作流类型，最多255个字符。仅空白字符无效。 |
+| `query` | 非空可见性表达式，最多2048个字符。 |
+| `page_size` | 1至200的整数，默认50。 |
+| `next_page_token` | 非空的不透明令牌，最多8192个字符。 |
+
+状态、工作流类型和查询条件通过 `AND` 组合。计划可见性查询支持以 `AND` 连接的等值条件，例如 `Region = "eu" AND TaskQueue = "orders"`。内置字段为 `ScheduleId`、`Status`、`WorkflowType`、`TaskQueue` 和 `Note`。其他字段必须是在请求命名空间中注册的搜索属性，字面量必须符合其类型。对 `keyword_list` 属性的等值条件检查元素是否包含在列表中。`OR`、`NOT`、`IN`、`LIKE` 和范围比较等操作不受支持，会返回 `422`。
+
+响应包含 `namespace`、`schedules`、当前页的 `schedule_count` 和 `next_page_token`。仅在返回令牌时继续读取。使用相同的命名空间、状态、工作流类型和查询，将令牌原样传回。令牌绑定解析后的筛选条件。分页读取的是不断变化的数据，并非快照。若游标已被删除或不再符合筛选条件，需要不带令牌重新遍历。
+
+| HTTP / 原因 | 下一步 |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | 删除不支持的参数名。 |
+| `422` / `validation_failed` | 修正字段验证错误。 |
+| `422` / `unsupported_schedule_visibility_field` | 使用内置字段或此命名空间中已注册的属性。 |
+| `422` / `unsupported_schedule_visibility_predicate` | 使用以 `AND` 连接的等值条件。 |
+| `400` / `malformed_schedule_page_token` | 原样使用返回的令牌，或不带令牌重新开始。 |
+| `403` / `schedule_page_token_namespace_mismatch` | 使用原命名空间，或在目标命名空间中重新开始。 |
+| `409` / `schedule_page_token_filter_mismatch` | 更改筛选条件后，不带令牌重新开始。 |
+| `409` / `stale_schedule_page_token` | 对当前筛选结果不带令牌重新遍历。 |
+
+[CLI 计划筛选与分页示例](/docs/polyglot/cli-reference#schedule-list-filters)使用同一契约。列表拒绝响应包含相关 `field` 和验证详情。重试前请检查拒绝原因。
+
 ## 系统操作 {#system-operations}
 
 系统路由要求 admin 角色。它们是显式运维轮次；自动化应优先读取状态路由，再调用执行轮次路由。

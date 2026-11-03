@@ -120,24 +120,17 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-生产部署的认证驱动、数据库配置和 TLS 等内容见 [Server 设置指南](/docs/polyglot/server)。
+原生 Server 会在首次启动时创建 SQLite 模式和 `default` 命名空间，因此无需单独的引导步骤。生产部署的认证、数据库配置和 TLS 等内容见 [Server 设置指南](/docs/polyglot/server)。
 
 更完整的示例见 SDK 仓库的 [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)，这是通过订单工作流端到端运行 Python Worker 的 Docker Compose 栈。
 
@@ -172,8 +165,29 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK 默认值 | 匹配 Server 最大负载字节契约。 |
 | `payload_size_warning_threshold_percent` | `int` | SDK 默认值 | 在负载达到配置上限前警告。 |
 | `payload_size_warnings` | `bool` | `True` | 在测试或受控脚本中禁用本地负载大小警告。 |
+| `failure_report_limit_bytes` | `int` | `1048576` | 降低完整编码后失败报告的大小上限。请参阅[有界失败报告](#bounded-failure-reports)。 |
 
 `token` 是最简单的选项。如果同时设置 `control_token` 和 `worker_token`，控制平面方法使用 `control_token`，Worker 平面方法使用 `worker_token`。
+
+### 有界失败报告 {#bounded-failure-reports}
+
+Python SDK **2.11.0** 为发出的失败报告引入了大小限制。默认上限为：**消息使用 UTF-8 编码后 62 KiB**、**堆栈 128 KiB**、**可选详情和诊断信息序列化后合计 64 KiB**，以及 **HTTPX 编码后的完整请求体 1 MiB**。标记、JSON 转义、租约身份和批次中的其他命令都计入请求体上限。配置或发现的传输上限更低时，以较低值为准。失败类型、类、代码、重试策略和租约身份会保留。
+
+需要时可降低请求体上限。载荷大小警告设置仍然只提供提示。
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+被缩短的字段带有可见的截断标记和原始字节数。Avro 详情要么完整保留，要么整体省略。无法表示必需的信封时，会在发送 HTTP 请求前抛出 `FailureReportTooLarge`。本地失败会在工作流代码读取前规范化，因此首次执行和冷重放读取的是同一条已持久化消息。已经读取的本地消息在最终调整批次大小时保持不变。
 
 ### 外部负载存储 {#external-payload-storage}
 
@@ -690,6 +704,17 @@ receipt = yield ctx.schedule_activity(
 
 所有非确定性必须通过上下文或用 `ctx.side_effect()` 捕获。
 
+#### finally 代码块与上下文管理器 {#workflow-cleanup}
+
+**SDK 2.12.2 及更高版本。** 暂停并不表示工作流已经退出。丢弃已暂停的重放时，
+Python 仍可能执行 `finally` 代码块和 `with` 的退出逻辑。SDK 会丢弃仅由这次清理
+产生的持久化命令和 `ctx.logger` 日志；查询看到的是等待中的命令所在位置的状态。
+真正的完成、失败或协作式取消会按正常历史执行清理；冷重放会使用已记录的结果。
+
+不要在这些代码块中直接执行 I/O。通过 `yield ctx.schedule_activity(...)` 将外部清理
+安排为活动；若该活动必须在协作式取消后完成，请用 `with ctx.cancellation_shield():`
+包裹它。
+
 ### 扇出 {#fan-out}
 
 yield 命令列表以并发运行：
@@ -837,6 +862,66 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### 收到的重试策略与原始尝试次数 {#activity-retry-metadata}
+
+需要 Python SDK **2.12.0 或更高版本**。`info = activity.context().info`
+提供原始 `attempt_number` 和不可变的 `retry_info` 快照。
+`info.retry_info.policy()` 返回新的副本，并保留未知字段。
+
+缺少策略与根级 `retry_policy: null` 都表示重试上限未知；
+`policy_provided` 用 `False` 和 `True` 区分这两种情况。
+收到的策略对象中 `max_attempts: null` 明确表示无限重试：
+`is_unlimited()` 为 `True`，而 `max_attempts()` 仍为 `None`。
+对于正整数上限，`max_attempts()` 返回该上限，
+`is_last_configured_attempt()` 将其与原始尝试次数比较。
+上限未知时，最后一次尝试检查返回 `None`。
+
+此检查只描述收到的重试预算。取消、截止时间、工作流关闭或不可重试的失败
+都可能提前结束执行。普通和受监督的远程回调收到相同的原始快照。
+内联和预备本地回调不会继承父工作流的远程重试策略。
+
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
+#### 向原始运行发送信号 {#signal-originating-run}
+
+`info.workflow_id` 和 `info.run_id` 保留收到的原始标识，也可能为 `None`。
+本地回调只继承已知的父级标识。SDK 不会使用任务 ID 代替缺失标识。
+将获得授权的应用客户端传给此辅助函数，句柄会固定到原始运行：
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+重试时保持 `business_event_id` 不变，并遵守 Server 命令键的长度限制。
+当前已发布的 Server 不会在所有信号路径上保留这些键。
+业务事件处理应具有幂等性，并对结果不确定的投递进行核对。参阅
+[活动的权威参考文档](https://python.durable-workflow.com/reference/activity/)
+和[信号回执保留要求](https://github.com/durable-workflow/.github/issues/216)。
 
 ### 心跳请求 {#activity-heartbeat-requests}
 
@@ -1096,7 +1181,7 @@ await worker.run()
 
 持有者丢失或租约到期后，`allow_reacquire_after_failure=True` 允许另一个符合条件的 Worker 重新获取会话。它必须重建本地资源。已提交的活动结果会被重放，而未提交的副作用可能重复：请使用持久资源标识和幂等的外部操作。会话不会迁移内存、文件或已打开的句柄。
 
-显式关闭和绝对 TTL 到期对该会话 ID 都是终态。后续活动无法重新打开它，可能一直无法获准执行，直到运行时处理已配置的超时。请运行[已发布部署方案](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml)中的 Server 调度器/维护角色；仅有 API 进程不足以执行超时处理。工作流通过 `ActivityFailed` 处理重试耗尽后的活动失败，并返回 `resource_unavailable`；应用随后可以选择新会话，根据业务输入重建资源。本示例不承诺立即抛出会话已关闭异常，也不会自动重新打开终态会话。
+显式关闭和绝对 TTL 到期对该会话 ID 都是终态。后续活动无法重新打开它，可能一直无法获准执行，直到运行时处理已配置的超时。原生 Server 在自身的维护循环中执行活动超时处理，已发布镜像默认启用该循环。在 PHP Server 2.x 上，请运行 [PHP 部署方案](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)中的调度器/维护角色；仅有 API 的 PHP 进程不足以执行超时处理。工作流通过 `ActivityFailed` 处理重试耗尽后的活动失败，并返回 `resource_unavailable`；应用随后可以选择新会话，根据业务输入重建资源。本示例不承诺立即抛出会话已关闭异常，也不会自动重新打开终态会话。
 
 需要显式管理持有者生命周期时，使用 `worker.worker_session(options)` 及其 `create()`、`renew()`、`close(reason)` 方法。Worker 正常关闭时会关闭其持有的会话。参见[共享生命周期约定](../features/worker-sessions.md#lifecycle)。
 

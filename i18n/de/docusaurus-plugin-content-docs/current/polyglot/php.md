@@ -151,6 +151,18 @@ Entfernte Worker registrieren Workflow-, Aktivitäts-, Abfrage- und Update-Handl
 Vollständige Parameter und Rückgabetypen stehen in der generierten
 [PHP-SDK-API-Referenz](https://php.durable-workflow.com/api/).
 
+## Wiederholungskontext und zugehöriger Lauf einer Aktivität {#activity-retry-context}
+
+Das PHP SDK **ab 3.6.1** stellt `$context->retryInfo`, `$context->workflowId` und `$context->runId` in Aktivitäten im Service-Modus bereit. Mit `$context->retryInfo->isLastConfiguredAttempt() === true` erkennen Sie den letzten konfigurierten Versuch einer begrenzten Richtlinie. `attemptNumber` bewahrt die ursprünglich empfangene Versuchsnummer.
+
+Der Snapshot unterscheidet drei Zustände: `policyProvided === false` bedeutet, dass die Richtlinie im Claim fehlt. Ein übergebener Wurzelwert `null` bezeichnet eine unbekannte ältere Richtlinie. Ein Objekt mit explizitem `max_attempts: null` bedeutet unbegrenzte Versuche. Ein Rückgabewert `null` von `maxAttempts()` allein belegt keine unbegrenzten Wiederholungen. Das SDK erfindet kein Standardbudget. Abbruch, nicht wiederholbare Fehler, das Ende des Workflows und abgelaufene Fristen können die Ausführung vor Ausschöpfung des Budgets beenden.
+
+Workflow- und Lauf-ID bezeichnen den ursprünglichen zugehörigen Lauf. Fehlende ältere Identitäten bleiben `null`. Lokale Aktivitäten behalten bekannte Eltern-IDs, ohne eine Richtlinie für entfernte Aktivitäten zu erben. Prüfen Sie vor einem Signal an den zugehörigen Workflow beide IDs, binden Sie das Signal an `runId` und verwenden Sie über Wiederholungen hinweg dieselbe stabile Request-ID des Geschäftsereignisses.
+
+Verarbeiten Sie Signale für das Geschäftsereignis idempotent. Eine stabile Request-ID allein garantiert keine einmalige Signalannahme.
+
+Die [vollständigen Beispiele zum letzten Versuch und zum Signal an den eigenen Lauf](https://php.durable-workflow.com/build/workflows-activities/) stehen im PHP-SDK-Leitfaden.
+
 ## Aktivitäts-Heartbeats {#activity-heartbeats}
 
 Rufen Sie bei entfernten Aktivitäten `ActivityContext::heartbeat($details)` während begrenzter Aktivitätsarbeit deutlich vor dem konfigurierten Heartbeat-Zeitlimit auf. Das erste Zeitfenster beginnt mit der Beanspruchung durch die Laufzeit, nicht beim Empfang der Aufgabe in PHP. Anfragelatenz, Pausen und Transportwiederholungen verbrauchen dieses Zeitfenster. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts).
@@ -259,3 +271,23 @@ deklarierten SDK-Vertrag, nicht übereinstimmenden Paketversionsnummern.
 ## Seiten für Workflow-Listen und Verlauf {#workflow-list-and-history-pages}
 
 Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) definiert aktuelle Parameter; neue automatische Iteratoren werden damit nicht zugesagt.
+
+## Begrenzte Fehlerberichte {#bounded-failure-reports}
+
+Das PHP SDK **3.5.0** führte begrenzte ausgehende Fehlerberichte ein. Standardmäßig gelten **62 KiB UTF-8 für die Meldung**, **128 KiB für den Stack**, **64 KiB für gemeinsam serialisierte optionale Details und Diagnosen** und **1 MiB für den vollständigen JSON-codierten Body**. Markierungen, JSON-Escaping, die Claim-Identität und weitere Befehle im Batch zählen zum Body-Limit. Ein niedrigeres konfiguriertes oder vom Transport gemeldetes Limit hat Vorrang. Fehlertyp, Klasse, Code, Retry-Regeln und Claim-Identität bleiben erhalten.
+
+`withFailureReportLimit()` gibt einen neuen Client mit einem kleineren Budget für die gesamte Anfrage zurück, von 1 bis 1.048.576 Bytes. Verwenden Sie die zurückgegebene Instanz. Ein vom Transport gemeldetes niedrigeres Limit gilt ebenfalls.
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+Eine sichtbare Kürzungsmarkierung und die ursprünglichen Byte-Anzahlen kennzeichnen gekürzte Felder. Avro-Details bleiben vollständig erhalten oder werden als Ganzes weggelassen. Ein nicht darstellbarer erforderlicher Umschlag löst vor der HTTP-Übertragung `DurableWorkflow\Exception\FailureReportRefused` aus. Lokale Fehler werden normalisiert, bevor der Workflow-Code sie beobachtet. Dadurch sehen die erste Ausführung und ein kalter Replay dieselbe gespeicherte Meldung. Eine bereits beobachtete lokale Meldung bleibt bei der abschließenden Größenanpassung des Batches unveränderlich.

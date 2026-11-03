@@ -162,6 +162,8 @@ v2 設定は後方互換です。v1 で公開した `config/workflow.php` も引
 
 **v1 の独自シリアライザークラスは v2 未対応です。** 公開 v2 レジストリは `avro` だけを解決します。旧 `workflow-serializer-y` と `workflow-serializer-base64` のリーダーは内部 v1 インポート・ドレイン経路に限定され、新規 v2 実行や SDK ペイロードには選べません。独自実装がある場合は先に v1 をドレインするか、過去ペイロードを `avro` に再エンコードします。独自クラスは参照しません。doctor は他の `workflows.serializer` 値を移行負債として報告します。新規実行で省略すると `avro` です。
 
+**Eloquent モデルは v2 のペイロード値ではありません。** v1 は `SerializesModels` を通じてワークフローとアクティビティにモデルを渡していました。v2 ではモデルのキーを渡し、アクティビティの中でモデルを読み込んでください。モデルを引数にすると、`unsupported_value_type` エラーで失敗します。[データの受け渡し](/docs/defining-workflows/passing-data/#models)を参照してください。
+
 **独自モデルのサブクラスは、パッケージの列・キー契約を維持する場合だけ対応します。** [カスタマイズマトリクス](/docs/configuration/customization-matrix/)の固定対応表が規範です。v2 のインスタンス、実行、タスク、履歴イベント、投影、スケジュール、アクティビティ、失敗、リンク、メッセージ、メモ、検索属性、子呼び出しモデルは、テーブル名、主キー、外部キーを維持する場合にサブクラス化できます。独自テーブル名と独自外部キー列名は契約外です。Waterline は `Workflow\V2\Contracts\OperatorObservabilityRepository` 経由で投影を読むため、スキーマ互換のサブクラスでは Waterline 変更は不要です。
 
 **環境変数:**

@@ -819,6 +819,35 @@ Les noms et types d'attributs font partie du contrat de recherche de l'espace
 de noms. Évitez les attributs à forte cardinalité dans les tableaux de bord
 opérateurs et les étiquettes de métriques.
 
+### Filtres et continuation des listes de planifications {#schedule-list-filters}
+
+`GET /api/schedules` lit l’espace de noms de la requête. La [qualification de PHP Server publié avec une installation normale](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) vérifie les filtres combinés et la continuation. Envoyez les paramètres suivants avec l’encodage URL habituel :
+
+| Paramètre | Valeur acceptée |
+| --- | --- |
+| `status` | `active` ou `paused`. |
+| `workflow_type` | Type de workflow non vide, de 255 caractères au maximum. Les espaces seuls sont invalides. |
+| `query` | Expression de visibilité non vide, de 2048 caractères au maximum. |
+| `page_size` | Entier de 1 à 200, 50 par défaut. |
+| `next_page_token` | Jeton opaque non vide, de 8192 caractères au maximum. |
+
+Le statut, le type de workflow et les prédicats de requête se combinent avec `AND`. Une requête de visibilité des planifications accepte des prédicats d’égalité reliés par `AND`, par exemple `Region = "eu" AND TaskQueue = "orders"`. Les champs intégrés sont `ScheduleId`, `Status`, `WorkflowType`, `TaskQueue` et `Note`. Les autres champs doivent être des attributs de recherche enregistrés dans l’espace de noms de la requête, avec des littéraux correspondant à leurs types. L’égalité sur un attribut `keyword_list` teste l’appartenance. Les opérateurs tels que `OR`, `NOT`, `IN`, `LIKE` et les comparaisons d’intervalle ne sont pas acceptés et renvoient `422`.
+
+La réponse contient `namespace`, `schedules`, `schedule_count` pour cette page et `next_page_token`. Continuez uniquement si un jeton est renvoyé. Transmettez-le sans modification avec les mêmes espace de noms, statut, type de workflow et requête. Le jeton est lié à la sélection de filtres analysée. La pagination lit des données évolutives plutôt qu’un instantané. Un curseur supprimé ou ne correspondant plus aux filtres impose un nouveau parcours sans jeton.
+
+| HTTP / motif | Action suivante |
+| --- | --- |
+| `422` / `unsupported_schedule_list_filter` | Supprimez les noms de paramètres non acceptés. |
+| `422` / `validation_failed` | Corrigez les erreurs de validation des champs. |
+| `422` / `unsupported_schedule_visibility_field` | Utilisez un champ intégré ou un attribut enregistré dans cet espace de noms. |
+| `422` / `unsupported_schedule_visibility_predicate` | Utilisez des prédicats d’égalité reliés par `AND`. |
+| `400` / `malformed_schedule_page_token` | Utilisez le jeton reçu sans modification ou recommencez sans jeton. |
+| `403` / `schedule_page_token_namespace_mismatch` | Utilisez l’espace de noms d’origine ou recommencez dans l’espace voulu. |
+| `409` / `schedule_page_token_filter_mismatch` | Recommencez sans jeton après un changement de filtres. |
+| `409` / `stale_schedule_page_token` | Recommencez sans jeton sur l’ensemble filtré actuel. |
+
+Les [exemples CLI de filtrage et de pagination des planifications](/docs/polyglot/cli-reference#schedule-list-filters) suivent le même contrat. Un refus de liste indique le champ `field` concerné et les détails de validation. Examinez le motif avant de réessayer.
+
 ## Opérations système {#system-operations}
 
 Les routes système exigent le rôle admin. Ce sont des passes opérateur

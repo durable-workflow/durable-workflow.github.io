@@ -63,7 +63,9 @@ qualify a full application replay or restoration of external objects.
    complete event range, redaction policy and integrity checksum. Verify any
    configured signature with a trusted key. Preserve the exact application
    build and codecs needed for a cold replay check. A checksum proves that
-   bytes match, not that the history was complete when exported.
+   bytes match, not that the history was complete when exported. Require
+   `history_complete: true` and, where present, `workflow.details_state:
+   retained`. See [Recognizing an export of a pruned run](#recognizing-an-export-of-a-pruned-run).
 5. **Preserve external bytes.** Exports retain external reference envelopes,
    not an independent copy of every referenced object. Preserve those bytes
    for the export's lifetime and test retrieval without a warm runtime cache.
@@ -83,17 +85,47 @@ check does not complete that requirement.
 
 :::warning Pruning is irreversible without a recovery copy
 
-An export after pruning cannot reconstruct deleted events. The published export
-implementation can still label a terminal pruned run `history_complete: true`,
-and may reuse its earlier `dedupe_key`. This is tracked in
-[Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
-Do not trust either field as proof that cleanup has not occurred. Embedded
-export jobs must reject runs with `details_pruned_at` set. A Server list stops
-showing a run after its summary is pruned, so an inventory started after cleanup
-cannot establish that every older run was captured. Keep the pre-prune inventory
-and investigate gaps from a recovery copy.
+An export after pruning cannot reconstruct deleted events. Keep the pre-prune
+inventory and investigate gaps from a recovery copy. A Server list stops showing
+a run after its summary is pruned, so an inventory started after cleanup cannot
+establish that every older run was captured.
 
 :::
+
+### Recognizing an export of a pruned run {#recognizing-an-export-of-a-pruned-run}
+
+From Workflow 2.17.0, an embedded export reports whether the run's details
+were retained:
+
+| Field | Retained run | Pruned run |
+| --- | --- | --- |
+| `workflow.details_state` | `retained` | `pruned` |
+| `workflow.details_pruned_at` | `null` | When cleanup committed, in UTC |
+| `history_complete` | `true` for a terminal run | `false` |
+| `history_events` | The recorded events | Empty |
+| `dedupe_key` | Unchanged by this release | The full-export key followed by `:details-pruned:{details_pruned_at}` |
+
+The pruned run keeps its terminal `status`. Its `dedupe_key` never matches the
+export taken before cleanup, so a deduplicating archive does not replace a
+verified full bundle with the empty one. `workflow:v2:replay-verify` reports a
+pruned bundle as the `history.details_pruned` error, with or without
+`--skip-replay`. `workflow:v2:history-import` rejects it as
+`workflow.terminal_history_incomplete`.
+
+Treat `history_complete: false` or `details_state: pruned` as a failed export
+for archive purposes, and keep the earlier full copy. Do not rely on these fields
+alone in the following cases, which can still label a pruned terminal run
+complete:
+
+- Exports from earlier Workflow releases. They carry no `details_state`. In that
+  case, reject runs with `details_pruned_at` set before exporting.
+- Native Server exports, until
+  [Server #976](https://github.com/durable-workflow/server/issues/976) ships.
+- Waterline's history export fallback, until
+  [Waterline #257](https://github.com/durable-workflow/waterline/issues/257) ships.
+- The Python SDK bundle verifier, until
+  [SDK Python #228](https://github.com/durable-workflow/sdk-python/issues/228)
+  ships.
 
 ### Selecting and exporting Server runs {#selecting-and-exporting-server-runs}
 

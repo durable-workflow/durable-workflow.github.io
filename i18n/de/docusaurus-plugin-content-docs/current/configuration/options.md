@@ -69,6 +69,23 @@ Argumente an die Methode `handle()` Ihres Workflows übergeben. Sie werden mit
 dem Workflow gespeichert und für spätere Workflow-/Aktivitätszustellungen
 verwendet, einschließlich Replay und Continue-as-new.
 
+### Priorität und faire Verteilung eines Laufs {#run-priority-and-fairness}
+
+In der eingebetteten Runtime ab Workflow 2.15.14 lassen sich beim Start die Dispatch-Priorität und eine Arbeitsklasse festlegen:
+
+```php
+$options = StartOptions::rejectDuplicate()
+    ->withPriority(1)
+    ->withFairness('tenant:acme', 3);
+
+$workflow = WorkflowStub::make(MyWorkflow::class, 'order-12345');
+$workflow->start($orderId, $options);
+```
+
+Bei Auslastung werden kleinere Prioritätswerte zuerst ausgewählt. Für Anwendungen ist der Bereich 1–9 vorgesehen, mit dem Standardwert 5; 0 ist für dringende Steuerungsaufgaben reserviert. Innerhalb einer Prioritätsstufe bezeichnet der Fairness-Schlüssel eine Arbeitsklasse, etwa einen Mandanten. Ihr Gewicht bestimmt den relativen Dispatch-Anteil (1–1000, Standard 1). Läufe ohne Schlüssel teilen sich eine Klasse.
+
+Der Lauf speichert diese Werte. Seine erste Workflow-Aufgabe, die Fortsetzungen nach Timern und Signalen sowie die Activity-Aufgaben übernehmen sie. Continue-as-new- und Wiederholungsläufe behalten die gespeicherten Einstellungen ihres Vorgängers. Explizite Prioritäts- oder Fairness-Werte in `ActivityOptions` überschreiben die geerbten Werte für diese Activity. Wenn `signalWithStart()` einen neuen Lauf erzeugt, speichert er dieselben Scheduling-Werte aus `StartOptions`.
+
 ## ActivityOptions {#activityoptions}
 
 `Workflow\V2\Support\ActivityOptions` ermöglicht das Überschreiben von Routing,

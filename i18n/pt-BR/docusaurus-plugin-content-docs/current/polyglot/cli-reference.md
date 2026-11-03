@@ -308,7 +308,7 @@ para duplicatas, falhas de roteamento, payloads malformados e transferências ac
 | Comando | Finalidade | Opções importantes |
 | --- | --- | --- |
 | `dw schedule:create` | Cria um agendamento. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, opções de entrada, `--json` |
-| `dw schedule:list` | Lista agendamentos. | opções globais de saída |
+| `dw schedule:list` | Lista agendamentos. | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | Descreve um agendamento. | `--json` |
 | `dw schedule:update <schedule-id>` | Atualiza especificação ou entrada do workflow. | opções de criação de agendamento, opções de entrada, `--json` |
 | `dw schedule:pause <schedule-id>` | Pausa um agendamento. | `--note`, `--json` |
@@ -319,6 +319,35 @@ para duplicatas, falhas de roteamento, payloads malformados e transferências ac
 
 Use `--cron` ou `--interval` ao criar agendamentos por intervalo. Use
 `--paused` para registrar na implantação sem iniciar trabalho ainda.
+
+### Filtrar e paginar agendamentos {#schedule-list-filters}
+
+`dw schedule:list` retorna uma página filtrada no namespace resolvido. Omitir `--namespace` seleciona apenas o namespace padrão resolvido, não todos os namespaces. Status, tipo de workflow e predicados de visibilidade se combinam com `AND`. A [qualificação dos artefatos publicados normais de CLI e PHP Server](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) verifica essas opções.
+
+| Opção da CLI | Parâmetro de consulta do Server | Significado |
+| --- | --- | --- |
+| `--status` | `status` | `active` ou `paused`. |
+| `--type` | `workflow_type` | Tipo exato de workflow. |
+| `--query` | `query` | Expressão de visibilidade de agendamentos. |
+| `--limit` | `page_size` | Tamanho de página de 1 a 200, padrão 50. |
+| `--next-page-token` | `next_page_token` | Token opaco de continuação da resposta anterior. |
+
+Em um namespace `production` existente com o atributo keyword `Region` registrado, liste os agendamentos pausados de `orders.rollup` na região `eu` e na fila de tarefas `orders`:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+Leia `next_page_token` na resposta JSON e atribua esse valor a `NEXT_PAGE_TOKEN`. Repita o mesmo namespace e os mesmos filtros para a próxima página:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+Os tokens pertencem ao namespace e à seleção de filtros. Reinicie sem token após alterar filtros ou receber uma recusa por cursor obsoleto. Cada chamada lê uma página atual, não um snapshot fixo. Consulte as [restrições e os motivos de recusa da API de listagem de agendamentos](/docs/polyglot/server-api-reference#schedule-list-filters) para ver a gramática aceita e os campos da resposta.
 
 ## Comandos de workers e filas de tarefas {#worker-and-task-queue-commands}
 

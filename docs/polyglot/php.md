@@ -148,6 +148,18 @@ Remote workers register workflow, activity, query, and update handlers through
 Use the generated [PHP SDK API reference](https://php.durable-workflow.com/api/)
 for complete parameters and return types.
 
+## Activity retry context and owning run {#activity-retry-context}
+
+PHP SDK **3.6.1 or later** exposes `$context->retryInfo`, `$context->workflowId` and `$context->runId` in service-mode activities. Check `$context->retryInfo->isLastConfiguredAttempt() === true` for the final configured attempt of a bounded policy. `attemptNumber` preserves the original received attempt number.
+
+The retry snapshot preserves three distinct states: `policyProvided === false` means the claim omitted the policy; a provided root `null` is unknown legacy policy; an object with explicit `max_attempts: null` means unlimited. `maxAttempts()` returning `null` alone does not establish unlimited retries. The SDK does not invent a default budget. Cancellation, non-retryable failure, workflow closure and elapsed deadlines can end execution before the budget is exhausted.
+
+The workflow and run IDs identify the original owning run. Missing legacy identity stays `null`. Local activities retain known parent IDs without inheriting a remote retry policy. To signal the owning workflow, require both IDs, pin the signal to `runId` and reuse a stable business-event request ID across retries.
+
+Keep signal processing idempotent for the business event. A stable request ID alone does not establish once-only signal admission.
+
+See the [complete final-attempt and own-run signal examples](https://php.durable-workflow.com/build/workflows-activities/) in the PHP SDK guide.
+
 ## Activity heartbeats {#activity-heartbeats}
 
 For remote activities, call `ActivityContext::heartbeat($details)` during bounded work, well before the configured heartbeat timeout. The first window starts at runtime claim, not when PHP receives the task. Request latency, pauses and transport retries consume that window. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).
@@ -254,3 +266,23 @@ not matching package version numbers.
 ## Workflow list and history pages {#workflow-list-and-history-pages}
 
 These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the current parameters; no new iterator capability is implied.
+
+## Bounded failure reports {#bounded-failure-reports}
+
+PHP SDK **3.5.0** introduced bounded outgoing failure reports. Defaults are **62 KiB UTF-8 for the message**, **128 KiB for the stack**, **64 KiB for combined serialized optional details and diagnostics**, and **1 MiB for the complete JSON-encoded body**. Markers, JSON escaping, claim identity and other commands in the batch count toward that body limit. A lower configured or transport-declared limit takes precedence. Failure type, class, code, retry policy and claim identity are preserved.
+
+`withFailureReportLimit()` returns a new client with a smaller whole-request budget, from 1 to 1,048,576 bytes. Use the returned instance. A lower transport-declared cap also applies.
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+A visible truncation marker and original byte counts identify shortened fields. Avro details remain intact or are omitted whole. An unrepresentable required envelope raises `DurableWorkflow\Exception\FailureReportRefused` before HTTP submission. Local failures are normalized before workflow code observes them, so first execution and cold replay see the persisted message. An already observed local message remains immutable during final batch fitting.

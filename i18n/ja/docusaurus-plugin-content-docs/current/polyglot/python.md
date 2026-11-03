@@ -120,24 +120,17 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-認証ドライバー、データベース設定、TLS など本番デプロイは [Server セットアップガイド](/docs/polyglot/server)を参照してください。
+ネイティブ Server は初回起動時に SQLite スキーマと `default` Namespace を作成するため、別途ブートストラップ手順は不要です。認証、データベース設定、TLS など本番デプロイは [Server セットアップガイド](/docs/polyglot/server)を参照してください。
 
 より大きな例として、SDK リポジトリは Python Worker で注文ワークフローを端から端まで実行する Docker Compose スタック [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)を含みます。
 
@@ -172,8 +165,29 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | SDK 既定値 | Server の最大ペイロードバイト数契約に合わせる。 |
 | `payload_size_warning_threshold_percent` | `int` | SDK 既定値 | 設定した上限に達する前に警告する。 |
 | `payload_size_warnings` | `bool` | `True` | テストや管理されたスクリプトでローカルのサイズ警告を無効にする。 |
+| `failure_report_limit_bytes` | `int` | `1048576` | エンコード済みの障害レポート全体の上限を引き下げます。[障害レポートのサイズ制限](#bounded-failure-reports)を参照してください。 |
 
 `token` が最も単純な選択肢です。`control_token` と `worker_token` の両方を設定すると、コントロールプレーンのメソッドは `control_token`、Worker プレーンのメソッドは `worker_token` を使います。
+
+### 障害レポートのサイズ制限 {#bounded-failure-reports}
+
+Python SDK **2.11.0** から、送信する障害レポートにサイズ制限が加わりました。既定値は、**メッセージが UTF-8 で 62 KiB**、**スタックが 128 KiB**、**シリアライズ後の任意の詳細と診断情報が合計 64 KiB**、**HTTPX でエンコードした本文全体が 1 MiB** です。本文の上限には、マーカー、JSON エスケープ、リースの識別情報、バッチ内のほかのコマンドも含まれます。設定または検出された転送上限がより小さい場合は、その値が優先されます。障害の型、クラス、コード、リトライポリシー、リースの識別情報は保持されます。
+
+必要に応じて本文の上限を引き下げます。ペイロードサイズの警告設定は引き続き助言として扱われます。
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+短縮されたフィールドには、見える切り詰めマーカーと元のバイト数が付けられます。Avro の詳細は全体を保持するか、全体を省略します。必須のエンベロープを表現できない場合は、HTTP 送信前に `FailureReportTooLarge` が発生します。ローカル障害はワークフローコードが参照する前に正規化されるため、初回実行とコールドリプレイは保存された同じメッセージを参照します。一度参照したローカルメッセージは、最終的なバッチサイズ調整でも変更されません。
 
 ### 外部ペイロードストレージ {#external-payload-storage}
 
@@ -704,6 +718,19 @@ receipt = yield ctx.schedule_activity(
 
 非決定的な処理はすべてコンテキスト経由にするか、`ctx.side_effect()` で記録する必要があります。
 
+#### finally ブロックとコンテキストマネージャー {#workflow-cleanup}
+
+**SDK 2.12.2 以降。** 中断はワークフローからの終了を意味しません。中断したリプレイを
+破棄するとき、Python は `finally` ブロックや `with` の終了処理を実行することがあります。
+SDK は破棄だけが原因で発生した永続コマンドと `ctx.logger` のログを破棄し、クエリは
+待機中のコマンドの時点の状態を参照します。実際の完了、失敗、協調的キャンセルでは
+通常の履歴に従ってクリーンアップを実行し、コールドリプレイでは記録済みの結果を使用します。
+
+これらのブロックで直接 I/O を行わないでください。外部のクリーンアップは
+`yield ctx.schedule_activity(...)` でアクティビティとしてスケジュールします。
+協調的キャンセル後も完了させる必要がある場合は、そのアクティビティを
+`with ctx.cancellation_shield():` で囲んでください。
+
 ### ファンアウト {#fan-out}
 
 並行実行するにはコマンドのリストを yield します。
@@ -851,6 +878,68 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### 受信した再試行ポリシーと元の試行回数 {#activity-retry-metadata}
+
+Python SDK **2.12.0 以降**が必要です。`info = activity.context().info` は
+元の `attempt_number` と不変の `retry_info` スナップショットを提供します。
+`info.retry_info.policy()` は未知のフィールドも含む新しいコピーを返します。
+
+ポリシーがない場合も、ルートの `retry_policy: null` の場合も、試行上限は不明です。
+`policy_provided` は両者を `False` と `True` で区別します。
+受信したポリシーオブジェクトの `max_attempts: null` は、明示的に無制限を意味します。
+この場合、`is_unlimited()` は `True`、`max_attempts()` は `None` です。
+正の整数の上限があれば、`max_attempts()` はその値を返し、
+`is_last_configured_attempt()` は元の試行回数と比較します。
+上限が不明な場合、最後の試行かどうかの判定は `None` を返します。
+
+この判定は受信した再試行予算を表します。キャンセル、期限、ワークフローの終了、
+再試行できない失敗により、上限より前に実行が終わる場合があります。
+通常および監視付きのリモートコールバックは元のスナップショットを受け取ります。
+インラインおよび準備済みローカルコールバックは、親のリモート再試行ポリシーを継承しません。
+
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
+#### 元の実行にシグナルを送る {#signal-originating-run}
+
+`info.workflow_id` と `info.run_id` は受信した元の識別子を保持し、
+`None` の場合もあります。ローカルコールバックは既知の親識別子だけを継承します。
+SDK がタスク ID で代用することはありません。認可済みのアプリケーションクライアントを
+このヘルパーに渡してください。ハンドルは元の実行に固定されます。
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+`business_event_id` は再試行の間で一定に保ち、Server のコマンドキーの長さ制限に
+収めてください。現在公開されている Server は、すべてのシグナル経路でこれらのキーを
+保持するわけではありません。ビジネスイベントの処理を冪等にし、配信結果が不確かな場合は
+照合してください。[アクティビティの正式なリファレンス](https://python.durable-workflow.com/reference/activity/)
+と[シグナル受領記録の保持要件](https://github.com/durable-workflow/.github/issues/216)を参照してください。
 
 ### ハートビートのリクエスト {#activity-heartbeat-requests}
 
@@ -1115,7 +1204,7 @@ await worker.run()
 
 保持者の喪失やリース切れの後は、`allow_reacquire_after_failure=True` により、条件を満たす別の Worker がセッションを再取得できます。その Worker はローカルリソースを再構築する必要があります。確定済みのアクティビティ結果はリプレイされますが、未確定の副作用は繰り返される可能性があります。永続的なリソース識別子と冪等な外部操作を使用してください。セッションはメモリ、ファイル、開いたハンドルを移行しません。
 
-明示的なクローズと絶対 TTL の満了は、そのセッション ID に対する終端状態です。後続のアクティビティは再度開けず、設定したタイムアウトが適用されるまで実行が許可されない場合があります。[公開済みのデプロイ手順](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml)にある Server のスケジューラー/メンテナンスロールを実行してください。API プロセスだけではタイムアウトは適用されません。ワークフローは試行を使い切ったアクティビティの失敗を `ActivityFailed` で処理し、`resource_unavailable` を返します。その後、アプリケーションは新しいセッションを選び、業務入力からリソースを再構築できます。この例は、セッション終了例外の即時送出や終端セッションの自動再開を保証しません。
+明示的なクローズと絶対 TTL の満了は、そのセッション ID に対する終端状態です。後続のアクティビティは再度開けず、設定したタイムアウトが適用されるまで実行が許可されない場合があります。ネイティブ Server は自身のメンテナンスループでアクティビティのタイムアウトを適用し、公開イメージではこれが有効になっています。PHP Server 2.x では、[PHP デプロイ手順](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)にあるスケジューラー/メンテナンスロールを実行してください。PHP の API プロセスだけではタイムアウトは適用されません。ワークフローは試行を使い切ったアクティビティの失敗を `ActivityFailed` で処理し、`resource_unavailable` を返します。その後、アプリケーションは新しいセッションを選び、業務入力からリソースを再構築できます。この例は、セッション終了例外の即時送出や終端セッションの自動再開を保証しません。
 
 保持者のライフサイクルを明示的に操作するには、`worker.worker_session(options)` とその `create()`、`renew()`、`close(reason)` を使用します。Worker の正常なシャットダウンでは、保持中のセッションを閉じます。[共通のライフサイクル契約](../features/worker-sessions.md#lifecycle)を参照してください。
 

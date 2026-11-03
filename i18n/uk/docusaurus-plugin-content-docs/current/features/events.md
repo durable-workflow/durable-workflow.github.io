@@ -6,7 +6,7 @@ sidebar_position: 12
 
 Події життєвого циклу надсилаються на ключових етапах виконання workflow й activity, щоб повідомляти застосунок про поступ, завершення чи збої. Це стандартні події Laravel. Реєструйте слухачі в `EventServiceProvider` або через `Event::listen()`.
 
-Усі події життєвого циклу V2 надсилаються **після фіксації стійкого стану** в базі даних. Слухачі бачать лише події, підтверджені зафіксованими фактами. Якщо транзакція відкочується, подія не надсилається.
+`WorkflowCancelled` і `WorkflowTerminated` очікують фіксації транзакції на з’єднанні, у якому зберігається запуск. Відхилені команди та відкочені записи до сховища не спричиняють жодної з цих подій. Інші прогалини транзакцій рушія та порядку подій життєвого циклу відстежуються у [workflow#893](https://github.com/durable-workflow/workflow/issues/893). Транзакція в окремій базі даних застосунку не робить записи до сховища workflow атомарними.
 
 ## Ідентичність подій {#event-identity}
 
@@ -18,7 +18,7 @@ sidebar_position: 12
 | `runId` | ID конкретного запуску виконання. |
 | `workflowType` | Стійкий ключ типу, зареєстрований через `#[Type('...')]`. |
 | `workflowClass` | Назва PHP-класу workflow. |
-| `committedAt` | Часова позначка ISO 8601 фіксації стійкого запису: реальний час фіксації. |
+| `committedAt` | Часова позначка реального годинника у форматі ISO 8601, зафіксована під час підготовки сповіщення життєвого циклу. |
 
 Події activity додатково містять:
 
@@ -69,6 +69,8 @@ Event::listen(WorkflowCompleted::class, function (WorkflowCompleted $event) {
 
 Надсилається, коли запуск workflow остаточно завершується з помилкою.
 
+Перевищення часу виконання запуску також спричиняє `WorkflowFailed`. Натомість сплив строку очищення під час кооперативного скасування спричиняє `WorkflowCancelled`.
+
 Додаткові поля:
 - `exceptionClass`: назва PHP-класу винятку.
 - `message`: повідомлення винятку.
@@ -84,6 +86,49 @@ Event::listen(WorkflowFailed::class, function (WorkflowFailed $event) {
     ]);
 });
 ```
+
+### WorkflowCancelled {#workflowcancelled}
+
+Надсилається, коли негайне скасування закриває запуск або коли кооперативне скасування закриває його після завершення очищення чи спливу його строку. Сам запит на скасування не спричиняє цю подію.
+
+Окрім спільних полів ідентичності:
+
+| Поле | Опис |
+|---|---|
+| `reason` | Початкова причина з команди скасування або `null`. Повідомлення про завершення очищення та сплив його строку не замінюють її. |
+| `closedAt` | Збережений час закриття запуску як рядок ISO 8601 у UTC. |
+
+```php
+use Workflow\V2\Events\WorkflowCancelled;
+
+Event::listen(WorkflowCancelled::class, function (WorkflowCancelled $event) {
+    Log::info('Workflow cancelled', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+### WorkflowTerminated {#workflowterminated}
+
+Надсилається, коли примусове завершення закриває запуск. Містить ті самі поля ідентичності, `reason` і `closedAt`; причину взято з команди примусового завершення. Код очищення workflow при цьому не виконується.
+
+```php
+use Workflow\V2\Events\WorkflowTerminated;
+
+Event::listen(WorkflowTerminated::class, function (WorkflowTerminated $event) {
+    Log::info('Workflow terminated', [
+        'instance_id' => $event->instanceId,
+        'run_id' => $event->runId,
+        'reason' => $event->reason,
+        'closed_at' => $event->closedAt,
+    ]);
+});
+```
+
+Це сповіщення Laravel у межах процесу. Помилка слухача не може скасувати зафіксоване закриття. Події не надають права відновлювати закритий запуск і не гарантують стійкої доставки до зовнішньої системи.
 
 ## Події activity {#activity-events}
 
@@ -165,13 +210,13 @@ Event::listen(FailureRecorded::class, function (FailureRecorded $event) {
 
 ## Семантика часових позначок {#timestamp-semantics}
 
-Поле `committedAt` усіх подій означає **час фіксації**: реальний час запису стійкого запису (події історії чи запису помилки) до бази даних. Він відрізняється від:
+Рушій фіксує `committedAt` під час підготовки сповіщення життєвого циклу. Це позначка реального годинника, яка відрізняється від:
 
 - **Віртуального часу workflow**: логічного часу всередині виконання workflow, який використовують timer.
 - **Часу спроби**: коли конкретна спроба activity почалася чи завершилася.
 - **Затримки відновлення**: скільки часу минуло після запланованого спрацювання timer до фактичного продовження workflow.
 
-Час фіксації найкорисніший для зовнішніх інтеграцій, бо відображає момент, коли стан став стійким і доступним для спостереження.
+Для скасування та примусового завершення `closedAt` — це збережена часова позначка закриття запуску в UTC. Зовнішня транзакція сховища може зафіксуватися пізніше, ніж було знято значення полів події. Вимірюючи затримку доставки, окремо записуйте час отримання події слухачем.
 
 ## Життєвий цикл {#lifecycle}
 
@@ -193,6 +238,22 @@ Workflow\V2\Events\ActivityFailed
 Workflow\V2\Events\FailureRecorded    (source: activity_execution)
 Workflow\V2\Events\WorkflowFailed
 Workflow\V2\Events\FailureRecorded    (source: workflow_run)
+```
+
+Скасований запуск закінчується так:
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowCancelled
+```
+
+Між цими двома сповіщеннями кооперативне очищення може спричиняти події activity.
+
+Примусово завершений запуск закінчується так:
+
+```
+Workflow\V2\Events\WorkflowStarted
+Workflow\V2\Events\WorkflowTerminated
 ```
 
 ## Простір імен подій {#event-namespace}

@@ -42,6 +42,18 @@ released, or before accepting external patterns or changing development-server
 exposure and build-source permissions. The dependency paths and review are
 recorded in [#261](https://github.com/durable-workflow/durable-workflow.github.io/issues/261).
 
+The unpatched [deepmerge advisory](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)
+remains in the installed SVG build graph through `@svgr/plugin-svgo`'s dependency
+declaration. Its reviewed published entrypoint does not import or call
+`deepmerge`; it selects SVGO configuration and calls `svgo.optimize`.
+Maintainers accept retaining that unused dependency while no fixed release is
+available. SVG assets and configuration come from reviewed repository source,
+and the published site is static. The preflight requires the reviewed version,
+sole declaring package and installed entrypoint hash. Re-review when a fix is
+released, the graph or entrypoint changes, untrusted SVGO configuration is
+admitted, or the site adds request-time Node processing. The audit remains
+affected. See [#413](https://github.com/durable-workflow/durable-workflow.github.io/issues/413).
+
 ## Translations
 
 English is the default locale. The offered documentation languages are Ukrainian
@@ -114,6 +126,11 @@ between translated and English fallback files. It uses Docusaurus's document
 map and preserves strict missing-link checks and version boundaries. The
 build exercises both directions. Recheck and remove the patch when upgrading
 Docusaurus if the upstream resolver handles these cases.
+
+The browser-launcher patch uses `open`'s named app aliases to preserve custom
+browsers and browser shortcuts with the fixed v11 dependency. Remove it when
+Docusaurus supports that API directly; dependency checks exercise the installed
+launcher with captured child processes.
 
 `plugins/local-search.js` selects the existing search plugin's Chinese word
 segmentation for `zh-Hans` and Japanese segmentation for `ja`, combined with

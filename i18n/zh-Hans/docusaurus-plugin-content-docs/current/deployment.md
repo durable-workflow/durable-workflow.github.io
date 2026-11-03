@@ -4,6 +4,8 @@ title: 自托管部署
 description: 选择受支持的 Durable Workflow v2 自托管路径及起始产物。
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # 自托管部署 {#self-hosting-deployments}
 
 在自托管与 Cloud 运行时之间迁移时，请遵循[运行时迁移指南](/docs/polyglot/runtime-migration/)。新启动切换期间，现有运行仍保留在来源端。
@@ -14,17 +16,29 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 自托管 Server 发行版不捆绑或运维 Waterline。仅在需要其操作 UI 时单独部署 Waterline，并按照 [Waterline 部署与监控指南](/docs/monitoring/#waterline-service)连接到 Server 管理的命名空间。Cloud 则为托管命名空间提供 Managed Waterline。
 
+当前 Server 为原生 3.x Server（`%%artifact.serverDockerHubImage%%`）。它在每个节点上以单个进程运行：启动时自行创建并检查数据库模式，并自行触发定时器和计划、执行维护任务，因此无需 bootstrap 任务、队列 Worker、调度器或 Redis。PHP Server 2.x 已冻结在 2.11.8，不再发布新版本。
+
+:::note 现有 PHP Server 2.x 安装
+
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。现有 PHP 2.x 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。对于由 PHP 2.11.8 在 SQLite、MySQL 8.0 和 PostgreSQL 17 上写入的数据库，接管已在已发布的 3.0.4 镜像（arm64）上通过资格验证。MariaDB、amd64 以及来自其他 PHP 版本的数据库（布局 2.8.0–2.11.8）仅有基于源码构建的 CI 覆盖。接管是单向的，必须先备份，并且必须停止 PHP。接管会拒绝它无法迁移的数据库和状态；运行手册中的[拒绝情形表](%%artifact.serverTakeoverRunbookUrl%%#refusals)列出了每种情况。请先在由备份恢复出的副本上演练接管。接管后无法回滚到 PHP，且接管计划在 3.1.x 系列中弃用。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
+
+:::
+
 ## 部署支持矩阵 {#deployment-support-matrix}
 
 | 路径 | 起始产物 | 支持范围 | 此路径不承诺的内容 | 何时需要商业支持 |
 | --- | --- | --- | --- | --- |
-| 本地开发和内部非生产环境 | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)，配合 `%%artifact.serverTagEnv%%` 或 `%%artifact.serverImageEnv%%` | 单台开发机器、局域网演示、共享预发布环境、SDK 和 Worker 集成测试 | 面向互联网的生产环境、持久备份保证、严格密钥轮换、多节点故障转移 | 希望协助将能运行的开发栈转为生产运维手册 |
-| 单节点生产 | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)，配合生产 env 文件、MySQL 和 Redis 卷、按角色限定权限的令牌、备份、反向代理 TLS，以及固定镜像标签或摘要 | 一台 VM、VPS 或内部 Docker 主机，具有持久工作流状态和简单运维模型 | 主机级高可用、自动数据库故障转移、多区域恢复、重大拓扑变化零停机 | 部署承载生产流量，希望审查备份、恢复、身份验证、TLS、升级或回滚流程 |
-| 小型集群部署 | 已发布 `durableworkflow/server` 或 `ghcr.io/durable-workflow/server` 镜像，以 [Compose 配方](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)作为容器/进程模板，包含 2 至 3 个 API 节点、共享外部 MySQL/PostgreSQL、共享 Redis、独立扩缩 Worker，以及恰好一个调度器/维护运行器 | 单节点不够时提供横向 API 和 Worker 容量；满足[滚动升级契约](/docs/rolling-upgrades)全部保证时进行滚动升级 | SQLite 集群、无 Redis 多节点模式、以重复调度器作为稳态拓扑、双活多写数据库、自托管无人值守区域故障转移、宽泛的“五个九”或“零停机”SLA 承诺，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要跨多主机容量、故障域、发布或恢复规划，或打算宣称受门槛限制的单区域高可用行为 |
-| Kubernetes Helm chart | 来自 `oci://ghcr.io/durable-workflow/charts/durable-workflow` 的 [Server 所属 Helm chart](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)，配合外部数据库、Redis、ingress 和密钥管理 | 对 chart 的 Server、Worker、单实例调度器、bootstrap、Service、探针和策略资源提供可重复的生产安装及升级路径 | 捆绑持久化、提供商托管基础设施、双活多区域、自定义 operator，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要提供商特定架构、容量、恢复，或超出 chart 已发布 values 契约的变更 |
-| 原始 Kubernetes 清单 | Server 仓库 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) 清单，使用已发布 Server 镜像及已有数据库、Redis、ingress 和密钥管理 | 已运维 Kubernetes，希望使用可检查的 API、Worker、调度器、bootstrap、Service、探针、配置和密钥清单的团队 | 独立 Helm 生命周期、托管 Kubernetes 提供商验证、双活多区域、自定义 operator、环境特定存储/网络/安全决策，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要覆盖配置、托管集群验证、提供商特定生产规划，或打算宣称受门槛限制的单区域高可用行为 |
+| 本地开发和内部非生产环境 | [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%)，配合 `%%artifact.serverImageEnv%%` | 单台开发机器、局域网演示、共享预发布环境、SDK 和 Worker 集成测试 | 面向互联网的生产环境、持久备份保证、严格密钥轮换、多节点故障转移 | 希望协助将能运行的开发栈转为生产运维手册 |
+| 单节点生产 | [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%)，配合生产 env 文件、MySQL 和 Server 存储卷、强共享令牌及按角色限定权限的令牌、备份、反向代理 TLS，以及固定镜像标签或摘要 | 一台 VM、VPS 或内部 Docker 主机，具有持久工作流状态和简单运维模型 | 主机级高可用、自动数据库故障转移、多区域恢复、重大拓扑变化零停机 | 部署承载生产流量，希望审查备份、恢复、身份验证、TLS、升级或回滚流程 |
+| 小型集群部署（PHP 2.x 契约） | 已发布 PHP 2.x `durableworkflow/server` 或 `ghcr.io/durable-workflow/server` 镜像，以 [PHP 2.11.8 Compose 配方](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)作为容器/进程模板，包含 2 至 3 个 API 节点、共享外部 MySQL/PostgreSQL、共享 Redis、独立扩缩 Worker，以及恰好一个调度器/维护运行器 | 单节点不够时提供横向 API 和 Worker 容量；满足[滚动升级契约](/docs/rolling-upgrades)全部保证时进行滚动升级 | SQLite 集群、无 Redis 多节点模式、以重复调度器作为稳态拓扑、双活多写数据库、自托管无人值守区域故障转移、宽泛的“五个九”或“零停机”SLA 承诺，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要跨多主机容量、故障域、发布或恢复规划，或打算宣称受门槛限制的单区域高可用行为 |
+| Kubernetes Helm chart | 来自 `oci://ghcr.io/durable-workflow/charts/durable-workflow` 的 [Server 所属 Helm chart](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)，配合外部 MySQL 或 PostgreSQL 数据库、ingress 和密钥管理 | 可重复的生产安装及升级路径。原生模式（默认）渲染一个 Server Deployment 及 Service、探针和策略资源；`runtime=php` 保留现有 PHP 2.x 安装的 Worker、单实例调度器、bootstrap 任务和 Redis | 捆绑持久化、提供商托管基础设施、双活多区域、自定义 operator，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要提供商特定架构、容量、恢复，或超出 chart 已发布 values 契约的变更 |
+| 原始 Kubernetes 清单（PHP 2.x 形态） | Server 仓库 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) 清单，使用已发布 PHP 2.x Server 镜像及已有数据库、Redis、ingress 和密钥管理 | 已运维 Kubernetes，希望使用可检查的 API、Worker、调度器、bootstrap、Service、探针、配置和密钥清单的团队 | 独立 Helm 生命周期、托管 Kubernetes 提供商验证、双活多区域、自定义 operator、环境特定存储/网络/安全决策，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要覆盖配置、托管集群验证、提供商特定生产规划，或打算宣称受门槛限制的单区域高可用行为 |
 | 主备多区域评估 | 每区域一个已验证单节点或小型集群部署，加主区域到备用区域的异步数据库复制，以及已审查的故障转移/回切手册 | 支持团队指导下的区域灾难恢复架构评估和环境特定演练 | 已验证的自助 2.0 契约、双活多区域、自动或无人值守区域故障转移、同步跨区域复制（RPO=0）、跨区域活动可见性或联合搜索，或引擎强制的区域固定任务队列路由轴 | 在生产中依赖跨区域复制、故障转移、回切、RPO 或 RTO 之前 |
 | 支持团队指导的拓扑 | 针对你的环境审查过的设计 | 自托管主备或双活多区域、无人值守区域故障转移、RPO=0 跨写入方复制、以重复调度器运行器作为稳态拓扑、定制安全/网络、私有 SLO、自定义覆盖配置、迁移规划 | 自助复制粘贴式运维 | 拓扑本身属于产品风险的一部分 |
+
+<ProductPromotion source="docs-v2-deployment">
+无需自行运营：Cloud 负责运营托管命名空间的运行时、持久化、放置和恢复，你的 PHP、Python 或 Rust Worker 使用角色限定凭据连接。
+</ProductPromotion>
 
 公开发行版重点优化本地开发、单节点生产和小型集群部署。Kubernetes 清单面向已运维 Kubernetes 的团队。主备多区域材料是支持团队指导的评估指南（参见下方[主备多区域](#activepassive-multi-region)），不是已验证的自助 2.0 契约。
 单区域高可用故障转移，即区域内的托管数据库故障转移、托管 Redis 故障转移、API 节点丢失、Worker 丢失和调度器运行器重启，在确切发布证据门槛未开放时仍需支持团队指导（参见下方[单区域高可用与故障转移](#single-region-high-availability-and-failover)）。对自托管 Server，双活多区域、自动区域故障转移、以重复调度器运行器作为稳态拓扑，以及提供商特定托管 Kubernetes 验证仍需支持团队指导，因为它们依赖你的数据库、缓存、网络、安全、运行器和升级选择。已发布 Helm chart 是这些相同操作人员负责边界内的自助打包路径。Cloud 当前提供单区域托管运维和恢复，不提供多区域复制或区域故障转移，参见 [Cloud 托管运行时](/docs/polyglot/cloud-control-plane)。商业支持模型参见[支持边界](/docs/support)。
@@ -70,20 +84,22 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 - GitHub Container Registry：`%%artifact.serverGhcrImage%%`
 - 摘要固定：`durableworkflow/server@sha256:...` 或 `ghcr.io/durable-workflow/server@sha256:...`
 
-可变标签仅用于本地实验。生产 env 文件应固定具体版本标签或摘要，让升级和回滚步骤可审计。
+可变标签仅用于本地实验。生产 env 文件应固定具体版本标签或摘要，让升级和回滚步骤可审计。原生发布的主版本号为 3；滚动标签 `3` 和 `latest` 会随每个新的原生发布移动，`2` 则停留在最后一个 PHP 2.x 发布。
 
 ## 本地开发和内部非生产环境 {#local-development-and-internal-non-production}
 
-需要无需源码、由 MySQL 和 Redis 支撑的栈时，使用已发布镜像 Compose 配方：
+需要无需源码的栈（原生 Server 和 MySQL）时，使用已发布镜像 Compose 配方。从所选发布获取该文件，并用 `DW_SERVER_IMAGE` 固定镜像：
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-export %%artifact.serverTagEnv%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
 docker compose -f docker-compose.published.yml up -d --wait
 ```
+
+未设置 `DW_AUTH_TOKEN` 时，Compose 会拒绝启动。该文件仅在 `127.0.0.1:8080` 上发布 API，不发布 MySQL。如需远程访问，请将 `SERVER_BIND_ADDRESS` 设为受保护的私有网络接口。
 
 验证 API、就绪状态、集群发现和 Worker 注册：
 
@@ -101,7 +117,7 @@ curl -X POST http://localhost:8080/api/worker/register \
   -d '{"worker_id":"compose-worker","task_queue":"compose","runtime":"python"}'
 ```
 
-此路径适用于开发和内部预发布，但不是生产安全边界：示例使用一个兼容令牌、默认服务密码、本地命名卷，且没有 TLS。
+此路径适用于开发和内部预发布，但不是生产安全边界：示例使用一个共享令牌、默认服务密码、本地命名卷，且没有 TLS。
 
 ## 单节点生产 {#single-node-production}
 
@@ -110,8 +126,8 @@ curl -X POST http://localhost:8080/api/worker/register \
 ```env
 %%artifact.serverImageEnv%%
 SERVER_PORT=8080
-APP_ENV=production
-APP_DEBUG=false
+# Loopback by default. Use a protected private interface for the reverse proxy.
+SERVER_BIND_ADDRESS=127.0.0.1
 
 DB_DATABASE=durable_workflow
 DB_USERNAME=workflow
@@ -119,11 +135,14 @@ DB_PASSWORD=replace-with-random-password
 DB_ROOT_PASSWORD=replace-with-random-root-password
 
 DW_AUTH_DRIVER=token
-DW_AUTH_BACKWARD_COMPATIBLE=false
+# Required. Native accepts the shared token for every role; keep it secret.
+DW_AUTH_TOKEN=replace-with-random-shared-token
 DW_WORKER_TOKEN=replace-with-worker-token
 DW_OPERATOR_TOKEN=replace-with-operator-token
 DW_ADMIN_TOKEN=replace-with-admin-token
 ```
+
+原生 Server 要求设置 `DW_AUTH_TOKEN`，并且在 `DW_AUTH_BACKWARD_COMPATIBLE=false` 时拒绝启动，因此无法禁用共享令牌。请像对待 admin 令牌一样保护它，并为 Worker 和应用分配权限更窄、按角色限定的令牌。
 
 使用该 env 文件启动：
 
@@ -135,22 +154,28 @@ docker compose --env-file durable-workflow.prod.env \
 按生产服务运维主机：
 
 - 在 API 容器前的反向代理中配置 TLS、公开路由、请求日志和 IP 允许列表。
-- 不要公开暴露 MySQL 或 Redis。
+- 不要公开暴露 MySQL。
 - Worker 使用 `DW_WORKER_TOKEN`，应用和操作流量使用 `DW_OPERATOR_TOKEN`，命名空间与管理工作使用 `DW_ADMIN_TOKEN`。
-- 每次镜像升级前备份 MySQL 卷，并定期备份。正常重启时应保留 Redis，但 MySQL 始终是持久工作流历史的事实来源。
+- 每次镜像升级前备份 MySQL 卷，并定期备份；它是持久工作流历史的事实来源。`server_storage` 卷保存 Server 的本地外部负载对象：请与 MySQL 一起备份，因为一个恢复点需要两者。参见[自托管备份与恢复流程](https://github.com/durable-workflow/server/blob/main/docs/self-hosted-backup-and-restore.md)。
 - 将确切 env 文件、镜像标签或摘要和数据库备份保存在一起，用于恢复。
 
 升级顺序：
 
-1. 备份 MySQL，记录当前镜像引用。
-2. 仅修改 `DW_SERVER_IMAGE` 或 `DW_SERVER_TAG`。
-3. 拉取新镜像。
+1. 备份 MySQL 和 `server_storage`，记录当前镜像引用。
+2. 仅修改 `DW_SERVER_IMAGE`。
+3. 使用 `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml pull` 拉取新镜像。
 4. 运行 `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`。
 5. 切换外部流量前，确认 `/api/ready`、`/api/cluster/info` 和 Worker 注册。
 
-Server README 的[官方镜像 + Compose](https://github.com/durable-workflow/server#official-image--compose)部分维护最新命令级 Compose 示例。
+原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
 ## 小型集群部署 {#small-clustered-deployments}
+
+:::note PHP Server 2.x 契约
+
+已验证的小型集群契约及其 CI 测试工具使用 PHP 2.x Server：共享 Redis、一个队列 Worker 和恰好一个调度器。原生 3.x 没有这些角色，也尚未发布原生 Compose 小型集群配方或测试工具。如需多个原生 Server 副本，请使用 [Helm chart 的原生模式](#helm-chart-for-kubernetes)，配合外部 MySQL 或 PostgreSQL 数据库，以及用于负载存储的 ReadWriteMany 卷。
+
+:::
 
 小型集群是单节点模型的适度扩展。已验证自助契约刻意保持狭窄：
 
@@ -227,6 +252,8 @@ Worker 重连不证明原代理配置健康。确认轮询和任务完成是否�
 
 ### 统计所有使用 SQL 的进程 {#count-every-sql-owning-process}
 
+原生 3.x Server 进程最多打开四个数据库连接，`schema-upgrade` 或接管命令运行期间还会再打开一个。请按最高副本数计算，为每个原生 Server 副本预留四个会话，再加上下面的运维工具。本节其余部分描述 PHP 2.x。
+
 已发布的 PHP Compose 部署包含以下潜在 SQL 客户端：
 
 | 角色 | 统计对象 |
@@ -280,11 +307,9 @@ Worker 重连不证明原代理配置健康。确认轮询和任务完成是否�
 5. 接近上限时，减少重叠数量，或先排空并退役一组旧 API/Worker，再启动替代组。
    保留恢复访问，只在计划的迁移窗口执行初始化。安全重叠无法容纳时，使用文档中的全停机升级方式。
 
-[任务队列准入](/docs/polyglot/task-queue-admission)限制特定的分发和租约活动。
-`DW_WORKER_LONG_POLL_MAX_CONCURRENT` 和 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` 限制每个节点等待中的轮询。
-它们都不是全局 SQL 会话、数据库字节数或 commit 延迟上限。也要为完成提交、心跳、运维请求和健康检查保留容量。
+在 PHP 2.x 上，[任务队列准入](/docs/polyglot/task-queue-admission)限制特定的分发和租约活动，`DW_WORKER_LONG_POLL_MAX_CONCURRENT` 和 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` 限制每个节点等待中的轮询。它们都不是全局 SQL 会话、数据库字节数或 commit 延迟上限。也要为完成提交、心跳、运维请求和健康检查保留容量。原生 3.x 在设置了任务队列准入上限时拒绝启动，并忽略这两个轮询上限；目前尚无原生替代方案。原生 Server 的 SQL 会话由每个进程固定四个连接的连接池限制；请根据任务并发来调整 SDK Worker 执行槽数量和 Worker 数量。
 
-以直接连接可写数据库端点为基线。连接代理必须按准确的 Server 版本、连接池模式，以及预处理语句、事务边界、会话状态和锁设置进行验证。**PgBouncer 事务池需要已修复的 Server 2.9.8 或更高版本。** [已发布 2.9.8 的验收记录](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)验证了 PostgreSQL 16.15 与 PgBouncer 1.26.1：直接连接 PostgreSQL、会话池，以及 `max_prepared_statements=0` 或 `max_prepared_statements=200` 的事务池。这表示最低兼容版本和准确的已测配置，并非要求固定到最新版本，也不保证容量；其他组合需单独验证。接纳流量之前，请针对所选端点执行正常的 `server-bootstrap` 初始化。
+以直接连接可写数据库端点为基线。连接代理必须按准确的 Server 版本、连接池模式，以及预处理语句、事务边界、会话状态和锁设置进行验证。**PgBouncer 事务池需要已修复的 Server 2.9.8 或更高版本。** [已发布 2.9.8 的验收记录](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)验证了 PostgreSQL 16.15 与 PgBouncer 1.26.1：直接连接 PostgreSQL、会话池，以及 `max_prepared_statements=0` 或 `max_prepared_statements=200` 的事务池。这表示最低兼容版本和准确的已测配置，并非要求固定到最新版本，也不保证容量；其他组合需单独验证。接纳流量之前，请针对所选端点执行 PHP 2.x 的正常 `server-bootstrap` 初始化，或让原生 3.x 在启动时通过该端点检查其数据库模式。
 
 `GET /api/ready` 会执行绑定参数的数据库读取（`bound_read_query`）及已配置的就绪检查，并明确保留“写入容量未验证”的边界。TCP 连接、迁移或就绪响应成功，不能证明所有工作流 SQL 操作均可用或提交容量充足。只读副本不能替代负责认领和持久状态转换的权威写入节点。
 
@@ -300,7 +325,9 @@ helm install durable-workflow \
   -f my-values.yaml
 ```
 
-values 文件必须指向外部 MySQL/PostgreSQL 和 Redis，通过已有 Kubernetes Secret 提供生产凭据，并为环境配置 ingress/TLS。Chart 不会创建持久化存储或提供商托管基础设施。为了可复现部署，请按摘要固定 Server 镜像。
+Chart 1.x 默认运行原生 Server（`runtime: native`）：一个 Server Deployment，没有 Worker、调度器、迁移 Job 或 Redis。values 文件必须指向外部 MySQL、MariaDB 或 PostgreSQL 数据库，通过已有 Kubernetes Secret 提供 `DW_AUTH_TOKEN` 和按角色限定权限的令牌，并为环境配置 ingress/TLS。缺少共享 `DW_AUTH_TOKEN` 时 Chart 会拒绝渲染，也不接受 SQLite。原生安装默认运行一个副本；运行多个副本或启用自动扩缩时，必须通过 `native.storage.existingClaim` 指定一个用于外部负载对象的 ReadWriteMany 卷。Chart 不会创建持久化存储或提供商托管基础设施。为了可复现部署，请按摘要固定 Server 镜像。
+
+现有 PHP 2.x 发布不会在普通升级中迁移到原生 Server：在你显式设置 `runtime` 之前，Chart 会拒绝升级。设置 `runtime: php` 可保留 PHP 2.x 的 Worker、调度器、bootstrap 任务和 Redis。要迁移到 `runtime: native`，请按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)操作，并在接管完成之前保持 `runtime: php`。参见 Chart 的 [UPGRADING 说明](%%artifact.helmChartUpgradeUrl%%)。
 
 ### 选择 Chart 版本 {#helm-chart-selection}
 
@@ -314,7 +341,7 @@ values 文件必须指向外部 MySQL/PostgreSQL 和 Redis，通过已有 Kubern
 
 ## Kubernetes 清单 {#kubernetes-manifests}
 
-Server 仓库在 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) 下提供面向已运维 Kubernetes 团队的原始清单：
+Server 仓库在 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) 下提供面向已运维 Kubernetes 团队的原始清单。这些清单描述的是 PHP 2.x 形态；对于原生 Server，请使用 Helm chart 的原生模式，或参照其单个 Server Deployment 自行调整：
 
 - Namespace 和共享标签
 - ConfigMap 与 Secret 分离
@@ -343,7 +370,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 ## 在 Kubernetes 上运行 SDK Worker {#sdk-workers-on-kubernetes}
 
-将应用的 Worker 与 Server 的 Laravel 队列 Worker 分开部署。构建包含已注册 PHP、Python 或 Rust 处理函数及锁定 SDK 依赖的镜像。使用 exec 形式的 entrypoint，让 Worker 进程能够接收 `SIGTERM`。将下方镜像替换为该构建不可变的 digest。
+将应用的 Worker 与 Server 分开部署；在 PHP 2.x 上，还要与其 Laravel 队列 Worker 分开部署。构建包含已注册 PHP、Python 或 Rust 处理函数及锁定 SDK 依赖的镜像。使用 exec 形式的 entrypoint，让 Worker 进程能够接收 `SIGTERM`。将下方镜像替换为该构建不可变的 digest。
 
 对于同一集群内的 Worker，使用 Server Service 的实际名称、命名空间和端口。原始清单公开 `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080`。Helm 发布可能使用不同的 Service 名称。集群外的 Worker 需要可访问的 ingress 或负载均衡器 HTTPS URL，并正常验证证书。按[超时指南](#worker-long-poll-timeout-budgets)协调长轮询和传输时间预算。
 
@@ -435,7 +462,7 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 ### 发布证据状态 {#release-evidence-status}
 
-当前文档所述公开 Server 发布尚无链接的通过确切发布验证结果。记录的已发布镜像尝试在 `topology_start` 阶段等待 API 就绪时停止，尚不能建立任何故障矩阵或恢复边界声明。不要把运行器存在、场景清单或某个部署的演练，当作已发布镜像通过完整矩阵的证据。因此单区域高可用仍由支持团队指导。
+任何公开 Server 发布都尚无链接的通过确切发布验证结果。下述候选拓扑、运行器和恢复边界是为 PHP 2.x Server（共享 Redis、一个队列 Worker 和单实例调度器）编写的。记录的 PHP 已发布镜像尝试在 `topology_start` 阶段等待 API 就绪时停止，尚不能建立任何故障矩阵或恢复边界声明。尚未为原生 3.x Server 发布故障转移运行器，其 `GET /api/cluster/info` 报告 `single_region_failover_contract: false`。不要把运行器存在、场景清单或某个部署的演练，当作已发布镜像通过完整矩阵的证据。因此单区域高可用仍由支持团队指导。
 
 只有无需源码的运行对镜像、运行器和 Compose 拓扑使用文档中的同一确切 Server 发布，并发布满足以下条件的 `single-region-failover-result.json` 后，才允许使用自助表述：`outcome: "pass"`、`runner_blocked: false`、`phase_outcomes` 每项均为 `status: "pass"`、每个恢复边界判定通过，以及公开[单区域故障转移场景清单](/platform-conformance/single-region-failover-scenarios.json)中每个必需场景均有证据。该公开通过结果必须从本状态节链接，并指定与 `%%artifact.serverDockerHubImage%%` 相同的 Server 镜像。在所有条件满足前，下述恢复边界是评估目标，而非已发布镜像验证声明。
 
@@ -472,11 +499,11 @@ API 节点前的负载均衡器是故障转移期间流量准入的唯一决策�
 
 ### 运行确切产物演练 {#run-the-exact-artifact-rehearsal}
 
-Server 发布包含可复用的基线演练，目标是不从检出源码构建产品代码也能执行完整故障矩阵。运行器和 Compose 拓扑必须来自与 Server 镜像相同的发布标签；不要混用持续变化的默认分支检出和任意镜像。在具有 Docker Engine、Docker Compose v2、Python 3.11 或更新版本，以及公开镜像仓库访问权限的干净主机上运行：
+PHP Server 2.x 发布包含可复用的基线演练，目标是不从检出源码构建产品代码也能执行完整故障矩阵。其 Compose 拓扑会启动仅 PHP 才有的角色（bootstrap 任务、队列 Worker 和调度器），因此无法运行原生 3.x 镜像。下面的示例使用最后一个 PHP 发布 2.11.8。运行器和 Compose 拓扑必须来自与 Server 镜像相同的发布标签；不要混用持续变化的默认分支检出和任意镜像。在具有 Docker Engine、Docker Compose v2、Python 3.11 或更新版本，以及公开镜像仓库访问权限的干净主机上运行：
 
 <!-- docs-example id="single-region-failover-exact-release" -->
 ```bash
-export DW_SERVER_RELEASE=%%artifact.serverVersion%%
+export DW_SERVER_RELEASE=2.11.8
 git clone --depth 1 --single-branch --branch "$DW_SERVER_RELEASE" \
   https://github.com/durable-workflow/server.git "server-$DW_SERVER_RELEASE"
 cd "server-$DW_SERVER_RELEASE"
@@ -519,7 +546,7 @@ scripts/conformance/single-region-failover-published-artifacts.sh \
 
 ## 主备多区域 {#activepassive-multi-region}
 
-主备多区域是**支持团队指导的评估指南**，不是受支持 2.0 运行边界内已验证的自助契约。用本节审查候选架构，并在支持团队协助下构建环境特定演练，再在生产中依赖它。每个区域仍从文档中的单节点、小型集群或原始 Kubernetes 路径开始，但这些单区域契约并不证明跨区域复制、故障转移、回切、RPO、RTO 或脑裂行为。更深入的设计材料，包括数据权威、复制假设、命名空间/任务队列/Worker 行为、故障转移和回切手册、隔离及一致性/延迟权衡，位于 Workflow 库的 [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md) 和独立 Server 的 [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md)。
+主备多区域是**支持团队指导的评估指南**，不是受支持 2.0 运行边界内已验证的自助契约。用本节审查候选架构，并在支持团队协助下构建环境特定演练，再在生产中依赖它。每个区域仍从文档中的单节点、小型集群或原始 Kubernetes 路径开始，但这些单区域契约并不证明跨区域复制、故障转移、回切、RPO、RTO 或脑裂行为。更深入的设计材料，包括数据权威、复制假设、命名空间/任务队列/Worker 行为、故障转移和回切手册、隔离及一致性/延迟权衡，位于 Workflow 库的 [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md) 和独立 Server 的 [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md)。这些材料和下述候选形态是为 PHP 2.x 拓扑编写的。原生 3.x Server 没有 Redis 或独立调度器，也尚未发布原生多区域演练。
 
 待评估的候选形态：
 

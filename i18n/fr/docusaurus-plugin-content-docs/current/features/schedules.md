@@ -54,6 +54,26 @@ Le `scheduleId` est un identifiant unique choisi par l’utilisateur. Chaque ex�
 | `executionTimeoutSeconds` | `int\|null` | `null` | Délai d’expiration de chaque exécution logique, nouvelles tentatives et continuations incluses |
 | `runTimeoutSeconds` | `int\|null` | `null` | Délai de chaque exécution individuelle, réinitialisé à chaque continuation |
 
+### Fuseaux horaires et changements d’heure {#time-zones-and-daylight-saving-time}
+
+Les expressions cron sélectionnent des heures locales dans le fuseau
+`timezone` de la planification. Les changements d’heure suivent ces règles :
+
+- Lorsque le champ des heures sélectionne moins de 24 heures, une heure locale
+  répétée déclenche une seule exécution, lors de sa première occurrence. À New
+  York, `30 1 * * *` se déclenche à 01:30 EDT le jour du passage à l’heure d’hiver.
+- Une heure locale sautée lors du passage à l’heure d’été déclenche une seule
+  exécution, décalée de la durée du saut. À New York, `30 2 * * *` se déclenche
+  à 03:30 ce jour-là.
+- Un champ sélectionnant les 24 heures, notamment `*`, `*/1` ou `0-23`,
+  conserve le rythme du temps réellement écoulé pendant l’heure répétée. Par
+  exemple, `*/15 * * * *` continue à se déclencher toutes les 15 minutes réelles
+  pendant les deux occurrences de l’heure répétée à New York.
+
+Utilisez `timezone: 'UTC'` pour éviter les changements d’heure locaux. Utilisez
+une spécification d’intervalle lorsqu’une durée fixe entre les exécutions
+compte davantage que l’heure locale.
+
 ### Délais d’expiration du workflow {#workflow-timeouts}
 
 Le délai d’exécution logique couvre les nouvelles tentatives et continuations.
@@ -265,11 +285,13 @@ $results = ScheduleManager::tick();
 // last_fired_at, and next_fire_at when those fields apply.
 ```
 
-`tick()` trouve les planifications actives dont `next_fire_at` est passé et les déclenche dans l’ordre. `occurrence_time` est l’échéance observée. Après chaque déclenchement, `next_fire_at` avance depuis l’heure courante jusqu’à la prochaine occurrence cron ou d’intervalle.
+`tick()` déclenche les planifications échues, c’est-à-dire les planifications actives dont `next_fire_at` est passé. Chaque appel en démarre au plus `$limit` (`tick(int $limit = 100)`), les plus anciennes d’abord, réparties en round-robin entre les espaces de noms. Les planifications échues au-delà de la limite restent échues pour l’appel suivant. `occurrence_time` est l’échéance observée. Après chaque déclenchement, `next_fire_at` avance depuis l’heure courante jusqu’à la prochaine occurrence cron ou d’intervalle.
 
 ### Politique des échéances manquées {#missed-fire-policy}
 
 L’évaluation en direct applique **un déclenchement, puis reprise**. Si le planificateur est arrêté pendant une ou plusieurs échéances nominales, le premier passage après récupération démarre un workflow pour le `next_fire_at` en retard, enregistre cette échéance comme `occurrence_time`, puis avance `next_fire_at` depuis l’heure courante. Les autres occurrences nominales passées pendant l’arrêt sont ignorées par l’évaluation en direct.
+
+La même règle s’applique lorsque le planificateur fonctionne mais ne suit pas le rythme. Une planification qui attend encore un passage quand arrive son échéance nominale suivante se déclenche une fois et ignore les occurrences intermédiaires. Voir [Taille des passages et rafales](#pass-size-and-bursts).
 
 Utilisez `backfill()` si chaque occurrence manquée doit s’exécuter. Le rattrapage énumère explicitement la fenêtre demandée et enregistre chaque occurrence séparément.
 
@@ -280,12 +302,7 @@ Exécutez un seul passage en ligne de commande :
 ```bash
 php artisan workflow:v2:schedule-tick
 php artisan workflow:v2:schedule-tick --json
-```
-
-Le serveur autonome expose le même passage avec sa propre commande :
-
-```bash
-php artisan schedule:evaluate --limit=100
+php artisan workflow:v2:schedule-tick --limit=500
 ```
 
 Pour évaluer les planifications en continu, appelez cette commande depuis le planificateur Laravel :
@@ -294,6 +311,40 @@ Pour évaluer les planifications en continu, appelez cette commande depuis le pl
 // app/Console/Kernel.php
 $schedule->command('workflow:v2:schedule-tick')->everyMinute();
 ```
+
+### Taille des passages et rafales {#pass-size-and-bursts}
+
+Chaque passage de `workflow:v2:schedule-tick` démarre au plus `limit` planifications échues et, séparément, vide au plus `limit` actions en tampon. `limit` provient de l’option `--limit`, sinon de `workflows.v2.schedules.tick_limit` (`DW_V2_SCHEDULE_TICK_LIMIT`), et vaut 100 par défaut. Une valeur qui n’est pas un entier positif fait échouer la commande sans évaluer aucune planification ; elle n’est jamais remplacée par une autre taille. Le paramètre et l’option nécessitent Workflow 2.16.0 ou ultérieur.
+
+Les deux lots sont répartis en round-robin entre les espaces de noms, les plus anciens d’abord, si bien qu’un espace de noms chargé ne peut pas retarder les autres. Les planifications échues au-delà de `limit` restent échues et sont reprises par le passage suivant. Lorsque `N` planifications arrivent à échéance ensemble, qu’aucune plus ancienne n’est échue et que chaque démarrage réussit, toutes se déclenchent en `ceil(N / limit)` passages au plus. Avec la recette exécutée chaque minute, la dernière démarre jusqu’à `ceil(N / limit) - 1` minutes après la première. Réglez `limit` à une valeur au moins égale à la plus grande rafale attendue.
+
+Ce délai est plus long lorsque :
+
+- un démarrage échoue : l’occurrence reste échue et est retentée lors des passages suivants, si bien qu’une planification qui échoue sans cesse continue d’occuper un emplacement tant qu’elle est la plus ancienne ;
+- des planifications arrivées à échéance plus tôt, ou d’autres planifications arrivant à échéance avant l’écoulement de la rafale, sont sélectionnées en premier ;
+- les passages s’exécutent en retard ou sont sautés.
+
+En cas de surcharge prolongée, une planification qui attend au-delà de son échéance nominale suivante se déclenche une fois et ignore les occurrences intermédiaires, comme décrit dans [Politique des échéances manquées](#missed-fire-policy). Utilisez `backfill()` si ces occurrences doivent s’exécuter.
+
+Configurez des alertes sur les métriques opérateur `schedules.missed`, `schedules.oldest_overdue_at` et `schedules.max_overdue_ms`, ainsi que sur les hausses de `schedules.failures_total`.
+
+:::note Mettre à niveau une application ayant publié sa configuration avant 2.16.0
+
+Laravel fusionne la configuration d’un paquet dans un fichier de configuration publié une clé de premier niveau à la fois. Une application qui a publié `config/workflows.php` avant 2.16.0 conserve son propre tableau `v2`, donc `DW_V2_SCHEDULE_TICK_LIMIT` n’est pas lu : la commande utilise 100 et accepte toujours `--limit`. Pour utiliser ce paramètre, republiez le fichier de configuration ou ajoutez cette entrée au tableau `v2` de votre fichier publié :
+
+```php
+'schedules' => [
+    'tick_limit' => env('DW_V2_SCHEDULE_TICK_LIMIT', 100),
+],
+```
+
+:::
+
+### Server natif {#native-server}
+
+Server natif 3.x évalue lui-même les planifications : il n’y a donc aucune commande à exécuter ni à planifier. Chaque processus Server exécute une boucle de maintenance : il attend 250 ms, vide jusqu’à 100 actions en tampon et démarre jusqu’à 100 planifications échues, triées par `next_fire_at`, puis attend de nouveau. La taille des lots est fixe ; aucun paramètre ne permet de la modifier. Les passages de planification sont sérialisés entre les nœuds Server : ajouter des nœuds n’augmente donc pas le débit. Une rafale de `N` planifications échues se déclenche en `ceil(N / 100)` passages au plus, dans l’ordre des échéances.
+
+Un démarrage refusé par Server est enregistré comme un échec et la planification passe à son occurrence suivante : une planification en échec ne conserve donc pas son emplacement. Une planification dont la spécification ne peut pas être évaluée reste échue et est retentée à chaque passage. La commande `schedule:evaluate --limit` du PHP Server figé ne s’applique pas à Server natif.
 
 ## Nombre maximal d’exécutions {#max-runs}
 

@@ -88,6 +88,18 @@ SDK 维护的快速入门创建干净的 Composer 项目，定义带特性的工
 
 远程 Worker 通过 `registerWorkflow`、`registerActivity`、`registerQuery` 和 `registerUpdate` 注册工作流、活动、查询及更新处理器。完整参数及返回类型见生成的 [PHP SDK API 参考](https://php.durable-workflow.com/api/)。
 
+## 活动重试上下文与所属运行 {#activity-retry-context}
+
+PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retryInfo`、`$context->workflowId` 和 `$context->runId`。对于有次数上限的策略，使用 `$context->retryInfo->isLastConfiguredAttempt() === true` 判断是否已到达配置的最后一次尝试。`attemptNumber` 保留最初收到的尝试编号。
+
+重试快照区分三种状态：`policyProvided === false` 表示领取的任务未提供策略；提供的根值 `null` 表示未知的旧版策略；对象中显式设置的 `max_attempts: null` 才表示无限次尝试。仅凭 `maxAttempts()` 返回 `null` 不能认定重试次数无限。SDK 不会自行补充默认次数上限。取消、不可重试的失败、工作流关闭和期限届满都可能在次数用尽之前终止执行。
+
+工作流 ID 和运行 ID 标识活动最初所属的运行。旧版任务中缺失的身份仍为 `null`。本地活动保留已知的父级 ID，但不会继承远程活动的重试策略。向所属工作流发送信号时，必须具备这两个 ID，用 `runId` 固定目标运行，并在各次重试中复用同一个业务事件的稳定请求 ID。
+
+业务事件的信号处理必须保持幂等。仅有稳定的请求 ID 并不能保证信号只被接收一次。
+
+请参阅 PHP SDK 指南中的[最后一次尝试检查与向自身运行发送信号的完整示例](https://php.durable-workflow.com/build/workflows-activities/)。
+
 ## 活动心跳 {#activity-heartbeats}
 
 对于远程活动，在有界工作期间调用 `ActivityContext::heartbeat($details)`，并在配置的心跳超时到期前留足时间。第一个窗口从运行时领取任务开始，而不是 PHP 收到任务时开始。请求延迟、暂停和传输重试都会消耗该窗口。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。
@@ -157,3 +169,23 @@ PHP SDK 独立于 Laravel 包进行版本管理。可运行示例中保留精确
 ## 工作流列表与历史页面 {#workflow-list-and-history-pages}
 
 这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义当前参数；这里不声称新增自动迭代器。
+
+## 有界失败报告 {#bounded-failure-reports}
+
+PHP SDK **3.5.0** 为发出的失败报告引入了大小限制。默认上限为：**消息使用 UTF-8 编码后 62 KiB**、**堆栈 128 KiB**、**可选详情和诊断信息序列化后合计 64 KiB**，以及 **JSON 编码后的完整请求体 1 MiB**。标记、JSON 转义、租约身份和批次中的其他命令都计入请求体上限。配置或传输实现声明的上限更低时，以较低值为准。失败类型、类、代码、重试策略和租约身份会保留。
+
+`withFailureReportLimit()` 返回一个新客户端，将完整请求的上限降低到 1 至 1,048,576 字节之间。请使用返回的实例。传输实现声明了更低上限时，也会采用该上限。
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+被缩短的字段带有可见的截断标记和原始字节数。Avro 详情要么完整保留，要么整体省略。无法表示必需的信封时，会在发送 HTTP 请求前抛出 `DurableWorkflow\Exception\FailureReportRefused`。本地失败会在工作流代码读取前规范化，因此首次执行和冷重放读取的是同一条已持久化消息。已经读取的本地消息在最终调整批次大小时保持不变。

@@ -75,39 +75,43 @@ $workflow->output();
 
 ## Modelle {#models}
 
-Das Übergeben von Modellen funktioniert ähnlich wie `SerializesModels`.
+V2-Payloads verwenden ein portables Werteformat. Ein Eloquent-Modell kann daher kein Argument oder Ergebnis eines Workflows oder einer Aktivität sein. Übergeben Sie den Schlüssel des Modells und laden Sie das Modell in der Aktivität, die es verwendet.
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-Wird ein Eloquent-Modell an einen Workflow oder eine Aktivität übergeben, wird
-nur sein `ModelIdentifier` serialisiert. Das verringert die Payload-Größe und
-hält Ihre Workflows effizient und leistungsfähig.
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-Wenn der Workflow oder die Aktivität läuft, wird die vollständige Modellinstanz
-einschließlich geladener Beziehungen aus der Datenbank abgerufen. Wenn Sie
-zusätzliche Datenbankaufrufe während der Ausführung vermeiden möchten, können
-Sie das Modell vor der Übergabe in ein Array umwandeln.
+Laden Sie Modelle in Aktivitäten, nicht im Workflow-Code. Workflow-Code wird beim Replay erneut ausgeführt, und eine Datenbankabfrage kann bei einem späteren Replay andere Zeilen liefern.
+
+Wenn Sie ein Modell an `start()` übergeben, wird eine `InvalidArgumentException` ausgelöst. Wenn Sie ein Modell an `activity()` übergeben, schlägt der Workflow-Lauf fehl. Beide Fehlermeldungen beginnen mit `unsupported_value_type`.
+
+Dieselbe Regel gilt für Eloquent-Collections. Übergeben Sie stattdessen ein Array von Schlüsseln. Wenn die Aktivität nur wenige Attribute benötigt, übergeben Sie nur diese Werte als Array. Die Workflow-Historie speichert sie, daher dürfen sie niemals Zugangsdaten oder andere Geheimnisse enthalten.
+
+In v1 erhielten Workflows und Aktivitäten Modelle über `SerializesModels`. Dabei wurde ein Modellbezeichner gespeichert und das Modell bei der Ausführung des Jobs neu geladen. V2 macht das nicht.
 
 ## Dependency Injection {#dependency-injection}
 

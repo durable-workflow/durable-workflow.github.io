@@ -26,6 +26,20 @@ keywords:
 
 キューがレート制限された依存先と結びつく場合、複数テナントが同じ Server を共有する場合、またはワークフローの待機理由を説明する必要がある場合に受け入れ制御を使います。
 
+:::note ネイティブ Server 3.x
+
+ネイティブ 3.x Server は、このページで説明する Server 側の受け入れ制御をいずれも適用せず、現時点ではネイティブの代替手段もありません。次のいずれかで制限を設定すると、起動を拒否します。
+
+- ワークフロータスクまたはアクティビティタスクのリース上限・ディスパッチ上限、または `DW_TASK_QUEUE_ADMISSION_OVERRIDES`
+- namespace のリクエスト受付制限の設定
+- namespace の永続状態の制限
+
+`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT` と、それぞれの namespace ごとの設定は無視します。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` は未設定または `1024` のままにする必要があります。ネイティブは代わりに、namespace ごとに保留中またはリース中のクエリタスクを16件までとする固定の上限を適用し、それを超えるクエリは、PHP と同様に HTTP `429` と `query_task_queue_full` で拒否します。
+
+ネイティブでは、各 SDK Worker に設定したスロット数と Worker 数でタスクの並行数を制限します。`GET /api/task-queues/{name}` は `admission` の下に登録済みスロット数と、リース中・実行可能なタスク数を報告し、Server 側の制限と残り容量のフィールドはすべて `null` になります。[ネイティブ設定リファレンス](./server-config-reference.md#native-server-3x)を参照してください。このページの以降の内容は PHP Server 2.x について説明します。
+
+:::
+
 受け入れ制御はマッチング契約の上に位置します。これらの上限が次のタスクを通してよいか判断する前に、実行可能な処理を検出してリースする仕組みは[タスクのマッチングとディスパッチ](/docs/polyglot/task-matching-dispatch)を参照してください。
 
 ## 上限の適用方法 {#how-the-budget-is-applied}
@@ -123,6 +137,8 @@ JSON の `retry_after_seconds` と `Retry-After` ヘッダーは一致します�
 
 ## namespace の永続状態クォータ {#namespace-durable-state}
 
+これらのクォータは PHP Server 2.x の制御です。制限を設定すると、ネイティブ 3.x は起動を拒否します。
+
 `DW_NAMESPACE_DURABLE_LIMITS` は保持行数の既定上限、`DW_NAMESPACE_DURABLE_OVERRIDES` は namespace ごとの上書き、`DW_NAMESPACE_DURABLE_HARD_LIMITS` は回避できない hard cap です。空オブジェクトは上限を追加しません。override は既定値を増減でき、null は既定値へ戻ります。HTTP 制限と異なり、永続クォータの0は有効で、新規割り当てを防ぎます。例では既存 `payments` は open run を250、その他は100まで保持でき、hard cap は500です。
 
 ```dotenv
@@ -151,6 +167,8 @@ DW_NAMESPACE_DURABLE_OVERRIDES='{"payments":{"max_open_workflow_runs":250}}'
 管理メトリクスではリクエストヘッダーで namespace を選びます。`dw_namespace_durable_state_usage` と JSON の `limits`、`usage`、`remaining`、`configuration_status`、`measurement_status` がその範囲を示します。namespace はリクエストの範囲であり、無制限な metric label ではありません。計測不能は使用量0や無制限容量を意味しません。[完全な設定リファレンス](./server-config-reference.md#namespace-durable-controls)を参照してください。
 
 ## Server の設定 {#server-configuration}
+
+これらの設定は PHP Server 2.x に適用されます。リース上限、ディスパッチ上限、または `DW_TASK_QUEUE_ADMISSION_OVERRIDES` で制限を設定すると、ネイティブ 3.x は起動を拒否します。
 
 すべてのキューに同じ上限を適用する場合は、全体の上限を設定します。
 

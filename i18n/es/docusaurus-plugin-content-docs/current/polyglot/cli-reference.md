@@ -213,7 +213,7 @@ Utiliza los campos de resultado del puente en lugar de inferir comportamiento so
 | Comando | Finalidad | Opciones importantes |
 | --- | --- | --- |
 | `dw schedule:create` | Crear una programación. | `--schedule-id`, `--workflow-type`, `--cron`, `--interval`, `--task-queue`, `--timezone`, `--execution-timeout`, `--run-timeout`, `--overlap-policy`, `--jitter`, `--max-runs`, `--paused`, `--note`, opciones de entrada, `--json` |
-| `dw schedule:list` | Listar programaciones. | opciones globales de salida |
+| `dw schedule:list` | Listar programaciones. | `--status`, `--type`, `--query`, `--limit`, `--next-page-token`, `--json` |
 | `dw schedule:describe <schedule-id>` | Describir una programación. | `--json` |
 | `dw schedule:update <schedule-id>` | Actualizar especificación o entrada de workflow. | opciones de creación, opciones de entrada, `--json` |
 | `dw schedule:pause <schedule-id>` | Pausar una programación. | `--note`, `--json` |
@@ -223,6 +223,35 @@ Utiliza los campos de resultado del puente en lugar de inferir comportamiento so
 | `dw schedule:delete <schedule-id>` | Eliminar una programación. | `--json` |
 
 Utiliza `--cron` o `--interval` al crear programaciones basadas en intervalos. Utiliza `--paused` para registrar durante el despliegue sin iniciar trabajo todavía.
+
+### Filtrar y paginar programaciones {#schedule-list-filters}
+
+`dw schedule:list` devuelve una página filtrada en el espacio de nombres resuelto. Si se omite `--namespace`, se selecciona el espacio predeterminado resuelto, no todos los espacios. El estado, el tipo de workflow y los predicados de visibilidad se combinan con `AND`. La [verificación de los artefactos publicados normales de CLI y PHP Server](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) confirma estas opciones.
+
+| Opción de CLI | Parámetro de consulta de Server | Significado |
+| --- | --- | --- |
+| `--status` | `status` | `active` o `paused`. |
+| `--type` | `workflow_type` | Tipo exacto de workflow. |
+| `--query` | `query` | Expresión de visibilidad de programaciones. |
+| `--limit` | `page_size` | Tamaño de página de 1 a 200, 50 por defecto. |
+| `--next-page-token` | `next_page_token` | Token opaco de continuación de la respuesta anterior. |
+
+En un espacio `production` existente con el atributo keyword `Region` registrado, liste las programaciones pausadas de `orders.rollup` en la región `eu` y la cola de tareas `orders`:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json
+```
+
+Lea `next_page_token` en la respuesta JSON y asigne su valor a `NEXT_PAGE_TOKEN`. Repita el mismo espacio de nombres y los mismos filtros para la página siguiente:
+
+```bash
+dw schedule:list --namespace=production --status=paused --type=orders.rollup \
+  --query='Region = "eu" AND TaskQueue = "orders"' --limit=25 --json \
+  --next-page-token="$NEXT_PAGE_TOKEN"
+```
+
+Los tokens pertenecen al espacio de nombres y a la selección de filtros. Empiece de nuevo sin token tras cambiar filtros o recibir un rechazo por cursor obsoleto. Cada llamada lee una página actual, no una instantánea fija. Consulte las [restricciones y motivos de rechazo de la API de listas de programaciones](/docs/polyglot/server-api-reference#schedule-list-filters) para conocer la gramática admitida y los campos de respuesta.
 
 ## Comandos de workers y colas {#worker-and-task-queue-commands}
 

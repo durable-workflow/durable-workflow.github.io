@@ -4,6 +4,8 @@ title: Selbsthosting-Bereitstellungen
 description: Einen unterstützten Selbsthosting-Weg für Durable Workflow v2 und das passende Ausgangsartefakt wählen.
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Selbsthosting-Bereitstellungen {#self-hosting-deployments}
 
 Für den Wechsel zwischen selbst gehosteten Laufzeiten und Cloud folgen Sie [Workloads zwischen Laufzeiten verschieben](/docs/polyglot/runtime-migration/). Bestehende Läufe bleiben auf der Quelle, während neue Starts verlagert werden.
@@ -14,17 +16,52 @@ Dieser Leitfaden behandelt die eigenständige Serverdistribution. Betreiben Sie 
 
 Die selbst gehostete Serverdistribution enthält und betreibt Waterline nicht. Stellen Sie Waterline nur separat bereit, wenn Sie seine Operatoroberfläche benötigen. Verbinden Sie es nach dem [Leitfaden zu Waterline-Bereitstellung und -Überwachung](/docs/monitoring/#waterline-service) mit einem serververwalteten Namespace. Cloud enthält dagegen Managed Waterline für seinen verwalteten Namespace.
 
+Der aktuelle Server ist der native Server 3.x (`%%artifact.serverDockerHubImage%%`).
+Er läuft als ein Prozess pro Knoten: Er erstellt und prüft sein Datenbankschema beim Start selbst, löst Timer und Zeitpläne aus und führt seine Wartungsdurchläufe selbst aus. Es gibt daher keinen Bootstrap-Job, keinen Queue-Worker, keinen Scheduler und kein Redis. Der PHP-Server 2.x ist bei 2.11.8 eingefroren und erhält keine weiteren Veröffentlichungen.
+
+:::note Bestehende Installationen des PHP-Servers 2.x
+
+Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis)
+bleibt verfügbar. Am Veröffentlichungstag 2.11.8 ist er
+[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
+ab 3.0.0 führt das Serverrepository denselben Stack als
+[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
+Bestehende PHP-2.x-Installationen können mit `upgrade-takeover` auf den nativen
+Server wechseln; folgen Sie dazu dem
+[Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%).
+Die Übernahme ist auf dem veröffentlichten 3.0.4-Image (arm64) für Datenbanken
+qualifiziert, die PHP 2.11.8 auf SQLite, MySQL 8.0 und PostgreSQL 17 geschrieben
+hat. MariaDB, amd64 und Datenbanken aus anderen PHP-Releases (Schema-Layouts
+2.8.0–2.11.8) sind nur durch CI mit Builds aus dem Quellcode abgedeckt. Die
+Übernahme ist einseitig und erfordert vorab eine Sicherung; PHP muss gestoppt
+sein. Sie verweigert Datenbanken und Zustände, die sie nicht übernehmen kann; die
+[Ablehnungstabellen](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+des Runbooks führen jeden Fall auf. Proben Sie sie zuerst an einer
+wiederhergestellten Kopie Ihrer Sicherung. Nach der Übernahme gibt es kein
+Rollback auf PHP, und die Übernahme soll in der 3.1.x-Reihe als veraltet
+markiert werden. Abschnitte unten, die Redis, einen
+Queue-Worker, einen Scheduler oder Bootstrap erwähnen, beschreiben die PHP-2.x-Topologie.
+
+:::
+
 ## Unterstützungsmatrix der Bereitstellungen {#deployment-support-matrix}
 
 | Weg | Ausgangspunkt | Unterstützt für | Auf diesem Weg nicht zugesagt | Beginn kommerzieller Unterstützung |
 | --- | --- | --- | --- | --- |
-| Lokale Entwicklung und interne Nichtproduktion | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) mit `%%artifact.serverTagEnv%%` oder `%%artifact.serverImageEnv%%` | Einzelne Entwicklungsmaschine, LAN-Demos, gemeinsames Staging, SDK- und Worker-Integrationstests | Öffentlich erreichbare Produktion, dauerhafte Sicherungsgarantien, strikte Geheimnisrotation, Mehrknoten-Failover | Sie möchten einen funktionierenden Entwicklungsstack in eine Produktionsbetriebsanleitung überführen. |
-| Einzelknotenproduktion | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) mit Produktions-Env-Datei, MySQL- und Redis-Volumes, rollenbezogenen Tokens, Sicherungen, TLS über Reverse Proxy und festgelegten Image-Tags oder -Digests | Eine VM, ein VPS oder interner Docker-Host mit dauerhaftem Workflow-Zustand und einfachem Betriebsmodell | Host-Hochverfügbarkeit, automatisches Datenbank-Failover, regionsübergreifende Wiederherstellung, unterbrechungsfreie große Topologieänderungen | Die Bereitstellung bedient Produktionsverkehr, und Sie möchten Sicherung, Wiederherstellung, Authentifizierung, TLS, Upgrade oder Rollback prüfen lassen. |
-| Kleine Clusterbereitstellung | Veröffentlichte Images `durableworkflow/server` oder `ghcr.io/durable-workflow/server` mit dem [Compose-Rezept](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml) als Container-/Prozessvorlage, 2–3 API-Knoten, gemeinsamem externem MySQL/PostgreSQL, gemeinsamem Redis, unabhängig skalierten Workern und genau einem Scheduler/Wartungsprozess | Horizontale API- und Worker-Kapazität, wenn ein Knoten nicht mehr genügt; rollierende Upgrades bei Einhaltung aller Garantien des [Vertrags für rollierende Upgrades](/docs/rolling-upgrades) | SQLite-Clustering, Mehrknotenbetrieb ohne Redis, doppelte Scheduler als Dauertopologie, Aktiv/Aktiv-Datenbanken mit mehreren Schreibern, selbst gehostetes bedienungsfreies regionales Failover, pauschale SLA-Zusagen wie „fünf Neunen“ oder „keine Ausfallzeit“ und selbstständig nutzbares Einregionen-HA-Failover vor bestandener [Veröffentlichungsnachweisprüfung](#release-evidence-status) | Sie benötigen Dimensionierungs-, Ausfallbereichs-, Rollout- oder Wiederherstellungsplanung über mehrere Hosts oder wollen das nachweispflichtige Einregionen-HA-Verhalten beanspruchen. |
-| Helm-Chart für Kubernetes | Das [serververwaltete Helm-Chart](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow) aus `oci://ghcr.io/durable-workflow/charts/durable-workflow` mit eigener externer Datenbank, Redis, Ingress und Geheimnisverwaltung | Wiederholbarer Produktionsinstallations- und Upgradeweg für Server, Worker, Singleton-Scheduler, Bootstrap, Service, Prüfungen und Richtlinienressourcen des Charts | Mitgelieferte Persistenz, providerverwaltete Infrastruktur, Aktiv/Aktiv über mehrere Regionen, eigene Operatoren und selbstständig nutzbares Einregionen-HA-Failover vor bestandener [Veröffentlichungsnachweisprüfung](#release-evidence-status) | Sie benötigen providerspezifische Architektur, Kapazität, Wiederherstellung oder Änderungen außerhalb des veröffentlichten Values-Vertrags des Charts. |
-| Unveränderte Kubernetes-Manifeste | Die Manifeste unter [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) im Serverrepository mit veröffentlichten Serverimages sowie eigener Datenbank, Redis, Ingress und Geheimnisverwaltung | Teams, die Kubernetes bereits betreiben und prüfbare Manifeste für API, Worker, Scheduler, Bootstrap, Service, Prüfungen, Konfiguration und Geheimnisse möchten | Separater Helm-Lebenszyklus, Validierung verwalteter Kubernetes-Provider, Aktiv/Aktiv über mehrere Regionen, eigene Operatoren, umgebungsspezifische Speicher-/Netzwerk-/Sicherheitsentscheidungen und selbstständig nutzbares Einregionen-HA-Failover vor bestandener [Veröffentlichungsnachweisprüfung](#release-evidence-status) | Sie benötigen Overlays, Validierung verwalteter Cluster, providerspezifische Produktionsplanung oder wollen das nachweispflichtige Einregionen-HA-Verhalten beanspruchen. |
+| Lokale Entwicklung und interne Nichtproduktion | [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%) mit `%%artifact.serverImageEnv%%` | Einzelne Entwicklungsmaschine, LAN-Demos, gemeinsames Staging, SDK- und Worker-Integrationstests | Öffentlich erreichbare Produktion, dauerhafte Sicherungsgarantien, strikte Geheimnisrotation, Mehrknoten-Failover | Sie möchten einen funktionierenden Entwicklungsstack in eine Produktionsbetriebsanleitung überführen. |
+| Einzelknotenproduktion | [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%) mit Produktions-Env-Datei, Volumes für MySQL und Server-Speicher, einem starken gemeinsamen Token plus rollenbezogenen Tokens, Sicherungen, TLS über Reverse Proxy und festgelegten Image-Tags oder -Digests | Eine VM, ein VPS oder interner Docker-Host mit dauerhaftem Workflow-Zustand und einfachem Betriebsmodell | Host-Hochverfügbarkeit, automatisches Datenbank-Failover, regionsübergreifende Wiederherstellung, unterbrechungsfreie große Topologieänderungen | Die Bereitstellung bedient Produktionsverkehr, und Sie möchten Sicherung, Wiederherstellung, Authentifizierung, TLS, Upgrade oder Rollback prüfen lassen. |
+| Kleine Clusterbereitstellung (PHP-2.x-Vertrag) | Veröffentlichte PHP-2.x-Images `durableworkflow/server` oder `ghcr.io/durable-workflow/server` mit dem [PHP-2.11.8-Compose-Rezept](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) als Container-/Prozessvorlage, 2–3 API-Knoten, gemeinsamem externem MySQL/PostgreSQL, gemeinsamem Redis, unabhängig skalierten Workern und genau einem Scheduler/Wartungsprozess | Horizontale API- und Worker-Kapazität, wenn ein Knoten nicht mehr genügt; rollierende Upgrades bei Einhaltung aller Garantien des [Vertrags für rollierende Upgrades](/docs/rolling-upgrades) | SQLite-Clustering, Mehrknotenbetrieb ohne Redis, doppelte Scheduler als Dauertopologie, Aktiv/Aktiv-Datenbanken mit mehreren Schreibern, selbst gehostetes bedienungsfreies regionales Failover, pauschale SLA-Zusagen wie „fünf Neunen“ oder „keine Ausfallzeit“ und selbstständig nutzbares Einregionen-HA-Failover vor bestandener [Veröffentlichungsnachweisprüfung](#release-evidence-status) | Sie benötigen Dimensionierungs-, Ausfallbereichs-, Rollout- oder Wiederherstellungsplanung über mehrere Hosts oder wollen das nachweispflichtige Einregionen-HA-Verhalten beanspruchen. |
+| Helm-Chart für Kubernetes | Das [serververwaltete Helm-Chart](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow) aus `oci://ghcr.io/durable-workflow/charts/durable-workflow` mit eigener externer MySQL- oder PostgreSQL-Datenbank, Ingress und Geheimnisverwaltung | Wiederholbarer Produktionsinstallations- und Upgradeweg. Der native Modus (Standard) rendert ein Server-Deployment mit Service, Prüfungen und Richtlinienressourcen; `runtime=php` behält Worker, Singleton-Scheduler, Bootstrap-Job und Redis einer bestehenden PHP-2.x-Installation bei | Mitgelieferte Persistenz, providerverwaltete Infrastruktur, Aktiv/Aktiv über mehrere Regionen, eigene Operatoren und selbstständig nutzbares Einregionen-HA-Failover vor bestandener [Veröffentlichungsnachweisprüfung](#release-evidence-status) | Sie benötigen providerspezifische Architektur, Kapazität, Wiederherstellung oder Änderungen außerhalb des veröffentlichten Values-Vertrags des Charts. |
+| Unveränderte Kubernetes-Manifeste (PHP-2.x-Form) | Die Manifeste unter [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) im Serverrepository mit veröffentlichten PHP-2.x-Serverimages sowie eigener Datenbank, Redis, Ingress und Geheimnisverwaltung | Teams, die Kubernetes bereits betreiben und prüfbare Manifeste für API, Worker, Scheduler, Bootstrap, Service, Prüfungen, Konfiguration und Geheimnisse möchten | Separater Helm-Lebenszyklus, Validierung verwalteter Kubernetes-Provider, Aktiv/Aktiv über mehrere Regionen, eigene Operatoren, umgebungsspezifische Speicher-/Netzwerk-/Sicherheitsentscheidungen und selbstständig nutzbares Einregionen-HA-Failover vor bestandener [Veröffentlichungsnachweisprüfung](#release-evidence-status) | Sie benötigen Overlays, Validierung verwalteter Cluster, providerspezifische Produktionsplanung oder wollen das nachweispflichtige Einregionen-HA-Verhalten beanspruchen. |
 | Aktiv/Passiv-Evaluierung über mehrere Regionen | Validierte Einzelknoten- oder Kleinclusterbereitstellung je Region, asynchrone Datenbankreplikation von aktiv zu Standby und geprüfte Failover-/Failback-Betriebsanleitung | Supportbegleitete Architekturbewertung und umgebungsspezifische Probe regionaler Notfallwiederherstellung | Nachgewiesener selbstständig nutzbarer 2.0-Vertrag, Aktiv/Aktiv über mehrere Regionen, automatisches oder bedienungsfreies regionales Failover, synchrone regionsübergreifende Replikation (RPO=0), aktive regionsübergreifende Sichtbarkeit oder föderierte Suche oder von der Engine erzwungene regionsgebundene Aufgabenwarteschlangen als Routingachse | Bevor Sie in Produktion auf regionsübergreifende Replikation, Failover, Failback, RPO oder RTO vertrauen. |
 | Supportbegleitete Topologien | Geprüfter Entwurf für Ihre Umgebung | Selbst gehostetes Aktiv/Passiv oder Aktiv/Aktiv über mehrere Regionen, bedienungsfreies regionales Failover, RPO=0-Replikation zwischen Schreibern, doppelte Scheduler als Dauertopologie, individuelle Sicherheit/Netzwerke, private SLOs, eigene Overlays, Migrationsplanung | Selbstständig nutzbarer Betrieb durch Kopieren und Einfügen | Die Topologie selbst ist Teil des Produktrisikos. |
+
+<ProductPromotion source="docs-v2-deployment">
+Sie müssen ihn nicht selbst betreiben: Cloud betreibt Laufzeit, Persistenz,
+Platzierung und Wiederherstellung für einen verwalteten Namespace, und Ihre
+PHP-, Python- oder Rust-Worker verbinden sich mit rollenspezifischen
+Zugangsdaten.
+</ProductPromotion>
 
 Die öffentliche Distribution ist bewusst für lokale Entwicklung, Einzelknotenproduktion und kleine Cluster optimiert. Kubernetes-Manifeste stehen Teams zur Verfügung, die Kubernetes bereits betreiben. Material zu Aktiv/Passiv über mehrere Regionen ist ein supportbegleiteter Evaluierungsleitfaden, siehe [Aktiv/Passiv über mehrere Regionen](#activepassive-multi-region), kein nachgewiesener selbstständig nutzbarer 2.0-Vertrag.
 Einregionen-HA-Failover, also Failover verwalteter Datenbank und verwalteten Redis, Verlust eines API-Knotens oder Workers sowie Schedulerneustart innerhalb einer Region, bleibt supportbegleitet, solange die Prüfung exakter Veröffentlichungsnachweise geschlossen ist. Siehe [Hochverfügbarkeit und Failover in einer Region](#single-region-high-availability-and-failover). Für selbst gehostete Server bleiben Aktiv/Aktiv über mehrere Regionen, automatisches regionales Failover, doppelte Scheduler als Dauertopologie und providerspezifische Validierung verwalteten Kubernetes supportbegleitet. Sie hängen von Ihren Entscheidungen zu Datenbank, Cache, Netzwerk, Sicherheit, Ausführungsprozessen und Upgrades ab. Das veröffentlichte Helm-Chart ist ein selbstständig nutzbarer Paketierungsweg innerhalb derselben operatorverwalteten Grenzen. Cloud bietet derzeit verwalteten Betrieb und Wiederherstellung in einer Region, keine regionsübergreifende Replikation oder regionales Failover. Siehe [Verwaltete Cloud-Laufzeit](/docs/polyglot/cloud-control-plane) und die [Supportgrenze](/docs/support) zum kommerziellen Unterstützungsmodell.
@@ -70,20 +107,22 @@ Verwenden Sie für selbst gehostete Server veröffentlichte Images:
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
 - Digest-Festlegung: `durableworkflow/server@sha256:...` oder `ghcr.io/durable-workflow/server@sha256:...`
 
-Veränderliche Tags nur für lokale Experimente verwenden. Produktions-Env-Dateien sollten ein bestimmtes Versionstag oder Digest festlegen, damit Upgrade und Rollback nachvollziehbar sind.
+Veränderliche Tags nur für lokale Experimente verwenden. Produktions-Env-Dateien sollten ein bestimmtes Versionstag oder Digest festlegen, damit Upgrade und Rollback nachvollziehbar sind. Native Veröffentlichungen haben die Hauptversion 3; die rollierenden Tags `3` und `latest` wandern zu jeder neuen nativen Veröffentlichung, und `2` bleibt auf der letzten PHP-2.x-Veröffentlichung.
 
 ## Lokale Entwicklung und interne Nichtproduktion {#local-development-and-internal-non-production}
 
-Verwenden Sie das Compose-Rezept mit veröffentlichtem Image für einen Stack ohne Quellcode mit MySQL und Redis:
+Verwenden Sie das Compose-Rezept mit veröffentlichtem Image für einen Stack ohne Quellcode: den nativen Server und MySQL. Laden Sie die Datei aus der ausgewählten Veröffentlichung und legen Sie das Image mit `DW_SERVER_IMAGE` fest:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-export %%artifact.serverTagEnv%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
 docker compose -f docker-compose.published.yml up -d --wait
 ```
+
+Compose verweigert den Start, solange `DW_AUTH_TOKEN` nicht gesetzt ist. Die Datei veröffentlicht die API nur auf `127.0.0.1:8080` und veröffentlicht MySQL nicht. Setzen Sie für Fernzugriff `SERVER_BIND_ADDRESS` auf eine geschützte private Schnittstelle.
 
 Prüfen Sie API, Bereitschaft, Clusterermittlung und Worker-Registrierung:
 
@@ -101,7 +140,7 @@ curl -X POST http://localhost:8080/api/worker/register \
   -d '{"worker_id":"compose-worker","task_queue":"compose","runtime":"python"}'
 ```
 
-Dieser Weg eignet sich für Entwicklung und internes Staging. Er ist keine Produktionssicherheitsgrenze: Das Beispiel verwendet einen gemeinsamen Kompatibilitätstoken, Standarddienstpasswörter, lokale benannte Volumes und kein TLS.
+Dieser Weg eignet sich für Entwicklung und internes Staging. Er ist keine Produktionssicherheitsgrenze: Das Beispiel verwendet einen gemeinsamen Token, Standarddienstpasswörter, lokale benannte Volumes und kein TLS.
 
 ## Einzelknotenproduktion {#single-node-production}
 
@@ -110,8 +149,8 @@ Verwenden Sie dasselbe Compose-Artefakt mit Produktionskonfiguration außerhalb 
 ```env
 %%artifact.serverImageEnv%%
 SERVER_PORT=8080
-APP_ENV=production
-APP_DEBUG=false
+# Loopback by default. Use a protected private interface for the reverse proxy.
+SERVER_BIND_ADDRESS=127.0.0.1
 
 DB_DATABASE=durable_workflow
 DB_USERNAME=workflow
@@ -119,11 +158,17 @@ DB_PASSWORD=replace-with-random-password
 DB_ROOT_PASSWORD=replace-with-random-root-password
 
 DW_AUTH_DRIVER=token
-DW_AUTH_BACKWARD_COMPATIBLE=false
+# Required. Native accepts the shared token for every role; keep it secret.
+DW_AUTH_TOKEN=replace-with-random-shared-token
 DW_WORKER_TOKEN=replace-with-worker-token
 DW_OPERATOR_TOKEN=replace-with-operator-token
 DW_ADMIN_TOKEN=replace-with-admin-token
 ```
+
+Der native Server erfordert `DW_AUTH_TOKEN` und verweigert den Start mit
+`DW_AUTH_BACKWARD_COMPATIBLE=false`; das gemeinsame Token lässt sich daher nicht deaktivieren.
+Behandeln Sie es wie das Admin-Token und geben Sie Workern und Anwendungen die enger gefassten
+rollenbezogenen Tokens.
 
 Starten Sie mit dieser Env-Datei:
 
@@ -135,22 +180,33 @@ docker compose --env-file durable-workflow.prod.env \
 Betreiben Sie den Host als Produktionsdienst:
 
 - TLS, öffentliches Routing, Anfragelogs und IP-Zulassungslisten in einem Reverse Proxy vor dem API-Container platzieren.
-- MySQL und Redis nicht öffentlich freigeben.
+- MySQL nicht öffentlich freigeben.
 - `DW_WORKER_TOKEN` für Worker, `DW_OPERATOR_TOKEN` für Anwendungs- und Operatorverkehr sowie `DW_ADMIN_TOKEN` für Namespace- und Verwaltungsarbeit verwenden.
-- MySQL-Volume vor jedem Image-Upgrade und regelmäßig sichern. Redis sollte für geordnete Neustarts erhalten bleiben, aber MySQL bleibt die maßgebliche dauerhafte Workflow-Historienquelle.
+- MySQL-Volume vor jedem Image-Upgrade und regelmäßig sichern; es ist die maßgebliche dauerhafte Workflow-Historienquelle. Das Volume `server_storage` enthält die lokalen externen Payload-Objekte des Servers: Sichern Sie es zusammen mit MySQL, denn ein Wiederherstellungspunkt benötigt beide. Siehe das [Verfahren für Sicherung und Wiederherstellung im Selbstbetrieb](https://github.com/durable-workflow/server/blob/main/docs/self-hosted-backup-and-restore.md).
 - Genaue Env-Datei, Image-Tag oder Digest und Datenbanksicherung für Wiederherstellungen gemeinsam aufbewahren.
 
 Upgrade-Reihenfolge:
 
-1. MySQL sichern und aktuelle Image-Referenz festhalten.
-2. Ausschließlich `DW_SERVER_IMAGE` oder `DW_SERVER_TAG` ändern.
-3. Neues Image abrufen.
+1. MySQL und `server_storage` sichern und aktuelle Image-Referenz festhalten.
+2. Ausschließlich `DW_SERVER_IMAGE` ändern.
+3. Neues Image mit `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml pull` abrufen.
 4. `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` ausführen.
 5. Vor dem Wechsel externen Verkehrs `/api/ready`, `/api/cluster/info` und Worker-Registrierung bestätigen.
 
-Die Server-README enthält aktuelle Compose-Befehlsbeispiele unter [Offizielles Image + Compose](https://github.com/durable-workflow/server#official-image--compose).
+Der native Server prüft sein Schema beim Start. Patch-Veröffentlichungen innerhalb einer nativen Minor-Linie behalten das Schema bei, daher genügt ein Image-Wechsel. Eine Veröffentlichung, deren Hinweise eine Schemaänderung ankündigen, benötigt zusätzlich den Befehl `schema-upgrade` des Images, ausgeführt nach einer Datenbanksicherung, während alle Server gestoppt sind. Die Server-Referenz enthält aktuelle Compose-Befehlsbeispiele unter [Offizielles Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
 ## Kleine Clusterbereitstellungen {#small-clustered-deployments}
+
+:::note Vertrag des PHP-Servers 2.x
+
+Der validierte Kleincluster-Vertrag und sein CI-Testaufbau verwenden den PHP-2.x-Server:
+gemeinsames Redis, einen Queue-Worker und genau einen Scheduler. Der native Server 3.x hat
+keine dieser Rollen, und weder ein natives Compose-Rezept noch ein Testaufbau für kleine Cluster
+wurde veröffentlicht. Für mehr als ein Replikat des nativen Servers verwenden Sie den
+[nativen Modus des Helm-Charts](#helm-chart-for-kubernetes) mit einer externen
+MySQL- oder PostgreSQL-Datenbank und einem ReadWriteMany-Volume für Payload-Speicher.
+
+:::
 
 Ein kleiner Cluster erweitert das Einzelknotenmodell maßvoll. Der validierte selbstständig nutzbare Vertrag ist bewusst eng:
 
@@ -229,6 +285,12 @@ frei ist. Diese Grenze ist unabhängig von Schreib-/Commit-Latenz,
 HTTP-Anfragekapazität und dem Wachstum gespeicherter Daten.
 
 ### Alle Prozesse mit SQL-Verbindungen erfassen {#count-every-sql-owning-process}
+
+Ein nativer 3.x-Server-Prozess öffnet höchstens vier Datenbankverbindungen; ein
+`schema-upgrade`- oder Übernahmebefehl öffnet während seiner Ausführung eine
+weitere. Planen Sie vier Sitzungen pro Replikat des nativen Servers bei der
+höchsten Replikatzahl ein, zuzüglich der unten aufgeführten Betriebswerkzeuge.
+Der Rest dieses Abschnitts beschreibt PHP 2.x.
 
 Die veröffentlichte PHP-Compose-Bereitstellung umfasst diese möglichen SQL-Clients:
 
@@ -311,14 +373,19 @@ des Datenbankspeichers und der Arbeitslast.
    Migrationsfenster aus. Passt eine sichere Überlappung nicht, verwenden Sie
    das dokumentierte Upgrade-Verfahren mit vollständiger Unterbrechung.
 
-[Task-Queue-Zulassung](/docs/polyglot/task-queue-admission) begrenzt ausgewählte
-Dispatch- und Lease-Aktivität. `DW_WORKER_LONG_POLL_MAX_CONCURRENT` und
+Unter PHP 2.x begrenzt die
+[Task-Queue-Zulassung](/docs/polyglot/task-queue-admission) ausgewählte
+Dispatch- und Lease-Aktivität, und `DW_WORKER_LONG_POLL_MAX_CONCURRENT` und
 `DW_QUERY_TASK_POLL_MAX_CONCURRENT` begrenzen wartende Polls je Knoten. Keine
 dieser Einstellungen begrenzt global SQL-Sitzungen, Datenbankbytes oder
 Commit-Latenz. Halten Sie auch Kapazität für Abschlüsse, Heartbeats,
-Operatoranfragen und Zustandsprüfungen frei.
+Operatoranfragen und Zustandsprüfungen frei. Der native 3.x-Server verweigert
+den Start mit Grenzen der Task-Queue-Zulassung und ignoriert beide Poll-Grenzen;
+ein natives Gegenstück gibt es dafür noch nicht. Sein fester Pool von vier
+Verbindungen pro Prozess begrenzt seine SQL-Sitzungen; dimensionieren Sie
+SDK-Worker-Slots und Worker-Anzahl nach der benötigten Task-Nebenläufigkeit.
 
-Verwenden Sie einen direkt erreichbaren beschreibbaren Datenbankendpunkt als Ausgangspunkt. Ein Verbindungsproxy muss mit exakter Server-Version, Poolmodus und Einstellungen für vorbereitete Anweisungen, Transaktionsgrenzen, Sitzungszustand und Sperren qualifiziert werden. **PgBouncer-Transaktionspooling erfordert den korrigierten Server ab Version 2.9.8.** Die [Abnahme der veröffentlichten Version 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifiziert PostgreSQL 16.15 mit PgBouncer 1.26.1: direkte PostgreSQL-Verbindung, Sitzungspooling und Transaktionspooling mit `max_prepared_statements=0` oder `max_prepared_statements=200`. Das bezeichnet eine Kompatibilitätsuntergrenze und eine exakt geprüfte Konfiguration, keine Empfehlung zur neuesten Version oder Kapazitätsgarantie; prüfen Sie andere Kombinationen gesondert. Führen Sie vor der Verkehrsfreigabe die normale Initialisierung mit `server-bootstrap` über den gewählten Endpunkt aus.
+Verwenden Sie einen direkt erreichbaren beschreibbaren Datenbankendpunkt als Ausgangspunkt. Ein Verbindungsproxy muss mit exakter Server-Version, Poolmodus und Einstellungen für vorbereitete Anweisungen, Transaktionsgrenzen, Sitzungszustand und Sperren qualifiziert werden. **PgBouncer-Transaktionspooling erfordert den korrigierten Server ab Version 2.9.8.** Die [Abnahme der veröffentlichten Version 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifiziert PostgreSQL 16.15 mit PgBouncer 1.26.1: direkte PostgreSQL-Verbindung, Sitzungspooling und Transaktionspooling mit `max_prepared_statements=0` oder `max_prepared_statements=200`. Das bezeichnet eine Kompatibilitätsuntergrenze und eine exakt geprüfte Konfiguration, keine Empfehlung zur neuesten Version oder Kapazitätsgarantie; prüfen Sie andere Kombinationen gesondert. Führen Sie vor der Verkehrsfreigabe unter PHP 2.x die normale Initialisierung mit `server-bootstrap` über den gewählten Endpunkt aus, oder lassen Sie den nativen Server 3.x sein Schema beim Start über diesen Endpunkt prüfen.
 
 `GET /api/ready` führt eine Datenbank-Leseabfrage mit gebundenen Parametern (`bound_read_query`) und konfigurierte Bereitschaftsprüfungen aus; die Schreibkapazität bleibt ausdrücklich ungeprüft. Erfolgreiche TCP-Verbindungen, Migrationen oder Bereitschaftsantworten beweisen nicht jede Workflow-SQL-Operation oder die Commit-Kapazität. Lesereplikate dürfen den maßgeblichen Schreiber für Claims und dauerhafte Übergänge nicht ersetzen.
 
@@ -334,7 +401,9 @@ helm install durable-workflow \
   -f my-values.yaml
 ```
 
-Ihre Values-Datei muss auf externes MySQL/PostgreSQL und Redis verweisen, Produktionszugangsdaten über vorhandene Kubernetes Secrets bereitstellen und ingress/TLS für Ihre Umgebung konfigurieren. Das Chart erstellt weder Persistenz noch vom Anbieter verwaltete Infrastruktur. Fixieren Sie das Server-Image für ein reproduzierbares Deployment per Digest.
+Chart 1.x betreibt standardmäßig den nativen Server (`runtime: native`): ein Server-Deployment ohne Worker, Scheduler, Migrations-Job oder Redis. Ihre Values-Datei muss auf eine externe MySQL-, MariaDB- oder PostgreSQL-Datenbank verweisen, `DW_AUTH_TOKEN` und die rollenbezogenen Tokens über vorhandene Kubernetes Secrets bereitstellen und Ingress/TLS für Ihre Umgebung konfigurieren. Ohne das gemeinsame `DW_AUTH_TOKEN` verweigert das Chart das Rendern, und SQLite lehnt es ab. Eine native Installation läuft standardmäßig mit einem Replikat; mehr als ein Replikat oder Autoscaling erfordert, dass `native.storage.existingClaim` ein ReadWriteMany-Volume für externe Payload-Objekte benennt. Das Chart erstellt weder Persistenz noch vom Anbieter verwaltete Infrastruktur. Fixieren Sie das Server-Image für ein reproduzierbares Deployment per Digest.
+
+Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten. Um auf `runtime: native` zu wechseln, folgen Sie dem [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%) und behalten `runtime: php` bei, bis die Übernahme abgeschlossen ist. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
 
 ### Einen Chart-Release auswählen {#helm-chart-selection}
 
@@ -348,7 +417,7 @@ Die veröffentlichte Historie enthält eine Ausnahme: Chart 0.2.2 wechselte unte
 
 ## Kubernetes-Manifeste {#kubernetes-manifests}
 
-Das Serverrepository enthält unter [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) unveränderte Manifeste für Teams mit bestehendem Kubernetes-Betrieb:
+Das Serverrepository enthält unter [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) unveränderte Manifeste für Teams mit bestehendem Kubernetes-Betrieb. Sie beschreiben die PHP-2.x-Form; für den nativen Server verwenden Sie den nativen Modus des Helm-Charts oder übernehmen dessen einzelnes Server-Deployment:
 
 - Namespace und gemeinsame Labels
 - Trennung von ConfigMap und Secret
@@ -377,7 +446,7 @@ Einregionen-HA-Failover mit verwalteter Datenbank, verwaltetem Redis, API-Knoten
 
 ## SDK-Worker auf Kubernetes ausführen {#sdk-workers-on-kubernetes}
 
-Stellen Sie die Worker Ihrer Anwendung getrennt vom Laravel-Queue-Worker des Servers bereit. Bauen Sie ein Image mit Ihren registrierten PHP-, Python- oder Rust-Handlern und den im Lockfile festgelegten SDK-Abhängigkeiten. Verwenden Sie einen Entrypoint in Exec-Form, damit der Worker-Prozess `SIGTERM` erhält. Ersetzen Sie das folgende Image durch den unveränderlichen Digest dieses Builds.
+Stellen Sie die Worker Ihrer Anwendung getrennt vom Server und unter PHP 2.x auch getrennt von dessen Laravel-Queue-Worker bereit. Bauen Sie ein Image mit Ihren registrierten PHP-, Python- oder Rust-Handlern und den im Lockfile festgelegten SDK-Abhängigkeiten. Verwenden Sie einen Entrypoint in Exec-Form, damit der Worker-Prozess `SIGTERM` erhält. Ersetzen Sie das folgende Image durch den unveränderlichen Digest dieses Builds.
 
 Verwenden Sie für Worker im selben Cluster den tatsächlichen Namen, Namespace und Port des Server-Service. Die unbearbeiteten Manifeste stellen `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080` bereit. Ein Helm-Release kann einen anderen Service-Namen verwenden. Worker außerhalb des Clusters benötigen die erreichbare HTTPS-URL des Ingress oder Load Balancers mit normaler Zertifikatsprüfung. Stimmen Sie Long-Poll- und Transportbudgets mit den [Timeout-Hinweisen](#worker-long-poll-timeout-budgets) ab.
 
@@ -469,7 +538,7 @@ Der beabsichtigte Vertrag mit Engine-Verhalten, Bereitschaftsregeln, Wiederherst
 
 ### Stand der Veröffentlichungsnachweise {#release-evidence-status}
 
-Für die dokumentierte öffentliche Serververöffentlichung ist kein bestandener Nachweis der exakten Veröffentlichung verlinkt. Der aufgezeichnete Versuch mit veröffentlichtem Image stoppte in `topology_start` beim Warten auf API-Bereitschaft, bevor eine Aussage zur Fehlermatrix oder zu Wiederherstellungsgrenzen möglich war. Weder vorhandener Runner noch Szenariomanifest oder bereitstellungsspezifische Probe belegen, dass das veröffentlichte Image die vollständige Matrix bestanden hat. Einregionen-HA bleibt daher supportbegleitet.
+Für keine öffentliche Serververöffentlichung ist ein bestandener Nachweis der exakten Veröffentlichung verlinkt. Kandidatentopologie, Runner und Wiederherstellungsgrenzen unten wurden für den PHP-Server 2.x geschrieben (gemeinsames Redis, ein Queue-Worker und ein Singleton-Scheduler). Der aufgezeichnete Versuch mit veröffentlichtem PHP-Image stoppte in `topology_start` beim Warten auf API-Bereitschaft, bevor eine Aussage zur Fehlermatrix oder zu Wiederherstellungsgrenzen möglich war. Für den nativen Server 3.x wurde kein Failover-Runner veröffentlicht, und sein `GET /api/cluster/info` meldet `single_region_failover_contract: false`. Weder vorhandener Runner noch Szenariomanifest oder bereitstellungsspezifische Probe belegen, dass das veröffentlichte Image die vollständige Matrix bestanden hat. Einregionen-HA bleibt daher supportbegleitet.
 
 Die Darstellung als selbstständig nutzbar ist erst zulässig, wenn ein Lauf ohne Produktquellcode die genau dokumentierte Serververöffentlichung für Image, Runner und Compose-Topologie verwendet und ein `single-region-failover-result.json` veröffentlicht mit `outcome: "pass"`, `runner_blocked: false`, jedem Eintrag von `phase_outcomes` auf `status: "pass"`, bestandenen Urteilen aller Wiederherstellungsgrenzen und Nachweisen für jedes erforderliche Szenario im öffentlichen [Szenariomanifest für Einregionen-Failover](/platform-conformance/single-region-failover-scenarios.json). Dieses öffentliche bestandene Ergebnis muss von diesem Statusabschnitt verlinkt sein und dasselbe Serverimage wie `%%artifact.serverDockerHubImage%%` nennen. Bis alle Bedingungen erfüllt sind, sind die folgenden Wiederherstellungsgrenzen Evaluierungsziele und keine Validierungsbehauptungen für veröffentlichte Images.
 
@@ -506,11 +575,11 @@ Nach Wiederherstellung der Basissysteme wird folgende Prüfung empfohlen: Auf 20
 
 ### Probe mit exakten Artefakten ausführen {#run-the-exact-artifact-rehearsal}
 
-Die Serververöffentlichung enthält eine wiederverwendbare Basisprobe für die vollständige Fehlermatrix, ohne Produktcode aus einem Checkout zu bauen. Runner und Compose-Topologie müssen aus demselben Veröffentlichungstag wie das Serverimage stammen. Kombinieren Sie keinen beweglichen Standardbranch-Checkout mit einem beliebigen Image. Führen Sie auf einem sauberen Host mit Docker Engine, Docker Compose v2, Python 3.11 oder neuer und öffentlichem Registry-Zugriff Folgendes aus:
+Veröffentlichungen des PHP-Servers 2.x enthalten eine wiederverwendbare Basisprobe für die vollständige Fehlermatrix, ohne Produktcode aus einem Checkout zu bauen. Ihre Compose-Topologie startet reine PHP-Rollen (Bootstrap-Job, Queue-Worker und Scheduler) und kann daher das native 3.x-Image nicht ausführen. Das folgende Beispiel verwendet die letzte PHP-Veröffentlichung, 2.11.8. Runner und Compose-Topologie müssen aus demselben Veröffentlichungstag wie das Serverimage stammen. Kombinieren Sie keinen beweglichen Standardbranch-Checkout mit einem beliebigen Image. Führen Sie auf einem sauberen Host mit Docker Engine, Docker Compose v2, Python 3.11 oder neuer und öffentlichem Registry-Zugriff Folgendes aus:
 
 <!-- docs-example id="single-region-failover-exact-release" -->
 ```bash
-export DW_SERVER_RELEASE=%%artifact.serverVersion%%
+export DW_SERVER_RELEASE=2.11.8
 git clone --depth 1 --single-branch --branch "$DW_SERVER_RELEASE" \
   https://github.com/durable-workflow/server.git "server-$DW_SERVER_RELEASE"
 cd "server-$DW_SERVER_RELEASE"
@@ -553,7 +622,7 @@ Der Vertrag betrifft *begrenzte Wiederherstellung bei benannten Ereignissen*. Er
 
 ## Aktiv/Passiv über mehrere Regionen {#activepassive-multi-region}
 
-Aktiv/Passiv über mehrere Regionen sind **supportbegleitete Evaluierungshinweise**, kein nachgewiesener selbstständig nutzbarer Vertrag innerhalb der unterstützten 2.0-Betriebsgrenzen. Prüfen Sie damit eine mögliche Architektur und entwickeln Sie mit Support eine umgebungsspezifische Probe, bevor Sie sich in Produktion darauf verlassen. Jede Region beginnt weiterhin mit einem dokumentierten Einzelknoten-, Kleincluster- oder unveränderten Kubernetes-Weg. Diese Einregionen-Verträge belegen jedoch keine regionsübergreifende Replikation, Failover, Failback, RPO, RTO oder Split-Brain-Verhalten. Vertiefter Entwurf zu maßgeblichen Daten, Replikationsannahmen, Namespace-/Aufgabenwarteschlangen-/Worker-Verhalten, Failover-/Failback-Betriebsanleitung, Fencing und Konsistenz-/Latenzabwägungen liegt in der Workflow-Bibliothek unter [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md) und im eigenständigen Server unter [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md).
+Aktiv/Passiv über mehrere Regionen sind **supportbegleitete Evaluierungshinweise**, kein nachgewiesener selbstständig nutzbarer Vertrag innerhalb der unterstützten 2.0-Betriebsgrenzen. Prüfen Sie damit eine mögliche Architektur und entwickeln Sie mit Support eine umgebungsspezifische Probe, bevor Sie sich in Produktion darauf verlassen. Jede Region beginnt weiterhin mit einem dokumentierten Einzelknoten-, Kleincluster- oder unveränderten Kubernetes-Weg. Diese Einregionen-Verträge belegen jedoch keine regionsübergreifende Replikation, Failover, Failback, RPO, RTO oder Split-Brain-Verhalten. Vertiefter Entwurf zu maßgeblichen Daten, Replikationsannahmen, Namespace-/Aufgabenwarteschlangen-/Worker-Verhalten, Failover-/Failback-Betriebsanleitung, Fencing und Konsistenz-/Latenzabwägungen liegt in der Workflow-Bibliothek unter [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md) und im eigenständigen Server unter [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md). Dieses Material und die folgende Kandidatenform wurden für die PHP-2.x-Topologie geschrieben. Der native Server 3.x hat kein Redis und keinen separaten Scheduler, und eine native Probe über mehrere Regionen wurde nicht veröffentlicht.
 
 Zu evaluierende Form:
 

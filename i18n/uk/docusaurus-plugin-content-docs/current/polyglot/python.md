@@ -153,24 +153,19 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-Production розгортання, драйвери автентифікації, базу й TLS описано в
+Нативний Server створює схему SQLite та namespace `default` під час
+першого запуску, тому окремого кроку bootstrap немає. Production розгортання,
+автентифікацію, налаштування бази й TLS описано в
 [посібнику налаштування Server](/docs/polyglot/server).
 
 Більший приклад: [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)
@@ -210,9 +205,30 @@ async with Client(
 | `payload_size_limit_bytes` | `int` | типове SDK | Відповідність максимальному розміру payload Server. |
 | `payload_size_warning_threshold_percent` | `int` | типове SDK | Попередження до досягнення межі payload. |
 | `payload_size_warnings` | `bool` | `True` | Вимкнення локальних попереджень розміру в тестах чи контрольованих скриптах. |
+| `failure_report_limit_bytes` | `int` | `1048576` | Зменшити ліміт повністю закодованого звіту про помилку. Див. [обмежені звіти про помилки](#bounded-failure-reports). |
 
 `token` є найпростішим варіантом. Якщо задані `control_token` і
 `worker_token`, методи control-plane використовують перший, а worker другий.
+
+### Обмежені звіти про помилки {#bounded-failure-reports}
+
+У Python SDK **2.11.0** з’явилися обмеження вихідних звітів про помилки. Типові межі: **62 KiB UTF-8 для повідомлення**, **128 KiB для стека**, **64 KiB для разом серіалізованих необов’язкових деталей і діагностики** та **1 MiB для всього тіла, закодованого HTTPX**. До ліміту тіла входять маркери, екранування JSON, ідентичність оренди та інші команди пакета. Нижчий налаштований або виявлений транспортний ліміт має пріоритет. Тип, клас і код помилки, політика повторних спроб та ідентичність оренди зберігаються.
+
+За потреби задайте менший ліміт тіла. Налаштування попереджень про розмір даних залишаються лише інформаційними.
+
+```python
+from durable_workflow import Client
+
+async with Client(
+    "https://workflow.example.com",
+    worker_token="worker-token",
+    control_token="operator-token",
+    failure_report_limit_bytes=512 * 1024,
+) as client:
+    info = await client.get_cluster_info()
+```
+
+Видимий маркер скорочення та початкові кількості байтів позначають скорочені поля. Деталі Avro зберігаються цілими або пропускаються повністю. Якщо обов’язковий конверт неможливо подати, до надсилання HTTP виникає `FailureReportTooLarge`. Локальні помилки нормалізуються до того, як код workflow їх спостерігає. Тому перше виконання й холодне відтворення бачать збережене повідомлення. Уже спостережене локальне повідомлення залишається незмінним під час остаточного підлаштування пакета до ліміту.
 
 ### Зовнішнє сховище payload {#external-payload-storage}
 
@@ -844,6 +860,19 @@ receipt = yield ctx.schedule_activity(
 
 Уся недетермінованість має проходити через контекст або фіксуватися `ctx.side_effect()`.
 
+#### Блоки finally та контекстні менеджери {#workflow-cleanup}
+
+**SDK 2.12.2 і новіші.** Призупинення не є виходом із workflow. Під час знищення
+призупиненого replay Python може виконати блоки `finally` і виходи з `with`.
+SDK відкидає стійкі команди й повідомлення `ctx.logger`, що виникли лише через
+це знищення; query бачить стан на команді очікування. Справжнє завершення,
+помилка або кооперативне скасування виконують очищення через звичайну історію,
+а холодний replay використовує записані результати.
+
+Не виконуйте прямий I/O в цих обробниках. Плануйте зовнішнє очищення як activity
+через `yield ctx.schedule_activity(...)` та обгорніть цю activity у
+`with ctx.cancellation_shield():`, якщо вона має завершитися після кооперативного скасування.
+
 ### Паралельне розгалуження {#fan-out}
 
 Передайте через yield список команд для паралельного виконання:
@@ -1015,6 +1044,69 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### Отримана retry policy та початкова спроба {#activity-retry-metadata}
+
+Потрібен Python SDK **2.12.0 або новіший**. `info = activity.context().info`
+надає початковий `attempt_number` і незмінний знімок `retry_info`.
+`info.retry_info.policy()` повертає нову копію, включно з невідомими полями.
+
+Відсутня policy та кореневе `retry_policy: null` мають невідомий ліміт
+спроб. `policy_provided` розрізняє їх (`False` і `True`).
+Отриманий об’єкт policy з `max_attempts: null` явно означає необмежені спроби:
+`is_unlimited()` повертає `True`, а `max_attempts()` залишається `None`.
+Для додатного цілого ліміту `max_attempts()` повертає цей ліміт, а
+`is_last_configured_attempt()` порівнює його з початковим номером спроби.
+Для невідомого ліміту перевірка останньої спроби повертає `None`.
+
+Перевірка описує отриманий бюджет. Скасування, строки, закриття workflow та
+помилки без повторних спроб можуть завершити виконання раніше. Звичайні й
+supervised віддалені callback отримують початковий знімок. Локальні inline
+та prepared callback не успадковують віддалену retry policy батьківського workflow.
+
+```python
+from durable_workflow import activity
+
+
+@activity.defn(name="inspect_retry_budget")
+async def inspect_retry_budget() -> dict:
+    retry = activity.context().info.retry_info
+    return {
+        "attempt": retry.attempt_number,
+        "max_attempts": retry.max_attempts(),
+        "last_configured_attempt": retry.is_last_configured_attempt(),
+    }
+```
+
+#### Надіслати signal до початкового run {#signal-originating-run}
+
+`info.workflow_id` і `info.run_id` зберігають початкові отримані ідентифікатори
+й можуть бути `None`. Локальні callback успадковують лише відомі ідентифікатори
+батьківського workflow. SDK ніколи не підставляє task ID. Передайте до helper
+авторизований клієнт застосунку. Handle прив’язаний до початкового run:
+
+```python
+from durable_workflow import Client, activity
+
+
+async def signal_originating_run(client: Client, business_event_id: str) -> dict:
+    info = activity.context().info
+    if info.workflow_id is None or info.run_id is None:
+        raise RuntimeError("This activity has no known originating workflow run")
+    handle = client.get_workflow_handle(info.workflow_id, run_id=info.run_id)
+    return await handle.signal(
+        "payment_recorded",
+        [business_event_id],
+        request_id=f"payment-recorded:{business_event_id}",
+    )
+```
+
+Зберігайте `business_event_id` незмінним між спробами та в межах ліміту довжини
+command key Server. Поточний опублікований Server зберігає ці ключі не для всіх
+шляхів signal. Обробляйте бізнес-події ідемпотентно й узгоджуйте невизначені
+результати доставки. Див.
+[основний довідник activity](https://python.durable-workflow.com/reference/activity/)
+і [вимогу збереження квитанцій signal](https://github.com/durable-workflow/.github/issues/216).
 
 ### Запити heartbeat {#activity-heartbeat-requests}
 
@@ -1311,7 +1403,7 @@ await worker.run()
 
 Після втрати власника або завершення lease параметр `allow_reacquire_after_failure=True` дозволяє іншому придатному worker отримати сесію повторно. Він має відновити локальний ресурс. Уже зафіксовані результати activity відтворюються, але незафіксовані ефекти можуть повторитися: використовуйте надійні ідентифікатори ресурсів та ідемпотентні зовнішні операції. Сесія не переносить пам’ять, файли чи відкриті дескриптори.
 
-Явне закриття та завершення абсолютного TTL є остаточними для цього ідентифікатора сесії. Наступна activity не відкриє його повторно й може залишатися недопущеною, доки runtime не застосує налаштований таймаут. Запускайте роль scheduler/maintenance Server з [опублікованого рецепта розгортання](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml); лише API-процесу недостатньо для застосування таймаутів. Workflow обробляє остаточну помилку activity через `ActivityFailed` і повертає `resource_unavailable`; тоді застосунок може вибрати нову сесію й відновити ресурс із бізнес-вхідних даних. Приклад не обіцяє негайного винятку закритої сесії чи автоматичного відкриття завершеної сесії.
+Явне закриття та завершення абсолютного TTL є остаточними для цього ідентифікатора сесії. Наступна activity не відкриє його повторно й може залишатися недопущеною, доки runtime не застосує налаштований таймаут. Нативний Server застосовує таймаути activity у власному циклі обслуговування, який увімкнено в опублікованому образі. Для PHP Server 2.x запускайте роль scheduler/maintenance з [рецепта розгортання PHP](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml); лише API-процесу PHP недостатньо для застосування таймаутів. Workflow обробляє остаточну помилку activity через `ActivityFailed` і повертає `resource_unavailable`; тоді застосунок може вибрати нову сесію й відновити ресурс із бізнес-вхідних даних. Приклад не обіцяє негайного винятку закритої сесії чи автоматичного відкриття завершеної сесії.
 
 Для явного життєвого циклу власника використовуйте `worker.worker_session(options)` та методи `create()`, `renew()` і `close(reason)`. Коректне завершення worker закриває утримувані ним сесії. Див. [спільний контракт життєвого циклу](../features/worker-sessions.md#lifecycle).
 

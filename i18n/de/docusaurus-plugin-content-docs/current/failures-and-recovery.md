@@ -96,7 +96,147 @@ Für einen Lauf, der noch auf eine wiederholbare Aktivität wartet:
 
 Ein Lauf mit einem zulässigen Aktivitätsversuch bleibt wartend und kann nach erfolgreicher Ausführung des korrigierten Codes fortfahren, sofern seine ursprünglichen Budgets nicht abgelaufen sind. Das garantiert keine Korrektur jedes Workflows im bestehenden Lauf: Ein unbehandelter letzter Aktivitätsfehler, ein Fehler im Workflow-Code, eine strukturelle Grenze oder ein Workflow-Timeout können ihn terminal machen.
 
-Bewahren Sie bei einem terminal fehlgeschlagenen Lauf die Historie auf und gleichen Sie externe Seiteneffekte ab, bevor die Anwendung über einen neuen Workflow entscheidet. Sichern Sie wiederholte fachliche Operationen durch anwendungsseitige Idempotenz ab. Es gibt weder automatische Workflow-Wiederholungen noch eine Wiederöffnung terminaler Läufe; siehe [Wiederholungen auf Workflow-Ebene](#workflow-level-retry).
+Bewahren Sie bei einem terminal fehlgeschlagenen Lauf die Historie auf und gleichen Sie externe Seiteneffekte ab, bevor die Anwendung über einen neuen Workflow entscheidet. Sichern Sie wiederholte fachliche Operationen durch anwendungsseitige Idempotenz ab. Wenn ein nicht abgefangener Aktivitätsfehler, ein Fehler im Workflow-Code oder ein strukturelles Limit den Lauf beendet hat, prüfen Sie nach dem Bereitstellen der Korrektur, ob Sie ihn per [Redrive](#redrive) fortsetzen können. Redrive setzt die Arbeit in einem neuen Lauf fort, der die abgeschlossenen Schritte wiederverwendet. Ein Fehler im Workflow-Code erfordert korrigierten Code und Workflow 2.19.0 oder später. Siehe [Redrive mit korrigiertem Workflow-Code](#redrive-corrected-definition). Es gibt weder automatische Workflow-Wiederholungen noch eine Wiederöffnung terminaler Läufe; siehe [Wiederholungen auf Workflow-Ebene](#workflow-level-retry).
+
+## Fehlgeschlagenen Lauf per Redrive fortsetzen {#redrive}
+
+Redrive setzt einen fehlgeschlagenen Lauf in einem neuen Lauf derselben Workflow-Instanz fort. Der neue Lauf verwendet die aufgezeichneten Ergebnisse der Schritte wieder, die vor dem Fehler abgeschlossen wurden, und führt den Rest des Workflows erneut aus. Nutzen Sie Redrive, nachdem Sie die Ursache des Fehlers behoben haben, damit abgeschlossene Arbeit wie eine Zahlung oder eine E-Mail nicht wiederholt wird.
+
+Der fehlgeschlagene Lauf bleibt geschlossen und unverändert. Der neue Lauf, der Nachfolger, erhält die nächste Laufnummer und wird zum aktuellen Lauf der Instanz. Sein `continued_from_run_id` nennt den fehlgeschlagenen Lauf. Sein `WorkflowStarted`-Ereignis zeichnet `recovery_kind: redrive` und `resume_step_sequence` auf, also den Schritt, an dem die Ausführung fortgesetzt wird.
+
+Dieser Abschnitt beschreibt Redrive in Workflow 2.19.0 und später. Frühere Workflow-Releases und Redrive im nativen Server nehmen weniger Läufe an. Siehe [Frühere Releases und der native Server](#redrive-earlier-releases).
+
+Der Nachfolger spielt den Workflow-Code von Anfang an erneut ab:
+
+- Jeder Aktivitätsaufruf, der im fehlgeschlagenen Lauf abgeschlossen wurde, liefert sein aufgezeichnetes Ergebnis. Die Aktivität läuft nicht erneut.
+- Ein Seiteneffekt oder Versionsmarker vor dem fehlgeschlagenen Schritt wird in Schrittreihenfolge wiederverwendet. Der Seiteneffekt läuft nicht erneut, und eine Versionsprüfung liefert die aufgezeichnete Version.
+- Ein `timer()`, der vor dem fehlgeschlagenen Schritt ausgelöst wurde, wird im Nachfolger als bereits ausgelöst aufgezeichnet. Der Nachfolger wartet nicht erneut darauf.
+- Ein Memo oder Suchattribut, das der Workflow-Code vor dem fehlgeschlagenen Schritt per Upsert gesetzt hat, wird in Schrittreihenfolge wiederverwendet, und der Nachfolger behält dieselben Werte.
+- Eine Signalwarteoperation (`await('name')`), die ihr Signal empfangen und angewendet hat, wird mit dem Wert des Signals wiederverwendet. Das Signal wird nicht erneut zugestellt.
+- Wenn ein Aktivitätsfehler den Lauf beendet hat, wird der fehlgeschlagene Aktivitätsaufruf als neue Aktivitätsausführung mit der Wiederholungsrichtlinie aus dem Workflow-Code eingeplant. Seine Versuche beginnen von vorn.
+- Wenn der Lauf im Workflow-Code oder an einem strukturellen Limit fehlgeschlagen ist, setzt der Nachfolger an dem Schritt fort, den der Workflow-Code nie erreicht hat.
+- Alles nach dem fehlgeschlagenen Schritt läuft wie in einem neuen Lauf.
+- Memos und Suchattribute, die beim Start des Laufs gesetzt wurden, gehen wie bei Continue-as-new auf den Nachfolger über.
+- Der Nachfolger übernimmt die Ausführungsfrist des fehlgeschlagenen Laufs. Sein Lauf-Zeitlimit beginnt beim Redrive neu.
+- Jeder wiederverwendete Schritt trägt `reused_from_run_id` und `reused_recorded_at`.
+- Im Embedded-Modus beginnt `Workflow::now()` im Nachfolger bei der Startzeit des fehlgeschlagenen Laufs. Das Replay verwendet `reused_recorded_at`. Deshalb entspricht `Workflow::now()` nach einem wiederverwendeten Schritt der Zeit im fehlgeschlagenen Lauf. Ein Schritt, den ein zweiter Redrive wiederverwendet, behält den Zeitpunkt seiner ersten Ausführung.
+
+### Redrive anfordern {#request-a-redrive}
+
+Lösen Sie im Embedded-Modus den Vertrag `Workflow\V2\Contracts\WorkflowControlPlane` aus dem Laravel-Container auf und rufen Sie `redrive()` mit der ID der Workflow-Instanz und der ID des fehlgeschlagenen Laufs auf:
+
+```php
+use Workflow\V2\Contracts\WorkflowControlPlane;
+
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+]);
+
+if ($result['accepted']) {
+    $successorRunId = $result['workflow_run_id'];
+} else {
+    $reason = $result['reason'];
+}
+```
+
+Senden Sie im Servicemodus `POST /api/workflows/{workflowId}/runs/{runId}/redrive` mit einer optionalen `request_id` im Body. Die Clients kapseln dieselbe Route:
+
+| Oberfläche | Aufruf |
+| --- | --- |
+| CLI | `dw workflow:redrive <workflow-id> <run-id> --request-id <id>` |
+| PHP SDK | `Client::redriveWorkflow($workflowId, $failedRunId, $requestId)` |
+| Python SDK | `await client.redrive_workflow(workflow_id, failed_run_id, request_id=...)` oder `await handle.redrive()` |
+| Rust SDK | `client.redrive_workflow_run(workflow_id, failed_run_id, request_id)` oder `handle.redrive(request_id)` |
+
+Ein angenommener Redrive liefert die Lauf-ID des Nachfolgers und `resume_step_sequence`. Ein abgelehnter Redrive liefert einen `reason` und ändert nichts. Ein Redrive für einen bereits fortgesetzten Lauf liefert den vorhandenen Nachfolger, statt einen weiteren anzulegen. Übergeben Sie eine `request_id`, damit eine wiederholte Anfrage sicher ist. Eine `request_id`, die bereits für einen anderen Redrive derselben Instanz verwendet wurde, wird mit `request_id_already_used` abgelehnt.
+
+Service-Worker melden einen Fingerprint der Workflow-Definition. Redrive vergleicht ihn mit dem Fingerprint, der beim Start des Laufs aufgezeichnet wurde. Rufen Sie im Rust SDK `Worker::set_workflow_definition_sources()` für jeden Workflow auf, den Sie per Redrive fortsetzen wollen. Ein ohne Quellidentität registrierter Workflow läuft weiterhin, aber Redrive lehnt ihn ab.
+
+### Redrive mit korrigiertem Workflow-Code {#redrive-corrected-definition}
+
+Wenn ein Lauf fehlgeschlagen ist, weil der Workflow-Code eine Exception ausgelöst hat, würde derselbe Code am selben Schritt erneut eine Exception auslösen. Deshalb lehnt Redrive den Lauf mit `workflow_code_failure_requires_corrected_definition` ab. Stellen Sie die Korrektur bereit und fordern Sie den Redrive dann mit `allow_definition_change` an:
+
+```php
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+    'allow_definition_change' => true,
+]);
+```
+
+Bevor Redrive etwas schreibt, spielt es die abgeschlossenen Schritte mit dem neuen Code im Speicher erneut ab. Der neue Code muss dieselben Schritte in derselben Reihenfolge ausführen und den Schritt erreichen, an dem der alte Code fehlgeschlagen ist. Gelingt das nicht, lehnt Redrive mit `definition_incompatible_with_prefix` ab, und `definition_mismatch` nennt den ersten abweichenden Schritt (`sequence`) sowie einen `kind`-Wert wie `step_shape` oder `version_range`. Ist die abgeschlossene Historie größer als das Historienbudget, lehnt Redrive mit `definition_check_over_budget` ab.
+
+Eine angenommene Änderung führt den korrigierten Code aus und zeichnet den Fingerprint der ersetzten Definition als `definition_changed_from` im `WorkflowStarted`-Ereignis des Nachfolgers auf. Ein späterer Redrive mit derselben Definition zeichnet keinen solchen Wert auf.
+
+`allow_definition_change` gilt für Läufe im Embedded-Modus. Für einen Lauf, den ein Service-Worker gestartet hat, lehnt Redrive eine Definitionsänderung mit `definition_change_requires_replay_check` ab. Ohne `allow_definition_change` wird eine geänderte Definition mit `workflow_definition_unavailable_or_changed` abgelehnt.
+
+### Wann ein fehlgeschlagener Lauf fortgesetzt werden kann {#redrive-eligibility}
+
+Redrive nimmt einen fehlgeschlagenen Lauf an, wenn alle folgenden Bedingungen erfüllt sind:
+
+- Der Lauf ist der aktuelle Lauf der Instanz.
+- Der Lauf ist fehlgeschlagen, weil ein Aktivitätsfehler den Workflow-Code erreicht hat und nicht abgefangen wurde, oder weil der Workflow-Code eine Exception ausgelöst hat oder ein strukturelles Limit ihn gestoppt hat. Ein Lauf, der an einem Workflow-Zeitlimit fehlgeschlagen ist, wird abgelehnt.
+- Jeder Schritt vor dem fehlgeschlagenen Schritt ist eine abgeschlossene Aktivität, ein Seiteneffekt, ein Versionsmarker, ein ausgelöster `timer()`, ein Upsert eines Memos oder Suchattributs oder eine Signalwarteoperation, die ihr Signal empfangen und angewendet hat. Payloads von Aktivitäten, Seiteneffekten und Signalen müssen inline gespeichert sein. Ein Payload im externen Payload-Speicher wird abgelehnt.
+- Die Workflow-Definition entspricht dem Fingerprint, der beim Start des Laufs aufgezeichnet wurde, oder Sie haben `allow_definition_change` übergeben und der korrigierte Code spielt die abgeschlossenen Schritte erneut ab. Ein Fehler im Workflow-Code bei unveränderter Definition wird abgelehnt.
+- Die Ausführungsfrist ist nicht abgelaufen.
+- Der Lauf hat keinen übergeordneten Workflow, keine Child-Workflows und keine lokalen Aktivitäten, und seine Eingabe ist inline gespeichert.
+- Wenn ein Service-Worker den Lauf gestartet hat, bestehen die Schritte vor dem Fehler nur aus Aktivitäten, Seiteneffekten, Versionsmarkern und ausgelösten Timern.
+
+Eine Ablehnung nennt die erste Regel, die nicht erfüllt ist:
+
+| Grund | Bedeutung |
+| --- | --- |
+| `run_not_failed` | Der Lauf ist nicht im Status `failed`. |
+| `source_run_not_current` | Es gibt einen neueren Lauf der Instanz. |
+| `unrecorded_failure_boundary` | Für den Fehler des Laufs ist kein Schritt aufgezeichnet, etwa bei einem Fehler im Workflow-Code, den ein Release vor 2.19.0 aufgezeichnet hat. |
+| `workflow_code_failure_requires_corrected_definition` | Der Workflow-Code hat eine Exception ausgelöst, und die Definition hat sich nicht geändert. Derselbe Code würde also erneut eine Exception auslösen. |
+| `unsupported_history` | Die Historie vor dem Fehler enthält einen Schritt, den Redrive nicht wiederverwenden kann, etwa ein Update, einen Child-Workflow oder einen abgebrochenen Timer. |
+| `unsupported_local_activity` | Die Historie enthält eine lokale Aktivität. |
+| `unsupported_timer` | Die Historie enthält einen Bedingungs- oder Signal-Timeout, einen Timer für die Abbruch-Bereinigung oder einen Timer in einem Cancellation Scope oder einer parallelen Gruppe. |
+| `incomplete_timer_step` | Einem Timer-Schritt fehlt das Ereignis für das Einplanen oder für das Auslösen. |
+| `unsupported_signal_wait` | Eine Signalwarteoperation hat ein Timeout oder liegt in einem Cancellation Scope oder einer parallelen Gruppe. |
+| `unsupported_pending_signal` | Der Lauf hat ein Signal empfangen, das er nie angewendet hat. |
+| `incomplete_signal_step` | Einer Signalwarteoperation fehlt der Empfang oder die Anwendung, oder für die Anwendung ist kein Wert aufgezeichnet. |
+| `mismatched_signal_receipt` | Ein Signalempfang nennt einen anderen Lauf, eine andere Instanz, einen anderen Befehl oder eine andere Warteoperation, oder ein Empfang wird auf zwei Warteoperationen angewendet. |
+| `invalid_step_sequence` | Ein wiederverwendeter Schritt hat keine gültige Schrittnummer. |
+| `duplicate_step_sequence` | Zwei wiederverwendete Schritte haben dieselbe Schrittnummer. |
+| `external_activity_result_not_supported` | Ein abgeschlossenes Aktivitätsergebnis liegt im externen Payload-Speicher. |
+| `external_side_effect_result_not_supported` | Ein Seiteneffekt-Ergebnis liegt im externen Payload-Speicher. |
+| `external_signal_payload_not_supported` | Die Argumente oder der angewendete Wert eines Signals liegen im externen Payload-Speicher. |
+| `missing_activity_result`, `unavailable_activity_result` | Ein abgeschlossenes Aktivitätsergebnis fehlt oder lässt sich nicht dekodieren. |
+| `unsupported_visibility_metadata` | Der Workflow-Code hat ein Memo oder Suchattribut an einem Schritt geschrieben, den der Nachfolger nicht wiederverwenden würde. |
+| `unsupported_source_metadata` | Der Lauf wurde als Child eines anderen Workflows gestartet. |
+| `unsupported_source_link_or_payload` | Der Lauf ist als Child eines anderen Workflows verknüpft, oder seine Eingabe liegt im externen Payload-Speicher. |
+| `execution_deadline_elapsed` | Die Ausführungsfrist ist abgelaufen. |
+| `workflow_definition_unavailable_or_changed` | Der Definitions-Fingerprint fehlt oder weicht von dem beim Start aufgezeichneten ab, und `allow_definition_change` wurde nicht übergeben. |
+| `definition_incompatible_with_prefix` | Der korrigierte Code kann die abgeschlossenen Schritte nicht erneut abspielen. `definition_mismatch` nennt den ersten abweichenden Schritt. |
+| `definition_check_over_budget` | Die abgeschlossene Historie ist größer als das Historienbudget, das die Replay-Prüfung zulässt. |
+| `definition_change_requires_replay_check` | Ein Service-Worker hat den Lauf gestartet. Daher kann Redrive eine geänderte Definition nicht prüfen. |
+| `service_redrive_history_not_qualified` | Ein Service-Worker hat den Lauf gestartet, und die Schritte vor dem Fehler enthalten einen Memo-Upsert, einen Suchattribut-Upsert oder eine Signalwarteoperation. Workflow 2.19.0 lehnt diese Schritte für Läufe im Servicemodus ab, bis es für jede SDK-Laufzeit prüfen kann, ob sie diese Schritte per Replay verarbeiten kann. |
+| `request_id_already_used` | Die `request_id` wurde bereits für einen anderen Redrive der Instanz verwendet. |
+| `invalid_request_id` | Die `request_id` ist länger als 191 Zeichen. |
+| `run_not_found`, `instance_not_found` | Der Lauf oder die Instanz existiert im Namespace nicht. |
+
+Die übrigen Gründe melden eine Historie, die nicht die erwartete Form hat: `invalid_history`, `events_after_failure`, `duplicate_start`, `missing_start`, `unexpected_start`, `missing_terminal_history`, `invalid_activity_sequence`, `activity_sequence_gap`, `missing_activity_type`, `activity_type_mismatch`, `duplicate_activity_completion`, `incomplete_activity_prefix` und `invalid_failed_step`. Exportieren Sie die Historie des Laufs und prüfen Sie sie, bevor Sie über die Wiederherstellung entscheiden.
+
+Wenn Redrive einen Lauf ablehnt, bewahren Sie seine Historie auf, gleichen Sie externe Seiteneffekte ab und entscheiden Sie, ob die Anwendung einen neuen Workflow starten soll.
+
+### Prüfen, ob ein Lauf fortgesetzt werden kann {#redrive-check}
+
+In Workflow 2.18.0 und später melden die Laufdetails `can_redrive` und `redrive_blocked_reason`. Waterlines Detailansicht des ausgewählten Laufs liest diese Felder. `WorkflowControlPlane::describe()` meldet dieselben Felder unter `actions`. Sie stammen aus derselben Prüfung, die `redrive()` anwendet. So sehen Sie vor der Anfrage, ob ein Lauf fortgesetzt werden kann und warum nicht.
+
+Ein nicht fehlgeschlagener Lauf meldet `run_not_failed`. Ein bereits fortgesetzter Lauf meldet `already_redriven`. Bei einem Lauf im Servicemodus prüft der Bericht nur, ob ein Fingerprint aufgezeichnet wurde. `redrive()` vergleicht ihn weiterhin mit dem Fingerprint des Workers. Der Bericht führt die Replay-Prüfung für korrigierten Code nicht aus. Eine geänderte Definition zeigt daher `workflow_definition_unavailable_or_changed`, bis Sie den Redrive mit `allow_definition_change` anfordern.
+
+In Workflow 2.19.0 und später meldet ein Nachfolger, der korrigierten Code ausführt, den ersetzten Fingerprint als `workflow_definition_changed_from` in den Laufdetails und als `run.definition_changed_from` in `describe()`.
+
+### Frühere Releases und der native Server {#redrive-earlier-releases}
+
+Workflow 2.18.0 verwendet abgeschlossene Aktivitäten, Seiteneffekte, Versionsmarker und ausgelöste Timer wieder. Es lehnt ein Memo oder Suchattribut ab, das der Workflow-Code per Upsert gesetzt hat (`unsupported_history`), ebenso eine Signalwarteoperation (`unsupported_history`), einen im Workflow-Code fehlgeschlagenen Lauf (`unrecorded_failure_boundary`) und eine geänderte Definition (`workflow_definition_unavailable_or_changed`).
+
+Workflow-Releases vor 2.18.0 nehmen weniger Läufe an. Jeder Schritt vor der fehlgeschlagenen Aktivität muss eine abgeschlossene Aktivität sein. Ein Seiteneffekt, Versionsmarker oder Timer in dieser Historie wird mit `unsupported_history` abgelehnt, und jedes Memo oder Suchattribut wird mit `unsupported_visibility_metadata` abgelehnt. Laufdetails und `describe()` melden weder `can_redrive` noch `redrive_blocked_reason`.
+
+Releases vor 2.19.0 ignorieren `reused_recorded_at` bei wiederverwendeten Signal-, Memo- und Suchattribut-Schritten. Wenn ein Nachfolger unter Workflow 2.19.0 diese Schritte wiederverwendet hat, behalten Sie Worker mit 2.19.0 oder später bei oder stellen Sie sicher, dass keine solche Historie per Replay abgespielt werden kann, bevor Sie ein Rollback durchführen.
+
+Redrive im nativen Server wendet weiterhin die Regeln von vor 2.18.0 an. Die Unterstützung der aktuellen Regeln im nativen Server wird in [server#980](https://github.com/durable-workflow/server/issues/980) verfolgt.
 
 ## Ablehnung am Einstieg im Servicemodus und Wiederherstellung {#service-entry-recovery}
 
@@ -240,6 +380,7 @@ Diese Entscheidung folgt dem Ausführungsmodell:
 - **Workflow-Replay stellt Arbeit wieder her.** Bei vorübergehenden Infrastrukturfehlern wie Datenbankfehlern oder Worker-Abstürzen wird die dauerhafte Aufgabe erneut zugestellt. Replay setzt anhand der festgeschriebenen Historie fort, ohne einen neuen Lauf zu starten.
 - **Continue-as-new unterstützt lang laufende Workflows.** `continueAsNew()` beginnt explizit mit frischem Zustand oder einer frischen Historie.
 - **Reparatur stellt festhängende Arbeit wieder her.** `repair()` und automatische Worker-Loop-Reparatur beheben verlorenen Transport dauerhafter Aufgaben.
+- **Redrive ist eine ausdrückliche Operator-Aktion.** [Redrive](#redrive) setzt einen fehlgeschlagenen Lauf nur auf Ihre Anforderung in einem neuen Lauf fort und verwendet abgeschlossene Aktivitätsergebnisse wieder.
 
 Benötigt Ihre Anwendung Wiederholungen auf Workflow-Ebene, modellieren Sie sie explizit:
 
@@ -262,6 +403,14 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Limits für PHP-Fehlerberichte im Service-Modus {#php-failure-report-limits}
+
+Das PHP SDK **ab 3.5.0** begrenzt ausgehende Fehlerberichte im Service-Modus auf 62 KiB UTF-8 für Meldungen, 128 KiB für Stacks, 64 KiB für optionale Metadaten zusammen und 1 MiB für den vollständigen codierten Body einschließlich Markierungen. Niedrigere bekannte Transportlimits gelten weiterhin. Der [PHP-Leitfaden für Fehlerberichte](./polyglot/php.md#bounded-failure-reports) erläutert Konfiguration, Auslassungsdiagnosen, unveränderte Retry-Semantik und identische Beobachtungen bei erster Ausführung und kaltem Replay. Diese Grenzen gelten für SDK-Berichte. Eingebettete Fehleraufzeichnung und Core-Summary-Speicherung haben eigene Verträge.
+
+## Limits für Python-Fehlerberichte im Service-Modus {#python-failure-report-limits}
+
+Das Python SDK **ab 2.11.0** begrenzt ausgehende Fehlerberichte im Service-Modus auf 62 KiB UTF-8 für Meldungen, 128 KiB für Stacks, 64 KiB für optionale Metadaten zusammen und 1 MiB für den vollständigen codierten Body einschließlich Markierungen. Niedrigere bekannte Transportlimits gelten weiterhin. Der [Python-Leitfaden für Fehlerberichte](./polyglot/python.md#bounded-failure-reports) erläutert Konfiguration, Auslassungsdiagnosen, unveränderte Retry-Semantik und identische Beobachtungen bei erster Ausführung und kaltem Replay. Diese Grenzen gelten für SDK-Berichte. Eingebettete Fehleraufzeichnung und Core-Summary-Speicherung haben eigene Verträge.
 
 ## Grenzen für Rust-Fehlerberichte im Service-Modus {#rust-failure-report-limits}
 

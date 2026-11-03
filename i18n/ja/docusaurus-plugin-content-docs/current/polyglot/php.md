@@ -88,6 +88,18 @@ SDK 所有のクイックスタートは、空の Composer プロジェクトを
 
 リモート Worker は `registerWorkflow`、`registerActivity`、`registerQuery`、`registerUpdate` でワークフロー、アクティビティ、クエリ、更新のハンドラーを登録します。完全なパラメーターと戻り値の型は、生成された [PHP SDK API リファレンス](https://php.durable-workflow.com/api/)を使ってください。
 
+## アクティビティの再試行コンテキストと所属する実行 {#activity-retry-context}
+
+PHP SDK **3.6.1 以降**では、サービスモードのアクティビティで `$context->retryInfo`、`$context->workflowId`、`$context->runId` を参照できます。回数制限のあるポリシーの最後の設定済み試行は、`$context->retryInfo->isLastConfiguredAttempt() === true` で判定します。`attemptNumber` は、受信した元の試行番号を保持します。
+
+再試行スナップショットは、次の 3 つを区別します。`policyProvided === false` はクレームにポリシーが含まれていない状態、ルート値として渡された `null` は不明な旧形式のポリシー、明示的な `max_attempts: null` を含むオブジェクトは無制限の試行を意味します。`maxAttempts()` が `null` を返すだけでは、無制限とは判断できません。SDK はデフォルトの試行回数を補いません。キャンセル、再試行不能な失敗、ワークフローの終了、期限切れにより、回数を使い切る前に実行が終了することがあります。
+
+ワークフロー ID と実行 ID は、元の所属先の実行を識別します。旧形式で欠落している ID は `null` のままです。ローカルアクティビティは既知の親 ID を保持しますが、リモート用の再試行ポリシーは引き継ぎません。所属先のワークフローにシグナルを送る際は両方の ID を必須とし、`runId` を指定して対象を固定し、再試行間で同じ業務イベントの安定したリクエスト ID を再利用してください。
+
+業務イベントに対するシグナル処理は冪等にしてください。安定したリクエスト ID だけでは、シグナルが一度だけ受け付けられる保証にはなりません。
+
+PHP SDK ガイドの[最終試行の判定と自身の実行へのシグナル送信の完全な例](https://php.durable-workflow.com/build/workflows-activities/)を参照してください。
+
 ## アクティビティのハートビート {#activity-heartbeats}
 
 リモートアクティビティでは、上限を設けた処理の途中で、設定されたハートビートのタイムアウトより十分前に `ActivityContext::heartbeat($details)` を呼び出します。最初の期間はランタイムのタスク取得から始まり、PHP がタスクを受信した時点からではありません。リクエストの遅延、中断、通信の再試行も期間を消費します。[送信間隔の指針](../features/heartbeats.md#heartbeat-cadence-and-receipts)に従ってください。
@@ -157,3 +169,23 @@ PHP SDK は Laravel パッケージとは独立にバージョン管理します
 ## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
 
 公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)が現在の引数を定義しており、新たな自動イテレーターの提供を意味しません。
+
+## 障害レポートのサイズ制限 {#bounded-failure-reports}
+
+PHP SDK **3.5.0** から、送信する障害レポートにサイズ制限が加わりました。既定値は、**メッセージが UTF-8 で 62 KiB**、**スタックが 128 KiB**、**シリアライズ後の任意の詳細と診断情報が合計 64 KiB**、**JSON でエンコードした本文全体が 1 MiB** です。本文の上限には、マーカー、JSON エスケープ、リースの識別情報、バッチ内のほかのコマンドも含まれます。設定またはトランスポートが宣言した上限がより小さい場合は、その値が優先されます。障害の型、クラス、コード、リトライポリシー、リースの識別情報は保持されます。
+
+`withFailureReportLimit()` は、リクエスト全体の上限を 1〜1,048,576 バイトの範囲で引き下げた新しいクライアントを返します。返されたインスタンスを使用してください。トランスポートがより小さい上限を宣言している場合は、その値も適用されます。
+
+```php
+<?php
+
+use DurableWorkflow\Client;
+
+$client = (new Client(
+    baseUri: 'https://workflow.example.com',
+    controlToken: 'operator-token',
+    workerToken: 'worker-token',
+))->withFailureReportLimit(512 * 1024);
+```
+
+短縮されたフィールドには、見える切り詰めマーカーと元のバイト数が付けられます。Avro の詳細は全体を保持するか、全体を省略します。必須のエンベロープを表現できない場合は、HTTP 送信前に `DurableWorkflow\Exception\FailureReportRefused` が発生します。ローカル障害はワークフローコードが参照する前に正規化されるため、初回実行とコールドリプレイは保存された同じメッセージを参照します。一度参照したローカルメッセージは、最終的なバッチサイズ調整でも変更されません。

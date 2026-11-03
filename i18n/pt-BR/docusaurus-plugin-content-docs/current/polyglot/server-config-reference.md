@@ -16,11 +16,71 @@ keywords:
 
 # Referência de configuração do Server {#server-config-reference}
 
-Esta página documenta o contrato das variáveis de ambiente `DW_*` da imagem do Durable Workflow Server para operadores. Use-a ao criar modelos de implantação, revisar a configuração de produção ou migrar os nomes antigos `WORKFLOW_*` / `ACTIVITY_*` para o contrato v2 do Server.
+Esta página documenta o contrato das variáveis de ambiente `DW_*` da imagem do Durable Workflow Server para operadores. Use-a ao criar modelos de implantação, revisar a configuração de produção ou migrar os nomes antigos `WORKFLOW_*` / `ACTIVITY_*` para o contrato v2 do Server. O Server atual é o Server nativo 3.x; [Server nativo 3.x](#native-server-3x) indica quais configurações ele respeita, ignora ou recusa. O PHP Server 2.x está congelado na versão 2.11.8.
 
-O Server também utiliza as configurações comuns do Laravel, como `DB_*`, `REDIS_*`, `QUEUE_CONNECTION` e `CACHE_STORE`. Essas variáveis de infraestrutura são listadas separadamente porque conectam os componentes da implantação e não controlam a API do Durable Workflow.
+O PHP Server 2.x também utiliza as configurações comuns do Laravel, como `DB_*`, `REDIS_*`, `QUEUE_CONNECTION` e `CACHE_STORE`. Essas variáveis de infraestrutura são listadas separadamente porque conectam os componentes da implantação e não controlam a API do Durable Workflow.
+
+## Server nativo 3.x {#native-server-3x}
+
+As tabelas de variáveis desta página registram o contrato `DW_*` publicado pelo PHP Server 2.11.0, e suas finalidades descrevem o PHP 2.x. O Server nativo 3.x lê os mesmos nomes, com os mesmos aliases antigos, por meio de uma auditoria de inicialização que atribui a cada configuração do contrato um único tratamento:
+
+- **Respeitada:** o Server nativo lê a configuração e aplica o significado do PHP. As configurações que não aparecem abaixo são respeitadas.
+- **Ignorada:** o Server nativo aceita a configuração, mas ela não altera nada que clientes ou operadores observem.
+- **Recusada, salvo no padrão:** o Server nativo se recusa a iniciar, a menos que a configuração não esteja definida ou mantenha o padrão do PHP. O erro de inicialização indica a configuração, o valor aceito e o motivo.
+
+O Server nativo lê seu ambiente uma única vez, quando o processo inicia, e não mantém cache de configuração. Para alterar uma configuração, reinicie ou substitua o processo do Server. Assim como o `env:audit` do PHP, a auditoria nativa avisa sobre nomes `DW_*` desconhecidos e nomes antigos, e `DW_ENV_AUDIT_STRICT=1` transforma esses avisos em recusa de inicialização.
+
+O Server nativo recusa estas configurações, a menos que mantenham o valor indicado:
+
+| Motivo | Configurações e valores aceitos |
+| --- | --- |
+| O Server nativo sempre fixa as execuções à definição de workflow registrada | `DW_V2_PIN_TO_RECORDED_FINGERPRINT`: não definida ou `true` |
+| O Server nativo não consegue aplicar um limite alterado de operações Nexus | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER`: não definida ou `200`<br />`DW_MAX_OPERATION_NAME_LENGTH`: não definida ou `256` |
+| O Server nativo não consegue aplicar um limite alterado de séries de métricas | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT`: não definida ou `100`<br />`DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT`: não definida ou `100`<br />`DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT`: não definida ou `100`<br />`DW_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT`: não definida ou `20` |
+| O Server nativo não consegue aplicar um teto alterado de tarefas de consulta pendentes | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE`: não definida ou `1024` |
+| O Server nativo não consegue aplicar um limite estrutural alterado | `DW_V2_LIMIT_COMMAND_BATCH_SIZE`: não definida ou `1000` |
+| O Server nativo não consegue aplicar uma temporização alterada do reparo de tarefas | `DW_V2_TASK_REPAIR_FAILURE_BACKOFF_MAX_SECONDS`: não definida ou `60`<br />`DW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS`: não definida ou `3`<br />`DW_V2_TASK_REPAIR_SCAN_LIMIT`: não definida ou `25` |
+| O Server nativo não publica a procedência do pacote | `DW_EXPOSE_PACKAGE_PROVENANCE`: não definida ou `false` |
+| O Server nativo não informa uma declaração de múltiplos nós | `DW_V2_MULTI_NODE`: não definida ou `false` |
+| O Server nativo não executa workflows do Workflow 1 | `DW_V1_ENABLED`: não definida ou `false` |
+| O Server nativo não valida a compatibilidade da frota de workers | `DW_V2_FLEET_VALIDATION_MODE`: não definida ou diferente de `fail` |
+| O Server nativo entrega tarefas apenas a workers que fazem polling | `DW_TASK_DISPATCH_MODE`: não definida ou `poll` |
+| O Server nativo não tem configuração de executor externo | `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`: não definida ou vazia<br />`DW_EXTERNAL_EXECUTOR_CONFIG_PATH`: não definida ou vazia |
+| O Server nativo não tem modo de recuperação da migração de memo | `DW_WORKFLOW_MEMO_MIGRATION_RECOVERY`: não definida ou vazia |
+| O Server nativo não tem limites de estado durável por namespace | `DW_NAMESPACE_DURABLE_HARD_LIMITS`: não definida ou `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`: não definida ou `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`: não definida ou `{}` |
+| O Server nativo não tem limites de admissão de requisições por namespace | `DW_NAMESPACE_ADMISSION_OVERRIDES`: não definida ou `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`: não definida ou vazia<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`: não definida ou vazia<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`: não definida ou vazia<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`: não definida ou vazia |
+| O Server nativo não tem política de fronteira de serviço | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`: não definida ou `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`: não definida ou vazia<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`: não definida ou vazia<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`: não definida ou vazia<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`: não definida ou vazia<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`: não definida ou `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`: não definida ou vazia<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`: não definida ou vazia |
+| O Server nativo não tem arquivo de admissão de armazenamento | `DW_STORAGE_ADMISSION_FILE`: não definida ou vazia<br />`DW_STORAGE_ADMISSION_SOURCE`: não definida ou vazia |
+| O Server nativo não tem limites de admissão de tarefas | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: não definida, vazia ou que não seja um número positivo<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: não definida, vazia ou que não seja um número positivo<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`: não definida, vazia ou que não seja um número positivo<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: não definida, vazia ou que não seja um número positivo<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`: não definida ou `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: não definida, vazia ou que não seja um número positivo<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: não definida, vazia ou que não seja um número positivo<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`: não definida, vazia ou que não seja um número positivo<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: não definida, vazia ou que não seja um número positivo |
+| O Server nativo implementa uma única versão do protocolo dos workers | `DW_WORKER_PROTOCOL_VERSION`: não definida ou `1.20` |
+| O Server nativo nunca confia em cabeçalhos de atribuição encaminhados | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`: não definida ou `false` |
+| O Server nativo fixa execuções apenas a ids de compilação de workers registrados; não tem marcadores de compatibilidade válidos para todo o Server | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL`: não definida ou `30`<br />`DW_V2_COMPATIBILITY_NAMESPACE`: não definida ou vazia<br />`DW_V2_CURRENT_COMPATIBILITY`: não definida ou vazia<br />`DW_V2_NAMESPACE`: não definida ou vazia<br />`DW_V2_SUPPORTED_COMPATIBILITIES`: não definida ou vazia |
+| O Server nativo não informa problemas de codec de payloads | `DW_SERIALIZER`: não definida, vazia ou `avro` |
+| O Server nativo é executado apenas como processo de servidor HTTP independente | `DW_MODE`: não definida ou `service`<br />`DW_SERVER_PROCESS_CLASS`: não definida ou com valor diferente de `scheduler_node` e `worker_node`<br />`DW_SERVER_TOPOLOGY_SHAPE`: não definida ou com valor diferente de `embedded` e `split_control_execution` |
+| O Server nativo usa `default` para requisições que não indicam namespace | `DW_DEFAULT_NAMESPACE`: não definida ou `default` |
+| O Server nativo armazena payloads externos apenas no seu disco local | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`: não definida ou vazia |
+| O Server nativo aceita apenas sua própria autenticação por token | `DW_AUTH_BACKWARD_COMPATIBLE`: não definida ou `true`<br />`DW_AUTH_PROVIDER`: não definida ou vazia<br />`DW_PRINCIPAL_TOKENS`: não definida ou vazia |
+
+O Server nativo aceita, mas ignora: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
+
+O Server nativo não tem limites de lease ou de despacho de filas de tarefas no servidor, grupos de orçamento, admissão de requisições por namespace, cotas de estado durável por namespace nem limites de polling mantido em espera, e ainda não há equivalente nativo para eles. Cada processo do Server nativo abre no máximo quatro conexões de banco de dados. As tarefas de consulta têm um limite fixo de 16 tarefas pendentes ou com lease por namespace; acima dele, novas consultas são recusadas com HTTP `429` e `query_task_queue_full`, como no PHP. Esse limite não é configurável. Para limitar a concorrência de tarefas no Server nativo, dimensione os slots de cada worker do SDK e o número de workers. [Admissão de filas de tarefas](/docs/polyglot/task-queue-admission) descreve os controles do PHP 2.x.
+
+A autenticação do Server nativo difere da do PHP 2.x nestes pontos:
+
+- `DW_AUTH_TOKEN` é obrigatório. O Server nativo se recusa a iniciar sem ele e aceita o token compartilhado para todos os papéis, junto com quaisquer tokens limitados por papel.
+- `DW_AUTH_DRIVER` aceita apenas `token`. O Server nativo recusa `signature`, e uma imagem de release também recusa `none`. As configurações de chaves de assinatura são ignoradas.
+
+O Server nativo também lê configurações fora do contrato do PHP:
+
+- `DW_BIND_ADDRESS`: o endereço de escuta. O binário usa `127.0.0.1:8080` por padrão; a imagem publicada define `0.0.0.0:8080`.
+- `DW_RUST_MAINTENANCE_LOOP`: `1` ou `true` adiciona a passagem de reparo (reparo de tarefas e timeouts de atividades) ao loop interno de timers e agendamentos. A imagem publicada define `1`, pois não tem agendador separado.
+- `DW_RUST_EXPERIMENTAL`: exigido como `1` apenas por compilações de desenvolvimento sem versão de release. As imagens de release não precisam dele.
+- `DW_UPGRADE_BACKUP_FINGERPRINT` e `DW_RUST_UPGRADE_QUEUE_*`: entradas da [migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%), sem volta, de um banco de dados PHP, qualificada na imagem publicada 3.0.4 dentro do escopo declarado no runbook.
+- `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (antigo `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): respeitada antes de sua inclusão no contrato do PHP.
 
 ## Quando as alterações entram em vigor {#how-changes-take-effect}
+
+O Server nativo 3.x lê seu ambiente apenas ao iniciar o processo; reinicie ou substitua o processo do Server para aplicar uma alteração. O restante desta seção descreve o PHP 2.x.
 
 A imagem publicada do PHP Server executa `php artisan config:cache` no ponto de entrada. Os valores de ambiente são resolvidos nessa inicialização e gravados no cache de configuração do Laravel. Editar um arquivo de ambiente, alterar as variáveis declaradas no orquestrador ou substituir um arquivo de configuração montado não recarrega uma implantação em execução.
 
@@ -44,7 +104,7 @@ Os valores padrão e os limites `DW_*` desta referência continuam sendo configu
 
 ## Como o contrato é aplicado {#how-the-contract-is-enforced}
 
-O repositório do Server mantém o contrato canônico em `config/dw-contract.php`. Na inicialização do contêiner, `php artisan env:audit` avisa quando encontra variáveis `DW_*` desconhecidas ou nomes antigos. Defina `DW_ENV_AUDIT_STRICT=1` para que o ponto de entrada falhe em vez de iniciar com avisos.
+O repositório do Server mantém o contrato canônico em `config/dw-contract.php`. O Server nativo 3.x executa a auditoria equivalente na inicialização, conforme descrito em [Server nativo 3.x](#native-server-3x). No PHP 2.x, na inicialização do contêiner, `php artisan env:audit` avisa quando encontra variáveis `DW_*` desconhecidas ou nomes antigos. Defina `DW_ENV_AUDIT_STRICT=1` para que o ponto de entrada falhe em vez de iniciar com avisos.
 
 ```bash
 DW_ENV_AUDIT_STRICT=1
@@ -75,20 +135,20 @@ Os nomes antigos são usados apenas como alternativa. Prefira o nome `DW_*` em t
 
 | Variável | Valor padrão | Finalidade | Alias antigo |
 | --- | --- | --- | --- |
-| `DW_AUTH_PROVIDER` | não definido | Classe resolvida pelo Laravel que implementa `App\Contracts\AuthProvider`. | `WORKFLOW_SERVER_AUTH_PROVIDER` |
-| `DW_AUTH_DRIVER` | `token` | Driver de autenticação: `none`, `token` ou `signature`. | `WORKFLOW_SERVER_AUTH_DRIVER` |
-| `DW_AUTH_TOKEN` | não definido | Token bearer compartilhado quando não há token limitado por papel. | `WORKFLOW_SERVER_AUTH_TOKEN` |
-| `DW_SIGNATURE_KEY` | não definido | Chave de assinatura HMAC compartilhada quando não há chave limitada por papel. | `WORKFLOW_SERVER_SIGNATURE_KEY` |
+| `DW_AUTH_PROVIDER` | não definido | PHP 2.x: classe resolvida pelo Laravel que implementa `App\Contracts\AuthProvider`. O Server nativo 3.x se recusa a iniciar quando ela está definida. | `WORKFLOW_SERVER_AUTH_PROVIDER` |
+| `DW_AUTH_DRIVER` | `token` | Driver de autenticação do PHP 2.x: `none`, `token` ou `signature`. O Server nativo 3.x aceita apenas `token`. | `WORKFLOW_SERVER_AUTH_DRIVER` |
+| `DW_AUTH_TOKEN` | não definido | PHP 2.x: token bearer compartilhado quando não há token limitado por papel. Server nativo 3.x: obrigatório e aceito para todos os papéis. | `WORKFLOW_SERVER_AUTH_TOKEN` |
+| `DW_SIGNATURE_KEY` | não definido | PHP 2.x: chave de assinatura HMAC compartilhada quando não há chave limitada por papel. Ignorada pelo Server nativo 3.x, que não tem autenticação por assinatura. | `WORKFLOW_SERVER_SIGNATURE_KEY` |
 | `DW_WORKER_TOKEN` | não definido | Token bearer para registro, polling, heartbeats e conclusão de tarefas dos workers. | `WORKFLOW_SERVER_WORKER_TOKEN` |
 | `DW_OPERATOR_TOKEN` | não definido | Token bearer para leituras e operações do operador no plano de controle. | `WORKFLOW_SERVER_OPERATOR_TOKEN` |
 | `DW_ADMIN_TOKEN` | não definido | Token bearer para alterações de namespaces, retenção e outras operações administrativas. | `WORKFLOW_SERVER_ADMIN_TOKEN` |
-| `DW_PRINCIPAL_TOKENS` | não definido | Mapa JSON de tokens para identidades nomeadas. Cada entrada fornece `token`, `subject`, `roles` e, opcionalmente, `tenant`, `label` e `claims` não secretos. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
+| `DW_PRINCIPAL_TOKENS` | não definido | Mapa JSON de tokens para identidades nomeadas. Cada entrada fornece `token`, `subject`, `roles` e, opcionalmente, `tenant`, `label` e `claims` não secretos. O Server nativo 3.x se recusa a iniciar quando ela está definida. | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
 | `DW_WORKER_SIGNATURE_KEY` | não definido | Chave HMAC para requisições do papel worker ao usar autenticação por assinatura. | `WORKFLOW_SERVER_WORKER_SIGNATURE_KEY` |
 | `DW_OPERATOR_SIGNATURE_KEY` | não definido | Chave HMAC para requisições do papel operador ao usar autenticação por assinatura. | `WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY` |
 | `DW_ADMIN_SIGNATURE_KEY` | não definido | Chave HMAC para requisições do papel administrador ao usar autenticação por assinatura. | `WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY` |
-| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | Aceita `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` compartilhados como alternativa quando falta uma credencial limitada por papel. | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
+| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | PHP 2.x: aceita `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` compartilhados como alternativa quando falta uma credencial limitada por papel. O Server nativo 3.x sempre aceita o token compartilhado e se recusa a iniciar quando esta variável é `false`. | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
 
-Use credenciais limitadas por papel em produção. `DW_AUTH_DRIVER=none` serve apenas para verificações locais básicas, pois permite acessar todos os endpoints sem token bearer nem assinatura.
+Use credenciais limitadas por papel em produção. No PHP 2.x, `DW_AUTH_DRIVER=none` serve apenas para verificações locais básicas, pois permite acessar todos os endpoints sem token bearer nem assinatura; as imagens de release nativas o recusam.
 
 Use `DW_PRINCIPAL_TOKENS` quando os registros de auditoria precisarem de identidades estáveis dos atores em vez de rótulos de papel. O Server obtém a identidade registrada da entrada correspondente ao token. Os clientes não podem substituí-la por dados ou cabeçalhos da requisição.
 
@@ -115,20 +175,20 @@ Esses valores controlam os prazos de long polling, a coordenação de despertar,
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | Milissegundos entre verificações de sinais de despertar enquanto um polling permanece aberto. | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | Diretório de coordenação do polling dos workers quando o cache é armazenado em arquivos. | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | TTL dos sinais de despertar por fila que interrompem a espera de um polling. | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | não definido; derivado de `PHP_CLI_SERVER_WORKERS` | Limite opcional de esperas simultâneas de long polling de tarefas de workflow ou atividade neste nó. O polling de consultas tem um orçamento separado. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
-| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | Workers do servidor CLI do PHP reservados para saúde e plano de controle ao calcular o limite de espera do long polling de workflows e atividades. | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | não definido; derivado de `PHP_CLI_SERVER_WORKERS` | Limite opcional de esperas simultâneas de long polling de tarefas de workflow ou atividade neste nó. O polling de consultas tem um orçamento separado. O Server nativo 3.x a ignora; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
+| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | Workers do servidor CLI do PHP reservados para saúde e plano de controle ao calcular o limite de espera do long polling de workflows e atividades. O Server nativo 3.x a ignora; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | Máximo de tarefas retornadas por polling de um worker. | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
 | `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS` | `10` | Segundos até expirar a exclusão de reivindicação de tarefas, apoiada em cache, do backend SQLite de início rápido. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_TTL_SECONDS` |
 | `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS` | `5` | Segundos que uma reivindicação de tarefas SQLite espera pela exclusão apoiada em cache antes de retornar pressão de bloqueio do backend. | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_WAIT_SECONDS` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | não definido | Máximo de leases ativos de tarefas de workflow por namespace e fila. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | não definido | Máximo de leases ativos de tarefas de workflow entre todas as filas de um namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | não definido | Máximo de despachos de tarefas de workflow por minuto, namespace e fila. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | não definido | Máximo de despachos de tarefas de workflow por minuto em todo um namespace. | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | não definido | Máximo de leases ativos de tarefas de atividade por namespace e fila. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | não definido | Máximo de leases ativos de tarefas de atividade entre todas as filas de um namespace. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | não definido | Máximo de despachos de tarefas de atividade por minuto, namespace e fila. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | não definido | Máximo de despachos de tarefas de atividade por minuto em todo um namespace. | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | Opções JSON específicas por `namespace:task_queue`, `namespace:*`, `task_queue` ou `*` para leases ativos, ritmo de despacho, limites de namespace e grupos de orçamento de serviços posteriores. | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | não definido | Máximo de leases ativos de tarefas de workflow por namespace e fila. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | não definido | Máximo de leases ativos de tarefas de workflow entre todas as filas de um namespace. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | não definido | Máximo de despachos de tarefas de workflow por minuto, namespace e fila. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | não definido | Máximo de despachos de tarefas de workflow por minuto em todo um namespace. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | não definido | Máximo de leases ativos de tarefas de atividade por namespace e fila. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | não definido | Máximo de leases ativos de tarefas de atividade entre todas as filas de um namespace. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | não definido | Máximo de despachos de tarefas de atividade por minuto, namespace e fila. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | não definido | Máximo de despachos de tarefas de atividade por minuto em todo um namespace. O Server nativo 3.x se recusa a iniciar quando ela é um número positivo; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | Opções JSON específicas por `namespace:task_queue`, `namespace:*`, `task_queue` ou `*` para leases ativos, ritmo de despacho, limites de namespace e grupos de orçamento de serviços posteriores. O Server nativo 3.x se recusa a iniciar, a menos que ela não esteja definida ou seja `{}`; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
 | `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT` | `5` | Máximo de tarefas de temporizador vencidas no modo de serviço recuperadas em cada passagem de polling de um worker. | `WORKFLOW_SERVER_DUE_TIMER_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` | `5` | Máximo de tarefas de workflow expiradas recuperadas em cada passagem. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | Mínimo de segundos entre passagens de recuperação de tarefas expiradas por fila. | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
@@ -168,9 +228,9 @@ Exemplo de configuração específica de admissão:
 | `DW_QUERY_TASK_TIMEOUT` | `DW_WORKER_POLL_TIMEOUT` | Segundos que o plano de controle espera pela resposta do worker a uma tarefa de consulta. | `WORKFLOW_SERVER_QUERY_TASK_TIMEOUT` |
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | Prazo do lease das tarefas efêmeras de consulta entregues aos workers. | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | Tempo durante o qual o Server mantém as linhas de resultados de consultas antes de removê-las. | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
-| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Máximo de tarefas de consulta pendentes apoiadas em cache por namespace e fila antes de recusar novas consultas. | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | Máximo de tarefas de consulta pendentes apoiadas em cache por namespace e fila antes de recusar novas consultas. O Server nativo 3.x recusa qualquer valor diferente de `1024` e aplica, em vez disso, seu próprio limite fixo de tarefas de consulta; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
 | `DW_QUERY_TASK_POLL_TIMEOUT` | `5` | Máximo de segundos que cada polling de consultas ocioso espera antes de verificar novamente a pressão de tarefas de workflow e a disponibilidade do plano de controle. | `WORKFLOW_SERVER_QUERY_TASK_POLL_TIMEOUT` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | não definido; derivado de `PHP_CLI_SERVER_WORKERS` | Limite opcional de esperas simultâneas de long polling de consultas ociosas neste nó. Consultas pendentes ainda podem ser reivindicadas imediatamente antes de o polling começar a esperar. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | não definido; derivado de `PHP_CLI_SERVER_WORKERS` | Limite opcional de esperas simultâneas de long polling de consultas ociosas neste nó. Consultas pendentes ainda podem ser reivindicadas imediatamente antes de o polling começar a esperar. O Server nativo 3.x a ignora; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | Prazo padrão do lease de uma tarefa de workflow, em segundos. | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | Prazo padrão do lease de uma tarefa de atividade, em segundos. | `ACTIVITY_TASK_TIMEOUT` |
 | `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Segundos após o heartbeat de um worker até considerar seu registro obsoleto. | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
@@ -279,11 +339,11 @@ Esta referência cobre o contrato publicado do **PHP Server 2.11.0**, incluindo 
 
 | Variável | Padrão | Finalidade | Alias antigo |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Limite opcional de requisições de controle por minuto e namespace; sem valor não há limite. | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Limite opcional de requisições de controle simultâneas por namespace; sem valor não há limite. | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Teto obrigatório de requisições por minuto, incluindo overrides de namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Teto obrigatório de requisições simultâneas, incluindo overrides de namespace. | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | Objeto JSON por namespace com overrides de frequência e concorrência de requisições. | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | Limite opcional de requisições de controle por minuto e namespace; sem valor não há limite. O Server nativo 3.x se recusa a iniciar quando ela não está vazia; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | Limite opcional de requisições de controle simultâneas por namespace; sem valor não há limite. O Server nativo 3.x se recusa a iniciar quando ela não está vazia; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | Teto obrigatório de requisições por minuto, incluindo overrides de namespace. O Server nativo 3.x se recusa a iniciar quando ela não está vazia; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | Teto obrigatório de requisições simultâneas, incluindo overrides de namespace. O Server nativo 3.x se recusa a iniciar quando ela não está vazia; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | Objeto JSON por namespace com overrides de frequência e concorrência de requisições. O Server nativo 3.x se recusa a iniciar, a menos que ela não esteja definida ou seja `{}`; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
 [Admissão de requisições por namespace](./task-queue-admission.md#namespace-request-admission).
 
@@ -291,9 +351,9 @@ Esta referência cobre o contrato publicado do **PHP Server 2.11.0**, incluindo 
 
 | Variável | Padrão | Finalidade | Alias antigo |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON de cotas padrão de linhas duráveis por namespace. Totais e limites pending/open são independentes; tarefas pendentes são linhas ready na fila, com leases ativos limitados à parte. Objeto vazio não limita. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
-| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON de tetos obrigatórios de linhas duráveis, incluindo overrides; objeto vazio não acrescenta tetos do operador. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
-| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON de overrides de cotas duráveis por namespace; tetos obrigatórios continuam valendo. | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | JSON de cotas padrão de linhas duráveis por namespace. Totais e limites pending/open são independentes; tarefas pendentes são linhas ready na fila, com leases ativos limitados à parte. Objeto vazio não limita. O Server nativo 3.x se recusa a iniciar, a menos que ela não esteja definida ou seja `{}`; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | JSON de tetos obrigatórios de linhas duráveis, incluindo overrides; objeto vazio não acrescenta tetos do operador. O Server nativo 3.x se recusa a iniciar, a menos que ela não esteja definida ou seja `{}`; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | JSON de overrides de cotas duráveis por namespace; tetos obrigatórios continuam valendo. O Server nativo 3.x se recusa a iniciar, a menos que ela não esteja definida ou seja `{}`; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
 
 [Cotas de estado durável por namespace](./task-queue-admission.md#namespace-durable-state).
 
@@ -335,13 +395,13 @@ Esta referência cobre o contrato publicado do **PHP Server 2.11.0**, incluindo 
 | `DW_STORAGE_ADMISSION_SOURCE` | `unset` | Identidade esperada do recurso de armazenamento na observação de admissão. | - |
 | `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | Idade máxima da observação de armazenamento em segundos, de 1 a 300. | - |
 | `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | Ativar credenciais bearer de runtime duráveis, vinculadas ao namespace e apoiadas em banco de dados, pela API admin. | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Limite por nó de esperas long-poll workflow/activity de um namespace; não excede o teto global de workers. Recusa se a autoridade de cache compartilhado estiver indisponível. | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Limite por nó de esperas long-poll query-task de um namespace; não excede o teto global de queries. Recusa se a autoridade de cache compartilhado estiver indisponível. | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Limite por nó de esperas long-poll workflow/activity de um namespace; não excede o teto global de workers. Recusa se a autoridade de cache compartilhado estiver indisponível. O Server nativo 3.x a ignora; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | Limite por nó de esperas long-poll query-task de um namespace; não excede o teto global de queries. Recusa se a autoridade de cache compartilhado estiver indisponível. O Server nativo 3.x a ignora; veja [Server nativo 3.x](#native-server-3x). | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
 | `DW_V1_ENABLED` | `false` | Ativar migração e esvaziamento de fila embedded v1 apenas para preservar seu estado deliberadamente; Server independente usa somente v2 por padrão. | `WORKFLOW_V1_ENABLED` |
 
 ## Variáveis de infraestrutura de execução {#runtime-infrastructure-variables}
 
-As variáveis de infraestrutura de execução controlam o framework e suas dependências. A auditoria do Server as reconhece para não emitir avisos, mas elas não são controles estáveis da API do Durable Workflow.
+As variáveis de infraestrutura de execução controlam o framework e suas dependências. A auditoria do Server as reconhece para não emitir avisos, mas elas não são controles estáveis da API do Durable Workflow. O Server nativo 3.x lê o grupo Banco de dados, incluindo as configurações TLS abaixo. Ele não tem Redis, cache nem fila do Laravel, grava seus logs na saída de erro padrão e não lê `LOG_CHANNEL` nem `LOG_LEVEL`.
 
 | Grupo | Variáveis | Uso |
 | --- | --- | --- |
@@ -354,7 +414,10 @@ As variáveis de infraestrutura de execução controlam o framework e suas depen
 
 ## TLS do banco de dados {#database-tls}
 
-Use as mesmas configurações TLS no servidor API, worker de fila, job de
+O Server nativo 3.x resolve essas configurações como o PHP 2.x: mesmas entradas, aliases,
+nomes de modo e recusas. Ele tem um único processo do Server para configurar, além de
+qualquer comando `schema-upgrade` ou de migração executado contra o mesmo banco de dados.
+No PHP 2.x, use as mesmas configurações TLS no servidor API, worker de fila, job de
 inicialização/migração e agendador. O padrão do PostgreSQL é `prefer`;
 MySQL/MariaDB mantêm os padrões de conexão quando nenhum modo é definido.
 Nenhum desses padrões garante uma conexão criptografada e autenticada.
@@ -391,7 +454,8 @@ configuração é armazenada em cache na inicialização.
 
 ## Logs dos contêineres {#container-logs}
 
-Defina `LOG_CHANNEL=stderr` nos contêineres da API, dos workers e do agendador
+O Server nativo 3.x sempre grava seus logs na saída de erro padrão. No PHP 2.x, defina
+`LOG_CHANNEL=stderr` nos contêineres da API, dos workers e do agendador
 para que `docker logs` ou `kubectl logs` colete os logs da aplicação. Defina-o
 explicitamente nas versões existentes. Use `LOG_LEVEL` para escolher a gravidade
 mínima. Para JSON com um registro por linha, adicione:
