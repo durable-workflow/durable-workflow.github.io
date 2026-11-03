@@ -110,7 +110,7 @@ docker volume rm durable-workflow-server-quickstart
 Utilisez l’artefact Compose publié pour une stack multiconteneur sans source, avec MySQL et Redis :
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -927,7 +927,7 @@ Pour l’auto-hébergement, partez des images publiées plutôt que de builds du
 
 - Docker Hub : `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry : `%%artifact.serverGhcrImage%%`
-- Compose avec images publiées : [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- Compose avec images publiées : [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - Manifestes Kubernetes : [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 En production, fixez un tag de version ou digest d’image, utilisez des identifiants par rôle, exécutez initialisation et migrations avant de servir le trafic et vérifiez `/api/ready`, `/api/cluster/info` et l’enregistrement des workers. Ne déplacez pas le trafic sur la seule base de `/api/health`.

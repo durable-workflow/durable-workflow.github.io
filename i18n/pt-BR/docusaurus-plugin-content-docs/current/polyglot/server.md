@@ -110,7 +110,7 @@ docker volume rm durable-workflow-server-quickstart
 Use o artefato Compose publicado para um conjunto de vários contêineres sem código-fonte apoiado por MySQL e Redis:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -927,7 +927,7 @@ Para implantações autogerenciadas, comece com imagens publicadas em vez de com
 
 - Docker Hub: `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
-- Compose de imagem publicada: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- Compose de imagem publicada: [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - Manifestos Kubernetes diretos: [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 Implantações de produção devem fixar uma tag de versão ou digest, usar credenciais por papel, executar inicialização e migrações antes do tráfego e comprovar prontidão com `/api/ready`, `/api/cluster/info` e registro de workers. Não mude o tráfego com base apenas em `/api/health`.

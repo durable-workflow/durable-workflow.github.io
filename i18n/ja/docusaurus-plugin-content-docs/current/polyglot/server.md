@@ -110,7 +110,7 @@ docker volume rm durable-workflow-server-quickstart
 ソースなしで MySQL と Redis を使う複数コンテナ構成には、公開 Compose アーティファクトを使用します。
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -927,7 +927,7 @@ dw workflow:start --type=my-workflow --input-file=input.json
 
 - Docker Hub：`%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry：`%%artifact.serverGhcrImage%%`
-- 公開イメージ用 Compose：[ `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- 公開イメージ用 Compose：[ `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - Kubernetes マニフェスト：[`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 本番はバージョンタグやダイジェストに固定し、ロール別認証情報を使い、受付前に初期化・マイグレーションを実行してください。`/api/ready`、`/api/cluster/info`、Worker 登録で準備を実証します。`/api/health` だけでトラフィックを切り替えないでください。

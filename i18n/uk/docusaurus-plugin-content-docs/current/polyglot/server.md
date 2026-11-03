@@ -149,7 +149,7 @@ docker volume rm durable-workflow-server-quickstart
 з MySQL і Redis без вихідного коду:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -1165,7 +1165,7 @@ Helm описано в [посібнику розгортання](/docs/deploym
 - Docker Hub: `%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
 - Compose з опублікованим образом:
-  [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+  [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - Маніфести Kubernetes:
   [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 

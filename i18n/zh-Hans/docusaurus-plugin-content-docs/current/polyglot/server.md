@@ -109,7 +109,7 @@ docker volume rm durable-workflow-server-quickstart
 需要由 MySQL 与 Redis 支持的、无需源码的多容器栈时，使用已发布的 Compose 制品：
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 server_image=%%artifact.serverDockerHubImage%%
 export DW_AUTH_TOKEN=dev-token
@@ -926,7 +926,7 @@ dw workflow:start --type=my-workflow --input-file=input.json
 
 - Docker Hub：`%%artifact.serverDockerHubImage%%`
 - GitHub Container Registry：`%%artifact.serverGhcrImage%%`
-- 已发布镜像 Compose：[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)
+- 已发布镜像 Compose：[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)
 - 原始 Kubernetes 清单：[`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)
 
 生产部署应固定版本标签或镜像摘要、使用角色凭据、提供流量前先运行引导/迁移，并通过 `/api/ready`、`/api/cluster/info` 与 Worker 注册证明就绪。不要仅依据 `/api/health` 切换生产流量。

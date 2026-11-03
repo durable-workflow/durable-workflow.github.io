@@ -16,9 +16,9 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 | 路径 | 起始产物 | 支持范围 | 此路径不承诺的内容 | 何时需要商业支持 |
 | --- | --- | --- | --- | --- |
-| 本地开发和内部非生产环境 | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)，配合 `%%artifact.serverTagEnv%%` 或 `%%artifact.serverImageEnv%%` | 单台开发机器、局域网演示、共享预发布环境、SDK 和 Worker 集成测试 | 面向互联网的生产环境、持久备份保证、严格密钥轮换、多节点故障转移 | 希望协助将能运行的开发栈转为生产运维手册 |
-| 单节点生产 | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)，配合生产 env 文件、MySQL 和 Redis 卷、按角色限定权限的令牌、备份、反向代理 TLS，以及固定镜像标签或摘要 | 一台 VM、VPS 或内部 Docker 主机，具有持久工作流状态和简单运维模型 | 主机级高可用、自动数据库故障转移、多区域恢复、重大拓扑变化零停机 | 部署承载生产流量，希望审查备份、恢复、身份验证、TLS、升级或回滚流程 |
-| 小型集群部署 | 已发布 `durableworkflow/server` 或 `ghcr.io/durable-workflow/server` 镜像，以 [Compose 配方](https://github.com/durable-workflow/server/blob/main/docker-compose.published.yml)作为容器/进程模板，包含 2 至 3 个 API 节点、共享外部 MySQL/PostgreSQL、共享 Redis、独立扩缩 Worker，以及恰好一个调度器/维护运行器 | 单节点不够时提供横向 API 和 Worker 容量；满足[滚动升级契约](/docs/rolling-upgrades)全部保证时进行滚动升级 | SQLite 集群、无 Redis 多节点模式、以重复调度器作为稳态拓扑、双活多写数据库、自托管无人值守区域故障转移、宽泛的“五个九”或“零停机”SLA 承诺，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要跨多主机容量、故障域、发布或恢复规划，或打算宣称受门槛限制的单区域高可用行为 |
+| 本地开发和内部非生产环境 | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)，配合 `%%artifact.serverTagEnv%%` 或 `%%artifact.serverImageEnv%%` | 单台开发机器、局域网演示、共享预发布环境、SDK 和 Worker 集成测试 | 面向互联网的生产环境、持久备份保证、严格密钥轮换、多节点故障转移 | 希望协助将能运行的开发栈转为生产运维手册 |
+| 单节点生产 | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)，配合生产 env 文件、MySQL 和 Redis 卷、按角色限定权限的令牌、备份、反向代理 TLS，以及固定镜像标签或摘要 | 一台 VM、VPS 或内部 Docker 主机，具有持久工作流状态和简单运维模型 | 主机级高可用、自动数据库故障转移、多区域恢复、重大拓扑变化零停机 | 部署承载生产流量，希望审查备份、恢复、身份验证、TLS、升级或回滚流程 |
+| 小型集群部署 | 已发布 `durableworkflow/server` 或 `ghcr.io/durable-workflow/server` 镜像，以 [Compose 配方](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)作为容器/进程模板，包含 2 至 3 个 API 节点、共享外部 MySQL/PostgreSQL、共享 Redis、独立扩缩 Worker，以及恰好一个调度器/维护运行器 | 单节点不够时提供横向 API 和 Worker 容量；满足[滚动升级契约](/docs/rolling-upgrades)全部保证时进行滚动升级 | SQLite 集群、无 Redis 多节点模式、以重复调度器作为稳态拓扑、双活多写数据库、自托管无人值守区域故障转移、宽泛的“五个九”或“零停机”SLA 承诺，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要跨多主机容量、故障域、发布或恢复规划，或打算宣称受门槛限制的单区域高可用行为 |
 | Kubernetes Helm chart | 来自 `oci://ghcr.io/durable-workflow/charts/durable-workflow` 的 [Server 所属 Helm chart](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)，配合外部数据库、Redis、ingress 和密钥管理 | 对 chart 的 Server、Worker、单实例调度器、bootstrap、Service、探针和策略资源提供可重复的生产安装及升级路径 | 捆绑持久化、提供商托管基础设施、双活多区域、自定义 operator，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要提供商特定架构、容量、恢复，或超出 chart 已发布 values 契约的变更 |
 | 原始 Kubernetes 清单 | Server 仓库 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) 清单，使用已发布 Server 镜像及已有数据库、Redis、ingress 和密钥管理 | 已运维 Kubernetes，希望使用可检查的 API、Worker、调度器、bootstrap、Service、探针、配置和密钥清单的团队 | 独立 Helm 生命周期、托管 Kubernetes 提供商验证、双活多区域、自定义 operator、环境特定存储/网络/安全决策，以及在[发布证据门槛](#release-evidence-status)通过前自助单区域高可用故障转移 | 需要覆盖配置、托管集群验证、提供商特定生产规划，或打算宣称受门槛限制的单区域高可用行为 |
 | 主备多区域评估 | 每区域一个已验证单节点或小型集群部署，加主区域到备用区域的异步数据库复制，以及已审查的故障转移/回切手册 | 支持团队指导下的区域灾难恢复架构评估和环境特定演练 | 已验证的自助 2.0 契约、双活多区域、自动或无人值守区域故障转移、同步跨区域复制（RPO=0）、跨区域活动可见性或联合搜索，或引擎强制的区域固定任务队列路由轴 | 在生产中依赖跨区域复制、故障转移、回切、RPO 或 RTO 之前 |
@@ -75,7 +75,7 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 需要无需源码、由 MySQL 和 Redis 支撑的栈时，使用已发布镜像 Compose 配方：
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/main/docker-compose.published.yml
+curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
 
 export %%artifact.serverTagEnv%%
 export DW_AUTH_TOKEN=dev-token
