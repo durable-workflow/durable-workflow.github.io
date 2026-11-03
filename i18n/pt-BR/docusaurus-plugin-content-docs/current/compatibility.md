@@ -228,7 +228,7 @@ as versões exatas e os digests de imagens usados em cada verificação concluí
 | SDK Python | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | SDK Rust | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-O Server selecionado é o Server nativo 3.x. O PHP Server 2.x está congelado na versão 2.11.8 e não receberá novas releases; instalações PHP existentes devem permanecer no PHP 2.11.8. O `upgrade-takeover` do Server nativo para bancos de dados do PHP 2.5.14–2.11.8 é testado em CI com builds a partir do código-fonte, mas ainda não foi qualificado em uma imagem publicada; aguarde até que o [runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%) seja marcado como qualificado.
+O Server selecionado é o Server nativo 3.x. O PHP Server 2.x está congelado na versão 2.11.8 e não receberá novas releases; instalações PHP existentes podem passar para o Server nativo com o `upgrade-takeover` seguindo o [runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%). A migração está qualificada na imagem publicada 3.0.4 dentro do escopo declarado no runbook; ela é sem volta e exige um backup prévio.
 
 O `appVersion` registrado do chart Helm é `%%artifact.helmChartAppVersion%%`, correspondendo ao Server selecionado, e o chart executa o Server nativo por padrão. O [comprovante de release publicado](%%artifact.helmChartQualificationUrl%%) registra a execução da release do chart, os digests OCI/do pacote, a identidade do código-fonte e uma instalação em kind nessa mesma execução; não é uma qualificação em cluster de produção. Consulte a [seleção e atualização do chart](./deployment.md#helm-chart-selection) antes de instalar ou substituir a imagem.
 

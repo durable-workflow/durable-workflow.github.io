@@ -20,7 +20,7 @@ keywords:
 
 :::note 既存の PHP Server 2.x インストール
 
-PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。ネイティブ Server には PHP 2.5.14–2.11.8 のデータベース向けの `upgrade-takeover` が含まれています。ソースビルドでは CI でテストされていますが、公開イメージではまだ適格性が確認されていないため、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)が適格性確認済みとしてマークされるまでは、既存の PHP インストールを PHP 2.11.8 のまま維持してください。それまでは、テイクオーバーのリハーサルはバックアップから復元したコピーでのみ行ってください。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は[2.11.8 タグの `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) で、現行の Server リリースでは[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) として維持されています。既存の PHP 2.x インストールは、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従って `upgrade-takeover` でネイティブへ移行できます。テイクオーバーは、SQLite、MySQL 8.0、PostgreSQL 17 上で PHP 2.11.8 が書き込んだデータベースについて、公開済みの 3.0.4 イメージ（arm64）で適格性が確認されています。MariaDB、amd64、および他の PHP リリースのデータベース（スキーマレイアウト 2.8.0–2.11.8）は、ソースビルドでの CI による検証のみです。テイクオーバーは一方向で、事前のバックアップが前提であり、PHP を停止しておく必要があります。引き継げないデータベースや状態は拒否されます。各ケースは手順書の[拒否条件の表](%%artifact.serverTakeoverRunbookUrl%%#refusals)に記載されています。まずバックアップから復元したコピーでリハーサルしてください。テイクオーバー後に PHP へロールバックすることはできません。また、テイクオーバーは 3.1.x 系で非推奨とする予定です。以下で PHP 2.x と記した設定は、ネイティブ Server には適用されません。
 
 :::
 

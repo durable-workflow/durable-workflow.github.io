@@ -40,14 +40,19 @@ y Redis) sigue disponible. En la etiqueta de publicación 2.11.8 es
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
 desde la 3.0.0, el repositorio de Server conserva el mismo stack como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Mantén las instalaciones PHP existentes en una imagen 2.11.8 fijada. El Server
-nativo incluye `upgrade-takeover` para bases de datos de PHP 2.5.14–2.11.8. Está
-probado en CI con compilaciones desde el código fuente, pero aún no está validado
-en una imagen publicada, así que quédate en PHP 2.11.8 hasta que el
-[runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%)
-se marque como validado. Hasta entonces, ensaya la toma de control solo sobre una
-copia restaurada de una copia de seguridad. Después de la toma de control no hay
-reversión a PHP. Las secciones
+Las instalaciones PHP 2.x existentes pueden pasar al Server nativo con
+`upgrade-takeover` siguiendo el
+[runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%).
+La toma de control está validada en la imagen publicada 3.0.4 (arm64) para bases
+de datos escritas por PHP 2.11.8 en SQLite, MySQL 8.0 y PostgreSQL 17. MariaDB,
+amd64 y las bases de datos de otras versiones de PHP (esquemas 2.8.0–2.11.8) solo
+tienen cobertura de CI con compilaciones desde el código fuente. Es de un solo
+sentido, exige una copia de seguridad previa y requiere detener PHP. Rechaza las
+bases de datos y el estado que no puede trasladar; las
+[tablas de rechazo](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+del runbook enumeran cada caso. Ensáyala primero sobre una copia restaurada de tu
+copia de seguridad. Después de la toma de control no hay reversión a PHP, y está
+previsto declararla obsoleta en la línea 3.1.x. Las secciones
 siguientes que mencionan Redis, un worker de cola, un programador o la
 inicialización describen la topología de PHP 2.x.
 
@@ -506,7 +511,7 @@ helm install durable-workflow \
 
 El chart 1.x ejecuta el Server nativo de forma predeterminada (`runtime: native`): un único Deployment de Server, sin worker, programador, Job de migración ni Redis. El archivo de valores debe apuntar a una base de datos MySQL, MariaDB o PostgreSQL externa, proporcionar `DW_AUTH_TOKEN` y los tokens por rol mediante Kubernetes Secrets existentes y configurar ingress/TLS para su entorno. El chart se niega a generar manifiestos sin el `DW_AUTH_TOKEN` compartido y rechaza SQLite. Una instalación nativa ejecuta una réplica de forma predeterminada; más de una réplica, o el autoescalado, requiere que `native.storage.existingClaim` indique un volumen ReadWriteMany para los objetos de carga externa. El chart no crea almacenamiento persistente ni infraestructura administrada por el proveedor. Fije la imagen del Server por digest para un despliegue reproducible.
 
-Una versión PHP 2.x existente no pasa al Server nativo con una actualización ordinaria: el chart se niega hasta que defina `runtime` explícitamente. Defina `runtime: php` para conservar el worker, el programador, la tarea de inicialización y Redis de PHP 2.x. Mantenga esa configuración hasta que el [runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%) se marque como validado; la toma de control aún no está validada en una imagen publicada. Consulte las [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) del chart.
+Una versión PHP 2.x existente no pasa al Server nativo con una actualización ordinaria: el chart se niega hasta que defina `runtime` explícitamente. Defina `runtime: php` para conservar el worker, el programador, la tarea de inicialización y Redis de PHP 2.x. Para pasar a `runtime: native`, siga el [runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%) y mantenga `runtime: php` hasta que la toma de control haya terminado. Consulte las [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) del chart.
 
 ### Elegir una versión del chart {#helm-chart-selection}
 

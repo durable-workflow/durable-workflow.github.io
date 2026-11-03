@@ -42,14 +42,19 @@ continua disponível. Na tag de release 2.11.8, ele é o
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
 a partir da 3.0.0, o repositório do Server mantém o mesmo stack como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Mantenha as instalações PHP existentes em uma imagem 2.11.8 fixada. O Server
-nativo inclui o `upgrade-takeover` para bancos de dados do PHP 2.5.14–2.11.8. Ele
-é testado em CI com builds a partir do código-fonte, mas ainda não foi qualificado
-em uma imagem publicada; por isso, permaneça no PHP 2.11.8 até que o
-[runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%)
-seja marcado como qualificado. Até lá, ensaie a migração para o Server nativo
-apenas em uma cópia restaurada de um backup.
-Não há reversão para PHP depois da migração. As seções
+As instalações PHP 2.x existentes podem passar para o Server nativo com o
+`upgrade-takeover` seguindo o
+[runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%).
+A migração está qualificada na imagem publicada 3.0.4 (arm64) para bancos de dados
+gravados pelo PHP 2.11.8 em SQLite, MySQL 8.0 e PostgreSQL 17. MariaDB, amd64 e
+bancos de dados de outras releases do PHP (esquemas 2.8.0–2.11.8) têm apenas
+cobertura de CI com builds a partir do código-fonte. A migração é sem volta,
+exige um backup prévio e o PHP precisa estar parado. Ela recusa bancos de dados e
+estados que não consegue transferir; as
+[tabelas de recusa](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+do runbook listam cada caso. Ensaie-a primeiro em uma cópia restaurada do seu
+backup. Não há reversão para PHP depois da migração, e está previsto marcar a
+migração como obsoleta na linha 3.1.x. As seções
 abaixo que mencionam Redis, um worker de fila, um agendador ou bootstrap
 descrevem a topologia do PHP 2.x.
 
@@ -528,7 +533,7 @@ helm install durable-workflow \
 
 O chart 1.x executa o Server nativo por padrão (`runtime: native`): um único Deployment do Server, sem worker, agendador, Job de migração nem Redis. O arquivo de valores deve apontar para um banco de dados MySQL, MariaDB ou PostgreSQL externo, fornecer `DW_AUTH_TOKEN` e os tokens com escopo por papel por Kubernetes Secrets existentes e configurar ingress/TLS para o ambiente. O chart se recusa a gerar os manifestos sem o `DW_AUTH_TOKEN` compartilhado e recusa SQLite. Uma instalação nativa executa uma réplica por padrão; mais de uma réplica, ou escalonamento automático, exige que `native.storage.existingClaim` indique um volume ReadWriteMany para os objetos de payload externo. O chart não cria persistência ou infraestrutura gerenciada pelo provedor. Fixe a imagem do Server por digest para uma implantação reproduzível.
 
-Uma release PHP 2.x existente não passa para o modo nativo em uma atualização comum: o chart recusa a atualização até que você defina `runtime` explicitamente. Defina `runtime: php` para manter o worker, o agendador, o job de bootstrap e o Redis do PHP 2.x. Mantenha essa configuração até que o [runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%) seja marcado como qualificado; a migração para o Server nativo ainda não foi qualificada em uma imagem publicada. Consulte as [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) do chart.
+Uma release PHP 2.x existente não passa para o modo nativo em uma atualização comum: o chart recusa a atualização até que você defina `runtime` explicitamente. Defina `runtime: php` para manter o worker, o agendador, o job de bootstrap e o Redis do PHP 2.x. Para passar para `runtime: native`, siga o [runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%) e mantenha `runtime: php` até que a migração esteja concluída. Consulte as [notas UPGRADING](%%artifact.helmChartUpgradeUrl%%) do chart.
 
 ### Escolher uma versão do chart {#helm-chart-selection}
 

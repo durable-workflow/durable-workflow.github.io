@@ -224,7 +224,7 @@ forward compatibility в документах стабільності паке�
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-Вибраний Server — це нативний Server 3.x. PHP Server 2.x заморожено на версії 2.11.8, і нових випусків він не отримуватиме; наявні PHP-встановлення мають залишатися на PHP 2.11.8. `upgrade-takeover` нативного Server для баз PHP 2.5.14–2.11.8 протестовано в CI на збірках із вихідного коду, але ще не кваліфіковано на опублікованому образі; зачекайте, доки [runbook переходу на нативний Server](%%artifact.serverTakeoverRunbookUrl%%) не буде позначено як кваліфікований.
+Вибраний Server — це нативний Server 3.x. PHP Server 2.x заморожено на версії 2.11.8, і нових випусків він не отримуватиме; наявні PHP-встановлення можна перевести на нативний Server за допомогою `upgrade-takeover` за [runbook переходу на нативний Server](%%artifact.serverTakeoverRunbookUrl%%). Перехід кваліфіковано на опублікованому образі 3.0.4 у межах, зазначених у runbook; він односторонній і вимагає попередньої резервної копії.
 
 Записаний `appVersion` чарту Helm — `%%artifact.helmChartAppVersion%%`, що відповідає вибраному Server, і чарт типово запускає нативний Server. [Опублікований звіт про випуск](%%artifact.helmChartQualificationUrl%%) фіксує запуск випуску чарту, OCI/package digests, ідентичність джерела та встановлення в kind у межах цього запуску; це не кваліфікація production-кластера. Перед встановленням або перевизначенням образу див. [вибір і оновлення чарту](./deployment.md#helm-chart-selection).
 

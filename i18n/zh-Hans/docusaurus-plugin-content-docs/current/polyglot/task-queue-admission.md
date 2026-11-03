@@ -34,7 +34,7 @@ keywords:
 - 命名空间请求准入设置
 - 命名空间持久状态限制
 
-它会忽略 `DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT` 及其按命名空间设置的变体。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` 必须保持未设置或 `1024`。原生 Server 改为对每个命名空间施加固定上限：待处理或已租用的查询任务最多16个，超出后以 HTTP `503` 返回 `query_task_queue_full`，拒绝后续查询。
+它会忽略 `DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT` 及其按命名空间设置的变体。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` 必须保持未设置或 `1024`。原生 Server 改为对每个命名空间施加固定上限：待处理或已租用的查询任务最多16个，超出后与 PHP 一样以 HTTP `429` 返回 `query_task_queue_full`，拒绝后续查询。
 
 在原生 Server 上，通过每个 SDK Worker 配置的执行槽数量和 Worker 数量来限制任务并发。`GET /api/task-queues/{name}` 在 `admission` 下报告已注册执行槽以及已租用和就绪的任务数，所有服务器端限制和剩余容量字段均为 `null`。参见[原生配置参考](./server-config-reference.md#native-server-3x)。本页其余部分描述 PHP Server 2.x。
 

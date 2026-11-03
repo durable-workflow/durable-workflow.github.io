@@ -24,10 +24,12 @@ O stack PHP 2.x (server, worker de fila, agendador, job de bootstrap e Redis) é
 [`docker-compose.published.yml` na tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 mantido nas releases atuais do Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-O Server nativo inclui o `upgrade-takeover` para bancos de dados do PHP 2.5.14–2.11.8.
-Ele é testado em CI com builds a partir do código-fonte, mas ainda não foi qualificado em uma imagem publicada; por isso, mantenha as instalações PHP existentes no PHP 2.11.8 até que o
-[runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%)
-seja marcado como qualificado. Até lá, ensaie a migração para o Server nativo apenas em uma cópia restaurada de um backup.
+As instalações PHP 2.x existentes podem passar para o Server nativo com o `upgrade-takeover` seguindo o
+[runbook de migração para o Server nativo](%%artifact.serverTakeoverRunbookUrl%%).
+A migração está qualificada na imagem publicada 3.0.4 (arm64) para bancos de dados gravados pelo PHP 2.11.8 em SQLite, MySQL 8.0 e PostgreSQL 17. MariaDB, amd64 e bancos de dados de outras releases do PHP (esquemas 2.8.0–2.11.8) têm apenas cobertura de CI com builds a partir do código-fonte.
+A migração é sem volta, exige um backup prévio e o PHP precisa estar parado. Ela recusa bancos de dados e estados que não consegue transferir; as
+[tabelas de recusa](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+do runbook listam cada caso. Ensaie-a primeiro em uma cópia restaurada do seu backup. Não há reversão para PHP depois da migração, e está previsto marcar a migração como obsoleta na linha 3.1.x.
 A configuração abaixo marcada como PHP 2.x não se aplica ao Server nativo.
 
 :::

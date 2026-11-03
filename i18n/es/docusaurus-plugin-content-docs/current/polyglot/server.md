@@ -24,10 +24,12 @@ El stack PHP 2.x (servidor, worker de cola, planificador, tarea de inicializaci�
 [`docker-compose.published.yml` en la etiqueta 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 que se conserva en las versiones actuales de Server como
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-El Server nativo incluye `upgrade-takeover` para bases de datos de PHP 2.5.14–2.11.8.
-Está probado en CI con compilaciones desde el código fuente, pero aún no está validado en una imagen publicada, así que mantenga las instalaciones PHP existentes en PHP 2.11.8 hasta que el
-[runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%)
-se marque como validado. Hasta entonces, ensaye la toma de control solo sobre una copia restaurada de una copia de seguridad.
+Las instalaciones PHP 2.x existentes pueden pasar al Server nativo con `upgrade-takeover` siguiendo el
+[runbook de toma de control nativa](%%artifact.serverTakeoverRunbookUrl%%).
+La toma de control está validada en la imagen publicada 3.0.4 (arm64) para bases de datos escritas por PHP 2.11.8 en SQLite, MySQL 8.0 y PostgreSQL 17. MariaDB, amd64 y las bases de datos de otras versiones de PHP (esquemas 2.8.0–2.11.8) solo tienen cobertura de CI con compilaciones desde el código fuente.
+Es de un solo sentido, exige una copia de seguridad previa y requiere detener PHP. Rechaza las bases de datos y el estado que no puede trasladar; las
+[tablas de rechazo](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+del runbook enumeran cada caso. Ensáyela primero sobre una copia restaurada de su copia de seguridad. Después de la toma de control no hay reversión a PHP, y está previsto declararla obsoleta en la línea 3.1.x.
 La configuración marcada abajo como PHP 2.x no se aplica al Server nativo.
 
 :::

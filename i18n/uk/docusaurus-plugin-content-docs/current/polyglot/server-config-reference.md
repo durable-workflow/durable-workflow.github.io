@@ -89,10 +89,10 @@ budget-груп, admission запитів namespace, квот сталого с�
 обмежень утримуваних polls, і нативного еквівалента для них поки немає. Кожен
 процес нативного Server відкриває щонайбільше чотири з'єднання з базою даних.
 Для query tasks діє фіксована межа: 16 незавершених або орендованих tasks на
-namespace; понад неї нові queries відхиляються з HTTP `503` і
-`query_task_queue_full`. Ця межа не налаштовується. Щоб обмежити паралельність
-tasks на нативному Server, визначте кількість slots кожного SDK worker і
-кількість workers. [Допуск черги завдань](/docs/polyglot/task-queue-admission)
+namespace; понад неї нові queries відхиляються з HTTP `429` і
+`query_task_queue_full`, як і на PHP. Ця межа не налаштовується. Щоб обмежити
+паралельність tasks на нативному Server, визначте кількість slots кожного SDK
+worker і кількість workers. [Допуск черги завдань](/docs/polyglot/task-queue-admission)
 описує засоби керування PHP 2.x.
 
 Автентифікація нативного Server відрізняється від PHP 2.x так:
@@ -116,7 +116,8 @@ tasks на нативному Server, визначте кількість slots 
   без версії випуску. Образам випуску воно не потрібне.
 - `DW_UPGRADE_BACKUP_FINGERPRINT` і `DW_RUST_UPGRADE_QUEUE_*`: вхідні дані
   одностороннього [переходу бази PHP на нативний Server](%%artifact.serverTakeoverRunbookUrl%%);
-  цей перехід ще не кваліфіковано на опублікованому образі.
+  цей перехід кваліфіковано на опублікованому образі 3.0.4 у межах, зазначених
+  у runbook.
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS` (застаріла назва
   `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`): враховується ще до її
   додавання до контракту PHP.

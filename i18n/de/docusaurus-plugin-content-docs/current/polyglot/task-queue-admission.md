@@ -34,7 +34,7 @@ Der native 3.x-Server setzt keine der serverseitigen Zulassungssteuerungen auf d
 - eine Einstellung der Anfragezulassung pro Namespace
 - ein Limit für dauerhaften Namespace-Zustand
 
-Er ignoriert `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` und deren Varianten pro Namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` muss nicht gesetzt oder `1024` sein. Stattdessen wendet der native Server eine feste Grenze von 16 ausstehenden oder geleasten Abfrage-Tasks pro Namespace an und lehnt weitere Abfragen mit HTTP `503` und `query_task_queue_full` ab.
+Er ignoriert `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` und deren Varianten pro Namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` muss nicht gesetzt oder `1024` sein. Stattdessen wendet der native Server eine feste Grenze von 16 ausstehenden oder geleasten Abfrage-Tasks pro Namespace an und lehnt weitere Abfragen wie PHP mit HTTP `429` und `query_task_queue_full` ab.
 
 Begrenzen Sie die Task-Nebenläufigkeit auf dem nativen Server über die konfigurierten Slots jedes SDK-Workers und die Anzahl der Worker. `GET /api/task-queues/{name}` meldet unter `admission` die registrierten Slots sowie die Zahl geleaster und bereiter Tasks; alle serverseitigen Grenz- und Restkapazitätsfelder sind `null`. Siehe die [native Konfigurationsreferenz](./server-config-reference.md#native-server-3x). Der Rest dieser Seite beschreibt PHP Server 2.x.
 

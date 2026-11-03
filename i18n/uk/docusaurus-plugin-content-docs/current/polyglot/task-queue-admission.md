@@ -41,7 +41,7 @@ keywords:
 - налаштування допуску запитів namespace
 - ліміт сталого стану namespace
 
-Він ігнорує `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` та їхні варіанти для namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` має залишатися незаданим або дорівнювати `1024`. Натомість нативний Server застосовує фіксовану межу: 16 незавершених або орендованих завдань query на простір імен, а подальші query відхиляє з HTTP `503` і `query_task_queue_full`.
+Він ігнорує `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` та їхні варіанти для namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` має залишатися незаданим або дорівнювати `1024`. Натомість нативний Server застосовує фіксовану межу: 16 незавершених або орендованих завдань query на простір імен, а подальші query, як і PHP, відхиляє з HTTP `429` і `query_task_queue_full`.
 
 На нативному Server обмежуйте паралельність завдань налаштованими слотами кожного SDK worker і кількістю worker. `GET /api/task-queues/{name}` показує в `admission` зареєстровані слоти та кількість орендованих і готових завдань, а всі поля серверних лімітів і залишкової місткості мають значення `null`. Див. [довідник нативної конфігурації](./server-config-reference.md#native-server-3x). Решта сторінки описує PHP Server 2.x.
 

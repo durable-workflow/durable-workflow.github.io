@@ -20,7 +20,7 @@ keywords:
 
 :::note 现有 PHP Server 2.x 安装
 
-PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。原生 Server 提供适用于 PHP 2.5.14–2.11.8 数据库的 `upgrade-takeover`。它已在源码构建上通过 CI 测试，但尚未在已发布镜像上通过资格验证；因此，在[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)被标记为已通过资格验证之前，请让现有 PHP 安装继续使用 PHP 2.11.8。在此之前，只能在由备份恢复出的副本上演练接管。下文标注为 PHP 2.x 的配置不适用于原生 Server。
+PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）即 [2.11.8 标签中的 `docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)，在当前 Server 发布中以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留。现有 PHP 2.x 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。对于由 PHP 2.11.8 在 SQLite、MySQL 8.0 和 PostgreSQL 17 上写入的数据库，接管已在已发布的 3.0.4 镜像（arm64）上通过资格验证。MariaDB、amd64 以及来自其他 PHP 版本的数据库（布局 2.8.0–2.11.8）仅有基于源码构建的 CI 覆盖。接管是单向的，必须先备份，并且必须停止 PHP。接管会拒绝它无法迁移的数据库和状态；运行手册中的[拒绝情形表](%%artifact.serverTakeoverRunbookUrl%%#refusals)列出了每种情况。请先在由备份恢复出的副本上演练接管。接管后无法回滚到 PHP，且接管计划在 3.1.x 系列中弃用。下文标注为 PHP 2.x 的配置不适用于原生 Server。
 
 :::
 

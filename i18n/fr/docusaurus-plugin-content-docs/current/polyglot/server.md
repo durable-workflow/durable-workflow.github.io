@@ -24,10 +24,12 @@ La pile PHP 2.x (serveur, worker de file, planificateur, job d’initialisation 
 [`docker-compose.published.yml` au tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml),
 conservé dans les versions actuelles de Server sous le nom
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Le Server natif fournit `upgrade-takeover` pour les bases PHP 2.5.14–2.11.8.
-Cette commande est testée en CI sur des builds depuis les sources, mais n’est pas encore qualifiée sur une image publiée : conservez donc les installations PHP existantes sur PHP 2.11.8 jusqu’à ce que le
-[runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%)
-soit marqué comme qualifié. D’ici là, ne vous entraînez à la reprise que sur une copie restaurée d’une sauvegarde.
+Les installations PHP 2.x existantes peuvent passer au natif avec `upgrade-takeover` en suivant le
+[runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%).
+La reprise est qualifiée sur l’image publiée 3.0.4 (arm64) pour les bases écrites par PHP 2.11.8 sur SQLite, MySQL 8.0 et PostgreSQL 17. MariaDB, amd64 et les bases issues d’autres versions de PHP (schémas 2.8.0–2.11.8) ne sont couverts que par la CI sur des builds depuis les sources.
+La reprise est à sens unique et exige une sauvegarde préalable ; PHP doit être arrêté. Elle refuse les bases et les états qu’elle ne peut pas reprendre ; les
+[tableaux de refus](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+du runbook énumèrent chaque cas. Entraînez-vous d’abord sur une copie restaurée de votre sauvegarde. Aucun retour vers PHP n’est possible après la reprise, et il est prévu de déprécier la reprise dans la série 3.1.x.
 La configuration marquée PHP 2.x ci-dessous ne s’applique pas au Server natif.
 
 :::

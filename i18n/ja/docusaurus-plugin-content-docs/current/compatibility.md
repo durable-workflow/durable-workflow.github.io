@@ -171,7 +171,7 @@ Durable Workflow の各公開インターフェースは、次の安定性レベ
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-選択した Server はネイティブ 3.x Server です。PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。既存の PHP インストールは PHP 2.11.8 のまま維持してください。PHP 2.5.14–2.11.8 のデータベース向けのネイティブの `upgrade-takeover` は、ソースビルドでは CI でテストされていますが、公開イメージではまだ適格性が確認されていません。[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)が適格性確認済みとしてマークされるまでお待ちください。
+選択した Server はネイティブ 3.x Server です。PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。既存の PHP インストールは、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従って `upgrade-takeover` でネイティブへ移行できます。テイクオーバーは、手順書に記載された範囲内で、公開済みの 3.0.4 イメージで適格性が確認されています。一方向の操作であり、事前のバックアップが前提です。
 
 Helm チャートに記録された `appVersion` は `%%artifact.helmChartAppVersion%%` で、選択した Server と一致し、チャートは既定でネイティブ Server を実行します。[公開済みのリリース記録](%%artifact.helmChartQualificationUrl%%)には、チャートのリリース実行、OCI/パッケージのダイジェスト、ソース識別子、その実行内での kind へのインストールが記録されています。本番クラスターでの適格性確認ではありません。インストールやイメージの上書き前に、[チャートの選択とアップグレード](./deployment.md#helm-chart-selection)を確認してください。
 

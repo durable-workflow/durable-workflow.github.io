@@ -34,7 +34,7 @@ keywords:
 - namespace のリクエスト受付制限の設定
 - namespace の永続状態の制限
 
-`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT` と、それぞれの namespace ごとの設定は無視します。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` は未設定または `1024` のままにする必要があります。ネイティブは代わりに、namespace ごとに保留中またはリース中のクエリタスクを16件までとする固定の上限を適用し、それを超えるクエリは HTTP `503` と `query_task_queue_full` で拒否します。
+`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT` と、それぞれの namespace ごとの設定は無視します。`DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` は未設定または `1024` のままにする必要があります。ネイティブは代わりに、namespace ごとに保留中またはリース中のクエリタスクを16件までとする固定の上限を適用し、それを超えるクエリは、PHP と同様に HTTP `429` と `query_task_queue_full` で拒否します。
 
 ネイティブでは、各 SDK Worker に設定したスロット数と Worker 数でタスクの並行数を制限します。`GET /api/task-queues/{name}` は `admission` の下に登録済みスロット数と、リース中・実行可能なタスク数を報告し、Server 側の制限と残り容量のフィールドはすべて `null` になります。[ネイティブ設定リファレンス](./server-config-reference.md#native-server-3x)を参照してください。このページの以降の内容は PHP Server 2.x について説明します。
 

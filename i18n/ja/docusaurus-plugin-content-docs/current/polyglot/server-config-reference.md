@@ -63,7 +63,7 @@ PHP 2.x Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` な�
 
 ネイティブが受け付けるが無視する設定：`DW_ADMIN_SIGNATURE_KEY`、`DW_AUTH_METHOD_HEADER`、`DW_AUTH_STATUS_HEADER`、`DW_BOOTSTRAP_DELAY_SECONDS`、`DW_BOOTSTRAP_RETRIES`、`DW_CALLER_LABEL_HEADER`、`DW_CALLER_TYPE_HEADER`、`DW_COMPRESSION_ENABLED`、`DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`、`DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`、`DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`、`DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`、`DW_EXTERNAL_PAYLOAD_S3_REGION`、`DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`、`DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`、`DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`、`DW_MAX_HISTORY_EVENTS`、`DW_MAX_TASKS_PER_POLL`、`DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`、`DW_OBSERVABILITY_CONTEXT_ENABLED`、`DW_OPERATOR_SIGNATURE_KEY`、`DW_PACKAGE_PROVENANCE_PATH`、`DW_POLLING_CACHE_PATH`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_SIGNATURE_KEY`、`DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`、`DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`、`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`、`DW_V2_CACHE_VALIDATION_MODE`、`DW_V2_GUARDRAILS_BOOT`、`DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`、`DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`、`DW_V2_MATCHING_ROLE_QUEUE_WAKE`、`DW_V2_TASK_DISPATCH_MODE`、`DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`、`DW_V2_TENANCY_ENVIRONMENT`、`DW_V2_TENANCY_ORGANIZATION`、`DW_V2_TENANCY_PROJECT`、`DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`、`DW_V2_VALIDATE_CACHE_BACKEND`、`DW_WAKE_SIGNAL_TTL_SECONDS`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`、`DW_WORKER_POLL_INTERVAL_MS`、`DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`、`DW_WORKER_SIGNATURE_KEY`。
 
-ネイティブには、Server 側のタスクキューのリース上限・ディスパッチ上限、予算グループ、namespace のリクエスト受付制限、namespace の永続状態クォータ、保持中の poll の上限がなく、現時点ではネイティブの代替手段もありません。ネイティブ Server の各プロセスは最大4本のデータベース接続を開きます。クエリタスクには namespace ごとに保留中またはリース中16件という固定の上限があり、それを超える新規クエリは HTTP `503` と `query_task_queue_full` で拒否されます。この上限は設定できません。ネイティブでタスクの並行数を制限するには、各 SDK Worker のスロット数と Worker 数を調整してください。PHP 2.x の制御は[タスクキューの受け入れ制御](/docs/polyglot/task-queue-admission)で説明しています。
+ネイティブには、Server 側のタスクキューのリース上限・ディスパッチ上限、予算グループ、namespace のリクエスト受付制限、namespace の永続状態クォータ、保持中の poll の上限がなく、現時点ではネイティブの代替手段もありません。ネイティブ Server の各プロセスは最大4本のデータベース接続を開きます。クエリタスクには namespace ごとに保留中またはリース中16件という固定の上限があり、それを超える新規クエリは、PHP と同様に HTTP `429` と `query_task_queue_full` で拒否されます。この上限は設定できません。ネイティブでタスクの並行数を制限するには、各 SDK Worker のスロット数と Worker 数を調整してください。PHP 2.x の制御は[タスクキューの受け入れ制御](/docs/polyglot/task-queue-admission)で説明しています。
 
 ネイティブの認証は、次の点で PHP 2.x と異なります。
 
@@ -75,7 +75,7 @@ PHP 2.x Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` な�
 - `DW_BIND_ADDRESS`：待ち受けアドレス。バイナリの既定値は `127.0.0.1:8080` で、公開イメージは `0.0.0.0:8080` を設定します。
 - `DW_RUST_MAINTENANCE_LOOP`：`1` または `true` で、プロセス内のタイマー・スケジュールループに修復処理（タスク修復とアクティビティのタイムアウト）を追加します。公開イメージには独立したスケジューラーがないため、`1` を設定しています。
 - `DW_RUST_EXPERIMENTAL`：リリースバージョンを持たない開発ビルドでのみ `1` が必要です。リリースイメージでは不要です。
-- `DW_UPGRADE_BACKUP_FINGERPRINT` と `DW_RUST_UPGRADE_QUEUE_*`：PHP データベースを一方向に移行する[ネイティブへの引き継ぎ](%%artifact.serverTakeoverRunbookUrl%%)への入力です。この引き継ぎは、公開イメージではまだ適格性が確認されていません。
+- `DW_UPGRADE_BACKUP_FINGERPRINT` と `DW_RUST_UPGRADE_QUEUE_*`：PHP データベースを一方向に移行する[ネイティブへの引き継ぎ](%%artifact.serverTakeoverRunbookUrl%%)への入力です。この引き継ぎは、手順書に記載された範囲内で、公開済みの 3.0.4 イメージで適格性が確認されています。
 - `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`（従来名 `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`）：PHP の契約に追加される前から適用されます。
 
 ## 変更が反映されるタイミング {#how-changes-take-effect}

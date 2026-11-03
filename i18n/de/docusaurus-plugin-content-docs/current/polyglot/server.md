@@ -24,12 +24,20 @@ Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis) ist
 [`docker-compose.published.yml` am Tag 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)
 und bleibt in aktuellen Server-Veröffentlichungen als
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) erhalten.
-Der native Server enthält `upgrade-takeover` für Datenbanken von PHP 2.5.14–2.11.8. Es ist
-in CI mit Builds aus dem Quellcode getestet, aber noch nicht für ein veröffentlichtes Image
-qualifiziert; behalten Sie bestehende PHP-Installationen daher auf PHP 2.11.8, bis das
-[Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%)
-als qualifiziert gekennzeichnet ist. Proben Sie die Übernahme bis dahin nur an einer
-wiederhergestellten Kopie einer Sicherung.
+Bestehende PHP-2.x-Installationen können mit `upgrade-takeover` auf den nativen
+Server wechseln; folgen Sie dazu dem
+[Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%).
+Die Übernahme ist auf dem veröffentlichten 3.0.4-Image (arm64) für Datenbanken
+qualifiziert, die PHP 2.11.8 auf SQLite, MySQL 8.0 und PostgreSQL 17 geschrieben
+hat. MariaDB, amd64 und Datenbanken aus anderen PHP-Releases (Schema-Layouts
+2.8.0–2.11.8) sind nur durch CI mit Builds aus dem Quellcode abgedeckt. Die
+Übernahme ist einseitig und erfordert vorab eine Sicherung; PHP muss gestoppt
+sein. Sie verweigert Datenbanken und Zustände, die sie nicht übernehmen kann; die
+[Ablehnungstabellen](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+des Runbooks führen jeden Fall auf. Proben Sie sie zuerst an einer
+wiederhergestellten Kopie Ihrer Sicherung. Nach der Übernahme gibt es kein
+Rollback auf PHP, und die Übernahme soll in der 3.1.x-Reihe als veraltet
+markiert werden.
 Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Server.
 
 :::

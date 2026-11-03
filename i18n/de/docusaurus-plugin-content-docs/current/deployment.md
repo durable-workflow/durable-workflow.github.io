@@ -24,14 +24,20 @@ bleibt verfügbar. Am Veröffentlichungstag 2.11.8 ist er
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
 ab 3.0.0 führt das Serverrepository denselben Stack als
 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
-Behalten Sie bestehende PHP-Installationen auf einem festgelegten 2.11.8-Image. Der
-native Server enthält `upgrade-takeover` für Datenbanken von PHP 2.5.14–2.11.8. Es ist
-in CI mit Builds aus dem Quellcode getestet, aber noch nicht für ein veröffentlichtes
-Image qualifiziert; bleiben Sie daher bei PHP 2.11.8, bis das
-[Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%)
-als qualifiziert gekennzeichnet ist. Proben Sie die Übernahme bis dahin nur an einer
-wiederhergestellten Kopie einer Sicherung.
-Nach der Übernahme gibt es kein Rollback auf PHP. Abschnitte unten, die Redis, einen
+Bestehende PHP-2.x-Installationen können mit `upgrade-takeover` auf den nativen
+Server wechseln; folgen Sie dazu dem
+[Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%).
+Die Übernahme ist auf dem veröffentlichten 3.0.4-Image (arm64) für Datenbanken
+qualifiziert, die PHP 2.11.8 auf SQLite, MySQL 8.0 und PostgreSQL 17 geschrieben
+hat. MariaDB, amd64 und Datenbanken aus anderen PHP-Releases (Schema-Layouts
+2.8.0–2.11.8) sind nur durch CI mit Builds aus dem Quellcode abgedeckt. Die
+Übernahme ist einseitig und erfordert vorab eine Sicherung; PHP muss gestoppt
+sein. Sie verweigert Datenbanken und Zustände, die sie nicht übernehmen kann; die
+[Ablehnungstabellen](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+des Runbooks führen jeden Fall auf. Proben Sie sie zuerst an einer
+wiederhergestellten Kopie Ihrer Sicherung. Nach der Übernahme gibt es kein
+Rollback auf PHP, und die Übernahme soll in der 3.1.x-Reihe als veraltet
+markiert werden. Abschnitte unten, die Redis, einen
 Queue-Worker, einen Scheduler oder Bootstrap erwähnen, beschreiben die PHP-2.x-Topologie.
 
 :::
@@ -395,7 +401,7 @@ helm install durable-workflow \
 
 Chart 1.x betreibt standardmäßig den nativen Server (`runtime: native`): ein Server-Deployment ohne Worker, Scheduler, Migrations-Job oder Redis. Ihre Values-Datei muss auf eine externe MySQL-, MariaDB- oder PostgreSQL-Datenbank verweisen, `DW_AUTH_TOKEN` und die rollenbezogenen Tokens über vorhandene Kubernetes Secrets bereitstellen und Ingress/TLS für Ihre Umgebung konfigurieren. Ohne das gemeinsame `DW_AUTH_TOKEN` verweigert das Chart das Rendern, und SQLite lehnt es ab. Eine native Installation läuft standardmäßig mit einem Replikat; mehr als ein Replikat oder Autoscaling erfordert, dass `native.storage.existingClaim` ein ReadWriteMany-Volume für externe Payload-Objekte benennt. Das Chart erstellt weder Persistenz noch vom Anbieter verwaltete Infrastruktur. Fixieren Sie das Server-Image für ein reproduzierbares Deployment per Digest.
 
-Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten. Behalten Sie diese Einstellung bei, bis das [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%) als qualifiziert gekennzeichnet ist; die Übernahme ist noch nicht für ein veröffentlichtes Image qualifiziert. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
+Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten. Um auf `runtime: native` zu wechseln, folgen Sie dem [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%) und behalten `runtime: php` bei, bis die Übernahme abgeschlossen ist. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
 
 ### Einen Chart-Release auswählen {#helm-chart-selection}
 

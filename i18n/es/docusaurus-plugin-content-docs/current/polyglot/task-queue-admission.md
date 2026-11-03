@@ -34,7 +34,7 @@ El Server nativo 3.x no aplica ninguno de los controles de admisión del lado de
 - un ajuste de admisión de peticiones por namespace
 - un límite de estado duradero por namespace
 
-Ignora `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` y sus variantes por namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` debe quedar sin definir o en `1024`. En su lugar, el Server nativo aplica un límite fijo de 16 tareas de consulta pendientes o arrendadas por namespace y rechaza las consultas adicionales con HTTP `503` y `query_task_queue_full`.
+Ignora `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT` y sus variantes por namespace. `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` debe quedar sin definir o en `1024`. En su lugar, el Server nativo aplica un límite fijo de 16 tareas de consulta pendientes o arrendadas por namespace y rechaza las consultas adicionales con HTTP `429` y `query_task_queue_full`, como hace PHP.
 
 En el Server nativo, acota la concurrencia de tareas con los slots configurados en cada worker del SDK y con el número de workers. `GET /api/task-queues/{name}` informa en `admission` de los slots registrados y de los recuentos de tareas arrendadas y listas, con todos los campos de límites del lado del servidor y de capacidad restante en `null`. Consulta la [referencia de configuración nativa](./server-config-reference.md#native-server-3x). El resto de esta página describe PHP Server 2.x.
 
