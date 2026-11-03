@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Inicio rápido de Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -57,9 +58,15 @@ conexión local de desarrollo por los datos provisionados que aparecen en
 
 ## 2. Inicia el Server local {#2-start-the-local-server}
 
+<ProductPromotion source="docs-v2-quickstart">
+Omite ejecutar un Server local: Cloud opera el runtime, la persistencia y
+Managed Waterline, y los mismos workers PHP, Python o Rust se conectan a un
+espacio de nombres aprovisionado con credenciales separadas por rol.
+</ProductPromotion>
+
 Si elegiste Cloud, pasa al siguiente paso. Para la ruta autogestionada,
-despliega y ejecuta la configuración fijada. Inicia Server con SQLite y un
-token de desarrollo, sin descargar el código fuente.
+despliega y ejecuta la configuración fijada. Inicia el Server nativo con SQLite
+y un token de desarrollo, sin descargar el código fuente.
 
 <details>
 <summary>Iniciar la imagen fijada de Server</summary>
@@ -71,27 +78,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -105,15 +97,17 @@ es exclusivo de este ejercicio local. Para acceso remoto, usa el
 [despliegue Compose](/docs/polyglot/server/#published-image--compose) con
 credenciales propias, TLS y controles de acceso de red.
 
-El segundo contenedor procesa la cola de infraestructura de Server y hace
-avanzar los temporizadores duraderos aunque los workers SDK estén detenidos.
-Su cola Laravel se llama `default`, distinta de las colas de tareas SDK de abajo.
-Mantén ambos contenedores en ejecución. La evaluación de programaciones y el
-mantenimiento de producción usan los roles adicionales del stack Compose.
+El Server nativo es un único proceso. En el primer arranque crea su esquema
+SQLite y el namespace `default` en el volumen montado, y él mismo dispara los
+temporizadores duraderos y las programaciones y ejecuta sus pasadas de
+mantenimiento, aunque los workers SDK estén detenidos. No hay ningún comando de
+inicialización, worker de cola ni programador que ejecutar. El Server se niega a
+arrancar sin `DW_AUTH_TOKEN`.
 
 **Resultado esperado:** la comprobación de disponibilidad responde
-correctamente y la información del clúster identifica el Server local.
-Déjalo en ejecución mientras completas la ruta de un lenguaje.
+correctamente y la información del clúster indica `"implementation":"rust"` con
+la versión `%%artifact.serverVersion%%`. Déjalo en ejecución mientras completas
+la ruta de un lenguaje.
 
 ## 3. Elige un lenguaje {#choose-one-language}
 
@@ -439,7 +433,7 @@ Continúa con la [Guía del SDK Rust](/docs/polyglot/rust/).
 Cloud no necesita un Server local. Al terminar el ejercicio autogestionado:
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 

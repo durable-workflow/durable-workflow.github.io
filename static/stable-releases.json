@@ -1,23 +1,23 @@
 {
   "schema": "durable-workflow.docs.stable-releases",
   "schema_version": 1,
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-11-03",
   "artifacts": {
-    "cli": "2.3.0",
-    "helm-chart": "0.2.3",
-    "sdk-php": "3.2.0",
-    "sdk-python": "2.8.0",
-    "sdk-rust": "4.2.0",
-    "server": "2.10.1",
-    "waterline": "2.12.1",
-    "workflow": "2.15.0"
+    "cli": "2.3.3",
+    "helm-chart": "1.0.2",
+    "sdk-php": "3.8.2",
+    "sdk-python": "2.13.0",
+    "sdk-rust": "4.10.3",
+    "server": "3.0.4",
+    "waterline": "2.13.2",
+    "workflow": "2.17.1"
   },
   "helm_chart": {
-    "app_version": "2.10.1",
+    "app_version": "3.0.4",
     "repository": "oci://ghcr.io/durable-workflow/charts/durable-workflow",
-    "oci_manifest_digest": "sha256:ffdb9b8699fae5ffbc9a6723771b38f41dede2940340965605641948eb5e073e",
-    "package_digest": "sha256:8392a082c368c02ce2120f86ba08c42c2082cbfa8a3ef9b4dbb1e918df9dd45d",
-    "source_commit": "d055dc55dcd15c59a64dfc6bc728d154a3197368",
-    "qualification_url": "https://github.com/durable-workflow/durable-workflow.github.io/issues/346#issuecomment-6361914751"
+    "oci_manifest_digest": "sha256:c6b305e29a9dc3f0aef0a4473a259bb489730cf1f8b3261de94698b747dc2fd0",
+    "package_digest": "sha256:956ec63a746cb8f92f51d190c07ef8020a9a0767cc91aad80ed905d3c49ddc7d",
+    "source_commit": "bad2a5abf4a4daad42f30cfa829e51ea37e1e93c",
+    "qualification_url": "https://github.com/durable-workflow/server/pull/993#issuecomment-6601344290"
   }
 }

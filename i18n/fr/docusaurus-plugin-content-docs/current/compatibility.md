@@ -223,7 +223,9 @@ pour chaque vérification terminée.
 | SDK Python | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | SDK Rust | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-L’`appVersion` enregistré du chart Helm est `%%artifact.helmChartAppVersion%%`, correspondant au Server sélectionné. La [vérification de la paire publiée](%%artifact.helmChartQualificationUrl%%) contrôle les digests OCI/du paquet et l’identité source ; ce n’est pas le résultat d’une nouvelle installation de cluster. Consultez le [choix et la mise à niveau du chart](./deployment.md#helm-chart-selection) avant d’installer ou de remplacer l’image.
+Le Server sélectionné est le Server natif 3.x. PHP Server 2.x est figé à la version 2.11.8 et ne recevra plus de nouvelles versions ; les installations PHP existantes peuvent passer au natif avec `upgrade-takeover` en suivant le [runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%). La reprise est qualifiée sur l’image publiée 3.0.4 dans le périmètre indiqué par le runbook ; elle est à sens unique et exige une sauvegarde préalable.
+
+L’`appVersion` enregistré du chart Helm est `%%artifact.helmChartAppVersion%%`, correspondant au Server sélectionné, et le chart exécute le Server natif par défaut. Son [reçu de publication](%%artifact.helmChartQualificationUrl%%) consigne l’exécution de publication du chart, les digests OCI/du paquet, l’identité source et une installation kind lors de cette exécution ; ce n’est pas une qualification sur un cluster de production. Consultez le [choix et la mise à niveau du chart](./deployment.md#helm-chart-selection) avant d’installer ou de remplacer l’image.
 
 
 PyPI affiche la version de distribution Python sous

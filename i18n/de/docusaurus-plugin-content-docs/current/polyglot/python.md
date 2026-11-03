@@ -152,24 +152,17 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-Produktionsbereitstellung mit Authentifizierungstreibern, Datenbankkonfiguration und TLS erklärt der [Server-Einrichtungsleitfaden](/docs/polyglot/server).
+Der native Server legt sein SQLite-Schema und den Namespace `default` beim ersten Start an; ein separater Bootstrap-Schritt entfällt daher. Produktionsbereitstellung mit Authentifizierung, Datenbankkonfiguration und TLS erklärt der [Server-Einrichtungsleitfaden](/docs/polyglot/server).
 
 Ein größeres Beispiel enthält das SDK-Repository unter [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing): ein Docker-Compose-Stack, der einen Python-Worker durch einen vollständigen Bestell-Workflow führt.
 
@@ -1433,7 +1426,7 @@ Starten Sie `inspect_document_workflow` in der Task-Queue `documents` mit `[job_
 
 Nach dem Verlust des Inhabers oder Ablauf der Lease erlaubt `allow_reacquire_after_failure=True` einem anderen geeigneten Worker, die Session erneut zu erwerben. Er muss die lokale Ressource neu aufbauen. Bereits bestätigte Activity-Ergebnisse werden wiedergegeben, während unbestätigte Effekte sich wiederholen können: Verwenden Sie dauerhafte Ressourcenkennungen und idempotente externe Operationen. Eine Session migriert weder Speicher noch Dateien oder offene Handles.
 
-Explizites Schließen und der Ablauf der absoluten TTL sind für diese Session-ID endgültig. Eine spätere Activity kann sie nicht erneut öffnen und bleibt möglicherweise bis zur Durchsetzung ihres konfigurierten Timeouts unzugelassen. Führen Sie die Scheduler-/Wartungsrolle des Servers aus dem [veröffentlichten Deployment-Rezept](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml) aus; ein reiner API-Prozess reicht zur Timeout-Durchsetzung nicht aus. Der Workflow behandelt den endgültigen Activity-Fehler mit `ActivityFailed` und gibt `resource_unavailable` zurück. Die Anwendung kann dann eine neue Session wählen und die Ressource aus den Geschäftseingaben neu aufbauen. Das Beispiel verspricht weder eine sofortige Ausnahme wegen einer geschlossenen Session noch ein automatisches Wiederöffnen einer endgültig beendeten Session.
+Explizites Schließen und der Ablauf der absoluten TTL sind für diese Session-ID endgültig. Eine spätere Activity kann sie nicht erneut öffnen und bleibt möglicherweise bis zur Durchsetzung ihres konfigurierten Timeouts unzugelassen. Der native Server setzt Activity-Timeouts in seiner eigenen Wartungsschleife durch, die das veröffentlichte Image aktiviert. Beim PHP-Server 2.x führen Sie die Scheduler-/Wartungsrolle aus dem [PHP-Deployment-Rezept](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) aus; ein reiner PHP-API-Prozess reicht zur Timeout-Durchsetzung nicht aus. Der Workflow behandelt den endgültigen Activity-Fehler mit `ActivityFailed` und gibt `resource_unavailable` zurück. Die Anwendung kann dann eine neue Session wählen und die Ressource aus den Geschäftseingaben neu aufbauen. Das Beispiel verspricht weder eine sofortige Ausnahme wegen einer geschlossenen Session noch ein automatisches Wiederöffnen einer endgültig beendeten Session.
 
 Für explizite Operationen am Lebenszyklus des Inhabers verwenden Sie `worker.worker_session(options)` und dessen Methoden `create()`, `renew()` und `close(reason)`. Beim geordneten Herunterfahren schließt der Worker seine gehaltenen Sessions. Siehe den [gemeinsamen Lebenszyklusvertrag](../features/worker-sessions.md#lifecycle).
 

@@ -224,7 +224,9 @@ forward compatibility в документах стабільності паке�
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-Записаний `appVersion` чарту Helm — `%%artifact.helmChartAppVersion%%`, що відповідає вибраному Server. [Підтвердження опублікованої пари](%%artifact.helmChartQualificationUrl%%) перевіряє OCI/package digests та ідентичність джерела; це не нова перевірка встановлення кластера. Перед встановленням або перевизначенням образу див. [вибір і оновлення чарту](./deployment.md#helm-chart-selection).
+Вибраний Server — це нативний Server 3.x. PHP Server 2.x заморожено на версії 2.11.8, і нових випусків він не отримуватиме; наявні PHP-встановлення можна перевести на нативний Server за допомогою `upgrade-takeover` за [runbook переходу на нативний Server](%%artifact.serverTakeoverRunbookUrl%%). Перехід кваліфіковано на опублікованому образі 3.0.4 у межах, зазначених у runbook; він односторонній і вимагає попередньої резервної копії.
+
+Записаний `appVersion` чарту Helm — `%%artifact.helmChartAppVersion%%`, що відповідає вибраному Server, і чарт типово запускає нативний Server. [Опублікований звіт про випуск](%%artifact.helmChartQualificationUrl%%) фіксує запуск випуску чарту, OCI/package digests, ідентичність джерела та встановлення в kind у межах цього запуску; це не кваліфікація production-кластера. Перед встановленням або перевизначенням образу див. [вибір і оновлення чарту](./deployment.md#helm-chart-selection).
 
 
 PyPI показує версію Python distribution як

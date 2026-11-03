@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Durable Workflow 2.0 快速入门 {#durable-workflow-20-quickstart}
 
@@ -50,7 +51,11 @@ import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseL
 
 ## 2. 启动本地 Server {#2-start-the-local-server}
 
-如果选择 Cloud，跳过这一步。自托管路径请展开并执行下面固定版本的配置。它会启动一个不挂载源码的 Server，使用 SQLite 和开发令牌。
+<ProductPromotion source="docs-v2-quickstart">
+无需运行本地 Server：Cloud 负责运营运行时、持久化和 Managed Waterline，同样的 PHP、Python 或 Rust Worker 使用角色限定凭据连接到已预配的命名空间。
+</ProductPromotion>
+
+如果选择 Cloud，跳过这一步。自托管路径请展开并执行下面固定版本的配置。它会启动一个不挂载源码的原生 Server，使用 SQLite 和开发令牌。
 
 <details>
 <summary>启动固定版本的 Server 镜像</summary>
@@ -62,27 +67,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -93,9 +83,9 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 API 仅绑定到本机的回环地址。`dev-token` 只用于这个本地示例。如需远程访问，请使用配置了独立凭据、TLS 和网络访问控制的 [Compose 部署](/docs/polyglot/server/#published-image--compose)。
 
-第二个容器运行 Server 的基础设施队列，即使 SDK Worker 已停止，也会推进持久定时器。它使用名为 `default` 的 Laravel 队列，与下面的 SDK 任务队列不同。请保持两个容器运行。计划调度和生产维护由 Compose 栈中的其他角色负责。
+原生 Server 是单个进程。首次启动时，它会在挂载的卷中创建 SQLite 模式和 `default` 命名空间，并自行触发持久定时器和计划、执行维护任务，即使 SDK Worker 已停止也是如此。无需运行引导命令、队列 Worker 或调度器。未设置 `DW_AUTH_TOKEN` 时，Server 会拒绝启动。
 
-**预期结果：** 就绪请求成功，集群信息标识出本地独立 Server。完成一种语言的入门路径前，请保持 Server 运行。
+**预期结果：** 就绪请求成功，集群信息报告 `"implementation":"rust"`，版本为 `%%artifact.serverVersion%%`。完成一种语言的入门路径前，请保持 Server 运行。
 
 ## 3. 选择一种语言 {#choose-one-language}
 
@@ -403,7 +393,7 @@ cargo run
 Cloud 用户没有需要移除的本地 Server。自托管示例完成后执行：
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 

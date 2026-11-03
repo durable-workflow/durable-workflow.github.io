@@ -152,24 +152,19 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-For production deployment — auth drivers, database config, TLS — see the [server setup guide](/docs/polyglot/server).
+The native Server creates its SQLite schema and the `default` namespace on
+first start, so there is no separate bootstrap step. For production
+deployment — authentication, database config, TLS — see the [server setup guide](/docs/polyglot/server).
 
 For a larger example, the SDK repository includes [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing), a Docker Compose stack that runs a Python worker through an order workflow end to end.
 
@@ -1450,7 +1445,7 @@ Start `inspect_document_workflow` on the `documents` task queue with `[job_id]` 
 
 After holder loss or lease expiry, `allow_reacquire_after_failure=True` permits another eligible worker to reacquire the session. Its local resource must be rebuilt. Already committed activity results replay, while uncommitted effects can repeat: use durable resource identifiers and idempotent external operations. A session does not migrate memory, files or open handles.
 
-Explicit close and absolute TTL expiry are terminal for that session id. A later activity cannot reopen it and can remain unadmitted until its configured timeout is enforced. Run the Server's scheduler/maintenance role from the [published deployment recipe](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml); an API-only process is insufficient for timeout enforcement. The workflow handles exhausted activity failure with `ActivityFailed` and returns `resource_unavailable`; the application can then choose a fresh session and rebuild from the business input. This example does not promise an immediate session-closed exception or automatically reopen a terminal session.
+Explicit close and absolute TTL expiry are terminal for that session id. A later activity cannot reopen it and can remain unadmitted until its configured timeout is enforced. The native Server enforces activity timeouts in its own maintenance loop, which the published image enables. On PHP Server 2.x, run the scheduler/maintenance role from the [PHP deployment recipe](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml); an API-only PHP process is insufficient for timeout enforcement. The workflow handles exhausted activity failure with `ActivityFailed` and returns `resource_unavailable`; the application can then choose a fresh session and rebuild from the business input. This example does not promise an immediate session-closed exception or automatically reopen a terminal session.
 
 For explicit holder lifecycle operations, use `worker.worker_session(options)` and its `create()`, `renew()` and `close(reason)` methods. Graceful worker shutdown closes its held sessions. See the [shared lifecycle contract](../features/worker-sessions.md#lifecycle).
 

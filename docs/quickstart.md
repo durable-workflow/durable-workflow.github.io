@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Durable Workflow 2.0 Quickstart
 
@@ -57,8 +58,14 @@ replace the local development connection with the provisioned values shown in
 
 ## 2. Start the local Server
 
+<ProductPromotion source="docs-v2-quickstart">
+Skip running a local Server: Cloud operates the runtime, persistence, and
+Managed Waterline, and the same PHP, Python, or Rust workers connect to a
+provisioned namespace with role-scoped credentials.
+</ProductPromotion>
+
 Skip this action when you chose Cloud. For the self-hosted path, expand and run
-the exact pinned setup. It starts a source-free Server with SQLite and a
+the exact pinned setup. It starts a source-free native Server with SQLite and a
 development token.
 
 <details>
@@ -71,27 +78,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -104,15 +96,15 @@ The API is bound to this machine's loopback address. `dev-token` is only for
 this local exercise. For deliberate remote access, use the [Compose deployment](/docs/polyglot/server/#published-image--compose)
 with your own credentials, TLS and network access controls.
 
-The second container runs Server's infrastructure queue and advances durable
-timers even while SDK workers are stopped. Its Laravel queue is `default`,
-separate from the SDK task queues below. Keep both containers running. Schedule
-evaluation and production maintenance use the additional roles in the Compose
-stack.
+The native Server is one process. On first start it creates its SQLite schema
+and the `default` namespace in the mounted volume, and it fires durable timers
+and schedules and runs its maintenance passes itself, even while SDK workers
+are stopped. There is no bootstrap command, queue worker or scheduler to run.
+The Server refuses to start without `DW_AUTH_TOKEN`.
 
-**Expected result:** the readiness request succeeds and cluster info identifies
-the local standalone Server. Keep it running while you complete one language
-route.
+**Expected result:** the readiness request succeeds and cluster info reports
+`"implementation":"rust"` with version `%%artifact.serverVersion%%`. Keep it
+running while you complete one language route.
 
 ## 3. Choose one language {#choose-one-language}
 
@@ -440,7 +432,7 @@ Continue with the [Rust SDK guide](/docs/polyglot/rust/).
 Cloud users have no local Server to remove. For the self-hosted exercise:
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 

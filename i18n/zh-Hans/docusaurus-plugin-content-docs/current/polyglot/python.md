@@ -120,24 +120,17 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-生产部署的认证驱动、数据库配置和 TLS 等内容见 [Server 设置指南](/docs/polyglot/server)。
+原生 Server 会在首次启动时创建 SQLite 模式和 `default` 命名空间，因此无需单独的引导步骤。生产部署的认证、数据库配置和 TLS 等内容见 [Server 设置指南](/docs/polyglot/server)。
 
 更完整的示例见 SDK 仓库的 [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)，这是通过订单工作流端到端运行 Python Worker 的 Docker Compose 栈。
 
@@ -1188,7 +1181,7 @@ await worker.run()
 
 持有者丢失或租约到期后，`allow_reacquire_after_failure=True` 允许另一个符合条件的 Worker 重新获取会话。它必须重建本地资源。已提交的活动结果会被重放，而未提交的副作用可能重复：请使用持久资源标识和幂等的外部操作。会话不会迁移内存、文件或已打开的句柄。
 
-显式关闭和绝对 TTL 到期对该会话 ID 都是终态。后续活动无法重新打开它，可能一直无法获准执行，直到运行时处理已配置的超时。请运行[已发布部署方案](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml)中的 Server 调度器/维护角色；仅有 API 进程不足以执行超时处理。工作流通过 `ActivityFailed` 处理重试耗尽后的活动失败，并返回 `resource_unavailable`；应用随后可以选择新会话，根据业务输入重建资源。本示例不承诺立即抛出会话已关闭异常，也不会自动重新打开终态会话。
+显式关闭和绝对 TTL 到期对该会话 ID 都是终态。后续活动无法重新打开它，可能一直无法获准执行，直到运行时处理已配置的超时。原生 Server 在自身的维护循环中执行活动超时处理，已发布镜像默认启用该循环。在 PHP Server 2.x 上，请运行 [PHP 部署方案](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)中的调度器/维护角色；仅有 API 的 PHP 进程不足以执行超时处理。工作流通过 `ActivityFailed` 处理重试耗尽后的活动失败，并返回 `resource_unavailable`；应用随后可以选择新会话，根据业务输入重建资源。本示例不承诺立即抛出会话已关闭异常，也不会自动重新打开终态会话。
 
 需要显式管理持有者生命周期时，使用 `worker.worker_session(options)` 及其 `create()`、`renew()`、`close(reason)` 方法。Worker 正常关闭时会关闭其持有的会话。参见[共享生命周期约定](../features/worker-sessions.md#lifecycle)。
 

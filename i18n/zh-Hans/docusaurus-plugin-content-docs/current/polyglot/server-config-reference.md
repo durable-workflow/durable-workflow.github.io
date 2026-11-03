@@ -16,11 +16,71 @@ keywords:
 
 # Server 配置参考 {#server-config-reference}
 
-本页说明 Durable Workflow Server 镜像面向运维人员的 `DW_*` 环境变量契约。构建部署模板、检查生产配置，或将旧的 `WORKFLOW_*` / `ACTIVITY_*` 名称迁移到 v2 Server 契约时，请参考本页。
+本页说明 Durable Workflow Server 镜像面向运维人员的 `DW_*` 环境变量契约。构建部署模板、检查生产配置，或将旧的 `WORKFLOW_*` / `ACTIVITY_*` 名称迁移到 v2 Server 契约时，请参考本页。当前 Server 是原生 3.x Server；[原生 Server 3.x](#native-server-3x) 列出它遵循、忽略或拒绝的设置。PHP Server 2.x 已冻结在 2.11.8。
 
-Server 也使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_*`、`QUEUE_CONNECTION` 和 `CACHE_STORE`。这些变量属于部署基础设施，并非 Durable Workflow API 控制项，因此单独列出。
+PHP 2.x Server 还使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_*`、`QUEUE_CONNECTION` 和 `CACHE_STORE`。这些变量属于部署基础设施，并非 Durable Workflow API 控制项，因此单独列出。
+
+## 原生 Server 3.x {#native-server-3x}
+
+本页的变量表记录 PHP Server 2.11.0 发布的 `DW_*` 契约，其用途说明描述的是 PHP 2.x。原生 3.x Server 读取相同的名称及相同的旧版别名，并通过启动审计为每个契约设置确定一种处置方式：
+
+- **遵循：** 原生 Server 读取该设置并采用 PHP 中的含义。下文未列出的设置均被遵循。
+- **忽略：** 原生 Server 接受该设置，但它不会改变客户端或运维人员可观察到的任何行为。
+- **非默认值即拒绝：** 除非该设置未设置或保持 PHP 默认值，否则原生 Server 拒绝启动。启动错误会给出该设置、可接受的值以及原因。
+
+原生 Server 只在进程启动时读取一次环境，并且不保留配置缓存。要更改设置，请重启或替换 Server 进程。与 PHP 的 `env:audit` 一样，原生审计会对未知的 `DW_*` 名称和旧名称发出警告；设置 `DW_ENV_AUDIT_STRICT=1` 后，这些警告会变为拒绝启动。
+
+除非以下设置保持所列的值，否则原生 Server 拒绝启动：
+
+| 原因 | 设置及接受的值 |
+| --- | --- |
+| 原生 Server 始终将运行固定到其记录的工作流定义 | `DW_V2_PIN_TO_RECORDED_FINGERPRINT`: 未设置或 `true` |
+| 原生 Server 无法应用修改后的 Nexus 操作限制 | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER`: 未设置或 `200`<br />`DW_MAX_OPERATION_NAME_LENGTH`: 未设置或 `256` |
+| 原生 Server 无法应用修改后的指标序列限制 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT`: 未设置或 `100`<br />`DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT`: 未设置或 `100`<br />`DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT`: 未设置或 `100`<br />`DW_METRICS_WORKFLOW_TASK_FAILURE_TYPE_LIMIT`: 未设置或 `20` |
+| 原生 Server 无法应用修改后的待处理查询任务上限 | `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE`: 未设置或 `1024` |
+| 原生 Server 无法应用修改后的结构限制 | `DW_V2_LIMIT_COMMAND_BATCH_SIZE`: 未设置或 `1000` |
+| 原生 Server 无法应用修改后的任务修复时序 | `DW_V2_TASK_REPAIR_FAILURE_BACKOFF_MAX_SECONDS`: 未设置或 `60`<br />`DW_V2_TASK_REPAIR_REDISPATCH_AFTER_SECONDS`: 未设置或 `3`<br />`DW_V2_TASK_REPAIR_SCAN_LIMIT`: 未设置或 `25` |
+| 原生 Server 不公开包来源信息 | `DW_EXPOSE_PACKAGE_PROVENANCE`: 未设置或 `false` |
+| 原生 Server 不报告多节点声明 | `DW_V2_MULTI_NODE`: 未设置或 `false` |
+| 原生 Server 不运行 Workflow 1 工作流 | `DW_V1_ENABLED`: 未设置或 `false` |
+| 原生 Server 不验证 Worker 集群兼容性 | `DW_V2_FLEET_VALIDATION_MODE`: 未设置或不为 `fail` |
+| 原生 Server 只将任务交给轮询中的 Worker | `DW_TASK_DISPATCH_MODE`: 未设置或 `poll` |
+| 原生 Server 没有外部执行器配置 | `DW_EXTERNAL_EXECUTOR_CONFIG_OVERLAY`: 未设置或为空<br />`DW_EXTERNAL_EXECUTOR_CONFIG_PATH`: 未设置或为空 |
+| 原生 Server 没有 memo 迁移恢复模式 | `DW_WORKFLOW_MEMO_MIGRATION_RECOVERY`: 未设置或为空 |
+| 原生 Server 没有命名空间持久化状态限制 | `DW_NAMESPACE_DURABLE_HARD_LIMITS`: 未设置或 `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`: 未设置或 `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`: 未设置或 `{}` |
+| 原生 Server 没有命名空间请求准入限制 | `DW_NAMESPACE_ADMISSION_OVERRIDES`: 未设置或 `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`: 未设置或为空<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`: 未设置或为空<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`: 未设置或为空<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`: 未设置或为空 |
+| 原生 Server 没有服务边界策略 | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`: 未设置或 `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`: 未设置或 `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`: 未设置或为空 |
+| 原生 Server 没有存储准入文件 | `DW_STORAGE_ADMISSION_FILE`: 未设置或为空<br />`DW_STORAGE_ADMISSION_SOURCE`: 未设置或为空 |
+| 原生 Server 没有任务准入限制 | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: 未设置、为空或不是正数<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: 未设置、为空或不是正数<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`: 未设置、为空或不是正数<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: 未设置、为空或不是正数<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`: 未设置或 `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: 未设置、为空或不是正数<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: 未设置、为空或不是正数<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`: 未设置、为空或不是正数<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: 未设置、为空或不是正数 |
+| 原生 Server 只实现一个 Worker 协议版本 | `DW_WORKER_PROTOCOL_VERSION`: 未设置或 `1.20` |
+| 原生 Server 从不信任转发的归属请求头 | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`: 未设置或 `false` |
+| 原生 Server 只将运行固定到已注册的 Worker 构建 ID，没有 Server 级兼容性标记 | `DW_V2_COMPATIBILITY_HEARTBEAT_TTL`: 未设置或 `30`<br />`DW_V2_COMPATIBILITY_NAMESPACE`: 未设置或为空<br />`DW_V2_CURRENT_COMPATIBILITY`: 未设置或为空<br />`DW_V2_NAMESPACE`: 未设置或为空<br />`DW_V2_SUPPORTED_COMPATIBILITIES`: 未设置或为空 |
+| 原生 Server 不报告载荷编解码器问题 | `DW_SERIALIZER`: 未设置、为空或 `avro` |
+| 原生 Server 只作为独立 HTTP Server 进程运行 | `DW_MODE`: 未设置或 `service`<br />`DW_SERVER_PROCESS_CLASS`: 未设置或不是 `scheduler_node`、`worker_node` 之一<br />`DW_SERVER_TOPOLOGY_SHAPE`: 未设置或不是 `embedded`、`split_control_execution` 之一 |
+| 对未指定命名空间的请求，原生 Server 使用 `default` | `DW_DEFAULT_NAMESPACE`: 未设置或 `default` |
+| 原生 Server 只将外部载荷存储在本地磁盘上 | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`: 未设置或为空 |
+| 原生 Server 只支持自身的令牌认证 | `DW_AUTH_BACKWARD_COMPATIBLE`: 未设置或 `true`<br />`DW_AUTH_PROVIDER`: 未设置或为空<br />`DW_PRINCIPAL_TOKENS`: 未设置或为空 |
+
+原生 Server 接受但忽略：`DW_ADMIN_SIGNATURE_KEY`、`DW_AUTH_METHOD_HEADER`、`DW_AUTH_STATUS_HEADER`、`DW_BOOTSTRAP_DELAY_SECONDS`、`DW_BOOTSTRAP_RETRIES`、`DW_CALLER_LABEL_HEADER`、`DW_CALLER_TYPE_HEADER`、`DW_COMPRESSION_ENABLED`、`DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`、`DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`、`DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`、`DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`、`DW_EXTERNAL_PAYLOAD_S3_REGION`、`DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`、`DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`、`DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`、`DW_MAX_HISTORY_EVENTS`、`DW_MAX_TASKS_PER_POLL`、`DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`、`DW_OBSERVABILITY_CONTEXT_ENABLED`、`DW_OPERATOR_SIGNATURE_KEY`、`DW_PACKAGE_PROVENANCE_PATH`、`DW_POLLING_CACHE_PATH`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_SIGNATURE_KEY`、`DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`、`DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`、`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`、`DW_V2_CACHE_VALIDATION_MODE`、`DW_V2_GUARDRAILS_BOOT`、`DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`、`DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`、`DW_V2_MATCHING_ROLE_QUEUE_WAKE`、`DW_V2_TASK_DISPATCH_MODE`、`DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`、`DW_V2_TENANCY_ENVIRONMENT`、`DW_V2_TENANCY_ORGANIZATION`、`DW_V2_TENANCY_PROJECT`、`DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`、`DW_V2_VALIDATE_CACHE_BACKEND`、`DW_WAKE_SIGNAL_TTL_SECONDS`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`、`DW_WORKER_POLL_INTERVAL_MS`、`DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`、`DW_WORKER_SIGNATURE_KEY`。
+
+原生 Server 没有服务器端任务队列租约上限或派发上限、预算组、命名空间请求准入、命名空间持久状态配额或保持中轮询上限，目前也没有对应的原生替代方案。每个原生 Server 进程最多打开四个数据库连接。查询任务有固定上限：每个命名空间最多16个待处理或已租用的任务，超出后新查询会与 PHP 一样以 HTTP `429` 和 `query_task_queue_full` 被拒绝；该上限不可配置。要在原生 Server 上限制任务并发，请调整每个 SDK Worker 的执行槽数量和 Worker 数量。PHP 2.x 的控制项见[任务队列准入](/docs/polyglot/task-queue-admission)。
+
+原生 Server 的身份验证与 PHP 2.x 有以下不同：
+
+- `DW_AUTH_TOKEN` 为必需项。缺少它时原生 Server 拒绝启动；它对每个角色都接受该共享令牌，同时也接受任何按角色划分的令牌。
+- `DW_AUTH_DRIVER` 只接受 `token`。原生 Server 拒绝 `signature`，发布镜像还会拒绝 `none`。签名密钥相关设置会被忽略。
+
+原生 Server 还读取 PHP 契约之外的设置：
+
+- `DW_BIND_ADDRESS`：监听地址。二进制文件默认为 `127.0.0.1:8080`；已发布镜像设置为 `0.0.0.0:8080`。
+- `DW_RUST_MAINTENANCE_LOOP`：设为 `1` 或 `true` 时，会在进程内定时器与调度循环中加入修复过程（任务修复和活动超时）。已发布镜像设置为 `1`，因为它没有独立的调度器。
+- `DW_RUST_EXPERIMENTAL`：仅没有发布版本的开发构建要求设为 `1`。发布镜像无需设置。
+- `DW_UPGRADE_BACKUP_FINGERPRINT` 和 `DW_RUST_UPGRADE_QUEUE_*`：对 PHP 数据库执行单向 [原生接管](%%artifact.serverTakeoverRunbookUrl%%) 时的输入；该接管已在运行手册说明的范围内于已发布的 3.0.4 镜像上通过资格验证。
+- `DW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`（旧名称 `WORKFLOW_V2_LIMIT_HISTORY_TRANSACTION_ROWS`）：在加入 PHP 契约之前即已被遵循。
 
 ## 配置变更何时生效 {#how-changes-take-effect}
+
+原生 3.x 只在进程启动时读取环境；要应用变更，请重启或替换 Server 进程。本节其余内容描述 PHP 2.x。
 
 已发布的 PHP Server 镜像在入口脚本中运行 `php artisan config:cache`。环境值在启动时解析并写入 Laravel 配置缓存。修改环境文件、编排器中的环境声明或挂载的配置文件，都不会使运行中的部署热加载配置。
 
@@ -44,7 +104,7 @@ Server 也使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_*`、`QU
 
 ## 契约如何执行 {#how-the-contract-is-enforced}
 
-Server 仓库在 `config/dw-contract.php` 中维护规范契约。容器启动时，`php artisan env:audit` 会对未知的 `DW_*` 变量或旧名称发出警告。如需让入口脚本直接失败而不是带警告启动，请设置 `DW_ENV_AUDIT_STRICT=1`。
+Server 仓库在 `config/dw-contract.php` 中维护规范契约。原生 3.x 在启动时执行等效审计，详见[原生 Server 3.x](#native-server-3x)。在 PHP 2.x 上，容器启动时，`php artisan env:audit` 会对未知的 `DW_*` 变量或旧名称发出警告。如需让入口脚本直接失败而不是带警告启动，请设置 `DW_ENV_AUDIT_STRICT=1`。
 
 ```bash
 DW_ENV_AUDIT_STRICT=1
@@ -75,20 +135,20 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 
 | 变量 | 默认值 | 用途 | 旧版别名 |
 | --- | --- | --- | --- |
-| `DW_AUTH_PROVIDER` | 未设置 | 可由 Laravel 解析、实现 `App\Contracts\AuthProvider` 的类。 | `WORKFLOW_SERVER_AUTH_PROVIDER` |
-| `DW_AUTH_DRIVER` | `token` | 身份验证驱动：`none`、`token` 或 `signature`。 | `WORKFLOW_SERVER_AUTH_DRIVER` |
-| `DW_AUTH_TOKEN` | 未设置 | 未配置角色令牌时使用的单个共享 Bearer 令牌。 | `WORKFLOW_SERVER_AUTH_TOKEN` |
-| `DW_SIGNATURE_KEY` | 未设置 | 未配置角色签名密钥时使用的共享 HMAC 签名密钥。 | `WORKFLOW_SERVER_SIGNATURE_KEY` |
+| `DW_AUTH_PROVIDER` | 未设置 | PHP 2.x：可由 Laravel 解析、实现 `App\Contracts\AuthProvider` 的类。设置该变量时，原生 3.x 拒绝启动。 | `WORKFLOW_SERVER_AUTH_PROVIDER` |
+| `DW_AUTH_DRIVER` | `token` | PHP 2.x 身份验证驱动：`none`、`token` 或 `signature`。原生 3.x 只接受 `token`。 | `WORKFLOW_SERVER_AUTH_DRIVER` |
+| `DW_AUTH_TOKEN` | 未设置 | PHP 2.x：未配置角色令牌时使用的单个共享 Bearer 令牌。原生 3.x：必需，并对每个角色都接受。 | `WORKFLOW_SERVER_AUTH_TOKEN` |
+| `DW_SIGNATURE_KEY` | 未设置 | PHP 2.x：未配置角色签名密钥时使用的共享 HMAC 签名密钥。原生 3.x 没有签名认证，会忽略此项。 | `WORKFLOW_SERVER_SIGNATURE_KEY` |
 | `DW_WORKER_TOKEN` | 未设置 | 用于 Worker 注册、轮询、心跳和完成请求的 Bearer 令牌。 | `WORKFLOW_SERVER_WORKER_TOKEN` |
 | `DW_OPERATOR_TOKEN` | 未设置 | 用于读取及运维控制平面操作的 Bearer 令牌。 | `WORKFLOW_SERVER_OPERATOR_TOKEN` |
 | `DW_ADMIN_TOKEN` | 未设置 | 用于命名空间、保留设置及其他管理修改的 Bearer 令牌。 | `WORKFLOW_SERVER_ADMIN_TOKEN` |
-| `DW_PRINCIPAL_TOKENS` | 未设置 | 命名 Bearer 令牌主体的 JSON 映射。每个条目提供 `token`、`subject`、`roles`，以及可选的 `tenant`、`label` 和不含秘密的 `claims`。 | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
+| `DW_PRINCIPAL_TOKENS` | 未设置 | PHP 2.x：命名 Bearer 令牌主体的 JSON 映射。每个条目提供 `token`、`subject`、`roles`，以及可选的 `tenant`、`label` 和不含秘密的 `claims`。设置该变量时，原生 3.x 拒绝启动。 | `WORKFLOW_SERVER_PRINCIPAL_TOKENS` |
 | `DW_WORKER_SIGNATURE_KEY` | 未设置 | 签名认证中用于 Worker 角色请求的 HMAC 密钥。 | `WORKFLOW_SERVER_WORKER_SIGNATURE_KEY` |
 | `DW_OPERATOR_SIGNATURE_KEY` | 未设置 | 签名认证中用于运维角色请求的 HMAC 密钥。 | `WORKFLOW_SERVER_OPERATOR_SIGNATURE_KEY` |
 | `DW_ADMIN_SIGNATURE_KEY` | 未设置 | 签名认证中用于管理员角色请求的 HMAC 密钥。 | `WORKFLOW_SERVER_ADMIN_SIGNATURE_KEY` |
-| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | 缺少角色凭据时，接受共享 `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` 作为回退。 | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
+| `DW_AUTH_BACKWARD_COMPATIBLE` | `true` | PHP 2.x：缺少角色凭据时，接受共享 `DW_AUTH_TOKEN` / `DW_SIGNATURE_KEY` 作为回退。原生 3.x 始终接受共享令牌，此项为 `false` 时拒绝启动。 | `WORKFLOW_SERVER_AUTH_BACKWARD_COMPATIBLE` |
 
-生产环境应使用按角色划分的凭据。`DW_AUTH_DRIVER=none` 会让所有端点无需 Bearer 令牌或签名即可访问，因此仅适用于本地冒烟验证。
+生产环境应使用按角色划分的凭据。在 PHP 2.x 上，`DW_AUTH_DRIVER=none` 会让所有端点无需 Bearer 令牌或签名即可访问，因此仅适用于本地冒烟验证；原生发布镜像会拒绝该值。
 
 审计记录需要稳定的操作者主体而不只是角色标签时，请使用 `DW_PRINCIPAL_TOKENS`。Server 根据匹配的令牌条目确定记录的主体，客户端不能通过请求载荷或请求头覆盖它。
 
@@ -115,20 +175,20 @@ DW_WORKER_TOKEN="${DW_WORKER_TOKEN}"
 | `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` | `100` | 保持轮询期间检查唤醒信号的间隔，单位为毫秒。 | `WORKFLOW_SERVER_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS` |
 | `DW_POLLING_CACHE_PATH` | `storage/framework/cache/server-polling/<APP_ENV>` | 使用文件轮询缓存时，存储 Worker 轮询协调状态的目录。 | `WORKFLOW_SERVER_POLLING_CACHE_PATH` |
 | `DW_WAKE_SIGNAL_TTL_SECONDS` | `max(DW_WORKER_POLL_TIMEOUT + 5, 60)` | 用于提前结束等待中轮询的每队列唤醒信号 TTL。 | `WORKFLOW_SERVER_WAKE_SIGNAL_TTL_SECONDS` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | 未设置；根据 `PHP_CLI_SERVER_WORKERS` 推导 | 此 Server 节点上工作流及活动长轮询等待的可选并发上限。查询任务轮询使用独立的等待预算。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
-| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | 推导工作流及活动长轮询等待上限时，为健康检查和控制平面请求保留的 PHP CLI Server Worker 数量。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT` | 未设置；根据 `PHP_CLI_SERVER_WORKERS` 推导 | 此 Server 节点上工作流及活动长轮询等待的可选并发上限。查询任务轮询使用独立的等待预算。原生 3.x 会忽略此设置；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT` |
+| `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` | `2` | 推导工作流及活动长轮询等待上限时，为健康检查和控制平面请求保留的 PHP CLI Server Worker 数量。原生 3.x 会忽略此设置；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS` |
 | `DW_MAX_TASKS_PER_POLL` | `1` | 每次 Worker 轮询返回的最大任务数。 | `WORKFLOW_SERVER_MAX_TASKS_PER_POLL` |
 | `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS` | `10` | SQLite 快速入门后端保持基于缓存的 Worker 轮询领取门锁的秒数。 | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_TTL_SECONDS` |
 | `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS` | `5` | SQLite Worker 轮询领取在返回后端锁压力前等待缓存领取门的秒数。 | `WORKFLOW_SERVER_SQLITE_CLAIM_LOCK_WAIT_SECONDS` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未设置 | 每个命名空间及任务队列的工作流任务有效租约上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列的工作流任务有效租约上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | 未设置 | 每个命名空间及任务队列每分钟分派的工作流任务上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列每分钟分派的工作流任务上限。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未设置 | 每个命名空间及任务队列的活动任务有效租约上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
-| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列的活动任务有效租约上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | 未设置 | 每个命名空间及任务队列每分钟分派的活动任务上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
-| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列每分钟分派的活动任务上限。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
-| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | 有效租约、分派速率、命名空间上限和下游预算组的 JSON 覆盖，按 `namespace:task_queue`、`namespace:*`、`task_queue` 或 `*` 索引。 | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未设置 | 每个命名空间及任务队列的工作流任务有效租约上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列的工作流任务有效租约上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` | 未设置 | 每个命名空间及任务队列每分钟分派的工作流任务上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列每分钟分派的工作流任务上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` | 未设置 | 每个命名空间及任务队列的活动任务有效租约上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE` |
+| `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列的活动任务有效租约上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` | 未设置 | 每个命名空间及任务队列每分钟分派的活动任务上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE` |
+| `DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` | 未设置 | 一个命名空间内所有队列每分钟分派的活动任务上限。设为正数时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE` |
+| `DW_TASK_QUEUE_ADMISSION_OVERRIDES` | `{}` | 有效租约、分派速率、命名空间上限和下游预算组的 JSON 覆盖，按 `namespace:task_queue`、`namespace:*`、`task_queue` 或 `*` 索引。除非未设置或为 `{}`，否则原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_TASK_QUEUE_ADMISSION_OVERRIDES` |
 | `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT` | `5` | 每次 Worker 轮询恢复的到期 service 模式定时器任务最大数量。 | `WORKFLOW_SERVER_DUE_TIMER_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` | `5` | 每轮恢复的租约过期工作流任务最大数量。 | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_SCAN_LIMIT` |
 | `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` | `5` | 每个队列执行过期任务恢复的最短间隔，单位为秒。 | `WORKFLOW_SERVER_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS` |
@@ -168,9 +228,9 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 | `DW_QUERY_TASK_TIMEOUT` | `DW_WORKER_POLL_TIMEOUT` | 控制平面等待 Worker 查询任务响应的秒数。 | `WORKFLOW_SERVER_QUERY_TASK_TIMEOUT` |
 | `DW_QUERY_TASK_LEASE_TIMEOUT` | `DW_WORKFLOW_TASK_TIMEOUT` | 分配给 Worker 的临时查询任务租约超时。 | `WORKFLOW_SERVER_QUERY_TASK_LEASE_TIMEOUT` |
 | `DW_QUERY_TASK_TTL_SECONDS` | `180` | Server 清理前保留查询任务结果行的时间，单位为秒。 | `WORKFLOW_SERVER_QUERY_TASK_TTL_SECONDS` |
-| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | 每个命名空间及任务队列缓存中允许的待处理查询任务上限，超过后拒绝新查询。 | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
+| `DW_QUERY_TASK_MAX_PENDING_PER_QUEUE` | `1024` | 每个命名空间及任务队列缓存中允许的待处理查询任务上限，超过后拒绝新查询。原生 3.x 拒绝 `1024` 以外的任何值，并改用自身固定的查询任务上限；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_QUERY_TASK_MAX_PENDING_PER_QUEUE` |
 | `DW_QUERY_TASK_POLL_TIMEOUT` | `5` | 空闲查询任务 Worker 轮询在重新检查工作流任务压力和控制平面可用性之前等待的最大秒数。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_TIMEOUT` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | 未设置；根据 `PHP_CLI_SERVER_WORKERS` 推导 | 此 Server 节点上空闲查询任务长轮询等待的可选并发上限。进入空闲等待前，仍可立即领取待处理查询任务。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT` | 未设置；根据 `PHP_CLI_SERVER_WORKERS` 推导 | 此 Server 节点上空闲查询任务长轮询等待的可选并发上限。进入空闲等待前，仍可立即领取待处理查询任务。原生 3.x 会忽略此设置；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT` |
 | `DW_WORKFLOW_TASK_TIMEOUT` | `60` | 工作流任务的默认租约超时，单位为秒。 | `WORKFLOW_TASK_TIMEOUT` |
 | `DW_ACTIVITY_TASK_TIMEOUT` | `300` | 活动任务的默认租约超时，单位为秒。 | `ACTIVITY_TASK_TIMEOUT` |
 | `DW_WORKER_STALE_AFTER_SECONDS` | `max(DW_WORKER_HEARTBEAT_INTERVAL_SECONDS * 3, 30)` | Worker 心跳后，其注册被视为过期所需的秒数。 | `WORKFLOW_SERVER_WORKER_STALE_AFTER_SECONDS` |
@@ -279,11 +339,11 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 
 | 变量 | 默认值 | 用途 | 旧别名 |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | 每个命名空间每分钟控制面请求数的可选上限；未设置即无限制。 | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | 每个命名空间并发控制面请求数的可选上限；未设置即无限制。 | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | 不可绕过的每分钟请求硬上限，也约束命名空间覆盖值。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
-| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | 不可绕过的并发请求硬上限，也约束命名空间覆盖值。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
-| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | 以命名空间为键的 JSON 对象，覆盖请求速率和并发数。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
+| `DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE` | `unset` | 每个命名空间每分钟控制面请求数的可选上限；未设置即无限制。设为非空值时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_MAX_CONCURRENT_REQUESTS` | `unset` | 每个命名空间并发控制面请求数的可选上限；未设置即无限制。设为非空值时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` | `unset` | 不可绕过的每分钟请求硬上限，也约束命名空间覆盖值。设为非空值时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE` |
+| `DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` | `unset` | 不可绕过的并发请求硬上限，也约束命名空间覆盖值。设为非空值时，原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS` |
+| `DW_NAMESPACE_ADMISSION_OVERRIDES` | `{}` | 以命名空间为键的 JSON 对象，覆盖请求速率和并发数。除非未设置或为 `{}`，否则原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_ADMISSION_OVERRIDES` |
 
 [命名空间请求准入](./task-queue-admission.md#namespace-request-admission).
 
@@ -291,9 +351,9 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 
 | 变量 | 默认值 | 用途 | 旧别名 |
 | --- | --- | --- | --- |
-| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | 命名空间持久行数默认配额 JSON。总量与 pending/open 限额相互独立；待处理任务只计算队列 ready 行，活动租约另有限额。空对象不限制。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
-| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 不可绕过的持久行数硬上限 JSON，也约束命名空间覆盖值；空对象不增加运维硬上限。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
-| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | 按命名空间覆盖持久行数配额的 JSON；硬上限始终有效。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
+| `DW_NAMESPACE_DURABLE_LIMITS` | `{}` | 命名空间持久行数默认配额 JSON。总量与 pending/open 限额相互独立；待处理任务只计算队列 ready 行，活动租约另有限额。空对象不限制。除非未设置或为 `{}`，否则原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_LIMITS` |
+| `DW_NAMESPACE_DURABLE_HARD_LIMITS` | `{}` | 不可绕过的持久行数硬上限 JSON，也约束命名空间覆盖值；空对象不增加运维硬上限。除非未设置或为 `{}`，否则原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_HARD_LIMITS` |
+| `DW_NAMESPACE_DURABLE_OVERRIDES` | `{}` | 按命名空间覆盖持久行数配额的 JSON；硬上限始终有效。除非未设置或为 `{}`，否则原生 3.x 拒绝启动；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_NAMESPACE_DURABLE_OVERRIDES` |
 
 [命名空间持久状态配额](./task-queue-admission.md#namespace-durable-state).
 
@@ -335,13 +395,13 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 | `DW_STORAGE_ADMISSION_SOURCE` | `unset` | 准入观测中预期的存储资源标识。 | - |
 | `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` | `15` | 存储观测的最大有效时间，单位秒，范围 1〜300。 | - |
 | `DW_RUNTIME_CREDENTIALS_ENABLED` | `false` | 通过 admin API 启用由数据库持久保存、绑定命名空间的运行时 bearer 凭据。 | `WORKFLOW_SERVER_RUNTIME_CREDENTIALS_ENABLED` |
-| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 单个命名空间 workflow/activity 长轮询等待数的每节点上限，不超过全局 worker 等待上限；共享缓存权威状态不可用时拒绝。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
-| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 单个命名空间 query-task 长轮询等待数的每节点上限，不超过全局 query 等待上限；共享缓存权威状态不可用时拒绝。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 单个命名空间 workflow/activity 长轮询等待数的每节点上限，不超过全局 worker 等待上限；共享缓存权威状态不可用时拒绝。原生 3.x 会忽略此设置；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
+| `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` | `unset` | 单个命名空间 query-task 长轮询等待数的每节点上限，不超过全局 query 等待上限；共享缓存权威状态不可用时拒绝。原生 3.x 会忽略此设置；参见[原生 Server 3.x](#native-server-3x)。 | `WORKFLOW_SERVER_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE` |
 | `DW_V1_ENABLED` | `false` | 仅为有意保留 v1 状态而启用 embedded v1 迁移和队列排空；独立 Server 默认仅支持 v2。 | `WORKFLOW_V1_ENABLED` |
 
 ## 运行基础设施变量 {#runtime-infrastructure-variables}
 
-运行基础设施变量属于框架及依赖项控制。Server 审计认识这些变量，因此不会发出警告，但它们不是稳定的 Durable Workflow API 配置项。
+运行基础设施变量属于框架及依赖项控制。Server 审计认识这些变量，因此不会发出警告，但它们不是稳定的 Durable Workflow API 配置项。原生 3.x 读取数据库分组，包括下文的 TLS 设置。它没有 Redis、缓存或 Laravel 队列，将日志写入标准错误输出，并且不读取 `LOG_CHANNEL` 或 `LOG_LEVEL`。
 
 | 分组 | 变量 | 用途 |
 | --- | --- | --- |
@@ -354,9 +414,7 @@ Server 镜像内置 `durable-workflow/workflow`，因此也提供包级 `DW_V2_*
 
 ## 数据库 TLS {#database-tls}
 
-为 API 服务器、队列 Worker、初始化/迁移任务和调度器配置相同的 TLS 设置。
-PostgreSQL 默认为 `prefer`；MySQL/MariaDB 未指定模式时保留原有连接默认值。
-这些默认值都不能保证经过身份验证的加密连接。
+原生 3.x 以与 PHP 2.x 相同的方式解析这些设置：相同的输入、别名、模式名称和拒绝规则。它只需配置一个 Server 进程，以及针对同一数据库运行的任何 `schema-upgrade` 或接管命令。在 PHP 2.x 上，为 API 服务器、队列 Worker、初始化/迁移任务和调度器配置相同的 TLS 设置。PostgreSQL 默认为 `prefer`；MySQL/MariaDB 未指定模式时保留原有连接默认值。这些默认值都不能保证经过身份验证的加密连接。
 
 | `DB_SSLMODE` | PostgreSQL | MySQL / MariaDB |
 | --- | --- | --- |
@@ -387,9 +445,7 @@ chart 会将其 CA 挂载到全部四个角色，包括初始化钩子。
 
 ## 容器日志 {#container-logs}
 
-在 API、worker 和调度器容器中设置 `LOG_CHANNEL=stderr`，让 `docker logs`
-或 `kubectl logs` 收集应用日志。已有发行版需显式设置。使用 `LOG_LEVEL`
-选择最低严重级别。如需每行一条记录的 JSON，还应设置：
+原生 3.x 始终将日志写入标准错误输出。在 PHP 2.x 上，在 API、worker 和调度器容器中设置 `LOG_CHANNEL=stderr`，让 `docker logs` 或 `kubectl logs` 收集应用日志。已有发行版需显式设置。使用 `LOG_LEVEL` 选择最低严重级别。如需每行一条记录的 JSON，还应设置：
 
 ```dotenv
 LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"

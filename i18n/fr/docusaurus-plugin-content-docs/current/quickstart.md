@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Démarrage rapide avec Durable Workflow 2.0 {#durable-workflow-20-quickstart}
 
@@ -59,9 +60,15 @@ locale de développement par les valeurs provisionnées décrites dans le
 
 ## 2. Démarrer le Server local {#2-start-the-local-server}
 
+<ProductPromotion source="docs-v2-quickstart">
+Évitez d’exécuter un Server local : Cloud exploite le runtime, la persistance
+et Managed Waterline, et les mêmes workers PHP, Python ou Rust se connectent à
+un espace de noms provisionné avec des identifiants limités par rôle.
+</ProductPromotion>
+
 Si vous avez choisi Cloud, sautez cette étape. Pour l’auto-hébergement,
 développez et exécutez les commandes exactes ci-dessous.
-Elles démarrent l’image Server épinglée, sans code source local, avec SQLite
+Elles démarrent l’image Server native épinglée, sans code source local, avec SQLite
 et un jeton de développement.
 
 <details>
@@ -74,27 +81,12 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-quickstart
 
-docker run --rm \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker >/dev/null 2>&1 || true
+docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
   -p 127.0.0.1:8080:8080 \
   -v durable-workflow-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
-
-docker run -d --name durable-workflow-server-queue-worker \
-  --health-cmd="server-process-healthcheck worker" \
-  -v durable-workflow-quickstart:/app/database \
-  -e DW_SERVER_PROCESS_CLASS=worker_node \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" php artisan queue:work database --queue=default --sleep=1 --tries=3
 
 until curl -sf http://localhost:8080/api/ready >/dev/null; do sleep 1; done
 curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
@@ -107,15 +99,17 @@ L’API écoute uniquement sur l’adresse de boucle locale de cette machine.
 [déploiement Compose](/docs/polyglot/server/#published-image--compose) avec vos
 propres identifiants, TLS et contrôles d’accès réseau.
 
-Le second conteneur traite la file d’infrastructure de Server et fait avancer
-les temporisateurs durables même lorsque les workers SDK sont arrêtés. Sa file Laravel
-s’appelle `default`, distincte des files de tâches SDK ci-dessous. Gardez les
-deux conteneurs en fonctionnement. L’évaluation des planifications et la
-maintenance en production utilisent les rôles supplémentaires du stack Compose.
+Le Server natif est un processus unique. Au premier démarrage, il crée son
+schéma SQLite et l’espace de noms `default` dans le volume monté, puis déclenche
+lui-même les temporisateurs durables et les planifications et exécute ses
+passes de maintenance, même lorsque les workers SDK sont arrêtés. Il n’y a ni
+commande d’amorçage, ni worker de file, ni planificateur à exécuter. Le Server
+refuse de démarrer sans `DW_AUTH_TOKEN`.
 
 **Résultat attendu :** la requête de disponibilité réussit et les informations
-du cluster identifient le Server autonome local. Laissez-le tourner pendant
-que vous terminez le parcours d’un langage.
+du cluster indiquent `"implementation":"rust"` avec la version
+`%%artifact.serverVersion%%`. Laissez-le tourner pendant que vous terminez le
+parcours d’un langage.
 
 ## 3. Choisir un langage {#choose-one-language}
 
@@ -442,7 +436,7 @@ Les utilisateurs Cloud n’ont pas de Server local à supprimer.
 Pour l’exercice auto-hébergé :
 
 ```bash
-docker rm -f durable-workflow-server durable-workflow-server-queue-worker
+docker rm -f durable-workflow-server
 docker volume rm durable-workflow-quickstart
 ```
 
