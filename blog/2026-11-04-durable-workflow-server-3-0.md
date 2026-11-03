@@ -15,10 +15,8 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
     commands and the Compose URL. Replace every occurrence if the release
     number changes.
   - Merge docs PR #426 first. This post links to its native install guides.
-  - Confirm PHP SDK 3.8.1 or later is published (3.8.1 fixes activities with
-    heartbeat timeouts; do not recommend 3.8.0).
-  - Takeover is described as not yet qualified. Update that section only when
-    the runbook is marked qualified.
+  - The takeover section states exactly the scope Security accepted for 3.0.4
+    (server#992). Do not widen it without new evidence.
   - Remove `draft: true` to publish.
 */}
 
@@ -139,33 +137,40 @@ provide the tokens through Kubernetes Secrets. Running more than one replica
 requires a ReadWriteMany volume for external payload storage. The chart is
 still marked beta. An existing PHP release never switches to native on an
 ordinary upgrade: the chart refuses to upgrade it until you set `runtime`
-explicitly. Set `runtime: php` to keep running PHP 2.11.8. See [Helm chart for Kubernetes](/docs/deployment/#helm-chart-for-kubernetes).
+explicitly. Set `runtime: php` to keep running PHP 2.11.8, or take over the
+database (below) before you set `runtime: native`. See [Helm chart for Kubernetes](/docs/deployment/#helm-chart-for-kubernetes).
 
 ## Moving from PHP Server 2.x
 
-New installations start on the native Server. If you already run PHP Server
-2.x, stay on 2.11.8 for now. It is the final PHP release and is still
-supported.
+New installations start on the native Server. Existing PHP 2.x installations
+can move in place with `upgrade-takeover`, a one-way, backup-first command that
+the native image runs once, while every PHP role is stopped. It checks that the
+database still matches a backup you have verified. After it commits, PHP
+refuses the database, and the only way back is to restore that backup.
 
-The native image includes `upgrade-takeover`, a one-way, backup-first command
-that moves an existing PHP database (layouts from 2.5.14 through 2.11.8) to the
-native Server. It is tested in CI on source builds against SQLite, PostgreSQL,
-MySQL and MariaDB, but it has not yet been qualified on a published image, so
-we are not presenting it as a supported upgrade path today. We will announce
-when the takeover runbook is marked qualified. Takeover is planned for
-deprecation in the 3.1.x line, so plan to move from PHP during 3.0.x once it is
-qualified. Its
-[design and status](https://github.com/durable-workflow/server/blob/3.0.4/docs/rust-server-upgrade-takeover.md)
-are public.
+Security accepted takeover on the published 3.0.4 image, run against databases
+written by published PHP 2.11.8 on SQLite, MySQL 8.0 and PostgreSQL 17 (all
+on arm64). MariaDB, and databases created by PHP 2.8.0 through 2.11.8, are
+covered by the CI test matrix built from the 3.0.4 source. Takeover refuses any
+state it cannot carry over. On SQLite and PostgreSQL a refusal changes nothing.
+On MySQL and MariaDB, a refusal that comes after takeover has written its
+marker needs a resume or a restore; the runbook explains both.
+
+Rehearse on a restored copy of your backup before you take over the live
+database. Takeover is planned for deprecation in the 3.1.x line, so move from
+PHP while you are on 3.0.x. The
+[native takeover runbook](https://github.com/durable-workflow/server/blob/a051f57fcc7e3605b301581ee9105461b3ef5815/docs/rust-server-upgrade-takeover.md)
+has the commands, the full scope and every refusal.
 
 ## SDK support
 
 The native Server implements worker protocol 1.20, the version the current SDKs
-use. These SDK releases declare support for native Server 3.x:
+use. These SDK releases declare support for native Server 3.x. For PHP, use 3.8.2;
+do not use 3.8.0.
 
 | SDK | Release | Declares native Server 3.x support from |
 | --- | --- | --- |
-| [PHP](/docs/polyglot/php/) (`durable-workflow/sdk`) | 3.8.1 or later | 3.0.0 |
+| [PHP](/docs/polyglot/php/) (`durable-workflow/sdk`) | 3.8.2 | 3.0.0 |
 | [Python](/docs/polyglot/python/) (`durable-workflow`) | 2.13.0 | 3.0.0 |
 | [Rust](/docs/polyglot/rust/) (`durable-workflow` crate) | 4.10.3 | 3.0.2 |
 
