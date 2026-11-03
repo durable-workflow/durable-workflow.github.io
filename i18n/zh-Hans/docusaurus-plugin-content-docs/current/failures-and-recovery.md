@@ -96,7 +96,105 @@ class MyNonRetryableActivity extends Activity
 
 仍有有效活动重试机会的运行会保持等待；如果原始预算尚未过期，修正后的代码成功后就可以继续执行。这并不保证所有失败的工作流都能原地修复：未处理的最后一次活动失败、工作流代码失败、结构限制或工作流超时都可能使运行进入终态。
 
-对于失败终态的运行，应保留历史并核对所有外部副作用，再决定应用是否应启动新工作流。重复业务操作需要应用层幂等性。系统不会自动重试整个工作流，也不会重新打开终态运行；参见[工作流级重试](#workflow-level-retry)。
+对于失败终态的运行，应保留历史并核对所有外部副作用，再决定应用是否应启动新工作流。重复业务操作需要应用层幂等性。系统不会自动重试整个工作流，也不会重新打开终态运行；参见[工作流级重试](#workflow-level-retry)。如果运行因未捕获的活动失败而结束，请在部署修复后检查能否对它执行 [redrive](#redrive)。redrive 会在一个新运行中继续，并复用已完成活动的结果。
+
+## 对失败的运行执行 redrive {#redrive}
+
+redrive 会在同一工作流实例的新运行中继续一个失败的运行。新运行复用失败之前已完成活动的记录结果，并重新调度失败的活动。修复活动失败的原因后使用它，这样付款或电子邮件这类已完成的工作就不会重复执行。
+
+失败的运行保持关闭且不变。新运行称为后继运行，它获得下一个运行编号，并成为实例的当前运行。它的 `continued_from_run_id` 指向失败的运行。它的 `WorkflowStarted` 事件记录 `recovery_kind: redrive` 和 `resume_step_sequence`，后者是恢复执行的步骤。
+
+后继运行从头重放工作流代码：
+
+- 在失败运行中已完成的每个活动调用都返回其记录结果。该活动不会再次运行。
+- 失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
+- 失败步骤之后的所有内容都像在新运行中一样执行。
+- 后继运行保留失败运行的执行截止时间。它的运行超时从 redrive 时重新开始计算。
+- 在嵌入式模式下，后继运行中的 `Workflow::now()` 从失败运行的开始时间起算。被复用的活动结果保留其首次记录的时间。因此，重放期间的工作流时间与失败运行一致。
+
+### 请求 redrive {#request-a-redrive}
+
+在嵌入式模式下，从 Laravel 容器解析 `Workflow\V2\Contracts\WorkflowControlPlane` 契约，并使用工作流实例 ID 和失败运行的 ID 调用 `redrive()`：
+
+```php
+use Workflow\V2\Contracts\WorkflowControlPlane;
+
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+]);
+
+if ($result['accepted']) {
+    $successorRunId = $result['workflow_run_id'];
+} else {
+    $reason = $result['reason'];
+}
+```
+
+在服务模式下，发送 `POST /api/workflows/{workflowId}/runs/{runId}/redrive`，可在请求体中附带可选的 `request_id`。各客户端封装的是同一路由：
+
+| 入口 | 调用 |
+| --- | --- |
+| CLI | `dw workflow:redrive <workflow-id> <run-id> --request-id <id>` |
+| PHP SDK | `Client::redriveWorkflow($workflowId, $failedRunId, $requestId)` |
+| Python SDK | `await client.redrive_workflow(workflow_id, failed_run_id, request_id=...)` 或 `await handle.redrive()` |
+| Rust SDK | `client.redrive_workflow_run(workflow_id, failed_run_id, request_id)` 或 `handle.redrive(request_id)` |
+
+被接受的 redrive 返回后继运行的运行 ID 和 `resume_step_sequence`。被拒绝的 redrive 返回 `reason`，且不做任何更改。对已经执行过 redrive 的运行再次执行 redrive，会返回现有的后继运行，而不会再创建一个。请传入 `request_id`，以便安全地重试请求。已用于同一实例另一次 redrive 的 `request_id` 会以 `request_id_already_used` 被拒绝。
+
+服务模式 Worker 会上报工作流定义指纹。redrive 会将其与运行开始时记录的指纹进行比较。在 Rust SDK 中，请为每个需要支持 redrive 的工作流调用 `Worker::set_workflow_definition_sources()`。未注册源码标识的工作流仍可运行，但 redrive 会拒绝它。
+
+### 失败的运行何时可以 redrive {#redrive-eligibility}
+
+满足以下全部条件时，redrive 才会接受失败的运行：
+
+- 该运行是实例的当前运行。
+- 运行失败的原因是活动失败到达工作流代码且未被捕获。在工作流代码中失败、因结构限制失败或因工作流超时失败的运行会被拒绝。
+- 失败活动之前的每个步骤都是已完成的活动，且其结果以内联方式存储。存放在外部负载存储中的结果会被拒绝。
+- 工作流定义与运行开始时记录的指纹一致。如果修复改动了工作流代码，redrive 会拒绝该运行。
+- 执行截止时间尚未过去。
+- 运行没有备忘录或搜索属性，没有父工作流、子工作流或本地活动，且其输入以内联方式存储。
+
+拒绝结果会指出第一条未满足的规则：
+
+| 原因 | 含义 |
+| --- | --- |
+| `run_not_failed` | 运行不处于 `failed` 状态。 |
+| `source_run_not_current` | 该实例存在更新的运行。 |
+| `unrecorded_failure_boundary` | 运行并非因工作流代码未捕获的活动失败而失败。 |
+| `unsupported_history` | 失败之前的历史中包含活动步骤以外的内容，例如信号、更新、计时器、副作用、版本标记或子工作流。 |
+| `unsupported_local_activity` | 历史中包含本地活动。 |
+| `external_activity_result_not_supported` | 某个已完成活动的结果存放在外部负载存储中。 |
+| `missing_activity_result`, `unavailable_activity_result` | 某个已完成活动的结果缺失或无法解码。 |
+| `unsupported_visibility_metadata` | 运行带有备忘录或搜索属性。 |
+| `unsupported_source_metadata` | 运行是作为另一个工作流的子工作流启动的。 |
+| `unsupported_source_link_or_payload` | 运行作为另一个工作流的子工作流被关联，或其输入存放在外部负载存储中。 |
+| `execution_deadline_elapsed` | 执行截止时间已过。 |
+| `workflow_definition_unavailable_or_changed` | 定义指纹缺失，或与开始时记录的指纹不同。 |
+| `request_id_already_used` | 该 `request_id` 已用于该实例的另一次 redrive。 |
+| `invalid_request_id` | `request_id` 超过 191 个字符。 |
+| `run_not_found`, `instance_not_found` | 该命名空间中不存在此运行或实例。 |
+
+其余原因表示历史不符合预期结构：`invalid_history`、`events_after_failure`、`duplicate_start`、`missing_start`、`unexpected_start`、`missing_terminal_history`、`invalid_activity_sequence`、`activity_sequence_gap`、`missing_activity_type`、`activity_type_mismatch`、`duplicate_activity_completion`、`incomplete_activity_prefix` 和 `invalid_failed_step`。在决定如何恢复之前，请导出并检查该运行的历史。
+
+当 redrive 拒绝某个运行时，请保留其历史，核对外部副作用，再决定应用是否应启动新的工作流。
+
+### 下一个 Workflow 版本中的变更 {#redrive-next-release}
+
+**尚未发布。** 以下变更已合并到 Workflow 包中，并会随其下一个版本发布。当前版本以及原生 Server 中的 redrive 都适用上面的规则。原生 Server 的支持在 [server#980](https://github.com/durable-workflow/server/issues/980) 中跟踪。
+
+- **运行详情和 describe 中的可用性。** Waterline 所选运行详情读取的运行详情会报告 `can_redrive` 和 `redrive_blocked_reason`。`WorkflowControlPlane::describe()` 在 `actions` 下报告相同字段。它们来自 `redrive()` 所应用的同一检查，因此你可以在请求之前看到某个运行能否 redrive，以及不能的原因。未失败的运行报告 `run_not_failed`。已经执行过 redrive 的运行报告 `already_redriven`。对于服务模式的运行，该报告只检查是否记录了指纹。`redrive()` 仍会将其与 Worker 的指纹进行比较。
+- **备忘录和搜索属性。** 运行开始时设置的备忘录和搜索属性会像 continue-as-new 一样传递给后继运行。由工作流代码通过 upsert 设置的值仍会以 `unsupported_visibility_metadata` 被拒绝。
+- **副作用和版本标记。** 失败步骤之前的副作用或版本标记会按步骤顺序在后继运行中复用。副作用不会再次运行，版本检查返回记录的版本。存放在外部负载存储中的副作用结果会以 `external_side_effect_result_not_supported` 被拒绝。
+- **已触发的计时器。** 在失败步骤之前已触发的 `timer()` 会在后继运行中记录为已触发。后继运行不会再次等待它。
+- **工作流时间。** 每个被复用的副作用、版本标记和已触发计时器都带有 `reused_from_run_id` 和 `reused_recorded_at`。嵌入式重放使用 `reused_recorded_at`，因此复用步骤之后的 `Workflow::now()` 与失败运行中的时间一致。被第二次 redrive 复用的步骤保留其首次运行的时间。
+
+以下历史仍会被拒绝：
+
+- 信号、更新、子工作流、本地活动和已取消的计时器返回 `unsupported_history` 或 `unsupported_local_activity`。
+- 条件和信号超时、取消清理计时器，以及位于取消作用域或并行组中的计时器返回 `unsupported_timer`。
+- 缺少调度事件或触发事件的计时器步骤返回 `incomplete_timer_step`。
+- 没有有效步骤编号的副作用、版本标记或计时器返回 `invalid_step_sequence`。同一步骤中出现两个时返回 `duplicate_step_sequence`。
+- 在工作流代码中失败的运行仍返回 `unrecorded_failure_boundary`。
 
 ## 服务模式入口拒绝与恢复 {#service-entry-recovery}
 
@@ -236,6 +334,7 @@ Durable Workflow v2 不支持自动工作流级重试。工作流运行因未处
 - **工作流重放负责恢复。** 工作流任务遇到数据库错误、Worker 崩溃等临时基础设施故障时，持久任务系统重新派发任务，重放从已提交历史恢复，无需新运行。
 - **Continue-as-new 支持长期运行的工作流。** 需要新状态或历史压缩时，工作流通过 `continueAsNew()` 显式开始新运行。
 - **修复处理停滞的运行。** `repair()` 命令和 Worker 循环的自动修复恢复持久任务传输丢失的运行。
+- **redrive 是需要显式执行的运维操作。** [redrive](#redrive) 只在你提出请求时才会在新运行中继续失败的运行，并复用已完成活动的结果。
 
 应用需要工作流级重试语义时，应在代码中显式建模：
 

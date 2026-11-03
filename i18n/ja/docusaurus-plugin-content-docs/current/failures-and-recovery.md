@@ -96,7 +96,105 @@ class MyNonRetryableActivity extends Activity
 
 有効なアクティビティ再試行が残る実行は待機状態を保ち、元の予算が期限切れになる前に修正後のコードが成功すれば続行できます。ただし、すべての失敗を同じ実行内で修正できる保証はありません。最後のアクティビティ失敗が捕捉されない場合、ワークフローのコードが失敗した場合、構造上の制限やワークフローのタイムアウトに達した場合には、終端状態になります。
 
-失敗して終端状態になった実行では、履歴を保持し、外部の副作用を照合してから、アプリケーションが新しいワークフローを開始すべきか判断します。業務処理の繰り返しにはアプリケーション側の冪等性を使ってください。ワークフロー全体の自動再試行や終端実行の再開はありません。[ワークフローレベルの再試行](#workflow-level-retry) を参照してください。
+失敗して終端状態になった実行では、履歴を保持し、外部の副作用を照合してから、アプリケーションが新しいワークフローを開始すべきか判断します。業務処理の繰り返しにはアプリケーション側の冪等性を使ってください。ワークフロー全体の自動再試行や終端実行の再開はありません。[ワークフローレベルの再試行](#workflow-level-retry) を参照してください。捕捉されないアクティビティ失敗で実行が終了した場合は、修正をデプロイした後に [redrive](#redrive) できるか確認してください。redrive は、完了したアクティビティの結果を再利用する新しい実行で処理を続けます。
+
+## 失敗した実行を redrive する {#redrive}
+
+redrive は、失敗した実行を同じワークフローインスタンスの新しい実行で続けます。新しい実行は、失敗より前に完了したアクティビティの記録済み結果を再利用し、失敗したアクティビティを再びスケジュールします。アクティビティ失敗の原因を修正した後に使うと、支払いやメール送信のような完了済みの処理が繰り返されません。
+
+失敗した実行は閉じたまま変更されません。新しい実行は後継実行と呼ばれ、次の実行番号を受け取り、インスタンスの現在の実行になります。後継実行の `continued_from_run_id` は失敗した実行を指します。後継実行の `WorkflowStarted` イベントには `recovery_kind: redrive` と、実行を再開するステップを示す `resume_step_sequence` が記録されます。
+
+後継実行はワークフローコードを最初からリプレイします。
+
+- 失敗した実行で完了したアクティビティ呼び出しは、それぞれ記録済みの結果を返します。そのアクティビティは再実行されません。
+- 失敗したアクティビティ呼び出しは、ワークフローコードの再試行ポリシーを使って新しいアクティビティ実行としてスケジュールされます。試行回数は最初からやり直しです。
+- 失敗したステップ以降は、新しい実行と同じように実行されます。
+- 後継実行は、失敗した実行のワークフロー全体の実行期限を引き継ぎます。実行ごとのタイムアウトは redrive の時点から改めて始まります。
+- 組み込みモードでは、後継実行の `Workflow::now()` は失敗した実行の開始時刻から始まります。再利用されたアクティビティ結果は最初に記録された時刻を保持します。そのため、リプレイ中のワークフロー時刻は失敗した実行と一致します。
+
+### redrive を要求する {#request-a-redrive}
+
+組み込みモードでは、Laravel コンテナから `Workflow\V2\Contracts\WorkflowControlPlane` コントラクトを解決し、ワークフローインスタンス ID と失敗した実行の ID を渡して `redrive()` を呼び出します。
+
+```php
+use Workflow\V2\Contracts\WorkflowControlPlane;
+
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+]);
+
+if ($result['accepted']) {
+    $successorRunId = $result['workflow_run_id'];
+} else {
+    $reason = $result['reason'];
+}
+```
+
+サービスモードでは、`POST /api/workflows/{workflowId}/runs/{runId}/redrive` を送信します。本文には任意で `request_id` を指定できます。各クライアントは同じルートをラップしています。
+
+| 利用面 | 呼び出し |
+| --- | --- |
+| CLI | `dw workflow:redrive <workflow-id> <run-id> --request-id <id>` |
+| PHP SDK | `Client::redriveWorkflow($workflowId, $failedRunId, $requestId)` |
+| Python SDK | `await client.redrive_workflow(workflow_id, failed_run_id, request_id=...)` または `await handle.redrive()` |
+| Rust SDK | `client.redrive_workflow_run(workflow_id, failed_run_id, request_id)` または `handle.redrive(request_id)` |
+
+受け付けられた redrive は、後継実行の実行 ID と `resume_step_sequence` を返します。拒否された redrive は `reason` を返し、何も変更しません。すでに redrive 済みの実行を redrive すると、新しい実行を作らずに既存の後継実行を返します。要求を安全に再送できるよう、`request_id` を渡してください。同じインスタンスの別の redrive で使用済みの `request_id` は、`request_id_already_used` で拒否されます。
+
+サービスワーカーはワークフロー定義のフィンガープリントを報告します。redrive はそれを、実行開始時に記録されたフィンガープリントと比較します。Rust SDK では、redrive したいワークフローごとに `Worker::set_workflow_definition_sources()` を呼び出してください。ソース識別情報なしで登録したワークフローも実行はできますが、redrive は拒否されます。
+
+### 失敗した実行を redrive できる条件 {#redrive-eligibility}
+
+redrive は、次の条件がすべて満たされるときに失敗した実行を受け付けます。
+
+- その実行がインスタンスの現在の実行である。
+- アクティビティ失敗がワークフローコードに届き、捕捉されなかったために実行が失敗した。ワークフローコード内の失敗、構造上の上限、ワークフローのタイムアウトで失敗した実行は拒否されます。
+- 失敗したアクティビティより前のステップがすべて完了したアクティビティで、その結果がインラインで保存されている。外部ペイロードストレージに保存された結果は拒否されます。
+- ワークフロー定義が、実行開始時に記録されたフィンガープリントと一致する。修正でワークフローコードを変更した場合、redrive はその実行を拒否します。
+- 実行期限を過ぎていない。
+- 実行にメモや検索属性、親ワークフロー、子ワークフロー、ローカルアクティビティがなく、入力がインラインで保存されている。
+
+拒否では、最初に満たされなかった規則が示されます。
+
+| 理由 | 意味 |
+| --- | --- |
+| `run_not_failed` | 実行が `failed` 状態ではありません。 |
+| `source_run_not_current` | インスタンスにより新しい実行があります。 |
+| `unrecorded_failure_boundary` | ワークフローコードで捕捉されなかったアクティビティ失敗によって実行が失敗していません。 |
+| `unsupported_history` | 失敗前の履歴に、シグナル、更新、タイマー、副作用、バージョンマーカー、子ワークフローなど、アクティビティのステップ以外のものが含まれています。 |
+| `unsupported_local_activity` | 履歴にローカルアクティビティが含まれています。 |
+| `external_activity_result_not_supported` | 完了したアクティビティの結果が外部ペイロードストレージにあります。 |
+| `missing_activity_result`, `unavailable_activity_result` | 完了したアクティビティの結果がないか、デコードできません。 |
+| `unsupported_visibility_metadata` | 実行にメモまたは検索属性があります。 |
+| `unsupported_source_metadata` | 実行が別のワークフローの子として開始されました。 |
+| `unsupported_source_link_or_payload` | 実行が別のワークフローの子としてリンクされているか、入力が外部ペイロードストレージにあります。 |
+| `execution_deadline_elapsed` | 実行期限を過ぎています。 |
+| `workflow_definition_unavailable_or_changed` | 定義のフィンガープリントがないか、開始時に記録されたものと異なります。 |
+| `request_id_already_used` | その `request_id` は、インスタンスの別の redrive ですでに使われています。 |
+| `invalid_request_id` | `request_id` が 191 文字を超えています。 |
+| `run_not_found`, `instance_not_found` | 実行またはインスタンスがその名前空間に存在しません。 |
+
+残りの理由は、履歴が想定した形になっていないことを示します。`invalid_history`、`events_after_failure`、`duplicate_start`、`missing_start`、`unexpected_start`、`missing_terminal_history`、`invalid_activity_sequence`、`activity_sequence_gap`、`missing_activity_type`、`activity_type_mismatch`、`duplicate_activity_completion`、`incomplete_activity_prefix`、`invalid_failed_step` です。復旧方法を決める前に、実行の履歴をエクスポートして確認してください。
+
+redrive が実行を拒否した場合は、その履歴を保持し、外部の副作用を照合してから、アプリケーションが新しいワークフローを開始すべきか判断します。
+
+### 次の Workflow リリースでの変更 {#redrive-next-release}
+
+**まだリリースされていません。** 以下の変更は Workflow パッケージにマージ済みで、次のリリースに含まれます。現在のリリースとネイティブ Server の redrive には、上記の規則が適用されます。ネイティブ Server での対応は [server#980](https://github.com/durable-workflow/server/issues/980) で追跡しています。
+
+- **実行詳細と describe での可否表示。** Waterline の選択実行詳細が読む実行詳細は、`can_redrive` と `redrive_blocked_reason` を報告します。`WorkflowControlPlane::describe()` は同じフィールドを `actions` の下に報告します。これらは `redrive()` が適用するのと同じ判定から得られるので、要求する前に実行を redrive できるか、できない場合はその理由を確認できます。失敗していない実行は `run_not_failed` を報告します。すでに redrive 済みの実行は `already_redriven` を報告します。サービスモードの実行では、報告はフィンガープリントが記録されていることだけを確認します。`redrive()` は引き続き、それをワーカーのフィンガープリントと比較します。
+- **メモと検索属性。** 実行開始時に設定されたメモと検索属性は、continue-as-new と同じように後継実行へ引き継がれます。ワークフローコードが upsert で設定した値は、引き続き `unsupported_visibility_metadata` で拒否されます。
+- **副作用とバージョンマーカー。** 失敗したステップより前の副作用やバージョンマーカーは、後継実行でステップ順に再利用されます。副作用は再実行されず、バージョン確認は記録済みのバージョンを返します。外部ペイロードストレージに保存された副作用の結果は、`external_side_effect_result_not_supported` で拒否されます。
+- **発火済みのタイマー。** 失敗したステップより前に発火した `timer()` は、後継実行に発火済みとして記録されます。後継実行がそのタイマーを再び待つことはありません。
+- **ワークフロー時刻。** 再利用された副作用、バージョンマーカー、発火済みタイマーには、それぞれ `reused_from_run_id` と `reused_recorded_at` が付きます。組み込みモードのリプレイは `reused_recorded_at` を使います。そのため、再利用されたステップの後の `Workflow::now()` は、失敗した実行での時刻と一致します。2 回目の redrive で再利用されたステップは、最初に実行された時刻を保持します。
+
+次の履歴は引き続き拒否されます。
+
+- シグナル、更新、子ワークフロー、ローカルアクティビティ、キャンセルされたタイマーは、`unsupported_history` または `unsupported_local_activity` を返します。
+- 条件とシグナルのタイムアウト、キャンセル後のクリーンアップ用タイマー、キャンセルスコープや並列グループ内のタイマーは、`unsupported_timer` を返します。
+- スケジュールのイベントか発火のイベントが欠けているタイマーのステップは、`incomplete_timer_step` を返します。
+- 有効なステップ番号のない副作用、バージョンマーカー、タイマーは `invalid_step_sequence` を返します。同じステップに 2 つある場合は `duplicate_step_sequence` を返します。
+- ワークフローコード内で失敗した実行は、引き続き `unrecorded_failure_boundary` を返します。
 
 ## サービスモードのエントリ拒否と復旧 {#service-entry-recovery}
 
@@ -238,6 +336,7 @@ Durable Workflow v2 は、**ワークフロー全体の自動再試行には対�
 - **ワークフローの復旧はリプレイで行います。** ワークフロータスクがデータベースエラーや Worker の停止など、一時的なインフラ障害に遭遇すると、永続タスクシステムがタスクを再配信します。コミット済み履歴からリプレイで再開するため、新しい実行は不要です。
 - **長期間動くワークフローには continue-as-new を使います。** 新しい状態や履歴の圧縮が必要な場合は、`continueAsNew()` で明示的に新しい実行へ移ります。
 - **停止した実行には修復を使います。** `repair()` コマンドと Worker ループの自動修復は、永続タスクの配信が失われた実行を復旧します。
+- **redrive はオペレーターが明示的に行う操作です。** [redrive](#redrive) は、要求したときだけ失敗した実行を新しい実行で続け、完了したアクティビティの結果を再利用します。
 
 アプリケーションでワークフロー全体の再試行が必要なら、その動作を明示的にモデル化してください。
 
