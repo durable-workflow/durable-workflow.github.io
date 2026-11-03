@@ -63,34 +63,47 @@ $workflow->output();
 
 ## モデル {#models}
 
-モデルの受け渡しは `SerializesModels` と同様に動作します。
+V2 のペイロードはポータブルな値形式を使うため、Eloquent モデルをワークフローやアクティビティの引数・結果にすることはできません。モデルのキーを渡し、そのモデルを使うアクティビティの中でモデルを読み込んでください。
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-Eloquent モデルをワークフローやアクティビティに渡すと、`ModelIdentifier` だけがシリアライズされます。ペイロードを小さくし、効率と性能を維持します。
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-ワークフローやアクティビティの実行時に、読み込み済みリレーションを含む完全なモデルインスタンスをデータベースから取得します。実行中の追加のデータベース呼び出しを避けたい場合は、渡す前にモデルを配列に変換することを検討してください。
+モデルはワークフローのコードではなくアクティビティで読み込んでください。ワークフローのコードはリプレイで再実行され、後のリプレイではデータベースクエリが別の行を返す可能性があります。
+
+`start()` にモデルを渡すと `InvalidArgumentException` がスローされます。`activity()` にモデルを渡すと、ワークフローの実行が失敗します。どちらのエラーもモデルクラスを示します。
+
+```
+unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
+```
+
+同じルールは Eloquent コレクションにも適用されます。代わりにキーの配列を渡してください。アクティビティが一部の属性だけを必要とする場合は、それらを配列として渡してください。
+
+v1 では、ワークフローとアクティビティは `SerializesModels` を通じてモデルを受け取っていました。これはモデル識別子を保存し、ジョブの実行時にモデルを再読み込みする仕組みです。V2 はこれを行いません。
 
 ## 依存性の注入 {#dependency-injection}
 

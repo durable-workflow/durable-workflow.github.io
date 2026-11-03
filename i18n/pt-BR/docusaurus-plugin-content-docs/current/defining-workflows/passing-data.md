@@ -63,34 +63,47 @@ $workflow->output();
 
 ## Modelos {#models}
 
-Passar modelos funciona de forma semelhante a `SerializesModels`.
+Os payloads da V2 usam um formato de valores portável, então um modelo Eloquent não pode ser argumento nem resultado de um workflow ou atividade. Passe a chave do modelo e carregue o modelo dentro da atividade que o usa.
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-Quando um modelo Eloquent é passado a um workflow ou atividade, apenas seu `ModelIdentifier` é serializado. Isso reduz o tamanho do payload, mantendo a eficiência e o desempenho dos workflows.
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-Quando o workflow ou a atividade executar, ele recuperará do banco de dados a instância completa do modelo, incluindo quaisquer relações carregadas. Para evitar chamadas extras ao banco durante a execução de um workflow ou atividade, considere converter o modelo em um array antes de passá-lo.
+Carregue modelos em atividades, não no código do workflow. O código do workflow é executado de novo no replay, e uma consulta ao banco de dados pode retornar linhas diferentes em um replay posterior.
+
+Passar um modelo para `start()` lança uma `InvalidArgumentException`. Passar um modelo para `activity()` faz a execução do workflow falhar. Os dois erros informam a classe do modelo:
+
+```
+unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
+```
+
+A mesma regra vale para coleções do Eloquent. Passe um array de chaves no lugar. Se a atividade precisa apenas de alguns atributos, passe-os como array.
+
+Na v1, workflows e atividades recebiam modelos por meio de `SerializesModels`, que armazenava um identificador do modelo e recarregava o modelo quando o job era executado. A V2 não faz isso.
 
 ## Injeção de dependências {#dependency-injection}
 

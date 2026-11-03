@@ -63,34 +63,47 @@ $workflow->output();
 
 ## Modelos {#models}
 
-Pasar modelos funciona de forma similar a `SerializesModels`.
+Las cargas útiles de V2 usan un formato de valores portable, así que un modelo Eloquent no puede ser argumento ni resultado de un workflow o una actividad. Pasa la clave del modelo y carga el modelo dentro de la actividad que lo usa.
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-Cuando pasas un modelo Eloquent a un workflow o actividad, solo se serializa su `ModelIdentifier`. Esto reduce el tamaño de la carga útil y mantiene la eficiencia de los workflows.
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-Al ejecutarse, el workflow o actividad recupera de la base de datos la instancia completa del modelo, incluidas las relaciones cargadas. Para evitar consultas adicionales durante la ejecución, considera convertir el modelo en un array antes de pasarlo.
+Carga los modelos en actividades, no en el código del workflow. El código del workflow se vuelve a ejecutar durante el replay, y una consulta a la base de datos puede devolver filas distintas en un replay posterior.
+
+Pasar un modelo a `start()` lanza una `InvalidArgumentException`. Pasar un modelo a `activity()` hace fallar la ejecución del workflow. Ambos errores nombran la clase del modelo:
+
+```
+unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
+```
+
+La misma regla se aplica a las colecciones de Eloquent. Pasa un array de claves en su lugar. Si la actividad solo necesita algunos atributos, pásalos como array.
+
+En v1, los workflows y las actividades recibían modelos mediante `SerializesModels`, que guardaba un identificador del modelo y lo volvía a cargar al ejecutar el job. V2 no hace esto.
 
 ## Inyección de dependencias {#dependency-injection}
 

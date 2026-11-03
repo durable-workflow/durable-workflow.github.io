@@ -63,34 +63,47 @@ $workflow->output();
 
 ## Models
 
-Passing in models works similarly to `SerializesModels`.
+V2 payloads use a portable value format, so an Eloquent model can't be a workflow or activity argument or result. Pass the model's key and load the model inside the activity that uses it.
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-When an Eloquent model is passed to a workflow or activity, only its `ModelIdentifier` is serialized. This reduces the size of the payload, ensuring that your workflows remain efficient and performant.
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-When the workflow or activity runs, it will retrieve the complete model instance, including any loaded relationships, from the database. If you wish to prevent extra database calls during the execution of a workflow or activity, consider converting the model to an array before passing it.
+Load models in activities, not in workflow code. Workflow code is replayed, and a database query can return different rows on a later replay.
+
+Passing a model to `start()` throws an `InvalidArgumentException`. Passing a model to `activity()` fails the workflow run. Both errors name the model class:
+
+```
+unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
+```
+
+The same rule applies to Eloquent collections. Pass an array of keys instead. If the activity needs only a few attributes, pass them as an array.
+
+In v1, workflows and activities received models through `SerializesModels`, which stored a model identifier and reloaded the model when the job ran. V2 doesn't do this.
 
 ## Dependency Injection
 

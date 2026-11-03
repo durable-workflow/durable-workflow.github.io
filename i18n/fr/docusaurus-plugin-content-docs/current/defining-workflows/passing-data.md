@@ -63,34 +63,47 @@ $workflow->output();
 
 ## Modèles {#models}
 
-La transmission de modèles fonctionne de manière similaire à `SerializesModels`.
+Les données utiles V2 utilisent un format de valeurs portable. Un modèle Eloquent ne peut donc pas être un argument ou un résultat de workflow ou d’activité. Transmettez la clé du modèle et chargez le modèle dans l’activité qui l’utilise.
 
 ```php
-use App\Models\User;
 use function Workflow\V2\activity;
 use Workflow\V2\Workflow;
 
 class MyWorkflow extends Workflow
 {
-    public function handle(User $user)
+    public function handle(int $userId)
     {
-        return activity(MyActivity::class, $user->name);
+        return activity(MyActivity::class, $userId);
     }
 }
 ```
 
-Lorsqu’un modèle Eloquent est transmis à un workflow ou à une activité, seul son `ModelIdentifier` est sérialisé. Cela réduit la taille des données utiles et préserve l’efficacité et les performances des workflows.
+```php
+use App\Models\User;
+use Workflow\V2\Activity;
 
-```
-object(ModelIdentifier) {
-    id: 42,
-    class: "App\Models\User",
-    relations: [],
-    connection: "mysql"
+class MyActivity extends Activity
+{
+    public function handle(int $userId)
+    {
+        $user = User::findOrFail($userId);
+
+        return "Hello, {$user->name}!";
+    }
 }
 ```
 
-Lors de son exécution, le workflow ou l’activité récupère l’instance complète du modèle dans la base de données, avec les relations chargées. Pour éviter des appels supplémentaires à la base de données pendant l’exécution, envisagez de convertir le modèle en tableau avant de le transmettre.
+Chargez les modèles dans les activités, pas dans le code du workflow. Le code du workflow est rejoué lors de la relecture, et une requête à la base de données peut renvoyer d’autres lignes lors d’une relecture ultérieure.
+
+Transmettre un modèle à `start()` lève une `InvalidArgumentException`. Transmettre un modèle à `activity()` fait échouer l’exécution du workflow. Les deux erreurs nomment la classe du modèle :
+
+```
+unsupported_value_type: Eloquent model App\Models\User cannot cross a V2 payload boundary. Pass its key and load the model inside the activity.
+```
+
+La même règle s’applique aux collections Eloquent. Transmettez plutôt un tableau de clés. Si l’activité n’a besoin que de quelques attributs, transmettez-les sous forme de tableau.
+
+En v1, les workflows et les activités recevaient les modèles via `SerializesModels`, qui stockait un identifiant de modèle et rechargeait le modèle à l’exécution du job. V2 ne le fait pas.
 
 ## Injection de dépendances {#dependency-injection}
 
