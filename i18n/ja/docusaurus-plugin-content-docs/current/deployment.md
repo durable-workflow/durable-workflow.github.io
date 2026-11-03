@@ -4,6 +4,8 @@ title: セルフホストのデプロイ
 description: サポートする Durable Workflow v2 のセルフホスト経路と、出発点となる成果物を選びます。
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # セルフホストのデプロイ {#self-hosting-deployments}
 
 Durable Workflow v2 は複数のセルフホスト構成に対応します。運用環境に合う最小の経路を選び、イメージ、DB、キャッシュ、認証、準備状態、アップグレードの契約を明示してください。
@@ -12,17 +14,29 @@ Durable Workflow v2 は複数のセルフホスト構成に対応します。運
 
 Server は Waterline を同梱・運用しません。運用 UI が必要な場合だけ別途デプロイし、[Waterline デプロイ・監視ガイド](/docs/monitoring/#waterline-service)に従って Server 所有の名前空間へ接続します。Cloud は代わりに Managed Waterline を含みます。
 
+現在の Server はネイティブ 3.x Server（`%%artifact.serverDockerHubImage%%`）です。ノードごとに単一プロセスとして動作し、起動時にデータベーススキーマを自ら作成・確認し、タイマーとスケジュールの発火やメンテナンス処理も自ら実行します。そのため、ブートストラップジョブ、キュー Worker、スケジューラー、Redis はありません。PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。
+
+:::note 既存の PHP Server 2.x インストール
+
+PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は引き続き利用できます。2.11.8 のリリースタグでは[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)で、3.0.0 以降の Server リポジトリでは同じスタックを[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml)として維持しています。既存の PHP 2.x インストールは、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従って `upgrade-takeover` でネイティブへ移行できます。テイクオーバーは、SQLite、MySQL 8.0、PostgreSQL 17 上で PHP 2.11.8 が書き込んだデータベースについて、公開済みの 3.0.4 イメージ（arm64）で適格性が確認されています。MariaDB、amd64、および他の PHP リリースのデータベース（スキーマレイアウト 2.8.0–2.11.8）は、ソースビルドでの CI による検証のみです。テイクオーバーは一方向で、事前のバックアップが前提であり、PHP を停止しておく必要があります。引き継げないデータベースや状態は拒否されます。各ケースは手順書の[拒否条件の表](%%artifact.serverTakeoverRunbookUrl%%#refusals)に記載されています。まずバックアップから復元したコピーでリハーサルしてください。テイクオーバー後に PHP へロールバックすることはできません。また、テイクオーバーは 3.1.x 系で非推奨とする予定です。以下の節で Redis、キュー Worker、スケジューラー、ブートストラップに触れている箇所は、PHP 2.x のトポロジーを説明しています。
+
+:::
+
 ## デプロイのサポートマトリクス {#deployment-support-matrix}
 
 | 経路 | 出発点 | 対応する用途 | この経路が約束しないもの | 商用サポートの開始点 |
 | --- | --- | --- | --- | --- |
-| ローカル開発・社内非本番 | `%%artifact.serverTagEnv%%` または `%%artifact.serverImageEnv%%` を使う [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) | 開発マシン一台、LAN デモ、共有ステージング、SDK・Worker 統合テスト | インターネット公開本番、永続バックアップ保証、厳密な秘密ローテーション、マルチノードフェイルオーバー | 開発スタックを本番手順書にする支援が必要 |
-| 単一ノード本番 | 同じ [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) に本番 env、MySQL・Redis ボリューム、ロール別トークン、バックアップ、リバースプロキシ TLS、固定タグ・ダイジェストを設定 | 永続状態と単純な運用モデルを持つ VM、VPS、社内 Docker ホスト一台 | ホスト HA、自動 DB フェイルオーバー、マルチリージョン復旧、無停止の大規模トポロジー変更 | 本番でバックアップ、復元、認証、TLS、更新、復帰手順のレビューが必要 |
-| 小規模クラスター | 公開 `durableworkflow/server`・`ghcr.io/durable-workflow/server`、[Compose 手順](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml)をプロセステンプレートにし、API 2～3 台、共有外部 MySQL/PostgreSQL、Redis、独立 Worker、厳密に一つのスケジューラー・保守ランナー | 一台では不足する API・Worker 容量の水平拡張。[順次更新契約](/docs/rolling-upgrades)の全条件成立時のローリング更新 | SQLite クラスター、Redis なしの複数ノード、定常的な重複スケジューラー、アクティブ/アクティブ複数書込 DB、無人リージョン切替、広範な「ファイブナイン」「無停止」SLA、[証拠ゲート](#release-evidence-status)通過前のセルフサービス単一リージョン HA | 複数ホストの容量、障害ドメイン、更新、復旧計画が必要、またはゲート対象 HA を主張したい |
-| Kubernetes Helm チャート | `oci://ghcr.io/durable-workflow/charts/durable-workflow` の [Server 所有チャート](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)と外部 DB、Redis、ingress、秘密管理 | Server、Worker、単一スケジューラー、bootstrap、service、probe、policy の再現可能な本番導入・更新 | 永続化の同梱、プロバイダー管理インフラ、アクティブ/アクティブのマルチリージョン、独自 operator、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | プロバイダー固有設計、容量、復旧、公開 values 契約外の変更が必要 |
-| 生の Kubernetes マニフェスト | Server の [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)、公開イメージ、既存 DB・Redis・ingress・秘密管理 | Kubernetes 運用済みチーム向けの、API、Worker、スケジューラー、bootstrap、service、probe、config、secret の調査可能な定義 | 別の Helm ライフサイクル、マネージド Kubernetes 検証、アクティブ/アクティブのマルチリージョン、独自 operator、環境固有ストレージ・ネットワーク・セキュリティ判断、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | オーバーレイ、管理クラスター検証、プロバイダー固有本番計画、ゲート対象 HA が必要 |
+| ローカル開発・社内非本番 | `%%artifact.serverImageEnv%%` を使う [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%) | 開発マシン一台、LAN デモ、共有ステージング、SDK・Worker 統合テスト | インターネット公開本番、永続バックアップ保証、厳密な秘密ローテーション、マルチノードフェイルオーバー | 開発スタックを本番手順書にする支援が必要 |
+| 単一ノード本番 | 同じ [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%) に本番 env、MySQL・Server ストレージのボリューム、強固な共有トークンとロール別トークン、バックアップ、リバースプロキシ TLS、固定タグ・ダイジェストを設定 | 永続状態と単純な運用モデルを持つ VM、VPS、社内 Docker ホスト一台 | ホスト HA、自動 DB フェイルオーバー、マルチリージョン復旧、無停止の大規模トポロジー変更 | 本番でバックアップ、復元、認証、TLS、更新、復帰手順のレビューが必要 |
+| 小規模クラスター（PHP 2.x の契約） | 公開 PHP 2.x の `durableworkflow/server`・`ghcr.io/durable-workflow/server`、[PHP 2.11.8 の Compose 手順](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)をプロセステンプレートにし、API 2～3 台、共有外部 MySQL/PostgreSQL、Redis、独立 Worker、厳密に一つのスケジューラー・保守ランナー | 一台では不足する API・Worker 容量の水平拡張。[順次更新契約](/docs/rolling-upgrades)の全条件成立時のローリング更新 | SQLite クラスター、Redis なしの複数ノード、定常的な重複スケジューラー、アクティブ/アクティブ複数書込 DB、無人リージョン切替、広範な「ファイブナイン」「無停止」SLA、[証拠ゲート](#release-evidence-status)通過前のセルフサービス単一リージョン HA | 複数ホストの容量、障害ドメイン、更新、復旧計画が必要、またはゲート対象 HA を主張したい |
+| Kubernetes Helm チャート | `oci://ghcr.io/durable-workflow/charts/durable-workflow` の [Server 所有チャート](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow)と外部 MySQL・PostgreSQL、ingress、秘密管理 | 再現可能な本番導入・更新。ネイティブモード（既定）は一つの Server Deployment と service、probe、policy をレンダリング。`runtime=php` は既存 PHP 2.x 導入の Worker、単一スケジューラー、bootstrap Job、Redis を維持 | 永続化の同梱、プロバイダー管理インフラ、アクティブ/アクティブのマルチリージョン、独自 operator、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | プロバイダー固有設計、容量、復旧、公開 values 契約外の変更が必要 |
+| 生の Kubernetes マニフェスト（PHP 2.x の構成） | Server の [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s)、公開 PHP 2.x イメージ、既存 DB・Redis・ingress・秘密管理 | Kubernetes 運用済みチーム向けの、API、Worker、スケジューラー、bootstrap、service、probe、config、secret の調査可能な定義 | 別の Helm ライフサイクル、マネージド Kubernetes 検証、アクティブ/アクティブのマルチリージョン、独自 operator、環境固有ストレージ・ネットワーク・セキュリティ判断、[証拠ゲート](#release-evidence-status)通過前のセルフサービス HA | オーバーレイ、管理クラスター検証、プロバイダー固有本番計画、ゲート対象 HA が必要 |
 | アクティブ/パッシブのマルチリージョン評価 | リージョンごとの検証済み単一ノード・小規模クラスター、アクティブから待機側への非同期 DB 複製、レビュー済み切替・復帰手順 | サポート主導の地域災害復旧設計評価と環境固有リハーサル | 実証済みセルフサービス 2.0 契約、アクティブ/アクティブ、自動・無人リージョン切替、同期複製（RPO=0）、リージョン間アクティブ可視性・連合検索、エンジン強制の地域固定キュー | 本番で複製、切替、復帰、RPO、RTO に依存する前 |
 | サポート主導のトポロジー | 環境に基づくレビュー済み設計 | セルフホストの複数リージョン、無人切替、RPO=0 複数書込複製、定常重複スケジューラー、独自セキュリティ・ネットワーク、非公開 SLO、オーバーレイ、移行計画 | コピーして実行するだけのセルフサービス | トポロジー自体が製品リスクの一部となる |
+
+<ProductPromotion source="docs-v2-deployment">
+自分で運用する必要はありません。Cloud が管理対象の名前空間のランタイム、永続化、配置、復旧を運用し、PHP、Python、Rust の Worker はロール別認証情報で接続します。
+</ProductPromotion>
 
 公開配布は、ローカル、単一ノード本番、小規模クラスターに最適化しています。Kubernetes マニフェストは既存運用チーム向けです。[アクティブ/パッシブのマルチリージョン](#activepassive-multi-region)はサポート主導の評価用で、実証済みセルフサービス契約ではありません。
 
@@ -69,20 +83,22 @@ Server は Waterline を同梱・運用しません。運用 UI が必要な場�
 - GitHub Container Registry: `%%artifact.serverGhcrImage%%`
 - ダイジェスト固定: `durableworkflow/server@sha256:...` または `ghcr.io/durable-workflow/server@sha256:...`
 
-可変タグはローカル実験だけに使います。本番 env は特定版・ダイジェストへ固定し、更新と復帰を監査可能にします。
+可変タグはローカル実験だけに使います。本番 env は特定版・ダイジェストへ固定し、更新と復帰を監査可能にします。ネイティブリリースはメジャーバージョン 3 です。ローリングタグ `3` と `latest` は新しいネイティブリリースごとに移動し、`2` は最後の PHP 2.x リリースに留まります。
 
 ## ローカル開発と社内非本番 {#local-development-and-internal-non-production}
 
-ソース不要の MySQL・Redis スタックには公開イメージ Compose を使います。
+ソース不要のスタック（ネイティブ Server と MySQL）には公開イメージ Compose を使います。選択したリリースからファイルを取得し、`DW_SERVER_IMAGE` でイメージを固定します。
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-export %%artifact.serverTagEnv%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
 docker compose -f docker-compose.published.yml up -d --wait
 ```
+
+`DW_AUTH_TOKEN` が設定されるまで Compose は起動を拒否します。このファイルは API を `127.0.0.1:8080` にのみ公開し、MySQL は公開しません。リモートアクセスには、`SERVER_BIND_ADDRESS` を保護されたプライベートインターフェースに設定します。
 
 API、準備状態、クラスター検出、Worker 登録を検証します。
 
@@ -100,7 +116,7 @@ curl -X POST http://localhost:8080/api/worker/register \
   -d '{"worker_id":"compose-worker","task_queue":"compose","runtime":"python"}'
 ```
 
-開発・社内ステージング向けです。一つの互換トークン、既定パスワード、ローカルボリュームを使い、TLS もないため、本番のセキュリティ境界にはなりません。
+開発・社内ステージング向けです。一つの共有トークン、既定パスワード、ローカルボリュームを使い、TLS もないため、本番のセキュリティ境界にはなりません。
 
 ## 単一ノード本番 {#single-node-production}
 
@@ -109,8 +125,8 @@ curl -X POST http://localhost:8080/api/worker/register \
 ```env
 %%artifact.serverImageEnv%%
 SERVER_PORT=8080
-APP_ENV=production
-APP_DEBUG=false
+# Loopback by default. Use a protected private interface for the reverse proxy.
+SERVER_BIND_ADDRESS=127.0.0.1
 
 DB_DATABASE=durable_workflow
 DB_USERNAME=workflow
@@ -118,11 +134,14 @@ DB_PASSWORD=replace-with-random-password
 DB_ROOT_PASSWORD=replace-with-random-root-password
 
 DW_AUTH_DRIVER=token
-DW_AUTH_BACKWARD_COMPATIBLE=false
+# Required. Native accepts the shared token for every role; keep it secret.
+DW_AUTH_TOKEN=replace-with-random-shared-token
 DW_WORKER_TOKEN=replace-with-worker-token
 DW_OPERATOR_TOKEN=replace-with-operator-token
 DW_ADMIN_TOKEN=replace-with-admin-token
 ```
+
+ネイティブ Server は `DW_AUTH_TOKEN` を必須とし、`DW_AUTH_BACKWARD_COMPATIBLE=false` では起動を拒否するため、共有トークンを無効にはできません。共有トークンは管理者トークンと同様に扱い、Worker とアプリケーションには権限の狭いロール別トークンを渡してください。
 
 その env で開始します。
 
@@ -134,22 +153,28 @@ docker compose --env-file durable-workflow.prod.env \
 本番サービスとして運用します。
 
 - API の前にリバースプロキシを置き、TLS、公開ルーティング、リクエストログ、IP 許可リストを担わせる。
-- MySQL・Redis を公開しない。
+- MySQL を公開しない。
 - Worker は `DW_WORKER_TOKEN`、アプリ・運用は `DW_OPERATOR_TOKEN`、名前空間・管理は `DW_ADMIN_TOKEN`。
-- 毎更新前と定期的に MySQL をバックアップ。Redis は正常再起動のため保持するが、永続履歴の正しい情報源は MySQL。
+- 毎更新前と定期的に MySQL をバックアップ。永続履歴の正しい情報源は MySQL。`server_storage` ボリュームは Server のローカル外部ペイロードオブジェクトを保持するため、MySQL と一緒にバックアップする。復旧ポイントには両方が必要。[セルフホストのバックアップと復元手順](https://github.com/durable-workflow/server/blob/main/docs/self-hosted-backup-and-restore.md)を参照。
 - 復元用に正確な env、イメージ版・ダイジェスト、DB バックアップをまとめる。
 
 更新順序:
 
-1. MySQL をバックアップし現在イメージを記録。
-2. `DW_SERVER_IMAGE` または `DW_SERVER_TAG` だけ変更。
-3. 新イメージを pull。
+1. MySQL と `server_storage` をバックアップし現在イメージを記録。
+2. `DW_SERVER_IMAGE` だけ変更。
+3. `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml pull` で新イメージを pull。
 4. `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` を実行。
 5. 外部トラフィック前に `/api/ready`、`/api/cluster/info`、Worker 登録を確認。
 
-最新のコマンド例は Server README の[公式イメージと Compose](https://github.com/durable-workflow/server#official-image--compose)にあります。
+ネイティブ Server は起動時にスキーマを確認します。ネイティブの同一マイナー系列内のパッチリリースはスキーマを維持するため、イメージの変更だけで済みます。リリースノートでスキーマ変更が告知されたリリースでは、データベースをバックアップし、全 Server を停止した状態で、イメージの `schema-upgrade` コマンドも実行する必要があります。最新のコマンド例は Server リファレンスの[公式イメージと Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)にあります。
 
 ## 小規模クラスター {#small-clustered-deployments}
+
+:::note PHP Server 2.x の契約
+
+検証済みの小規模クラスター契約とその CI ハーネスは、PHP 2.x Server（共有 Redis、キュー Worker、厳密に一つのスケジューラー）を使います。ネイティブ 3.x にはこれらのロールがなく、ネイティブ用の Compose 小規模クラスター手順やハーネスは公開されていません。ネイティブ Server を複数レプリカで動かす場合は、外部の MySQL・PostgreSQL データベースとペイロード保存用の ReadWriteMany ボリュームを使い、[Helm チャートのネイティブモード](#helm-chart-for-kubernetes)を利用してください。
+
+:::
 
 単一ノードの控えめな拡張です。検証済みセルフサービス契約は意図的に限定しています。
 
@@ -228,6 +253,8 @@ API レプリカの追加や、[ローリング更新](/docs/rolling-upgrades)�
 
 ### SQL を使う全プロセスを数える {#count-every-sql-owning-process}
 
+ネイティブ 3.x Server のプロセスは最大4本のデータベース接続を開き、`schema-upgrade` またはネイティブ移行（テイクオーバー）コマンドは実行中にさらに1本を開きます。レプリカ数が最大のときのネイティブ Server レプリカ1台につき4セッションに、以下の運用ツールの分を加えて見積もってください。この節の残りは PHP 2.x について説明します。
+
 公開 PHP Compose 構成では、次の役割が SQL クライアントになり得ます。
 
 | 役割 | 数える対象 |
@@ -289,12 +316,9 @@ DB のメモリと負荷を評価する必要があります。
    後継を起動します。復旧アクセスを残し、初期化は計画したマイグレーション時間帯だけに
    実行します。安全な重複が収まらなければ、文書化された全停止の更新手順を使います。
 
-[タスクキューの受付制御](/docs/polyglot/task-queue-admission)は一部の配信・リース処理を
-制限します。`DW_WORKER_LONG_POLL_MAX_CONCURRENT` と `DW_QUERY_TASK_POLL_MAX_CONCURRENT` は
-ノード内の待機 poll を制限します。いずれも SQL セッション全体、DB バイト数、commit 遅延の
-上限ではありません。完了、heartbeat、運用リクエスト、ヘルスチェック用の容量も残します。
+PHP 2.x では、[タスクキューの受付制御](/docs/polyglot/task-queue-admission)が一部の配信・リース処理を制限し、`DW_WORKER_LONG_POLL_MAX_CONCURRENT` と `DW_QUERY_TASK_POLL_MAX_CONCURRENT` がノード内の待機 poll を制限します。いずれも SQL セッション全体、DB バイト数、commit 遅延の上限ではありません。完了、heartbeat、運用リクエスト、ヘルスチェック用の容量も残します。ネイティブ 3.x は、タスクキューの受付制御の上限が設定されていると起動を拒否し、両方の poll 上限を無視します。現時点ではネイティブの代替手段はありません。ネイティブの SQL セッション数は、プロセスごとに4本で固定された接続プールで制限されます。タスクの並行数に合わせて、SDK Worker のスロット数と Worker 数を調整してください。
 
-まず書き込み可能な DB への直接接続を基準にします。接続プロキシは、正確な Server リリース、プールモード、準備済み文、トランザクション境界、セッション状態、ロックの設定で検証する必要があります。**PgBouncer のトランザクションプールには、修正済みの Server 2.9.8 以降が必要です。** [公開版 2.9.8 の受け入れ結果](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)では、PostgreSQL 16.15 と PgBouncer 1.26.1 について、PostgreSQL への直接接続、セッションプール、`max_prepared_statements=0` または `max_prepared_statements=200` のトランザクションプールを検証しました。これは互換性のある最低バージョンと正確な検証済み構成を示すもので、最新バージョンへの固定指定や容量の保証ではありません。他の組み合わせは別途検証してください。トラフィックを受け入れる前に、選択したエンドポイントに対して通常の `server-bootstrap` 初期化を実行します。
+まず書き込み可能な DB への直接接続を基準にします。接続プロキシは、正確な Server リリース、プールモード、準備済み文、トランザクション境界、セッション状態、ロックの設定で検証する必要があります。**PgBouncer のトランザクションプールには、修正済みの Server 2.9.8 以降が必要です。** [公開版 2.9.8 の受け入れ結果](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092)では、PostgreSQL 16.15 と PgBouncer 1.26.1 について、PostgreSQL への直接接続、セッションプール、`max_prepared_statements=0` または `max_prepared_statements=200` のトランザクションプールを検証しました。これは互換性のある最低バージョンと正確な検証済み構成を示すもので、最新バージョンへの固定指定や容量の保証ではありません。他の組み合わせは別途検証してください。トラフィックを受け入れる前に、PHP 2.x では選択したエンドポイントに対して通常の `server-bootstrap` 初期化を実行し、ネイティブ 3.x ではそのエンドポイント経由で起動時にスキーマを確認させます。
 
 `GET /api/ready` は、パラメーターをバインドした DB 読み取り（`bound_read_query`）と設定済みの準備状態チェックを実行します。書き込み容量は明示的に未検証のままです。TCP 接続、マイグレーション、準備状態応答の成功だけでは、すべてのワークフロー SQL 操作やコミット容量は証明できません。読み取りレプリカで、claim と永続的遷移を確定する書き込み主系を置き換えてはいけません。
 
@@ -310,7 +334,9 @@ helm install durable-workflow \
   -f my-values.yaml
 ```
 
-values ファイルでは、外部の MySQL/PostgreSQL と Redis、既存の Kubernetes Secret による本番認証情報、環境に合った ingress/TLS を指定してください。チャートは永続ストレージやプロバイダー管理のインフラを作成しません。再現可能なデプロイのため、Server イメージをダイジェストで固定してください。
+チャート 1.x は既定でネイティブ Server を実行します（`runtime: native`）。一つの Server Deployment で構成され、Worker、スケジューラー、マイグレーション Job、Redis はありません。values ファイルでは、外部の MySQL、MariaDB、PostgreSQL データベースを指定し、既存の Kubernetes Secret で `DW_AUTH_TOKEN` とロール別トークンを渡し、環境に合った ingress/TLS を設定してください。共有の `DW_AUTH_TOKEN` がないとチャートはレンダリングを拒否し、SQLite も拒否します。ネイティブ導入は既定で一つのレプリカを実行します。複数レプリカやオートスケーリングには、外部ペイロードオブジェクト用の ReadWriteMany ボリュームを `native.storage.existingClaim` で指定する必要があります。チャートは永続ストレージやプロバイダー管理のインフラを作成しません。再現可能なデプロイのため、Server イメージをダイジェストで固定してください。
+
+既存の PHP 2.x リリースは、通常のアップグレードではネイティブへ移行しません。`runtime` を明示的に設定するまで、チャートはアップグレードを拒否します。PHP 2.x の Worker、スケジューラー、bootstrap Job、Redis を維持するには `runtime: php` を設定します。`runtime: native` へ移行するには、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従い、テイクオーバーが完了するまでは `runtime: php` を維持してください。チャートの[UPGRADING ノート](%%artifact.helmChartUpgradeUrl%%)も参照してください。
 
 ### チャートのリリースを選ぶ {#helm-chart-selection}
 
@@ -324,7 +350,7 @@ values ファイルでは、外部の MySQL/PostgreSQL と Redis、既存の Kub
 
 ## Kubernetes マニフェスト {#kubernetes-manifests}
 
-既存運用チーム向けに、Server の [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) に次があります。
+既存運用チーム向けに、Server の [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) に次があります。これらは PHP 2.x の構成を表します。ネイティブ Server には、Helm チャートのネイティブモードを使うか、その単一 Server Deployment を応用してください。
 
 - Namespace と共通ラベル
 - ConfigMap と Secret の分離
@@ -353,7 +379,7 @@ curl -H "Authorization: Bearer $DW_ADMIN_TOKEN" http://localhost:8080/api/cluste
 
 ## Kubernetes で SDK Worker を実行する {#sdk-workers-on-kubernetes}
 
-アプリケーションの Worker は、Server の Laravel キュー Worker と分けてデプロイします。登録済みの PHP、Python、Rust ハンドラーと、ロックした SDK 依存関係を含むイメージをビルドしてください。Worker プロセスが `SIGTERM` を受け取れるよう、exec 形式の entrypoint を使います。以下のイメージを、そのビルドの変更不能な digest に置き換えてください。
+アプリケーションの Worker は、Server と分けて（PHP 2.x ではその Laravel キュー Worker とも分けて）デプロイします。登録済みの PHP、Python、Rust ハンドラーと、ロックした SDK 依存関係を含むイメージをビルドしてください。Worker プロセスが `SIGTERM` を受け取れるよう、exec 形式の entrypoint を使います。以下のイメージを、そのビルドの変更不能な digest に置き換えてください。
 
 同じクラスター内の Worker では、Server Service の実際の名前、名前空間、ポートを使います。生のマニフェストは `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080` を公開します。Helm リリースでは Service 名が異なる場合があります。クラスター外の Worker には、到達可能な ingress またはロードバランサーの HTTPS URL と、通常の証明書検証が必要です。long poll とトランスポートの時間枠は[タイムアウトの説明](#worker-long-poll-timeout-budgets)に合わせてください。
 
@@ -445,7 +471,7 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 ### リリース証拠の状態 {#release-evidence-status}
 
-文書の公開 Server リリースに対する、正確なリリースの成功結果リンクはありません。記録済み公開イメージの試行は、API 準備待ちの `topology_start` で止まり、障害マトリクス・復旧上限を確立できていません。ランナー、シナリオ定義、個別環境の訓練の存在を、公開イメージの全項目合格と扱わないでください。そのため HA はサポート主導のままです。
+どの公開 Server リリースについても、正確なリリースの成功結果リンクはありません。以下の候補トポロジー、ランナー、復旧上限は PHP 2.x Server（共有 Redis、キュー Worker、単一スケジューラー）向けに書かれています。記録済みの PHP 公開イメージの試行は、API 準備待ちの `topology_start` で止まり、障害マトリクス・復旧上限を確立できていません。ネイティブ 3.x Server 向けのフェイルオーバーランナーは公開されておらず、その `GET /api/cluster/info` は `single_region_failover_contract: false` を報告します。ランナー、シナリオ定義、個別環境の訓練の存在を、公開イメージの全項目合格と扱わないでください。そのため HA はサポート主導のままです。
 
 セルフサービスと記述できるのは、ソース不要の実行がイメージ・ランナー・Compose 全てに文書と同じリリースを使い、`single-region-failover-result.json` を公開して次を全て満たす場合だけです。`outcome: "pass"`、`runner_blocked: false`、全 `phase_outcomes` の `status: "pass"`、全復旧上限判定の合格、公開[フェイルオーバーシナリオ](/platform-conformance/single-region-failover-scenarios.json)の全必須証拠。この節に成功結果をリンクし、イメージが `%%artifact.serverDockerHubImage%%` と同じでなければなりません。それまでは以下の上限は評価目標であり、公開イメージの検証済み主張ではありません。
 
@@ -482,11 +508,11 @@ LB が切替中の受付を一元判断します。
 
 ### 正確な成果物でリハーサルする {#run-the-exact-artifact-rehearsal}
 
-Server リリースは、チェックアウトから製品をビルドせず全障害項目を検証する再利用可能な基準リハーサルを含みます。ランナーと Compose はイメージと同じタグから取り、移動する既定ブランチと任意イメージを混ぜません。Docker Engine、Compose v2、Python 3.11 以降、公開レジストリアクセスのあるクリーンホストで実行します。
+PHP Server 2.x のリリースは、チェックアウトから製品をビルドせず全障害項目を検証する再利用可能な基準リハーサルを含みます。その Compose トポロジーは PHP 専用のロール（bootstrap Job、キュー Worker、スケジューラー）を起動するため、ネイティブ 3.x イメージでは実行できません。以下の例は最後の PHP リリース 2.11.8 を使います。ランナーと Compose はイメージと同じタグから取り、移動する既定ブランチと任意イメージを混ぜません。Docker Engine、Compose v2、Python 3.11 以降、公開レジストリアクセスのあるクリーンホストで実行します。
 
 <!-- docs-example id="single-region-failover-exact-release" -->
 ```bash
-export DW_SERVER_RELEASE=%%artifact.serverVersion%%
+export DW_SERVER_RELEASE=2.11.8
 git clone --depth 1 --single-branch --branch "$DW_SERVER_RELEASE" \
   https://github.com/durable-workflow/server.git "server-$DW_SERVER_RELEASE"
 cd "server-$DW_SERVER_RELEASE"
@@ -529,7 +555,7 @@ scripts/conformance/single-region-failover-published-artifacts.sh \
 
 ## アクティブ/パッシブのマルチリージョン {#activepassive-multi-region}
 
-**サポート主導の評価ガイダンス**であり、2.0 の実証済みセルフサービス契約ではありません。本番依存前に候補設計をレビューし、サポートと環境固有訓練を作ります。各地域は文書化した単一ノード、小規模、生 Kubernetes から始めますが、その契約は地域間複製、切替、復帰、RPO、RTO、スプリットブレインを確立しません。詳しいデータ規範、複製前提、名前空間・キュー・Worker、切替・復帰、フェンシング、整合性・遅延は、Workflow の [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md) と Server の [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md) にあります。
+**サポート主導の評価ガイダンス**であり、2.0 の実証済みセルフサービス契約ではありません。本番依存前に候補設計をレビューし、サポートと環境固有訓練を作ります。各地域は文書化した単一ノード、小規模、生 Kubernetes から始めますが、その契約は地域間複製、切替、復帰、RPO、RTO、スプリットブレインを確立しません。詳しいデータ規範、複製前提、名前空間・キュー・Worker、切替・復帰、フェンシング、整合性・遅延は、Workflow の [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md) と Server の [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md) にあります。これらの資料と以下の候補構成は PHP 2.x のトポロジー向けに書かれています。ネイティブ 3.x Server には Redis も独立したスケジューラーもなく、ネイティブのマルチリージョンリハーサルは公開されていません。
 
 評価する候補構成:
 

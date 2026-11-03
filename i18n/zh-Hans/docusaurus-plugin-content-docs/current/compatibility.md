@@ -171,7 +171,9 @@ Durable Workflow 中每个公开接口恰好具有以下一个稳定性级别。
 | Python SDK | `%%artifact.pythonSdkVersion%%` | `%%artifact.pythonPackagePin%%` |
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
-Helm Chart 记录的 `appVersion` 为 `%%artifact.helmChartAppVersion%%`，与所选 Server 一致。[已发布组合的验证记录](%%artifact.helmChartQualificationUrl%%)核实了 OCI/软件包摘要和源码标识，并不代表新完成的集群安装验证。安装或覆盖镜像前，请阅读 [Chart 选择与升级](./deployment.md#helm-chart-selection)。
+所选 Server 为原生 3.x Server。PHP Server 2.x 已冻结在 2.11.8，不再发布新版本；现有 PHP 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。接管已在运行手册说明的范围内于已发布的 3.0.4 镜像上通过资格验证；它是单向的，且必须先备份。
+
+Helm Chart 记录的 `appVersion` 为 `%%artifact.helmChartAppVersion%%`，与所选 Server 一致，且该 Chart 默认运行原生 Server。[已发布的版本发布记录](%%artifact.helmChartQualificationUrl%%)记录了 Chart 的发布运行、OCI/软件包摘要、源码标识，以及该次运行中的 kind 安装；它并不代表生产集群资格验证。安装或覆盖镜像前，请阅读 [Chart 选择与升级](./deployment.md#helm-chart-selection)。
 
 
 PyPI 将 Python 分发版本显示为 `%%artifact.pythonRegistryVersion%%`；文档中的 PEP 440 安装写法 `%%artifact.pythonSdkVersion%%` 解析到同一发布。这种规范化不产生第二个受支持版本。

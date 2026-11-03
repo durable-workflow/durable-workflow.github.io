@@ -4,6 +4,8 @@ title: Déploiements auto-hébergés
 description: Choisir un parcours d'auto-hébergement Durable Workflow v2 pris en charge et son artefact de départ.
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Déploiements auto-hébergés {#self-hosting-deployments}
 
 Durable Workflow v2 prend en charge plusieurs topologies auto-hébergées.
@@ -25,17 +27,55 @@ si vous souhaitez son interface opérateur et connectez-le à un espace de noms
 Server selon le [guide de déploiement et supervision Waterline](/docs/monitoring/#waterline-service).
 Cloud inclut quant à lui Managed Waterline pour son espace de noms géré.
 
+Le Server actuel est le Server natif 3.x (`%%artifact.serverDockerHubImage%%`).
+Il s'exécute en un seul processus par nœud : il crée et vérifie lui-même son
+schéma de base au démarrage, déclenche les temporisateurs et les planifications
+et exécute ses passes de maintenance. Il n'y a donc ni job d'initialisation, ni
+worker de file, ni ordonnanceur, ni Redis. PHP Server 2.x est figé à la version
+2.11.8 et ne recevra plus de nouvelles versions.
+
+:::note Installations PHP Server 2.x existantes
+
+La pile PHP 2.x (serveur, worker de file, ordonnanceur, job d'initialisation et
+Redis) reste disponible. Au tag de publication 2.11.8, il s'agit de
+[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) ;
+à partir de la version 3.0.0, le dépôt Server conserve la même pile sous le nom
+[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml).
+Les installations PHP 2.x existantes peuvent passer au natif avec
+`upgrade-takeover` en suivant le
+[runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%).
+La reprise est qualifiée sur l'image publiée 3.0.4 (arm64) pour les bases écrites
+par PHP 2.11.8 sur SQLite, MySQL 8.0 et PostgreSQL 17. MariaDB, amd64 et les bases
+issues d'autres versions de PHP (schémas 2.8.0–2.11.8) ne sont couverts que par la
+CI sur des builds depuis les sources. La reprise est à sens unique et exige une
+sauvegarde préalable ; PHP doit être arrêté. Elle refuse les bases et les états
+qu'elle ne peut pas reprendre ; les
+[tableaux de refus](%%artifact.serverTakeoverRunbookUrl%%#refusals)
+du runbook énumèrent chaque cas. Entraînez-vous d'abord sur une copie restaurée
+de votre sauvegarde. Aucun retour vers PHP n'est possible après la reprise, et il
+est prévu de déprécier la reprise dans la série 3.1.x. Les sections
+ci-dessous qui mentionnent Redis, un worker de file, un ordonnanceur ou
+l'initialisation décrivent la topologie PHP 2.x.
+
+:::
+
 ## Matrice de prise en charge des déploiements {#deployment-support-matrix}
 
 | Parcours | Point de départ | Pris en charge pour | Hors des promesses de ce parcours | Début de l'assistance commerciale |
 | --- | --- | --- | --- | --- |
-| Développement local et environnements internes hors production | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) avec `%%artifact.serverTagEnv%%` ou `%%artifact.serverImageEnv%%` | Poste développeur, démonstrations sur réseau local, préproduction partagée, tests d'intégration SDK et workers | Production exposée à Internet, garanties de sauvegarde durable, rotation stricte des secrets, basculement multinœud | Vous souhaitez transformer une pile de développement fonctionnelle en procédure de production |
-| Production sur un nœud | [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) avec fichier d'environnement de production, volumes MySQL et Redis, jetons par rôle, sauvegardes, TLS via proxy inverse et versions ou empreintes d'images fixes | Une VM, un VPS ou un hôte Docker interne avec état durable et exploitation simple | Haute disponibilité de l'hôte, basculement automatique de base, reprise multirégion, changements majeurs de topologie sans interruption | Le déploiement sert la production et vous souhaitez une revue des procédures de sauvegarde, restauration, authentification, TLS, mise à niveau ou retour arrière |
-| Petit cluster | Images publiées `durableworkflow/server` ou `ghcr.io/durable-workflow/server` utilisant la [recette Compose](https://github.com/durable-workflow/server/blob/%%artifact.serverVersion%%/docker-compose.published.yml) comme modèle de conteneurs/processus, avec 2 à 3 nœuds API, MySQL/PostgreSQL externe partagé, Redis partagé, workers dimensionnés indépendamment et exactement un ordonnanceur/processus de maintenance | Capacité horizontale API et worker lorsqu'un nœud ne suffit plus. Mises à niveau progressives si toutes les garanties du [contrat correspondant](/docs/rolling-upgrades) sont respectées | Cluster SQLite, multinœud sans Redis, ordonnanceurs en double en régime établi, bases multirédacteurs actif/actif, basculement régional sans intervention en auto-hébergement, promesses SLA générales « cinq neuf » ou « sans interruption », et basculement HA monorégion autonome avant réussite de sa [condition de preuves de publication](#release-evidence-status) | Vous avez besoin de dimensionnement, domaines de panne, déploiement ou reprise sur plusieurs hôtes, ou souhaitez revendiquer le comportement HA monorégion soumis à validation |
-| Chart Helm pour Kubernetes | [Chart du dépôt Server](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow) à `oci://ghcr.io/durable-workflow/charts/durable-workflow`, avec votre base externe, Redis, ingress et gestion des secrets | Installation et mise à niveau de production reproductibles des ressources serveur, worker, ordonnanceur unique, initialisation, service, sondes et politiques du chart | Persistance incluse, infrastructure gérée par fournisseur, multirégion actif/actif, opérateurs personnalisés, et HA monorégion autonome avant réussite de sa [condition de preuves](#release-evidence-status) | Vous avez besoin d'architecture, capacité, reprise propres au fournisseur ou de changements hors du contrat des valeurs publiées |
-| Manifestes Kubernetes bruts | Manifestes [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) du serveur, avec images publiées, base, Redis, ingress et secrets existants | Équipes exploitant déjà Kubernetes et voulant des manifestes inspectables pour API, worker, ordonnanceur, initialisation, service, sondes, configuration et secrets | Cycle de vie Helm distinct, validation d'un fournisseur Kubernetes géré, multirégion actif/actif, opérateurs personnalisés, décisions de stockage/réseau/sécurité propres à l'environnement, et HA monorégion autonome avant réussite de sa [condition de preuves](#release-evidence-status) | Vous avez besoin de surcouches, validation de cluster géré, préparation de production propre au fournisseur ou souhaitez revendiquer le comportement HA soumis à validation |
+| Développement local et environnements internes hors production | [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%) avec `%%artifact.serverImageEnv%%` | Poste développeur, démonstrations sur réseau local, préproduction partagée, tests d'intégration SDK et workers | Production exposée à Internet, garanties de sauvegarde durable, rotation stricte des secrets, basculement multinœud | Vous souhaitez transformer une pile de développement fonctionnelle en procédure de production |
+| Production sur un nœud | [`docker-compose.published.yml`](%%artifact.serverComposeSourceUrl%%) avec fichier d'environnement de production, volumes MySQL et de stockage Server, jeton partagé robuste et jetons par rôle, sauvegardes, TLS via proxy inverse et versions ou empreintes d'images fixes | Une VM, un VPS ou un hôte Docker interne avec état durable et exploitation simple | Haute disponibilité de l'hôte, basculement automatique de base, reprise multirégion, changements majeurs de topologie sans interruption | Le déploiement sert la production et vous souhaitez une revue des procédures de sauvegarde, restauration, authentification, TLS, mise à niveau ou retour arrière |
+| Petit cluster (contrat PHP 2.x) | Images PHP 2.x publiées `durableworkflow/server` ou `ghcr.io/durable-workflow/server` utilisant la [recette Compose PHP 2.11.8](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) comme modèle de conteneurs/processus, avec 2 à 3 nœuds API, MySQL/PostgreSQL externe partagé, Redis partagé, workers dimensionnés indépendamment et exactement un ordonnanceur/processus de maintenance | Capacité horizontale API et worker lorsqu'un nœud ne suffit plus. Mises à niveau progressives si toutes les garanties du [contrat correspondant](/docs/rolling-upgrades) sont respectées | Cluster SQLite, multinœud sans Redis, ordonnanceurs en double en régime établi, bases multirédacteurs actif/actif, basculement régional sans intervention en auto-hébergement, promesses SLA générales « cinq neuf » ou « sans interruption », et basculement HA monorégion autonome avant réussite de sa [condition de preuves de publication](#release-evidence-status) | Vous avez besoin de dimensionnement, domaines de panne, déploiement ou reprise sur plusieurs hôtes, ou souhaitez revendiquer le comportement HA monorégion soumis à validation |
+| Chart Helm pour Kubernetes | [Chart du dépôt Server](https://github.com/durable-workflow/server/tree/main/k8s/helm/durable-workflow) à `oci://ghcr.io/durable-workflow/charts/durable-workflow`, avec votre base externe MySQL ou PostgreSQL, ingress et gestion des secrets | Installation et mise à niveau de production reproductibles. Le mode natif (par défaut) génère un seul Deployment Server avec service, sondes et ressources de politiques ; `runtime=php` conserve le worker, l'ordonnanceur unique, le job d'initialisation et Redis d'une installation PHP 2.x existante | Persistance incluse, infrastructure gérée par fournisseur, multirégion actif/actif, opérateurs personnalisés, et HA monorégion autonome avant réussite de sa [condition de preuves](#release-evidence-status) | Vous avez besoin d'architecture, capacité, reprise propres au fournisseur ou de changements hors du contrat des valeurs publiées |
+| Manifestes Kubernetes bruts (forme PHP 2.x) | Manifestes [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) du serveur, avec images serveur PHP 2.x publiées, base, Redis, ingress et secrets existants | Équipes exploitant déjà Kubernetes et voulant des manifestes inspectables pour API, worker, ordonnanceur, initialisation, service, sondes, configuration et secrets | Cycle de vie Helm distinct, validation d'un fournisseur Kubernetes géré, multirégion actif/actif, opérateurs personnalisés, décisions de stockage/réseau/sécurité propres à l'environnement, et HA monorégion autonome avant réussite de sa [condition de preuves](#release-evidence-status) | Vous avez besoin de surcouches, validation de cluster géré, préparation de production propre au fournisseur ou souhaitez revendiquer le comportement HA soumis à validation |
 | Évaluation multirégion actif/passif | Déploiement validé sur un nœud ou petit cluster par région, réplication asynchrone de la base active vers le secours et procédures revues de basculement/retour | Évaluation d'architecture accompagnée et répétition propre à l'environnement pour la reprise après sinistre régional | Contrat 2.0 autonome éprouvé, multirégion actif/actif, basculement régional automatique ou sans intervention, réplication synchrone interrégion (RPO=0), visibilité active interrégion ou recherche fédérée, files fixées à une région imposée par le moteur | Avant de dépendre en production de réplication interrégion, basculement, retour, RPO ou RTO |
 | Topologies accompagnées | Conception revue pour votre environnement | Multirégion actif/passif ou actif/actif auto-hébergé, basculement sans intervention, réplication entre rédacteurs RPO=0, ordonnanceurs en double en régime établi, sécurité/réseau sur mesure, SLO privés, surcouches et planification de migration | Exploitation autonome par simple copier-coller | La topologie elle-même participe au risque produit |
+
+<ProductPromotion source="docs-v2-deployment">
+Évitez de l’exploiter vous-même : Cloud exploite le runtime, la persistance,
+le placement et la reprise d’un espace de noms géré, et vos workers PHP,
+Python ou Rust se connectent avec des identifiants limités par rôle.
+</ProductPromotion>
 
 La distribution publique est volontairement optimisée pour le développement
 local, la production sur un nœud et les petits clusters. Les manifestes
@@ -115,19 +155,29 @@ Utilisez les images publiées pour les serveurs auto-hébergés :
 
 Réservez les tags variables aux expériences locales. En production, fixez une
 version ou empreinte pour rendre mise à niveau et retour arrière auditables.
+Les versions natives portent la version majeure 3 ; les tags glissants `3` et
+`latest` suivent chaque nouvelle version native, et `2` reste sur la dernière
+version PHP 2.x.
 
 ## Développement local et environnements internes hors production {#local-development-and-internal-non-production}
 
-La recette Compose d'images publiées fournit une pile sans sources avec MySQL et Redis :
+La recette Compose d'images publiées fournit une pile sans sources : le Server
+natif et MySQL. Téléchargez le fichier de la version sélectionnée et fixez
+l'image avec `DW_SERVER_IMAGE` :
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/durable-workflow/server/%%artifact.serverVersion%%/docker-compose.published.yml
+curl -fsSLO %%artifact.serverComposeUrl%%
 
-export %%artifact.serverTagEnv%%
+export %%artifact.serverImageEnv%%
 export DW_AUTH_TOKEN=dev-token
 
 docker compose -f docker-compose.published.yml up -d --wait
 ```
+
+Compose refuse de démarrer tant que `DW_AUTH_TOKEN` n'est pas défini. Le
+fichier publie l'API uniquement sur `127.0.0.1:8080` et ne publie pas MySQL.
+Pour un accès distant, définissez `SERVER_BIND_ADDRESS` sur une interface
+privée protégée.
 
 Vérifiez API, disponibilité, découverte et enregistrement worker :
 
@@ -146,8 +196,8 @@ curl -X POST http://localhost:8080/api/worker/register \
 ```
 
 Ce parcours convient au développement et à la préproduction interne. Ce n'est
-pas une frontière de sécurité de production : l'exemple utilise un jeton unique
-de compatibilité, mots de passe par défaut, volumes locaux nommés et aucun TLS.
+pas une frontière de sécurité de production : l'exemple utilise un jeton partagé
+unique, mots de passe par défaut, volumes locaux nommés et aucun TLS.
 
 ## Production sur un nœud {#single-node-production}
 
@@ -157,8 +207,8 @@ du contrôle de versions :
 ```env
 %%artifact.serverImageEnv%%
 SERVER_PORT=8080
-APP_ENV=production
-APP_DEBUG=false
+# Loopback by default. Use a protected private interface for the reverse proxy.
+SERVER_BIND_ADDRESS=127.0.0.1
 
 DB_DATABASE=durable_workflow
 DB_USERNAME=workflow
@@ -166,11 +216,17 @@ DB_PASSWORD=replace-with-random-password
 DB_ROOT_PASSWORD=replace-with-random-root-password
 
 DW_AUTH_DRIVER=token
-DW_AUTH_BACKWARD_COMPATIBLE=false
+# Required. Native accepts the shared token for every role; keep it secret.
+DW_AUTH_TOKEN=replace-with-random-shared-token
 DW_WORKER_TOKEN=replace-with-worker-token
 DW_OPERATOR_TOKEN=replace-with-operator-token
 DW_ADMIN_TOKEN=replace-with-admin-token
 ```
+
+Le Server natif exige `DW_AUTH_TOKEN` et refuse de démarrer avec
+`DW_AUTH_BACKWARD_COMPATIBLE=false` : le jeton partagé ne peut donc pas être
+désactivé. Traitez-le comme le jeton d'administration et donnez aux workers et
+aux applications les jetons par rôle, plus restreints.
 
 Démarrez avec ce fichier :
 
@@ -183,28 +239,47 @@ Exploitez l'hôte comme un service de production :
 
 - Placez TLS, routage public, journalisation des requêtes et listes d'IP autorisées
   dans un proxy inverse devant le conteneur API.
-- N'exposez ni MySQL ni Redis publiquement.
+- N'exposez pas MySQL publiquement.
 - Utilisez `DW_WORKER_TOKEN` pour les workers, `DW_OPERATOR_TOKEN` pour le trafic
   applicatif et opérateur, `DW_ADMIN_TOKEN` pour l'administration et les espaces de noms.
-- Sauvegardez le volume MySQL avant chaque mise à niveau et régulièrement.
-  Préservez Redis pour les redémarrages propres, mais MySQL reste la source
-  de vérité de l'historique durable.
+- Sauvegardez le volume MySQL avant chaque mise à niveau et régulièrement ;
+  c'est la source de vérité de l'historique durable. Le volume
+  `server_storage` contient les objets de payload externes locaux du Server :
+  sauvegardez-le avec MySQL, car un point de reprise nécessite les deux. Voir la
+  [procédure de sauvegarde et restauration auto-hébergée](https://github.com/durable-workflow/server/blob/main/docs/self-hosted-backup-and-restore.md).
 - Gardez ensemble fichier d'environnement exact, version ou empreinte d'image
   et sauvegarde de base pour les restaurations.
 
 Ordre de mise à niveau :
 
-1. Sauvegardez MySQL et consignez l'image actuelle.
-2. Changez uniquement `DW_SERVER_IMAGE` ou `DW_SERVER_TAG`.
-3. Téléchargez la nouvelle image.
+1. Sauvegardez MySQL et `server_storage`, et consignez l'image actuelle.
+2. Changez uniquement `DW_SERVER_IMAGE`.
+3. Téléchargez la nouvelle image avec `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml pull`.
 4. Lancez `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`.
 5. Confirmez `/api/ready`, `/api/cluster/info` et l'enregistrement worker avant
    de transférer le trafic externe.
 
-Le README serveur conserve les exemples Compose actuels dans
-[Official Image + Compose](https://github.com/durable-workflow/server#official-image--compose).
+Le Server natif vérifie son schéma au démarrage. Les versions correctives
+d'une même ligne mineure native conservent le schéma : changer l'image suffit.
+Une version dont les notes annoncent un changement de schéma nécessite aussi la
+commande `schema-upgrade` de l'image, exécutée après une sauvegarde de la base
+pendant que tous les Servers sont arrêtés. La référence Server conserve les
+exemples Compose actuels au niveau des commandes dans la section
+[Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
 ## Petits clusters {#small-clustered-deployments}
+
+:::note Contrat PHP Server 2.x
+
+Le contrat de petit cluster validé et son harnais CI utilisent le Server
+PHP 2.x : Redis partagé, un worker de file et exactement un ordonnanceur. Le
+natif 3.x ne possède aucun de ces rôles, et aucune recette ni aucun harnais
+Compose de petit cluster natif n'a été publié. Pour plusieurs réplicas du
+Server natif, utilisez le [mode natif du chart Helm](#helm-chart-for-kubernetes)
+avec une base externe MySQL ou PostgreSQL et un volume ReadWriteMany pour le
+stockage des payloads.
+
+:::
 
 Un petit cluster étend modestement le modèle mononœud. Son contrat autonome
 validé reste volontairement limité :
@@ -332,6 +407,12 @@ croissance des données conservées.
 
 ### Compter chaque processus utilisant SQL {#count-every-sql-owning-process}
 
+Un processus Server natif 3.x ouvre au plus quatre connexions à la base de
+données, et une commande `schema-upgrade` ou de reprise en ouvre une de plus
+pendant son exécution. Prévoyez quatre sessions par réplica Server natif au
+nombre maximal de réplicas, plus les outils d’exploitation ci-dessous. La suite
+de cette section décrit PHP 2.x.
+
 Le déploiement PHP Compose publié comporte ces clients SQL possibles :
 
 | Rôle | Éléments à compter |
@@ -411,14 +492,19 @@ de la base et de la charge.
    Si une coexistence sûre ne tient pas dans le budget, utilisez la procédure
    documentée avec arrêt complet.
 
-L'[admission des queues de tâches](/docs/polyglot/task-queue-admission) borne
-certaines opérations de dispatch et de lease.
-`DW_WORKER_LONG_POLL_MAX_CONCURRENT` et `DW_QUERY_TASK_POLL_MAX_CONCURRENT`
-bornent les polls en attente par nœud. Aucun ne plafonne globalement sessions
-SQL, octets de la base ou latence de commit. Gardez aussi de la capacité pour
-les complétions, heartbeats, requêtes opérateur et contrôles de santé.
+Sous PHP 2.x, l'[admission des queues de
+tâches](/docs/polyglot/task-queue-admission) borne certaines opérations de
+dispatch et de lease, et `DW_WORKER_LONG_POLL_MAX_CONCURRENT` et
+`DW_QUERY_TASK_POLL_MAX_CONCURRENT` bornent les polls en attente par nœud. Aucun
+ne plafonne globalement sessions SQL, octets de la base ou latence de commit.
+Gardez aussi de la capacité pour les complétions, heartbeats, requêtes opérateur
+et contrôles de santé. Le Server natif 3.x refuse de démarrer avec des plafonds
+d’admission des queues de tâches et ignore les deux plafonds de polls ; il n’en
+a encore aucun équivalent natif. Son pool fixe de quatre connexions par
+processus borne ses sessions SQL ; dimensionnez les emplacements des workers SDK
+et le nombre de workers selon la concurrence des tâches.
 
-Prenez comme référence un point d’accès direct à la base en écriture. Un proxy doit être qualifié avec la version exacte du Server, son mode de pool et ses réglages de requêtes préparées, frontières transactionnelles, état de session et verrous. **Le pool transactionnel PgBouncer exige le Server corrigé, version 2.9.8 ou ultérieure.** L’[acceptation de la version publiée 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifie PostgreSQL 16.15 avec PgBouncer 1.26.1 : PostgreSQL direct, pool de sessions et pool transactionnel avec `max_prepared_statements=0` ou `max_prepared_statements=200`. C’est une version minimale compatible et une configuration précise testée, pas un choix automatique de la dernière version ni une garantie de capacité ; qualifiez séparément les autres combinaisons. Exécutez l’initialisation habituelle `server-bootstrap` sur le point d’accès choisi avant d’admettre du trafic.
+Prenez comme référence un point d’accès direct à la base en écriture. Un proxy doit être qualifié avec la version exacte du Server, son mode de pool et ses réglages de requêtes préparées, frontières transactionnelles, état de session et verrous. **Le pool transactionnel PgBouncer exige le Server corrigé, version 2.9.8 ou ultérieure.** L’[acceptation de la version publiée 2.9.8](https://github.com/durable-workflow/server/issues/524#issuecomment-6293185092) qualifie PostgreSQL 16.15 avec PgBouncer 1.26.1 : PostgreSQL direct, pool de sessions et pool transactionnel avec `max_prepared_statements=0` ou `max_prepared_statements=200`. C’est une version minimale compatible et une configuration précise testée, pas un choix automatique de la dernière version ni une garantie de capacité ; qualifiez séparément les autres combinaisons. Avant d’admettre du trafic, exécutez l’initialisation habituelle `server-bootstrap` de PHP 2.x sur le point d’accès choisi, ou laissez le natif 3.x vérifier son schéma au démarrage via ce point d’accès.
 
 `GET /api/ready` exécute une lecture de base avec paramètres liés (`bound_read_query`) et les contrôles de disponibilité configurés ; la capacité d’écriture reste explicitement non vérifiée. Une connexion TCP, une migration ou une réponse de disponibilité réussie ne prouve ni toutes les opérations SQL des workflows ni la capacité de commit. Les réplicas de lecture ne doivent pas remplacer le primaire faisant autorité pour les claims et transitions durables.
 
@@ -436,7 +522,9 @@ helm install durable-workflow \
   -f my-values.yaml
 ```
 
-Le fichier de valeurs doit désigner MySQL/PostgreSQL et Redis externes, fournir les identifiants de production via des Kubernetes Secrets existants et configurer ingress/TLS pour votre environnement. Le chart ne crée ni persistance ni infrastructure gérée par le fournisseur. Fixez l’image Server par digest pour un déploiement reproductible.
+Le chart 1.x exécute par défaut le Server natif (`runtime: native`) : un seul Deployment Server, sans worker, ordonnanceur, Job de migration ni Redis. Le fichier de valeurs doit désigner une base externe MySQL, MariaDB ou PostgreSQL, fournir `DW_AUTH_TOKEN` et les jetons par rôle via des Kubernetes Secrets existants et configurer ingress/TLS pour votre environnement. Le chart refuse de générer les manifestes sans le `DW_AUTH_TOKEN` partagé et refuse SQLite. Une installation native exécute un seul réplica par défaut ; plusieurs réplicas, ou l’autoscaling, exigent que `native.storage.existingClaim` désigne un volume ReadWriteMany pour les objets de payload externes. Le chart ne crée ni persistance ni infrastructure gérée par le fournisseur. Fixez l’image Server par digest pour un déploiement reproductible.
+
+Une version PHP 2.x existante ne passe pas au natif lors d’une mise à niveau ordinaire : le chart refuse tant que vous n’avez pas défini `runtime` explicitement. Définissez `runtime: php` pour conserver le worker, l’ordonnanceur, le job d’initialisation et Redis de PHP 2.x. Pour passer à `runtime: native`, suivez le [runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%) et conservez `runtime: php` jusqu’à ce que la reprise soit terminée. Consultez les [notes UPGRADING](%%artifact.helmChartUpgradeUrl%%) du chart.
 
 ### Choisir une version du chart {#helm-chart-selection}
 
@@ -452,7 +540,9 @@ L’historique publié contient une exception : le chart 0.2.2 a franchi une ver
 
 Le dépôt serveur inclut des manifestes bruts sous
 [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) pour les
-équipes qui exploitent déjà Kubernetes :
+équipes qui exploitent déjà Kubernetes. Ils décrivent la forme PHP 2.x ; pour
+le Server natif, utilisez le mode natif du chart Helm ou adaptez son Deployment
+Server unique :
 
 - Espace de noms et libellés partagés
 - Séparation ConfigMap et Secret
@@ -493,7 +583,7 @@ installation et des mises à niveau gérées par Helm.
 
 ## Exécuter des workers SDK sur Kubernetes {#sdk-workers-on-kubernetes}
 
-Déployez les workers de votre application séparément du worker de file Laravel du Server. Construisez une image contenant vos gestionnaires PHP, Python ou Rust enregistrés et les dépendances SDK verrouillées. Utilisez un entrypoint au format exec pour que le processus worker reçoive `SIGTERM`. Remplacez l’image ci-dessous par le digest immuable de cette build.
+Déployez les workers de votre application séparément du Server et, sur PHP 2.x, de son worker de file Laravel. Construisez une image contenant vos gestionnaires PHP, Python ou Rust enregistrés et les dépendances SDK verrouillées. Utilisez un entrypoint au format exec pour que le processus worker reçoive `SIGTERM`. Remplacez l’image ci-dessous par le digest immuable de cette build.
 
 Pour les workers du même cluster, utilisez le nom, l’espace de noms et le port réels du Service du Server. Les manifestes bruts exposent `http://durable-workflow-server.durable-workflow.svc.cluster.local:8080`. Une version Helm peut employer un autre nom de Service. Les workers externes ont besoin de l’URL HTTPS accessible de l’ingress ou de l’équilibreur, avec la vérification normale du certificat. Alignez les budgets de long poll et de transport sur [les conseils de délai d’attente](#worker-long-poll-timeout-budgets).
 
@@ -597,10 +687,15 @@ Cette section en est l'interface publique.
 
 ### État des preuves de publication {#release-evidence-status}
 
-Aucun résultat réussi pour la version exacte du serveur public documenté n'est
-lié. La tentative sur image publiée s'est arrêtée pendant `topology_start`, en
-attendant la disponibilité API, avant toute preuve de matrice de pannes ou de
-borne de reprise. La présence du lanceur, son manifeste de scénarios ou une
+Aucun résultat réussi pour une version exacte n'est lié, quelle que soit la
+version publique du serveur. La topologie candidate, le lanceur et les bornes de
+reprise ci-dessous ont été rédigés pour le Server PHP 2.x (Redis partagé, un
+worker de file et un ordonnanceur unique). La tentative enregistrée sur l'image
+PHP publiée s'est arrêtée pendant `topology_start`, en attendant la
+disponibilité API, avant toute preuve de matrice de pannes ou de borne de
+reprise. Aucun lanceur de basculement n'a été publié pour le Server natif 3.x,
+dont `GET /api/cluster/info` indique `single_region_failover_contract: false`.
+La présence du lanceur, son manifeste de scénarios ou une
 répétition propre à un déploiement ne prouvent pas que l'image publiée a réussi
 toute la matrice. La HA monorégion reste donc accompagnée.
 
@@ -682,15 +777,18 @@ ordonnanceur vivant dans l'orchestrateur, puis reprenez le trafic externe.
 
 ### Répéter avec les artefacts exacts {#run-the-exact-artifact-rehearsal}
 
-La publication serveur inclut une répétition de référence réutilisable pour
-la matrice complète sans compiler le produit depuis un checkout. Lanceur et
+Les versions PHP Server 2.x incluent une répétition de référence réutilisable
+pour la matrice complète sans compiler le produit depuis un checkout. Sa
+topologie Compose démarre des rôles propres à PHP (job d'initialisation, worker
+de file et ordonnanceur) : elle ne peut donc pas exécuter l'image native 3.x.
+L'exemple ci-dessous utilise la dernière version PHP, 2.11.8. Lanceur et
 Compose doivent venir du même tag que l'image. N'associez pas une branche
 par défaut mouvante à une image arbitraire. Sur un hôte propre avec Docker
 Engine, Docker Compose v2, Python 3.11 ou ultérieur et accès aux registres publics :
 
 <!-- docs-example id="single-region-failover-exact-release" -->
 ```bash
-export DW_SERVER_RELEASE=%%artifact.serverVersion%%
+export DW_SERVER_RELEASE=2.11.8
 git clone --depth 1 --single-branch --branch "$DW_SERVER_RELEASE" \
   https://github.com/durable-workflow/server.git "server-$DW_SERVER_RELEASE"
 cd "server-$DW_SERVER_RELEASE"
@@ -783,6 +881,9 @@ cohérence/latence) se trouve dans la bibliothèque à
 [`docs/deployment/multi-region.md`](https://github.com/durable-workflow/workflow/blob/main/docs/deployment/multi-region.md)
 et le serveur à
 [`docs/multi-region-validation.md`](https://github.com/durable-workflow/server/blob/main/docs/multi-region-validation.md).
+Ces documents et la forme candidate ci-dessous ont été rédigés pour la
+topologie PHP 2.x. Le Server natif 3.x n'a ni Redis ni ordonnanceur séparé, et
+aucune répétition multirégion native n'a été publiée.
 
 Topologie candidate à évaluer :
 

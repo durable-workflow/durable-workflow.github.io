@@ -153,24 +153,19 @@ export DW_AUTH_TOKEN=dev-token
 
 docker volume create durable-workflow-python-quickstart
 
-docker run --rm \
-  -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
-  -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
-  "$DW_SERVER_IMAGE" server-bootstrap
-
 docker rm -f durable-workflow-server >/dev/null 2>&1 || true
 docker run -d --name durable-workflow-server \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v durable-workflow-python-quickstart:/app/database \
-  -e DW_AUTH_DRIVER=token \
   -e DW_AUTH_TOKEN="$DW_AUTH_TOKEN" \
   "$DW_SERVER_IMAGE"
 
 until curl -sf http://localhost:8080/api/ready > /dev/null; do sleep 1; done
 ```
 
-Para producción (controladores de autenticación, base, TLS), consulta la
+El Server nativo crea su esquema SQLite y el namespace `default` en el primer
+arranque, así que no hay un paso de inicialización aparte. Para producción
+(autenticación, base de datos, TLS), consulta la
 [guía de configuración de Server](/docs/polyglot/server).
 
 Para un ejemplo mayor, [`examples/order_processing`](https://github.com/durable-workflow/sdk-python/tree/main/examples/order_processing)
@@ -1398,7 +1393,7 @@ Inicie `inspect_document_workflow` en la cola de tareas `documents` con `[job_id
 
 Tras perder al titular o expirar la concesión, `allow_reacquire_after_failure=True` permite que otro worker apto readquiera la sesión. Debe reconstruir el recurso local. Los resultados de actividad ya confirmados se reproducen, pero los efectos no confirmados pueden repetirse: use identificadores duraderos e interacciones externas idempotentes. Una sesión no migra memoria, archivos ni descriptores abiertos.
 
-El cierre explícito y la expiración del TTL absoluto son terminales para ese identificador de sesión. Una actividad posterior no puede reabrirlo y puede permanecer sin admisión hasta que se aplique el timeout configurado. Ejecute el rol de planificador/mantenimiento del Server de la [receta de despliegue publicada](https://github.com/durable-workflow/server/blob/2.11.0/docker-compose.published.yml); un proceso solo de API no basta para aplicar los timeouts. El workflow maneja el fallo definitivo de actividad con `ActivityFailed` y devuelve `resource_unavailable`; la aplicación puede elegir una sesión nueva y reconstruir a partir de la entrada de negocio. Este ejemplo no promete una excepción inmediata de sesión cerrada ni reabre automáticamente una sesión terminal.
+El cierre explícito y la expiración del TTL absoluto son terminales para ese identificador de sesión. Una actividad posterior no puede reabrirlo y puede permanecer sin admisión hasta que se aplique el timeout configurado. El Server nativo aplica los timeouts de actividad en su propio bucle de mantenimiento, que la imagen publicada habilita. En PHP Server 2.x, ejecute el rol de planificador/mantenimiento de la [receta de despliegue PHP](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml); un proceso PHP solo de API no basta para aplicar los timeouts. El workflow maneja el fallo definitivo de actividad con `ActivityFailed` y devuelve `resource_unavailable`; la aplicación puede elegir una sesión nueva y reconstruir a partir de la entrada de negocio. Este ejemplo no promete una excepción inmediata de sesión cerrada ni reabre automáticamente una sesión terminal.
 
 Para gestionar explícitamente el ciclo de vida del titular, use `worker.worker_session(options)` y sus métodos `create()`, `renew()` y `close(reason)`. El apagado ordenado del worker cierra sus sesiones. Consulte el [contrato de ciclo de vida compartido](../features/worker-sessions.md#lifecycle).
 

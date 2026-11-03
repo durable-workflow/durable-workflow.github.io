@@ -39,39 +39,32 @@ def apply(document):
 
 
 def server():
+    # The native Server is one process: it creates its SQLite schema and the
+    # default namespace at startup and runs timers, schedules and maintenance
+    # itself, so there is no bootstrap job, queue worker or scheduler.
     environment = {
-        'APP_ENV': 'testing', 'APP_DEBUG': 'false', 'APP_VERSION': ARTIFACTS['server_version'],
-        'LOG_CHANNEL': 'stderr', 'LOG_LEVEL': 'warning',
         'DB_CONNECTION': 'sqlite', 'DB_DATABASE': '/data/database.sqlite',
-        # Match the image's shared file cache. A process-local array cache cannot
-        # coordinate long-poll wait slots across Apache workers.
-        'QUEUE_CONNECTION': 'sync', 'CACHE_STORE': 'file', 'SESSION_DRIVER': 'array',
-        'DW_AUTH_DRIVER': 'token', 'DW_AUTH_BACKWARD_COMPATIBLE': 'false',
+        # Native requires the shared token and accepts it for every role. The
+        # fixture's clients use only the role-scoped tokens below.
+        'DW_AUTH_DRIVER': 'token', 'DW_AUTH_TOKEN': 'website336-shared',
         'DW_ADMIN_TOKEN': 'website336-control', 'DW_WORKER_TOKEN': 'website336-worker',
         'DW_TASK_DISPATCH_MODE': 'poll',
         'DW_SERVER_KEY': 'base64:' + 'd2Vic2l0ZTMzNi1maXh0dXJlLWtleS0wMDAwMDAwMDA=',
     }
-    common = {'image': ARTIFACTS['server'],
-              'env': [{'name': key, 'value': value} for key, value in environment.items()],
-              'volumeMounts': [{'name': 'data', 'mountPath': '/data'}]}
-    api = {**common, 'name': 'server', 'ports': [{'containerPort': 8080}],
+    api = {'name': 'server', 'image': ARTIFACTS['server'],
+           'env': [{'name': key, 'value': value} for key, value in environment.items()],
+           'volumeMounts': [{'name': 'data', 'mountPath': '/data'}],
+           'ports': [{'containerPort': 8080}],
            'readinessProbe': {'httpGet': {'path': '/api/ready', 'port': 8080},
                               'periodSeconds': 2, 'failureThreshold': 60}}
-    # A real scheduler drives ordinary timeout/recovery work. This ephemeral
-    # SQLite fixture is not a production Server installation or HA rehearsal.
-    scheduler = {**common, 'name': 'scheduler', 'command': ['sh', '-ec',
-        'while true; do php artisan schedule:evaluate --limit=100 --json; '
-        'php artisan workflow:v2:repair-pass --json; sleep 1; done']}
     apply({'apiVersion': 'apps/v1', 'kind': 'Deployment',
            'metadata': {'name': 'durable-workflow-server', 'namespace': NAMESPACE},
            'spec': {'replicas': 1, 'selector': {'matchLabels': {'app': 'fixture-server'}},
                     'template': {'metadata': {'labels': {'app': 'fixture-server'}},
-                                 'spec': {'initContainers': [{**common, 'name': 'bootstrap',
-                                           # EmptyDir masks the image's pre-owned database directory.
-                                           # Apache needs both the file and journal directory writable.
-                                           'command': ['sh', '-ec', 'server-bootstrap && '
-                                                       'chown -R www-data:www-data /data && chmod -R ug+rwX /data']}],
-                                          'containers': [api, scheduler],
+                                 # The image runs as UID/GID 1000; fsGroup makes the
+                                 # ephemeral SQLite directory writable for it.
+                                 'spec': {'securityContext': {'fsGroup': 1000},
+                                          'containers': [api],
                                           'volumes': [{'name': 'data', 'emptyDir': {}}]}}}})
     apply({'apiVersion': 'v1', 'kind': 'Service',
            'metadata': {'name': 'durable-workflow-server', 'namespace': NAMESPACE},
@@ -99,33 +92,6 @@ def collect(*, show_logs=False):
                               + '\n'.join(errors[:4]) + '\n' + logs[-3000:], flush=True)
                 except RuntimeError:
                     pass
-    except RuntimeError:
-        pass
-    try:
-        # Read only synthetic fixture state. Keep queue/status identity, not
-        # credentials, serialized callbacks or complete payload bodies.
-        audit = r'''$db = new PDO('sqlite:/data/database.sqlite');
-$db->exec('PRAGMA query_only=ON');
-$known = ['workflow_instances','workflow_runs','workflow_tasks','workflow_history_events',
-          'activity_executions','activity_attempts','activity_tasks','jobs','failed_jobs'];
-$allowed = ['id','workflow_id','workflow_instance_id','workflow_run_id','task_queue','queue',
-            'type','status','attempt_count','repair_count','activity_type','activity_execution_id',
-            'activity_attempt_id','failure_reason','exception_class','exception_message',
-            'sequence','event_type','command_type','command_id','namespace','worker_id',
-            'lease_owner','available_at','created_at','started_at','completed_at','last_error'];
-$result = [];
-foreach ($known as $table) {
-    $columns = $db->query('PRAGMA table_info("'.$table.'")')->fetchAll(PDO::FETCH_ASSOC);
-    $selected = array_values(array_intersect(array_column($columns, 'name'), $allowed));
-    if ($selected !== []) {
-        $result[$table] = $db->query('SELECT "'.implode('","', $selected).'" FROM "'.$table.'" LIMIT 20')->fetchAll(PDO::FETCH_ASSOC);
-    }
-}
-echo json_encode($result, JSON_THROW_ON_ERROR);'''
-        state = kubectl('exec', 'deployment/durable-workflow-server', '-c', 'scheduler', '--',
-                        'php', '-r', audit, label='durable-state', timeout=20)
-        if show_logs:
-            print('Synthetic durable state: ' + state, flush=True)
     except RuntimeError:
         pass
 
