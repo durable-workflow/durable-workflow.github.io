@@ -4,6 +4,8 @@ title: Self-Hosting Deployments
 description: Choose a supported Durable Workflow v2 self-hosting path and the artifact to start from.
 ---
 
+import ProductPromotion from '@site/src/components/ProductPromotion';
+
 # Self-Hosting Deployments
 
 Durable Workflow v2 supports several self-hosted shapes. Pick the smallest path
@@ -58,6 +60,12 @@ queue worker, a scheduler or bootstrap describe the PHP 2.x topology.
 | Raw Kubernetes manifests (PHP 2.x shape) | The server repository [`k8s/`](https://github.com/durable-workflow/server/tree/main/k8s) manifests, using published PHP 2.x server images and your existing database, Redis, ingress, and secret management | Teams that already operate Kubernetes and want inspectable manifests for API, worker, scheduler, bootstrap, service, probes, config, and secrets | The separate Helm lifecycle, managed-Kubernetes provider validation, active/active multi-region, custom operators, environment-specific storage/networking/security decisions, and self-serve single-region HA failover until its [release-evidence gate](#release-evidence-status) passes | You need overlays, managed-cluster validation, provider-specific production planning, or intend to claim the gated single-region HA behavior |
 | Active/passive multi-region evaluation | A validated single-node or small-cluster deployment per region, plus asynchronous database replication from active to standby and a reviewed failover/failback runbook | Support-led architecture evaluation and environment-specific rehearsal for regional disaster recovery | A proven self-serve 2.0 contract, active/active multi-region, automatic or hands-free regional failover, synchronous cross-region replication (RPO=0), cross-region active visibility or federated search, or region-pinned task queues as an engine-enforced routing axis | Before relying on cross-region replication, failover, failback, RPO, or RTO in production |
 | Support-led topologies | A reviewed design based on your environment | Self-hosted active/passive or active/active multi-region, hands-free regional failover, RPO=0 cross-writer replication, duplicate scheduler runners as a steady-state topology, bespoke security/networking, private SLOs, custom overlays, migration planning | Self-serve copy/paste operation | The topology itself is part of the product risk |
+
+<ProductPromotion source="docs-v2-deployment">
+Skip operating it yourself: Cloud operates the runtime, persistence,
+placement, and recovery for a managed namespace, and your PHP, Python, or Rust
+workers connect with role-scoped credentials.
+</ProductPromotion>
 
 The public distribution is intentionally optimized for local development,
 single-node production, and small clustered deployments. Kubernetes manifests

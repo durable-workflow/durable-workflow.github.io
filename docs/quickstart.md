@@ -20,6 +20,7 @@ keywords:
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PythonPackageReleaseLink from '@site/src/components/PythonPackageReleaseLink';
+import ProductPromotion from '@site/src/components/ProductPromotion';
 
 # Durable Workflow 2.0 Quickstart
 
@@ -56,6 +57,12 @@ replace the local development connection with the provisioned values shown in
 [Cloud Managed Runtime](/docs/polyglot/cloud-control-plane/).
 
 ## 2. Start the local Server
+
+<ProductPromotion source="docs-v2-quickstart">
+Skip running a local Server: Cloud operates the runtime, persistence, and
+Managed Waterline, and the same PHP, Python, or Rust workers connect to a
+provisioned namespace with role-scoped credentials.
+</ProductPromotion>
 
 Skip this action when you chose Cloud. For the self-hosted path, expand and run
 the exact pinned setup. It starts a source-free native Server with SQLite and a
