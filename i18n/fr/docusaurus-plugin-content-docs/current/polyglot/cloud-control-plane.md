@@ -579,6 +579,8 @@ suivent le même modèle de temps provisionné avec leurs propres tarifs,
 minimums et plafonds. Interprétez l'usage avec les `billing_terms` retournés
 par l'offre ; les factures historiques conservent leurs conditions acceptées.
 
+Avant de déprovisionner, suivez [déplacer les charges entre runtimes](/docs/polyglot/runtime-migration/#preserve-evidence) : conservez des preuves vérifiées d’historique et de payloads et confirmez que toutes les exécutions de la source sont terminales. La facturation de capacité continue tant que la source reste provisionnée.
+
 Exportez ces mêmes éléments en CSV ou rapport JSON si un système financier
 aval nécessite un fichier :
 

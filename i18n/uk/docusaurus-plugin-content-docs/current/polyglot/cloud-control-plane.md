@@ -566,6 +566,8 @@ capacity billing і видаляє активні runtime data та credentials.
 Для читання usage використовуйте повернені `billing_terms` плану.
 Історичні invoices зберігають прийняті ними terms.
 
+До видалення середовища виконайте [процедуру переходу](/docs/polyglot/runtime-migration/#preserve-evidence): збережіть перевірені докази історії та payload і підтвердьте термінальний стан усіх запусків джерела. Плата за потужність триває, поки джерело виділене.
+
 Експортуйте ті самі дані у CSV чи JSON report для передачі файлу
 до downstream finance system:
 
