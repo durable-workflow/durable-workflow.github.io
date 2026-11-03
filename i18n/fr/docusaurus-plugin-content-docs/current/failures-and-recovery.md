@@ -219,7 +219,7 @@ Un refus indique la première règle non respectée :
 | `definition_incompatible_with_prefix` | Le code corrigé ne peut pas rejouer les étapes terminées. `definition_mismatch` indique la première étape qui diffère. |
 | `definition_check_over_budget` | L’historique terminé dépasse le budget d’historique autorisé par la vérification de relecture. |
 | `definition_change_requires_replay_check` | Un worker de service a démarré l’exécution, donc le redrive ne peut pas vérifier une définition modifiée. |
-| `service_redrive_history_not_qualified` | Un worker de service a démarré l’exécution, et les étapes avant l’échec comprennent un upsert de mémo, un upsert d’attribut de recherche ou une attente de signal. La relecture de ces étapes réutilisées par les SDK en mode service n’est pas encore disponible. |
+| `service_redrive_history_not_qualified` | Un worker de service a démarré l’exécution, et les étapes avant l’échec comprennent un upsert de mémo, un upsert d’attribut de recherche ou une attente de signal. Workflow 2.19.0 refuse ces étapes pour les exécutions en mode service tant qu’il ne peut pas vérifier, pour chaque runtime de SDK, sa capacité à les relire. |
 | `request_id_already_used` | Le `request_id` a déjà servi pour un autre redrive de l’instance. |
 | `invalid_request_id` | Le `request_id` dépasse 191 caractères. |
 | `run_not_found`, `instance_not_found` | L’exécution ou l’instance n’existe pas dans l’espace de noms. |

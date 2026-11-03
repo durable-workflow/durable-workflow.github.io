@@ -211,7 +211,7 @@ redrive は、次の条件がすべて満たされるときに失敗した実行
 | `definition_incompatible_with_prefix` | 修正したコードが完了したステップをリプレイできません。`definition_mismatch` が最初に異なるステップを示します。 |
 | `definition_check_over_budget` | 完了した履歴が、リプレイ確認で許される履歴の予算を超えています。 |
 | `definition_change_requires_replay_check` | サービスワーカーが実行を開始したため、redrive は変更された定義を確認できません。 |
-| `service_redrive_history_not_qualified` | サービスワーカーが実行を開始し、失敗より前のステップにメモの upsert、検索属性の upsert、シグナル待機のいずれかが含まれています。再利用されるこれらのステップをサービスモードの SDK でリプレイする機能は、まだ利用できません。 |
+| `service_redrive_history_not_qualified` | サービスワーカーが実行を開始し、失敗より前のステップにメモの upsert、検索属性の upsert、シグナル待機のいずれかが含まれています。Workflow 2.19.0 は、SDK ランタイムごとにこれらのステップをリプレイできるかを確認できるようになるまで、サービスモードの実行でこれらのステップを拒否します。 |
 | `request_id_already_used` | その `request_id` は、インスタンスの別の redrive ですでに使われています。 |
 | `invalid_request_id` | `request_id` が 191 文字を超えています。 |
 | `run_not_found`, `instance_not_found` | 実行またはインスタンスがその名前空間に存在しません。 |

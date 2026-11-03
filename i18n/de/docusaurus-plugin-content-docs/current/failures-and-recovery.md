@@ -211,7 +211,7 @@ Eine Ablehnung nennt die erste Regel, die nicht erfüllt ist:
 | `definition_incompatible_with_prefix` | Der korrigierte Code kann die abgeschlossenen Schritte nicht erneut abspielen. `definition_mismatch` nennt den ersten abweichenden Schritt. |
 | `definition_check_over_budget` | Die abgeschlossene Historie ist größer als das Historienbudget, das die Replay-Prüfung zulässt. |
 | `definition_change_requires_replay_check` | Ein Service-Worker hat den Lauf gestartet. Daher kann Redrive eine geänderte Definition nicht prüfen. |
-| `service_redrive_history_not_qualified` | Ein Service-Worker hat den Lauf gestartet, und die Schritte vor dem Fehler enthalten einen Memo-Upsert, einen Suchattribut-Upsert oder eine Signalwarteoperation. Das Replay dieser wiederverwendeten Schritte durch SDKs im Servicemodus ist noch nicht verfügbar. |
+| `service_redrive_history_not_qualified` | Ein Service-Worker hat den Lauf gestartet, und die Schritte vor dem Fehler enthalten einen Memo-Upsert, einen Suchattribut-Upsert oder eine Signalwarteoperation. Workflow 2.19.0 lehnt diese Schritte für Läufe im Servicemodus ab, bis es für jede SDK-Laufzeit prüfen kann, ob sie diese Schritte per Replay verarbeiten kann. |
 | `request_id_already_used` | Die `request_id` wurde bereits für einen anderen Redrive der Instanz verwendet. |
 | `invalid_request_id` | Die `request_id` ist länger als 191 Zeichen. |
 | `run_not_found`, `instance_not_found` | Der Lauf oder die Instanz existiert im Namespace nicht. |

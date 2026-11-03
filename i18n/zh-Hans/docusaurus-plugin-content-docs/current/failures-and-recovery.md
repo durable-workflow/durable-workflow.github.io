@@ -211,7 +211,7 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 | `definition_incompatible_with_prefix` | 修正后的代码无法重放已完成的步骤。`definition_mismatch` 指出第一个不同的步骤。 |
 | `definition_check_over_budget` | 已完成的历史超出了重放检查允许的历史预算。 |
 | `definition_change_requires_replay_check` | 运行由服务模式 Worker 启动，因此 redrive 无法检查已变更的定义。 |
-| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert 或信号等待。服务模式 SDK 目前尚不支持重放这些被复用的步骤。 |
+| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert 或信号等待。在能够逐个检查各 SDK 运行时重放这些步骤的能力之前，Workflow 2.19.0 会拒绝服务模式运行中的这些步骤。 |
 | `request_id_already_used` | 该 `request_id` 已用于该实例的另一次 redrive。 |
 | `invalid_request_id` | `request_id` 超过 191 个字符。 |
 | `run_not_found`, `instance_not_found` | 该命名空间中不存在此运行或实例。 |

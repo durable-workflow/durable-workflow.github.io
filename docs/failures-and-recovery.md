@@ -214,7 +214,7 @@ A refusal names the first rule that failed:
 | `definition_incompatible_with_prefix` | The corrected code can't replay the completed steps. `definition_mismatch` names the first step that differs. |
 | `definition_check_over_budget` | The completed history is larger than the history budget the replay check allows. |
 | `definition_change_requires_replay_check` | A service worker started the run, so redrive can't check a changed definition. |
-| `service_redrive_history_not_qualified` | A service worker started the run, and the steps before the failure include a memo upsert, search-attribute upsert or signal wait. Service-mode SDK replay of those reused steps is not available yet. |
+| `service_redrive_history_not_qualified` | A service worker started the run, and the steps before the failure include a memo upsert, search-attribute upsert or signal wait. Workflow 2.19.0 refuses these steps for service runs until it can check each SDK runtime's replay capability for them. |
 | `request_id_already_used` | The `request_id` was already used for another redrive of the instance. |
 | `invalid_request_id` | The `request_id` is longer than 191 characters. |
 | `run_not_found`, `instance_not_found` | The run or instance does not exist in the namespace. |

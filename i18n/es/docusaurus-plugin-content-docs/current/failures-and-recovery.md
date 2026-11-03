@@ -215,7 +215,7 @@ Un rechazo indica la primera regla que no se cumplió:
 | `definition_incompatible_with_prefix` | El código corregido no puede reproducir los pasos completados. `definition_mismatch` indica el primer paso que difiere. |
 | `definition_check_over_budget` | El historial completado supera el presupuesto de historial que permite la comprobación de reproducción. |
 | `definition_change_requires_replay_check` | Un worker de servicio inició la ejecución, así que el redrive no puede comprobar una definición cambiada. |
-| `service_redrive_history_not_qualified` | Un worker de servicio inició la ejecución, y los pasos anteriores al fallo incluyen un upsert de memo, un upsert de atributo de búsqueda o una espera de señal. La reproducción de esos pasos reutilizados en los SDK de modo servicio aún no está disponible. |
+| `service_redrive_history_not_qualified` | Un worker de servicio inició la ejecución, y los pasos anteriores al fallo incluyen un upsert de memo, un upsert de atributo de búsqueda o una espera de señal. Workflow 2.19.0 rechaza estos pasos en ejecuciones de modo servicio hasta que pueda comprobar, para cada runtime de SDK, su capacidad de reproducirlos. |
 | `request_id_already_used` | El `request_id` ya se usó para otro redrive de la instancia. |
 | `invalid_request_id` | El `request_id` tiene más de 191 caracteres. |
 | `run_not_found`, `instance_not_found` | La ejecución o la instancia no existe en el espacio de nombres. |

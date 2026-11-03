@@ -216,7 +216,7 @@ Redrive приймає невдалий запуск, коли виконуют�
 | `definition_incompatible_with_prefix` | Виправлений код не може відтворити завершені кроки. `definition_mismatch` називає перший відмінний крок. |
 | `definition_check_over_budget` | Завершена історія більша за бюджет історії, який дозволяє перевірка відтворення. |
 | `definition_change_requires_replay_check` | Запуск стартував сервісний worker, тому redrive не може перевірити змінене визначення. |
-| `service_redrive_history_not_qualified` | Запуск стартував сервісний worker, а кроки перед помилкою містять upsert memo, upsert атрибута пошуку або очікування signal. Відтворення таких повторно використаних кроків у SDK сервісного режиму поки недоступне. |
+| `service_redrive_history_not_qualified` | Запуск стартував сервісний worker, а кроки перед помилкою містять upsert memo, upsert атрибута пошуку або очікування signal. Workflow 2.19.0 відхиляє ці кроки для запусків у сервісному режимі, доки не зможе перевірити для кожного runtime SDK, чи він здатен їх відтворити. |
 | `request_id_already_used` | `request_id` уже використано для іншого redrive екземпляра. |
 | `invalid_request_id` | `request_id` довший за 191 символ. |
 | `run_not_found`, `instance_not_found` | Запуску чи екземпляра немає в цьому namespace. |
