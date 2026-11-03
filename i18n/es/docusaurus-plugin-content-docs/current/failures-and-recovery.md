@@ -100,26 +100,29 @@ Para una ejecución que aún espera una actividad reintentable:
 
 Una ejecución con un reintento de actividad válido permanece en espera y puede continuar cuando el código corregido tenga éxito, siempre que no hayan vencido sus presupuestos originales. Esto no garantiza que todo workflow fallido pueda corregirse en el mismo lugar: el fallo final de una actividad sin manejar, un fallo del código del workflow, un límite estructural o un plazo vencido pueden dejar la ejecución en un estado terminal.
 
-Para una ejecución fallida terminal, conserva el historial y concilia los efectos externos antes de decidir si la aplicación debe iniciar otro workflow. Usa idempotencia en la aplicación para operaciones de negocio repetidas. No hay reintento automático del workflow completo ni reapertura de ejecuciones terminales; consulta [Reintentos a nivel de workflow](#workflow-level-retry). Si un fallo de actividad no capturado terminó la ejecución, comprueba después de desplegar la corrección si puedes hacer un [redrive](#redrive). El redrive continúa en una ejecución nueva que reutiliza los resultados de las actividades completadas.
+Para una ejecución fallida terminal, conserva el historial y concilia los efectos externos antes de decidir si la aplicación debe iniciar otro workflow. Usa idempotencia en la aplicación para operaciones de negocio repetidas. Si un fallo de actividad no capturado, un fallo del código del workflow o un límite estructural terminó la ejecución, comprueba después de desplegar la corrección si puedes hacer un [redrive](#redrive). El redrive continúa en una ejecución nueva que reutiliza los pasos completados. Un fallo del código del workflow requiere código corregido y Workflow 2.19.0 o una versión posterior. Consulta [Redrive sobre código del workflow corregido](#redrive-corrected-definition). No hay reintento automático del workflow completo ni reapertura de ejecuciones terminales. Consulta [Reintentos a nivel de workflow](#workflow-level-retry).
 
 ## Redrive de una ejecución fallida {#redrive}
 
-El redrive continúa una ejecución fallida en una ejecución nueva de la misma instancia de workflow. La ejecución nueva reutiliza los resultados registrados de las actividades que se completaron antes del fallo y vuelve a programar la actividad fallida. Úsalo después de corregir la causa de un fallo de actividad, para que el trabajo ya completado, como un pago o un correo electrónico, no se repita.
+El redrive continúa una ejecución fallida en una ejecución nueva de la misma instancia de workflow. La ejecución nueva reutiliza los resultados registrados de los pasos que se completaron antes del fallo y vuelve a ejecutar el resto del workflow. Úsalo después de corregir la causa del fallo, para que el trabajo ya completado, como un pago o un correo electrónico, no se repita.
 
 La ejecución fallida sigue cerrada y sin cambios. La ejecución nueva, llamada sucesora, recibe el siguiente número de ejecución y pasa a ser la ejecución actual de la instancia. Su `continued_from_run_id` indica la ejecución fallida. Su evento `WorkflowStarted` registra `recovery_kind: redrive` y `resume_step_sequence`, el paso en el que se reanuda la ejecución.
 
-Esta sección describe el redrive en Workflow 2.18.0 y versiones posteriores. Las versiones anteriores de Workflow, y el redrive en el Server nativo, aceptan menos ejecuciones y solo reutilizan resultados de actividades. Consulta [Versiones anteriores y el Server nativo](#redrive-earlier-releases).
+Esta sección describe el redrive en Workflow 2.19.0 y versiones posteriores. Las versiones anteriores de Workflow, y el redrive en el Server nativo, aceptan menos ejecuciones. Consulta [Versiones anteriores y el Server nativo](#redrive-earlier-releases).
 
 La sucesora vuelve a reproducir el código del workflow desde el principio:
 
 - Cada llamada de actividad que se completó en la ejecución fallida devuelve su resultado registrado. La actividad no se vuelve a ejecutar.
 - Un efecto secundario o marcador de versión anterior al paso fallido se reutiliza en orden de pasos. El efecto secundario no se vuelve a ejecutar, y una comprobación de versión devuelve la versión registrada.
 - Un `timer()` que se disparó antes del paso fallido se registra en la sucesora como ya disparado. La sucesora no vuelve a esperarlo.
-- La llamada de actividad fallida se programa como una ejecución de actividad nueva, con la política de reintentos del código del workflow. Sus intentos empiezan de nuevo.
+- Un memo o atributo de búsqueda del que el código del workflow hizo upsert antes del paso fallido se reutiliza en orden de pasos, y la sucesora conserva los mismos valores.
+- Una espera de señal (`await('name')`) que recibió y aplicó su señal se reutiliza con el valor de la señal. La señal no se vuelve a entregar.
+- Si un fallo de actividad terminó la ejecución, la llamada de actividad fallida se programa como una ejecución de actividad nueva, con la política de reintentos del código del workflow. Sus intentos empiezan de nuevo.
+- Si la ejecución falló en el código del workflow o por un límite estructural, la sucesora se reanuda en el paso que el código del workflow nunca alcanzó.
 - Todo lo que sigue al paso fallido se ejecuta como en una ejecución nueva.
 - Los memos y atributos de búsqueda definidos al iniciar la ejecución pasan a la sucesora, como en continue-as-new.
 - La sucesora conserva el plazo de ejecución de la ejecución fallida. Su tiempo límite de ejecución vuelve a empezar en el redrive.
-- Cada resultado de actividad, efecto secundario, marcador de versión y temporizador disparado que se reutiliza lleva `reused_from_run_id` y `reused_recorded_at`.
+- Cada paso reutilizado lleva `reused_from_run_id` y `reused_recorded_at`.
 - En modo embedded, `Workflow::now()` en la sucesora empieza en la hora de inicio de la ejecución fallida. La reproducción usa `reused_recorded_at`, así que `Workflow::now()` después de un paso reutilizado coincide con la hora de la ejecución fallida. Un paso reutilizado por un segundo redrive conserva la hora en que se ejecutó por primera vez.
 
 ### Solicitar un redrive {#request-a-redrive}
@@ -153,16 +156,34 @@ Un redrive aceptado devuelve el id de ejecución de la sucesora y `resume_step_s
 
 Los workers de servicio informan una huella de la definición del workflow. El redrive la compara con la huella registrada al iniciar la ejecución. En el SDK de Rust, llama a `Worker::set_workflow_definition_sources()` para cada workflow que quieras poder recuperar con redrive. Un workflow registrado sin identidad de código fuente sigue ejecutándose, pero el redrive lo rechaza.
 
+### Redrive sobre código del workflow corregido {#redrive-corrected-definition}
+
+Cuando una ejecución falló porque el código del workflow lanzó una excepción, el mismo código volvería a lanzarla en el mismo paso, así que el redrive la rechaza con `workflow_code_failure_requires_corrected_definition`. Despliega la corrección y después solicita el redrive con `allow_definition_change`:
+
+```php
+$result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
+    'request_id' => 'incident-42',
+    'allow_definition_change' => true,
+]);
+```
+
+Antes de escribir nada, el redrive reproduce en memoria los pasos completados con el código nuevo. El código nuevo debe dar los mismos pasos en el mismo orden y llegar al paso en el que falló el código anterior. Si no puede, el redrive la rechaza con `definition_incompatible_with_prefix`, y `definition_mismatch` indica el primer paso que difiere (`sequence`) y un `kind` como `step_shape` o `version_range`. Si el historial completado supera el presupuesto de historial, el redrive la rechaza con `definition_check_over_budget`.
+
+Un cambio aceptado ejecuta el código corregido y registra la huella de la definición sustituida como `definition_changed_from` en el `WorkflowStarted` de la sucesora. Un redrive posterior sobre la misma definición no registra ninguna.
+
+`allow_definition_change` se aplica a ejecuciones en modo embedded. Para una ejecución que inició un worker de servicio, el redrive rechaza un cambio de definición con `definition_change_requires_replay_check`. Sin `allow_definition_change`, una definición cambiada se rechaza con `workflow_definition_unavailable_or_changed`.
+
 ### Cuándo se puede hacer redrive de una ejecución fallida {#redrive-eligibility}
 
 El redrive acepta una ejecución fallida cuando se cumple todo lo siguiente:
 
 - La ejecución es la ejecución actual de la instancia.
-- La ejecución falló porque un fallo de actividad llegó al código del workflow y no se capturó. Se rechaza una ejecución que falló en el código del workflow, por un límite estructural o por un tiempo límite del workflow.
-- Cada paso anterior a la actividad fallida es una actividad completada, un efecto secundario, un marcador de versión o un `timer()` que se disparó. Los resultados de actividades y de efectos secundarios deben estar almacenados en línea. Se rechaza un resultado guardado en el almacenamiento externo de payloads.
-- La definición del workflow coincide con la huella registrada al iniciar la ejecución. Si la corrección cambia el código del workflow, el redrive rechaza la ejecución.
+- La ejecución falló porque un fallo de actividad llegó al código del workflow y no se capturó, o porque el código del workflow lanzó una excepción o un límite estructural la detuvo. Se rechaza una ejecución que falló por un tiempo límite del workflow.
+- Cada paso anterior al paso fallido es una actividad completada, un efecto secundario, un marcador de versión, un `timer()` que se disparó, un upsert de memo o de atributo de búsqueda, o una espera de señal que recibió y aplicó su señal. Los payloads de actividades, efectos secundarios y señales deben estar almacenados en línea. Se rechaza un payload guardado en el almacenamiento externo de payloads.
+- La definición del workflow coincide con la huella registrada al iniciar la ejecución, o pasaste `allow_definition_change` y el código corregido reproduce los pasos completados. Se rechaza un fallo del código del workflow sobre la misma definición.
 - El plazo de ejecución no ha vencido.
-- El código del workflow no hizo upsert de ningún memo ni atributo de búsqueda. La ejecución no tiene workflow padre, ni workflows hijos, ni actividades locales, y su entrada está almacenada en línea.
+- La ejecución no tiene workflow padre, ni workflows hijos, ni actividades locales, y su entrada está almacenada en línea.
+- Si un worker de servicio inició la ejecución, los pasos anteriores al fallo son solo actividades, efectos secundarios, marcadores de versión y temporizadores disparados.
 
 Un rechazo indica la primera regla que no se cumplió:
 
@@ -170,21 +191,31 @@ Un rechazo indica la primera regla que no se cumplió:
 | --- | --- |
 | `run_not_failed` | La ejecución no está en el estado `failed`. |
 | `source_run_not_current` | Existe una ejecución más reciente de la instancia. |
-| `unrecorded_failure_boundary` | La ejecución no falló por un fallo de actividad que el código del workflow dejó sin capturar. Una ejecución que falló en el código del workflow devuelve este motivo. |
-| `unsupported_history` | El historial anterior al fallo contiene un paso que el redrive no puede reutilizar, como una señal, una actualización, un workflow hijo o un temporizador cancelado. |
+| `unrecorded_failure_boundary` | El fallo de la ejecución no tiene un paso registrado, como un fallo del código del workflow registrado por una versión anterior a 2.19.0. |
+| `workflow_code_failure_requires_corrected_definition` | El código del workflow lanzó una excepción y la definición no ha cambiado, así que el mismo código volvería a lanzarla. |
+| `unsupported_history` | El historial anterior al fallo contiene un paso que el redrive no puede reutilizar, como una actualización, un workflow hijo o un temporizador cancelado. |
 | `unsupported_local_activity` | El historial contiene una actividad local. |
 | `unsupported_timer` | El historial contiene un tiempo límite de condición o de señal, un temporizador de limpieza tras cancelación, o un temporizador dentro de un ámbito de cancelación o de un grupo paralelo. |
 | `incomplete_timer_step` | A un paso de temporizador le falta el evento de programación o el de disparo. |
-| `invalid_step_sequence` | Un efecto secundario, marcador de versión o temporizador no tiene un número de paso válido. |
-| `duplicate_step_sequence` | Dos efectos secundarios, marcadores de versión o temporizadores comparten el mismo número de paso. |
+| `unsupported_signal_wait` | Una espera de señal tiene un tiempo límite, o está dentro de un ámbito de cancelación o de un grupo paralelo. |
+| `unsupported_pending_signal` | La ejecución recibió una señal que nunca aplicó. |
+| `incomplete_signal_step` | A una espera de señal le falta la recepción o la aplicación, o la aplicación no tiene un valor registrado. |
+| `mismatched_signal_receipt` | Una recepción de señal indica otra ejecución, instancia, comando o espera, o una misma recepción se aplica a dos esperas. |
+| `invalid_step_sequence` | Un paso reutilizado no tiene un número de paso válido. |
+| `duplicate_step_sequence` | Dos pasos reutilizados comparten el mismo número de paso. |
 | `external_activity_result_not_supported` | Un resultado de actividad completada está en el almacenamiento externo de payloads. |
 | `external_side_effect_result_not_supported` | Un resultado de efecto secundario está en el almacenamiento externo de payloads. |
+| `external_signal_payload_not_supported` | Los argumentos o el valor aplicado de una señal están en el almacenamiento externo de payloads. |
 | `missing_activity_result`, `unavailable_activity_result` | Falta un resultado de actividad completada o no se puede decodificar. |
-| `unsupported_visibility_metadata` | El código del workflow hizo upsert de un memo o atributo de búsqueda. |
+| `unsupported_visibility_metadata` | El código del workflow escribió un memo o atributo de búsqueda en un paso que la sucesora no reutilizaría. |
 | `unsupported_source_metadata` | La ejecución se inició como hija de otro workflow. |
 | `unsupported_source_link_or_payload` | La ejecución está vinculada como hija de otro workflow, o su entrada está en el almacenamiento externo de payloads. |
 | `execution_deadline_elapsed` | El plazo de ejecución ha vencido. |
-| `workflow_definition_unavailable_or_changed` | Falta la huella de la definición o difiere de la registrada al inicio. |
+| `workflow_definition_unavailable_or_changed` | Falta la huella de la definición, o difiere de la registrada al inicio y no se pasó `allow_definition_change`. |
+| `definition_incompatible_with_prefix` | El código corregido no puede reproducir los pasos completados. `definition_mismatch` indica el primer paso que difiere. |
+| `definition_check_over_budget` | El historial completado supera el presupuesto de historial que permite la comprobación de reproducción. |
+| `definition_change_requires_replay_check` | Un worker de servicio inició la ejecución, así que el redrive no puede comprobar una definición cambiada. |
+| `service_redrive_history_not_qualified` | Un worker de servicio inició la ejecución, y los pasos anteriores al fallo incluyen un upsert de memo, un upsert de atributo de búsqueda o una espera de señal. Workflow 2.19.0 rechaza estos pasos en ejecuciones de modo servicio hasta que pueda comprobar, para cada runtime de SDK, su capacidad de reproducirlos. |
 | `request_id_already_used` | El `request_id` ya se usó para otro redrive de la instancia. |
 | `invalid_request_id` | El `request_id` tiene más de 191 caracteres. |
 | `run_not_found`, `instance_not_found` | La ejecución o la instancia no existe en el espacio de nombres. |
@@ -197,13 +228,19 @@ Cuando el redrive rechaza una ejecución, conserva su historial, concilia los ef
 
 En Workflow 2.18.0 y versiones posteriores, el detalle de la ejecución informa `can_redrive` y `redrive_blocked_reason`. El detalle de ejecución seleccionada de Waterline lee estos campos. `WorkflowControlPlane::describe()` informa los mismos campos dentro de `actions`. Salen de la misma comprobación que aplica `redrive()`, así que puedes ver si una ejecución admite redrive, y por qué no, antes de solicitarlo.
 
-Una ejecución que no ha fallado informa `run_not_failed`. Una ejecución que ya tuvo redrive informa `already_redriven`. Para una ejecución en modo servicio, el informe solo comprueba que se registró una huella. `redrive()` sigue comparándola con la huella del worker.
+Una ejecución que no ha fallado informa `run_not_failed`. Una ejecución que ya tuvo redrive informa `already_redriven`. Para una ejecución en modo servicio, el informe solo comprueba que se registró una huella. `redrive()` sigue comparándola con la huella del worker. El informe no ejecuta la comprobación de reproducción del código corregido, así que una definición cambiada muestra `workflow_definition_unavailable_or_changed` hasta que solicitas el redrive con `allow_definition_change`.
+
+En Workflow 2.19.0 y versiones posteriores, una sucesora que ejecuta código corregido informa la huella sustituida como `workflow_definition_changed_from` en el detalle de la ejecución y como `run.definition_changed_from` en `describe()`.
 
 ### Versiones anteriores y el Server nativo {#redrive-earlier-releases}
 
+Workflow 2.18.0 reutiliza actividades completadas, efectos secundarios, marcadores de versión y temporizadores disparados. Rechaza un memo o atributo de búsqueda del que el código del workflow hizo upsert (`unsupported_history`), una espera de señal (`unsupported_history`), una ejecución que falló en el código del workflow (`unrecorded_failure_boundary`) y una definición cambiada (`workflow_definition_unavailable_or_changed`).
+
 Las versiones de Workflow anteriores a 2.18.0 aceptan menos ejecuciones. Cada paso anterior a la actividad fallida debe ser una actividad completada. Un efecto secundario, marcador de versión o temporizador en ese historial se rechaza con `unsupported_history`, y cualquier memo o atributo de búsqueda se rechaza con `unsupported_visibility_metadata`. El detalle de la ejecución y `describe()` no informan `can_redrive` ni `redrive_blocked_reason`.
 
-El redrive en el Server nativo sigue aplicando estas reglas anteriores. La compatibilidad del Server nativo con las reglas de Workflow 2.18.0 se sigue en [server#980](https://github.com/durable-workflow/server/issues/980).
+Las versiones anteriores a 2.19.0 ignoran `reused_recorded_at` en los pasos reutilizados de señal, memo y atributo de búsqueda. Después de que una sucesora de Workflow 2.19.0 reutilice esos pasos, mantén workers de 2.19.0 o posteriores, o confirma que ningún historial de ese tipo puede reproducirse, antes de volver a una versión anterior.
+
+El redrive en el Server nativo sigue aplicando las reglas anteriores a 2.18.0. La compatibilidad del Server nativo con las reglas actuales se sigue en [server#980](https://github.com/durable-workflow/server/issues/980).
 
 ## Rechazo de entrada y recuperación en modo servicio {#service-entry-recovery}
 
