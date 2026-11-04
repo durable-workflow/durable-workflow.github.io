@@ -22,7 +22,10 @@ Leitfäden haben:
 [Abfragen](./features/queries.md) für den Status und
 [Continue-as-new](./features/continue-as-new.md) zur Begrenzung der Historie.
 Worker im Dienstmodus verwenden dieselben Grundbausteine über ihre
-[SDK-Leitfäden](./polyglot/deployment-modes.md).
+[SDK-Leitfäden](./polyglot/deployment-modes.md). Die Beispielanwendung führt
+diese Konversation auch auf einem Worker des PHP-SDK aus; siehe
+[Konversation auf einem PHP-Worker im Dienstmodus](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)
+(`php artisan app:service-mode-conversation`).
 
 Die Quelle ist `ConversationWorkflow` in der
 [Beispielanwendung](./sample-app.md), unter
@@ -48,7 +51,9 @@ Ohne `--message` fragt der Befehl nach Eingaben. Enthält eine Nachricht
 „refund“, schlägt das Ersatzmodell eine Aktion vor, und der Befehl fragt nach
 einer Genehmigung. `--decision=decline` beantwortet vorgegebene
 Genehmigungen mit einer Ablehnung. Öffnen Sie `/waterline`, um jeden Lauf der
-Kette zu untersuchen.
+Kette zu untersuchen. Die Konversation endet nach einer Stunde ohne Nachricht,
+und ein Vorschlag, über den kein Prüfer innerhalb von fünf Minuten entscheidet,
+ändert nichts.
 
 ## Ablauf eines Gesprächszugs {#how-a-turn-works}
 
@@ -61,8 +66,12 @@ Kette zu untersuchen.
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -70,17 +79,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -94,11 +104,12 @@ class ConversationWorkflow extends Workflow
    aufgezeichnete Ergebnis wieder, statt das Modell erneut aufzurufen.
 3. Schlägt das Modell eine Aktion vor, gibt der Workflow ihr mit `uuid4()` eine
    ID. `uuid4()` zeichnet den Wert in der Historie auf, sodass ein Replay dieselbe
-   ID liefert. Danach wartet der Workflow auf ein Signal `decision`, das diese ID
-   wiederholt; die Abfrage `status` meldet sie. Signale werden nach Namen
-   gepuffert. Eine Entscheidung zu einem anderen Vorschlag (zu früh, doppelt oder
-   nach einer unsicheren Antwort erneut gesendet) wird daher ignoriert und nicht
-   auf den nächsten Vorschlag angewendet. Nur eine Genehmigung des offenen
+   ID liefert. Danach wartet der Workflow bis zu `$approvalTimeout`, getrennt vom
+   Inaktivitäts-Timeout, auf ein Signal `decision`, das diese ID wiederholt; die
+   Abfrage `status` meldet sie. Signale werden nach Namen gepuffert. Eine
+   Entscheidung zu einem anderen Vorschlag (zu früh, doppelt oder nach einer
+   unsicheren Antwort erneut gesendet) wird daher ignoriert und nicht auf den
+   nächsten Vorschlag angewendet; sie verlängert auch die Frist nicht. Nur eine Genehmigung des offenen
    Vorschlags führt `ApplyApprovedActionActivity` aus. Eine Ablehnung oder ein
    Timeout zeichnet die Antwort auf und ändert nichts.
 4. `RecordReplyActivity` schreibt die Antwort in die Anwendungstabelle

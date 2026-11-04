@@ -21,7 +21,10 @@ keywords:
 [query](./features/queries.md) для статусу та
 [continue-as-new](./features/continue-as-new.md) для обмеження історії. Worker
 сервісного режиму використовують ті самі примітиви через свої
-[посібники SDK](./polyglot/deployment-modes.md).
+[посібники SDK](./polyglot/deployment-modes.md). Приклад застосунку також
+виконує цю розмову на worker PHP SDK; див.
+[Розмова на worker сервісного режиму PHP](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)
+(`php artisan app:service-mode-conversation`).
 
 Вихідний код — `ConversationWorkflow` у
 [прикладі застосунку](./sample-app.md), у каталозі
@@ -45,7 +48,9 @@ php artisan app:conversation \
 Без `--message` команда запитує ввід. Повідомлення, що містить «refund»,
 змушує імітацію моделі запропонувати дію, і команда запитує схвалення.
 `--decision=decline` відповідає на сценарні запити схвалення відмовою.
-Відкрийте `/waterline`, щоб переглянути кожен запуск у ланцюжку.
+Відкрийте `/waterline`, щоб переглянути кожен запуск у ланцюжку. Розмова
+завершується після години без повідомлень, а пропозиція, щодо якої жоден
+рецензент не ухвалив рішення протягом п’яти хвилин, нічого не змінює.
 
 ## Як працює хід {#how-a-turn-works}
 
@@ -58,8 +63,12 @@ php artisan app:conversation \
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -67,17 +76,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -90,11 +100,12 @@ class ConversationWorkflow extends Workflow
    зафіксований результат замість повторного виклику моделі.
 3. Коли модель пропонує дію, workflow призначає їй ID через `uuid4()`. Він
    записує значення в історію, тож відтворення повертає той самий ID. Потім
-   workflow чекає на signal `decision`, що повторює цей ID; query `status`
-   повідомляє його. Signals буферизуються за назвою, тому рішення щодо
-   будь-якої іншої пропозиції (надіслане зарано, двічі або повторно після
-   невизначеної відповіді) ігнорується, а не застосовується до наступної
-   пропозиції. Лише схвалення пропозиції, що очікує, запускає
+   workflow чекає до `$approvalTimeout`, окремо від тайм-ауту неактивності, на
+   signal `decision`, що повторює цей ID; query `status` повідомляє його.
+   Signals буферизуються за назвою, тому рішення щодо будь-якої іншої
+   пропозиції (надіслане зарано, двічі або повторно після невизначеної
+   відповіді) ігнорується, а не застосовується до наступної пропозиції, і не
+   продовжує граничний термін. Лише схвалення пропозиції, що очікує, запускає
    `ApplyApprovedActionActivity`. Відмова або тайм-аут записують відповідь і
    нічого не змінюють.
 4. `RecordReplyActivity` записує відповідь у таблицю застосунку
