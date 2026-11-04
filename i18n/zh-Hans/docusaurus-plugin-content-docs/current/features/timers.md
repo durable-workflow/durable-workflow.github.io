@@ -43,6 +43,10 @@ class MyWorkflow extends Workflow
 `CarbonInterval` 时，正数时长中的小数秒会向上取整到下一整秒。因此，100 ms 会变成
 1 秒。`timer(0)` 仍会在当前任务内触发。
 
+服务模式下的 PHP 工作流使用 `WorkflowContext::sleep()` 和 `deferTimer()`。
+从 PHP SDK 3.9.0 起，它们接受相同的字符串和间隔，并采用相同的取整方式；参见
+[PHP SDK 时长](../polyglot/php.md#durations)。
+
 到期只表示定时器可以被处理。队列延迟和 Worker 负载可能推迟实际处理，因此这种分辨率
 并不保证精确的恢复时刻，也不会降低已记录时间戳的精度。要避免真实等待，请参阅
 [测试指南](../testing.md#keeping-delay-tests-fast)。

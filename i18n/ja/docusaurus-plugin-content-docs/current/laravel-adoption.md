@@ -451,6 +451,13 @@ $workflows->assertResultRequested('order-1001');
 
 Cloud・Server なしで Laravel アプリのやり取りを検証します。ハンドラーコマンドのテストには SDK の Worker テストハーネスを使います。クライアント fake はリモート Worker コードを実行しません。
 
+期間指定は組み込みワークフローからそのまま引き継げます。PHP SDK 3.9.0 以降、サービスモードの
+タイマー、条件待機のタイムアウト、アクティビティと子ワークフローのタイムアウトは、組み込みの
+`timer()` と `await()` と同じ `'30 minutes'` 形式の文字列を同じく整数秒に切り上げて受け付けるほか、
+`DateInterval` と `CarbonInterval` 値も受け付けます。ISO 8601 文字列は `new DateInterval(...)` に書き換え、アクティビティと
+子ワークフローのタイムアウトは 1 秒以上にしてください。
+[PHP SDK の期間指定](/docs/polyglot/php/#durations)を参照してください。
+
 ## ドレイン、切り替え、ロールバック {#drain-cut-over-and-roll-back}
 
 Composer 要件の変更では、処理中ワークフロー、履歴、遅延タイマー、リトライ、準備済み・予約済みキュージョブは移動しません。移行中は新旧を別々の永続システムとして扱います。

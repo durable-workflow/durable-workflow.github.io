@@ -509,6 +509,15 @@ Esse fake comprova a interação da aplicação Laravel sem exigir Cloud ou Serv
 Use o ambiente de testes de worker do SDK ao testar comandos de handlers de
 workflow/atividade. O fake de cliente não executa código de worker remoto.
 
+As durações usadas nos workflows integrados continuam valendo. A partir do SDK PHP
+3.9.0, temporizadores, tempos limite de espera por condição e tempos limite de
+atividades e de workflows filhos em modo de serviço aceitam as mesmas strings
+`'30 minutes'` que `timer()` e `await()` integrados, com o mesmo arredondamento
+para segundos inteiros, além de valores `DateInterval` e `CarbonInterval`.
+Reescreva strings ISO 8601 como `new DateInterval(...)` e mantenha os tempos
+limite de atividades e de workflows filhos em um segundo ou mais. Consulte
+[durações do SDK PHP](/docs/polyglot/php/#durations).
+
 ## Drene, faça a transição e reverta {#drain-cut-over-and-roll-back}
 
 Alterar um requisito do Composer não move um workflow em andamento, seu histórico,

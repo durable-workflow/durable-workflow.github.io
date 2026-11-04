@@ -205,6 +205,8 @@ $result = activity(
 );
 ```
 
+У сервісному режимі PHP SDK 3.9.0 і новіші приймають для тайм-аутів activity, а також для тайм-аутів виконання й запуску дочірнього workflow, крім секунд, рядок на кшталт `'5 minutes'` або `DateInterval` чи `CarbonInterval`. Ці тайм-аути мають становити щонайменше одну секунду. Див. [тривалості PHP SDK](../polyglot/php.md#durations).
+
 У сервісному режимі закриття спроби activity не зупиняє примусово прикладний код SDK. Python SDK 2.9.0 повідомляє відмову під час наступного heartbeat; код без heartbeat може працювати до повернення, а фізичний слот потоку зайнятий до завершення. Див. [відмови heartbeat і завершення callback у Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
 
 ### Тайм-аут schedule-to-start {#schedule-to-start-timeout}

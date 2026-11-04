@@ -8,6 +8,8 @@ sidebar_position: 5
 
 Úsalo cuando el workflow deba continuar en cuanto un estado duradero reproducido se vuelva verdadero, pero también deba desbloquearse tras un plazo si ese estado nunca cambia.
 
+Los workflows PHP en modo servicio usan el `timeout` de `WorkflowContext::waitCondition()` y `deferCondition()`. Desde PHP SDK 3.9.0 acepta las mismas cadenas de duración e intervalos que `await()` integrado; consulta [duraciones del PHP SDK](../polyglot/php.md#durations).
+
 ```php
 use Workflow\UpdateMethod;
 use function Workflow\V2\await;

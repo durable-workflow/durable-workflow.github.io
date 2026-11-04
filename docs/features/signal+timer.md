@@ -8,6 +8,8 @@ sidebar_position: 5
 
 Use it when the workflow should continue as soon as some durable replayed state becomes true, but should also unblock after a deadline if that state never changes.
 
+Service-mode PHP workflows use the `timeout` of `WorkflowContext::waitCondition()` and `deferCondition()`. From PHP SDK 3.9.0 it accepts the same duration strings and intervals as embedded `await()`; see [PHP SDK durations](../polyglot/php.md#durations).
+
 ```php
 use Workflow\UpdateMethod;
 use function Workflow\V2\await;

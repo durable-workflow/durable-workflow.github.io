@@ -8,6 +8,8 @@ sidebar_position: 5
 
 永続入力のリプレイで復元した状態が成立したら直ちに継続し、変化しなくても期限後に待機を解除したい場合に使います。
 
+サービスモードの PHP ワークフローでは、`WorkflowContext::waitCondition()` と `deferCondition()` の `timeout` を使います。PHP SDK 3.9.0 以降、この値は組み込みの `await()` と同じ期間文字列と間隔を受け付けます。[PHP SDK の期間指定](../polyglot/php.md#durations)を参照してください。
+
 ```php
 use Workflow\UpdateMethod;
 use function Workflow\V2\await;

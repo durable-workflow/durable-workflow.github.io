@@ -186,6 +186,8 @@ $result = activity(
 );
 ```
 
+在服务模式下，PHP SDK 3.9.0 及更高版本的活动超时以及子工作流执行超时和单次运行超时，除秒数外，还接受 `'5 minutes'` 之类的字符串，或 `DateInterval`、`CarbonInterval`。这些超时必须至少为一秒。参见 [PHP SDK 时长](../polyglot/php.md#durations)。
+
 在服务模式下，关闭活动尝试不会强制停止 SDK 应用代码。Python SDK 2.9.0 会在下一次心跳时报告拒绝；不发送心跳的代码可能一直运行到返回，而物理线程槽位会一直占用到退出。参见 [Python 心跳拒绝与回调退出](../polyglot/python.md#heartbeat-refusals-and-callback-exit)。
 
 ### 调度到开始超时 {#schedule-to-start-timeout}

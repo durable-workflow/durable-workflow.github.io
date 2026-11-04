@@ -133,6 +133,40 @@ if ($selected->key === 'deadline') {
 
 选择不会取消未胜出的操作。在句柄上调用 `await()` 消费其最终结果，或调用 `cancel()` 记录显式取消。即使重复或后来的输入和终态事件以不同顺序交付，冷启动 Worker 或完整历史重放仍消费已记录的胜出项。`cancel()` 返回 void，不报告其终态结果。只有 `SelectionOperationCancelled` 历史能证明取消胜出；重放会越过未有对应记录的取消请求，如果操作先完成，`await()` 仍返回该结果。
 
+### 时长 {#durations}
+
+从 PHP SDK 3.9.0 起，工作流定时器和超时接受与嵌入式 Laravel 包相同的时长形式。
+`sleep()`、`deferTimer()`、`waitCondition()` 和 `deferCondition()` 的 `timeout`、活动超时选项、
+子工作流的 `execution_timeout_seconds` 和 `run_timeout_seconds` 选项，以及服务操作的
+`wait_timeout_seconds` 选项，均接受 int 或 float 秒数、`'30 minutes'` 之类的字符串，
+或 `DateInterval`、`CarbonInterval`：
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+每个值只转换一次，向上取整为整秒，因此 `'30 minutes'`、`1800` 和
+`CarbonInterval::minutes(30)` 记录的历史相同。字符串的转换方式与嵌入式 `timer()` 和
+`await()` 完全相同。SDK 会拒绝 `'PT30M'` 之类的 ISO 8601 字符串（请改为传入
+`new DateInterval('PT30M')`）、负值、月或更长日历单位的小数部分、超过 15 位数字的部分，
+以及无法解析的文本。`'30'` 之类的数字字符串保持原有含义：定时器和条件超时会将其向上取整为
+整秒，而活动和子工作流选项会原样传递。零时长对定时器和条件等待有效；活动和子工作流超时
+至少需要一秒。更早的 SDK 版本只接受秒数。
+[PHP SDK 时长参考](https://php.durable-workflow.com/build/workflows-activities/)列出了所有单位。
+
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
 **已发布支持。** PHP SDK 2.5.4 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。

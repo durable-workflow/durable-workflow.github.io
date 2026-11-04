@@ -45,6 +45,10 @@ o `CarbonInterval`, una duración positiva con fracciones de segundo se redondea
 hacia arriba al siguiente segundo entero. Por tanto, 100 ms se convierten en un
 segundo. `timer(0)` sigue resolviéndose dentro de la tarea actual.
 
+Los workflows PHP en modo servicio usan `WorkflowContext::sleep()` y `deferTimer()`.
+Desde PHP SDK 3.9.0 aceptan las mismas cadenas e intervalos con el mismo
+redondeo; consulte [duraciones del PHP SDK](../polyglot/php.md#durations).
+
 Que un temporizador venza permite procesarlo. La latencia de la cola y la carga
 de los workers pueden retrasar su ejecución, por lo que esta resolución no
 garantiza un instante exacto de reanudación ni reduce la precisión de las marcas

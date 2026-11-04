@@ -505,6 +505,14 @@ This fake proves the Laravel application interaction without requiring Cloud or
 Server. Use the SDK's worker test harness when testing workflow/activity handler
 commands; the client fake does not execute remote worker code.
 
+Durations carry over from embedded workflows. From PHP SDK 3.9.0, service-mode
+timers, condition-wait timeouts and activity and child workflow timeouts accept
+the same `'30 minutes'` strings as embedded `timer()` and `await()`, with the
+same rounding to whole seconds, as well as `DateInterval` and `CarbonInterval`
+values. Rewrite ISO 8601 strings as `new DateInterval(...)`, and keep activity
+and child workflow timeouts at one second or more. See
+[PHP SDK durations](/docs/polyglot/php/#durations).
+
 ## Drain, cut over, and roll back
 
 Changing a Composer requirement does not move an in-flight workflow, its

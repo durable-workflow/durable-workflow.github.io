@@ -186,6 +186,8 @@ $result = activity(
 );
 ```
 
+サービスモードでは、PHP SDK 3.9.0 以降、アクティビティのタイムアウトと、子ワークフローの実行全体および単一実行のタイムアウトに、秒数に加えて `'5 minutes'` のような文字列、`DateInterval`、`CarbonInterval` を指定できます。これらのタイムアウトは 1 秒以上でなければなりません。[PHP SDK の期間指定](../polyglot/php.md#durations)を参照してください。
+
 サービスモードでは、アクティビティの試行を閉じても SDK のアプリケーションコードは強制停止されません。Python SDK 2.9.0 は次のハートビートで拒否を通知します。ハートビートを送らないコードは戻るまで実行を続ける可能性があり、物理スレッドのスロットは終了まで占有されます。[Python のハートビート拒否とコールバック終了](../polyglot/python.md#heartbeat-refusals-and-callback-exit)を参照してください。
 
 ### スケジュールから開始までのタイムアウト {#schedule-to-start-timeout}

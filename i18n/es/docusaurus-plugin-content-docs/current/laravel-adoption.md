@@ -499,6 +499,16 @@ Esta simulación demuestra la interacción Laravel sin Cloud ni Server. Usa el
 banco de pruebas de workers del SDK para comandos de manejadores. La simulación
 del cliente no ejecuta código de workers remotos.
 
+Las duraciones se mantienen respecto a los workflows integrados. Desde PHP SDK
+3.9.0, los temporizadores, los tiempos de espera de las esperas por condición y
+los tiempos de espera de actividades y workflows hijos en modo servicio aceptan
+las mismas cadenas `'30 minutes'` que `timer()` y `await()` integrados, con el
+mismo redondeo a segundos enteros, así como valores `DateInterval` y
+`CarbonInterval`. Reescribe las
+cadenas ISO 8601 como `new DateInterval(...)` y mantén los tiempos de espera de
+actividades y workflows hijos en un segundo o más. Consulta
+[duraciones del PHP SDK](/docs/polyglot/php/#durations).
+
 ## Drenar, cambiar de entorno y revertir {#drain-cut-over-and-roll-back}
 
 Cambiar un requisito Composer no mueve un workflow en curso, historial,

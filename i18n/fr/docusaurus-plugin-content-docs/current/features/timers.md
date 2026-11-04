@@ -45,6 +45,10 @@ d’intervalle PHP ou `CarbonInterval`, une durée positive comportant une fract
 de seconde est arrondie à la seconde entière supérieure. Ainsi, 100 ms deviennent
 une seconde. `timer(0)` se déclenche toujours dans la tâche courante.
 
+Les workflows PHP en mode service utilisent `WorkflowContext::sleep()` et `deferTimer()`.
+À partir du SDK PHP 3.9.0, ils acceptent les mêmes chaînes et intervalles avec le même
+arrondi ; consultez les [durées du SDK PHP](../polyglot/php.md#durations).
+
 Un temporisateur arrivé à échéance peut être traité. La latence de la file et la
 charge des workers peuvent retarder son traitement. Cette résolution ne garantit
 donc pas un instant de reprise exact et ne réduit pas la précision des horodatages

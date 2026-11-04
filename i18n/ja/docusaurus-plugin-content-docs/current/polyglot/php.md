@@ -133,6 +133,42 @@ if ($selected->key === 'deadline') {
 
 選択は非勝者をキャンセルしません。最終結果を消費するにはハンドルの `await()`、明示的なキャンセルを記録するには `cancel()` を呼びます。コールド Worker または完了済み履歴のリプレイは、重複や後続の入力・終了イベントが別の順で届いても、記録した勝者を消費します。`cancel()` は void を返し、終了結果を報告しません。キャンセルが勝ったことを証明するのは `SelectionOperationCancelled` 履歴だけです。リプレイは印のないキャンセル要求を越えて進み、操作が先に完了していた場合、`await()` は引き続きその結果を返します。
 
+### 期間指定 {#durations}
+
+PHP SDK 3.9.0 以降、ワークフローのタイマーとタイムアウトは組み込み Laravel パッケージと同じ
+期間の形式を受け付けます。`sleep()`、`deferTimer()`、`waitCondition()` と `deferCondition()` の
+`timeout`、アクティビティのタイムアウトオプション、子ワークフローの
+`execution_timeout_seconds` と `run_timeout_seconds` オプション、サービス操作の
+`wait_timeout_seconds` オプションには、int または float の秒数、`'30 minutes'` のような文字列、
+`DateInterval` または `CarbonInterval` を指定できます。
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+各値は一度だけ整数秒へ切り上げて変換されます。そのため `'30 minutes'`、`1800`、
+`CarbonInterval::minutes(30)` は同じ履歴を記録します。文字列は組み込みの `timer()` と `await()` と
+まったく同じように変換されます。SDK は `'PT30M'` のような ISO 8601 文字列（代わりに
+`new DateInterval('PT30M')` を渡してください）、負の値、月またはそれより長い暦単位の端数、
+15 桁を超える部分、解析できないテキストを拒否します。`'30'` のような数値文字列は従来の意味を保ちます。
+タイマーと条件タイムアウトでは整数秒に切り上げられ、アクティビティと子ワークフローのオプションでは
+そのまま渡されます。タイマーと条件待機では 0 の期間も有効ですが、アクティビティと子ワークフローの
+タイムアウトは 1 秒以上が必要です。それ以前の SDK リリースは秒数のみを受け付けます。
+すべての単位は [PHP SDK の期間指定リファレンス](https://php.durable-workflow.com/build/workflows-activities/)に記載されています。
+
 ## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
 
 **公開済みのサポートです。** PHP SDK 2.5.4 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。

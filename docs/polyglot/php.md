@@ -210,6 +210,46 @@ later input and terminal events appear in another delivery order.
 past an unmarked cancel request, and if the operation completed first,
 `await()` still returns that result.
 
+### Durations {#durations}
+
+From PHP SDK 3.9.0, workflow timers and timeouts take the same duration forms as
+the embedded Laravel package. `sleep()`, `deferTimer()`, the `timeout` of
+`waitCondition()` and `deferCondition()`, the activity timeout options, the
+child workflow `execution_timeout_seconds` and `run_timeout_seconds` options and
+the service operation `wait_timeout_seconds` option accept int or float
+seconds, a string such as `'30 minutes'`, or a `DateInterval` or
+`CarbonInterval`:
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+Each value converts once to whole seconds, rounding up, so `'30 minutes'`,
+`1800` and `CarbonInterval::minutes(30)` record the same history. Strings
+convert exactly as the embedded `timer()` and `await()` do. The SDK rejects
+ISO 8601 strings such as `'PT30M'` (pass `new DateInterval('PT30M')` instead),
+negative values, fractions of a month or a longer calendar unit, parts with more
+than 15 digits, and unparseable text. A numeric string such as `'30'` keeps its
+earlier meaning: timers and condition timeouts round it up to whole seconds,
+and activity and child workflow options pass it through unchanged. A zero
+duration is valid for timers and condition waits; activity and child workflow
+timeouts need at least one second. Earlier SDK releases accept seconds only.
+The [PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/)
+lists every unit.
+
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
 **Released support.** PHP SDK 2.5.4 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.

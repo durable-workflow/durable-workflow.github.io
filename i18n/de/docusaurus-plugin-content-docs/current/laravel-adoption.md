@@ -451,6 +451,8 @@ $workflows->assertResultRequested('order-1001');
 
 Dieser Fake weist die Laravel-Anwendungsinteraktion ohne Cloud oder Server nach. Verwenden Sie für Workflow-/Aktivitätshandlerbefehle die Worker-Testumgebung des SDKs. Der Client-Fake führt keinen entfernten Worker-Code aus.
 
+Dauerangaben lassen sich aus eingebetteten Workflows übernehmen. Ab PHP SDK 3.9.0 akzeptieren Timer, Zeitlimits von Bedingungswarteoperationen sowie Zeitlimits von Aktivitäten und Kind-Workflows im Dienstmodus dieselben `'30 minutes'`-Strings wie eingebettetes `timer()` und `await()`, mit derselben Rundung auf ganze Sekunden, sowie `DateInterval`- und `CarbonInterval`-Werte. Schreiben Sie ISO-8601-Strings als `new DateInterval(...)` um, und halten Sie Zeitlimits von Aktivitäten und Kind-Workflows bei mindestens einer Sekunde. Siehe [Dauerangaben im PHP SDK](/docs/polyglot/php/#durations).
+
 ## Auslaufen, umstellen und zurückrollen {#drain-cut-over-and-roll-back}
 
 Eine geänderte Composer-Anforderung verschiebt weder einen laufenden Workflow noch seine Historie, einen verzögerten Timer, eine Aktivitätswiederholung oder einen bereiten/reservierten Warteschlangenjob. Behandeln Sie alte und neue Laufzeit während des gesamten Übergangs als getrennte dauerhafte Systeme.

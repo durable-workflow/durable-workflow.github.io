@@ -218,6 +218,48 @@ informa seu resultado terminal. Somente o histórico
 além de uma solicitação de cancelamento sem marcação e, se a operação concluiu
 primeiro, `await()` ainda retorna esse resultado.
 
+### Durações {#durations}
+
+A partir do SDK PHP 3.9.0, temporizadores e tempos limite de workflow aceitam as
+mesmas formas de duração que o pacote Laravel embarcado. `sleep()`,
+`deferTimer()`, o `timeout` de `waitCondition()` e `deferCondition()`, as opções
+de tempo limite de atividades, as opções `execution_timeout_seconds` e
+`run_timeout_seconds` de workflows filhos e a opção `wait_timeout_seconds` de
+operações de serviço aceitam segundos como int ou float, uma string como
+`'30 minutes'`, ou um `DateInterval` ou `CarbonInterval`:
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+Cada valor é convertido uma única vez em segundos inteiros, arredondando para
+cima; assim, `'30 minutes'`, `1800` e `CarbonInterval::minutes(30)` registram o
+mesmo histórico. Strings são convertidas exatamente como fazem `timer()` e
+`await()` no pacote embarcado. O SDK rejeita strings ISO 8601 como `'PT30M'`
+(passe `new DateInterval('PT30M')` em vez disso), valores negativos, frações de
+um mês ou de uma unidade de calendário maior, partes com mais de 15 dígitos e
+texto que não pode ser interpretado. Uma string numérica como `'30'` mantém seu
+significado anterior: temporizadores e tempos limite de condição a arredondam
+para cima em segundos inteiros, e as opções de atividades e de workflows filhos
+a repassam sem alteração. Uma duração zero é válida para temporizadores e
+esperas por condição; tempos limite de atividades e de workflows filhos exigem
+pelo menos um segundo. Releases anteriores do SDK aceitam apenas segundos. A
+[referência de durações do SDK PHP](https://php.durable-workflow.com/build/workflows-activities/)
+lista todas as unidades.
+
 ## Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}
 
 **Suporte publicado.** O SDK PHP 2.5.4 introduziu a proteção de entrada abaixo, com roteamento e recuperação no Server 2.9.9. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.

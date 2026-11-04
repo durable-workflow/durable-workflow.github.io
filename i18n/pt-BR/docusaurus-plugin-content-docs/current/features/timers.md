@@ -45,6 +45,10 @@ segundos inteiros, como `timer(1)`. Ao usar uma string de intervalo do PHP ou
 cima, até o próximo segundo inteiro. Assim, 100 ms se tornam um segundo.
 `timer(0)` continua sendo resolvido na tarefa atual.
 
+Workflows PHP em modo de serviço usam `WorkflowContext::sleep()` e `deferTimer()`.
+A partir do SDK PHP 3.9.0, eles aceitam as mesmas strings e intervalos, com o
+mesmo arredondamento; consulte [durações do SDK PHP](../polyglot/php.md#durations).
+
 Um temporizador vencido fica apto a ser processado. A latência da fila e a carga
 dos workers podem atrasar sua execução. Essa resolução não garante um instante
 exato de retomada nem reduz a precisão dos timestamps gravados. Veja os

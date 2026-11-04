@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+En modo servicio, PHP SDK 3.9.0 y posteriores aceptan una cadena como `'5 minutes'` o un `DateInterval` o `CarbonInterval` para los tiempos de espera de actividades y para los tiempos de espera de la ejecución completa y de cada ejecución de los workflows hijos, además de segundos. Esos tiempos de espera deben ser de al menos un segundo. Consulte [duraciones del PHP SDK](../polyglot/php.md#durations).
+
 En modo servicio, cerrar un intento de actividad no detiene por la fuerza el código de la aplicación del SDK. Python SDK 2.9.0 comunica el rechazo en el siguiente heartbeat; el código sin heartbeats puede ejecutarse hasta retornar y la plaza física del hilo permanece ocupada hasta su salida. Consulte [rechazos de heartbeat y salida del callback en Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
 
 ### Tiempo de espera de programación a inicio {#schedule-to-start-timeout}

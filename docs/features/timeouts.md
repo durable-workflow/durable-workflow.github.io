@@ -204,6 +204,8 @@ $result = activity(
 );
 ```
 
+In service mode, PHP SDK 3.9.0 and later accept a string such as `'5 minutes'` or a `DateInterval` or `CarbonInterval` for activity timeouts and for child workflow execution and run timeouts, as well as seconds. Those timeouts must be at least one second. See [PHP SDK durations](../polyglot/php.md#durations).
+
 In service mode, closing an activity attempt does not forcibly stop SDK application code. Python SDK 2.9.0 reports a refusal at the next heartbeat; code that never heartbeats can run until it returns, and a physical thread slot remains occupied until exit. See [Python heartbeat refusals and callback exit](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
 
 ### Schedule-to-start timeout
