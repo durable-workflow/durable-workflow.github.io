@@ -1,0 +1,99 @@
+name: CLI installers
+
+on:
+  pull_request:
+    paths:
+      - static/install.sh
+      - static/install.ps1
+      - scripts/installer-source.json
+      - scripts/check-installer-source.test.js
+      - .github/workflows/installers.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  attestations: read
+
+concurrency:
+  group: cli-installers-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The published stable CLI these runs install end to end.
+  CLI_VERSION: 2.3.5
+
+jobs:
+  shell-installer:
+    name: install.sh (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+      - name: Install the stable CLI with signer-pinned attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ env.CLI_VERSION }}
+          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-bin
+          DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
+        run: |
+          sh static/install.sh
+          "$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version | tee "$RUNNER_TEMP/version.txt"
+          grep -F "$CLI_VERSION" "$RUNNER_TEMP/version.txt"
+      - name: Refuse a release signed by another workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ env.CLI_VERSION }}
+          DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-refused
+          DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
+        run: |
+          # Same installer, but it only trusts a workflow that never signed the release.
+          sed 's/(release|release-rust)/(not-release)/' static/install.sh > "$RUNNER_TEMP/install-wrong-signer.sh"
+          ! cmp -s static/install.sh "$RUNNER_TEMP/install-wrong-signer.sh"
+          if sh "$RUNNER_TEMP/install-wrong-signer.sh"; then
+            echo 'installer accepted a release signed by an unexpected workflow' >&2
+            exit 1
+          fi
+          test ! -e "$DURABLE_WORKFLOW_INSTALL_DIR/dw"
+
+  powershell-installer:
+    name: install.ps1 (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+      - name: Install the stable CLI with signer-pinned attestations
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ env.CLI_VERSION }}
+          DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
+        run: |
+          $env:DURABLE_WORKFLOW_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'dw-bin'
+          & ./static/install.ps1
+          $version = & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version | Out-String
+          Write-Host $version
+          if (-not $version.Contains($env:CLI_VERSION)) { throw "Installed dw is not $env:CLI_VERSION" }
+      - name: Refuse a release signed by another workflow
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ env.CLI_VERSION }}
+          DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
+        run: |
+          $env:DURABLE_WORKFLOW_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'dw-refused'
+          $wrong = Join-Path $env:RUNNER_TEMP 'install-wrong-signer.ps1'
+          (Get-Content -Raw ./static/install.ps1).Replace('(release|release-rust)', '(not-release)') | Set-Content -NoNewline $wrong
+          $refused = $false
+          try { & $wrong } catch { $refused = $true; Write-Host "Refused as expected: $_" }
+          if (-not $refused) { throw 'installer accepted a release signed by an unexpected workflow' }
+          if (Test-Path (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe')) { throw 'refused install left dw.exe behind' }
