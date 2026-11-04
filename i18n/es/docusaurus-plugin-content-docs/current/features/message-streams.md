@@ -28,28 +28,64 @@ Usa la fachada de primera clase al escribir workflows:
 
 No escribas directamente filas `workflow_messages` ni de cursor desde el workflow de la aplicación. La fachada es el contrato estable; los servicios de nivel inferior existen para integrar paquete y runtime.
 
-:::warning Flujos de mensajes en Workflow 2.20.0 y versiones anteriores
+:::warning Flujos de mensajes anteriores a Workflow 2.20.3
 
 El código del workflow se reproduce en cada tarea de workflow posterior y en cada consulta. En
 las versiones de Workflow hasta la 2.20.0 inclusive, `outbox()->sendReference()` escribe un nuevo
 mensaje saliente y entrante en cada reproducción, e `inbox()->receive()` y
 `receiveOne()` pueden devolver un mensaje distinto, o ninguno, en la reproducción
 ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
-Workflow 2.20.1 lo corrige: una reproducción devuelve lo que la llamada original envió o
-recibió, y una consulta nunca escribe ni consume un mensaje.
+Workflow 2.20.1 registra los envíos y las recepciones para la reproducción e
+impide que las consultas escriban o consuman mensajes. Las recepciones vacías
+y los flujos conservados entre pasos necesitan las correcciones adicionales
+de reproducción de 2.20.3 que se describen a continuación.
 
 - Las filas que las versiones anteriores duplicaron no se eliminan. Da a cada envío
   lógico un `idempotencyKey` estable, como `reply:{turn}`, y deduplica por
   `idempotency_key` al consumir un flujo que escribió una versión anterior.
   Los mensajes que una versión anterior consumió en el paso equivocado siguen
   consumidos.
-- En todas las versiones, las señales y todos los flujos comparten un único cursor de mensajes, por lo que
-  una señal entregada después de un mensaje pendiente de un flujo oculta ese mensaje
+- Las señales, las actualizaciones y todos los flujos comparten un cursor de
+  mensajes. Hasta 2.20.2 inclusive, una señal, una actualización o una recepción
+  en otro flujo puede moverlo más allá de los mensajes pendientes y ocultarlos
   ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
-  Recibe solo después de que una señal o una condición indique que hay un mensaje, y envía
-  esa señal antes del mensaje.
+  Para ese caso de orden de señales en esas versiones, envía la señal antes
+  del mensaje y recibe solo después de que una señal o condición indique que
+  hay un mensaje.
 
 :::
+
+## Actualizaciones de flujos y reversión {#stream-upgrades}
+
+En Workflow 2.20.3, el cursor compartido ya no oculta mensajes pendientes a
+`receive()`, `receiveOne()`, `peek()`, `pendingCount()` ni `hasPending()`. Las
+recepciones mantienen el orden de secuencia y su límite de lote. Tras
+actualizar, un bucle de recepción puede devolver primero mensajes pendientes
+antiguos que el cursor compartido ocultaba y después los más recientes.
+
+Una recepción reproducida devuelve lo que consumió su paso original. Si la
+llamada original no encontró nada, la reproducción tampoco devuelve nada.
+Un manejador de actualización que se ejecuta por primera vez sigue pudiendo
+recibir. Un flujo conservado en una propiedad ahora registra las recepciones
+en el paso actual del workflow, en lugar del paso en que se abrió el flujo.
+Las recepciones que versiones anteriores registraron en el paso de apertura
+siguen reproduciéndose.
+
+Antes de revertir una aplicación integrada a una versión anterior a 2.20.3,
+aplica el [control de reproducción](../testing.md#replay-before-deployment)
+con historiales escritos por el paquete más reciente. Las versiones
+anteriores buscan las recepciones de un flujo conservado en el paso de
+apertura y pueden reproducir esas ejecuciones de otra manera. La reversión
+también restaura los errores del cursor compartido, la reproducción de
+recepciones vacías y la precisión del procesamiento de tareas fake. Consulta las
+[notas de compatibilidad de la etiqueta](https://github.com/durable-workflow/workflow/blob/2.20.3/CHANGELOG.md#2203---2026-11-04).
+
+La limitación de consultas en
+[workflow#1024](https://github.com/durable-workflow/workflow/issues/1024)
+permanece: una consulta puede no devolver un mensaje que recibió un manejador
+de actualización porque reproduce el manejador en el paso equivocado. La
+consulta no cambia filas de mensajes. La reproducción del propio workflow y
+su salida completada siguen devolviendo lo que recibió el manejador.
 
 ## Recibir mensajes {#receiving-messages}
 

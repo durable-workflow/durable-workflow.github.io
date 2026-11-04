@@ -174,6 +174,15 @@ public function testTimerWorkflow(): void
 
 `WorkflowStub::runReadyTasks()` arbeitet nur bereits fällige Aufgaben ab. Es stellt die reale Uhrzeit nicht vor und löst künftig verzögerte Timer nicht vorzeitig aus.
 
+Workflow 2.20.3 verarbeitet Fake-Aufgaben exakt zur Fälligkeit, einschließlich
+Sekundenbruchteilen, mit der gespeicherten Zeitstempelgenauigkeit des
+konfigurierten Aufgabenmodells. Frühere Versionen konnten SQLite-Aufgaben
+überspringen, die genau zu diesem Zeitpunkt fällig wurden. Eine künftige
+Fälligkeit mit Sekundenbruchteilen bleibt bis zu ihrem Eintreten ausstehend.
+Timerverzögerungen und Wiederholungs-Backoff bleiben in ganzen Sekunden.
+Beachten Sie die [Grenzen für Upgrades und Rollbacks von Nachrichtenströmen](./features/message-streams.md#stream-upgrades),
+bevor Sie eine eingebettete Anwendung auf ein älteres Paket zurücksetzen.
+
 ### Signale im Fake-Modus senden {#sending-signals-in-fake-mode}
 
 Workflows, die auf Signale warten, können diese im Fake-Modus empfangen. Beim Aufruf von `$workflow->signal(...)` zeichnet die Engine den dauerhaften Signalbefehl auf und erstellt eine Workflow-Aufgabe. Im Fake-Modus wird diese direkt ausgeführt, sodass der Workflow synchron fortsetzt:

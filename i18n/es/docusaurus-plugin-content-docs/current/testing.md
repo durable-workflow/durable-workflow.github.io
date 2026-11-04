@@ -175,6 +175,16 @@ public function testTimerWorkflow(): void
 
 `WorkflowStub::runReadyTasks()` solo ejecuta tareas cuyo plazo ya llegó. No adelanta el reloj ni fuerza la activación anticipada de temporizadores futuros.
 
+Workflow 2.20.3 procesa las tareas fake en su instante exacto de vencimiento,
+incluidas las fracciones de segundo, con la precisión de marcas temporales
+que persiste el modelo de tareas configurado. Las versiones anteriores
+podían omitir tareas de SQLite que vencían en ese instante. Un plazo futuro
+con fracciones de segundo permanece pendiente hasta su vencimiento. Los
+retrasos de temporizador y el backoff de reintento siguen usando segundos
+enteros. Consulta los
+[límites de actualización y reversión de flujos](./features/message-streams.md#stream-upgrades)
+antes de revertir una aplicación integrada a un paquete anterior.
+
 ### Enviar señales en modo simulado {#sending-signals-in-fake-mode}
 
 Los workflows que esperan señales pueden recibirlas en modo simulado. Al llamar a `$workflow->signal(...)`, el motor registra el comando duradero y crea una tarea de workflow. Esa tarea se ejecuta inmediatamente en modo simulado y el workflow se reanuda de forma síncrona:

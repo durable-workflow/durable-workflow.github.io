@@ -36,28 +36,59 @@ Do not write `workflow_messages` rows or cursor rows directly from application
 workflow code. The facade is the stable contract; lower-level message services
 exist for package/runtime integration.
 
-:::warning Message streams in Workflow 2.20.0 and earlier
+:::warning Message streams before Workflow 2.20.3
 
 Workflow code replays on every later workflow task and on every query. In
 Workflow releases through 2.20.0, `outbox()->sendReference()` writes a new
 outbound and inbound message on each replay, and `inbox()->receive()` and
 `receiveOne()` can return a different message, or none, on replay
 ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
-Workflow 2.20.1 fixes this: a replay returns what the original call sent or
-received, and a query never writes or consumes a message.
+Workflow 2.20.1 records sends and receives for replay and prevents queries
+from writing or consuming messages. Empty receives and streams kept across
+steps need the additional replay fixes in 2.20.3, described below.
 
 - Rows that earlier releases duplicated are not removed. Give each logical
   send a stable `idempotencyKey`, such as `reply:{turn}`, and deduplicate by
   `idempotency_key` when consuming a stream that an earlier release wrote.
   Messages that an earlier release consumed under the wrong step stay
   consumed.
-- In every release, signals and all streams share one message cursor, so a
-  signal delivered after a pending stream message hides that message
+- Signals, updates and all streams share one message cursor. Through 2.20.2,
+  a signal, update or receive on another stream can move it past pending
+  messages and hide them
   ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
-  Receive only after a signal or condition says a message is there, and send
-  that signal before the message.
+  For the signal-ordering case on those releases, send the signal before the
+  message and receive only after a signal or condition says a message is there.
 
 :::
+
+## Stream upgrades and rollback {#stream-upgrades}
+
+In Workflow 2.20.3, the shared cursor no longer hides pending messages from
+`receive()`, `receiveOne()`, `peek()`, `pendingCount()` or `hasPending()`.
+Receives keep sequence order and their batch limit. After upgrading, a receive
+loop can return older pending messages that the shared cursor previously hid,
+before newer messages.
+
+A replayed receive returns what its original step consumed. If the original
+call found nothing, replay returns nothing again. An update handler running
+for the first time can still receive. A stream kept in a property now records
+receives at the current workflow step, rather than the step where the stream
+was opened. Receives that earlier releases recorded at the opening step still
+replay.
+
+Before rolling an embedded application back below 2.20.3, follow the
+[replay testing gate](../testing.md#replay-before-deployment) with histories
+written by the newer package. Earlier versions look up kept-stream receives
+at the opening step and can replay those runs differently. Rollback also
+restores the shared-cursor, empty-receive replay and fake task-drain precision
+bugs. See the [tagged compatibility notes](https://github.com/durable-workflow/workflow/blob/2.20.3/CHANGELOG.md#2203---2026-11-04).
+
+The query limitation in
+[workflow#1024](https://github.com/durable-workflow/workflow/issues/1024)
+remains: a query can return nothing for a message an update handler received
+because it replays the handler at the wrong step. The query changes no message
+rows. The workflow's own replay and completed output still return what the
+handler received.
 
 ## Receiving Messages
 

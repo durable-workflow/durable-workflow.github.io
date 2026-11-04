@@ -37,7 +37,7 @@ Não grave linhas de `workflow_messages` ou de cursor diretamente pelo código
 de workflow da aplicação. A fachada é o contrato estável. Os serviços de
 mensagens de nível inferior existem para integração do pacote com o runtime.
 
-:::warning Fluxos de mensagens no Workflow 2.20.0 e anteriores
+:::warning Fluxos de mensagens anteriores ao Workflow 2.20.3
 
 O código do workflow passa por replay em cada tarefa de workflow posterior e em
 cada consulta. Nas versões do Workflow até a 2.20.0, `outbox()->sendReference()`
@@ -45,22 +45,57 @@ grava uma nova mensagem de saída e uma nova mensagem de entrada a cada replay, 
 `inbox()->receive()` e `receiveOne()` podem retornar uma mensagem diferente, ou
 nenhuma, no replay
 ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
-O Workflow 2.20.1 corrige isso: um replay retorna o que a chamada original
-enviou ou recebeu, e uma consulta nunca grava nem consome uma mensagem.
+O Workflow 2.20.1 registra envios e recebimentos para replay e impede que
+consultas gravem ou consumam mensagens. Recebimentos vazios e fluxos mantidos
+entre etapas precisam das correções adicionais de replay da versão 2.20.3,
+descritas abaixo.
 
 - As linhas que versões anteriores duplicaram não são removidas. Dê a cada envio
   lógico um `idempotencyKey` estável, como `reply:{turn}`, e elimine duplicatas
   por `idempotency_key` ao consumir um fluxo que uma versão anterior gravou. As
   mensagens que uma versão anterior consumiu sob a etapa errada permanecem
   consumidas.
-- Em todas as versões, os sinais e todos os fluxos compartilham um único cursor
-  de mensagens, então um sinal entregue depois de uma mensagem de fluxo pendente
-  oculta essa mensagem
+- Sinais, atualizações e todos os fluxos compartilham um cursor de mensagens.
+  Até a versão 2.20.2, um sinal, uma atualização ou um recebimento em outro
+  fluxo pode avançá-lo para além de mensagens pendentes e ocultá-las
   ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
-  Receba somente depois que um sinal ou uma condição indicar que há uma mensagem,
-  e envie esse sinal antes da mensagem.
+  Para esse caso de ordenação de sinais nessas versões, envie o sinal antes
+  da mensagem e receba somente depois que um sinal ou condição indicar que há
+  uma mensagem.
 
 :::
+
+## Atualizações de fluxos e reversão {#stream-upgrades}
+
+No Workflow 2.20.3, o cursor compartilhado deixa de ocultar mensagens pendentes
+de `receive()`, `receiveOne()`, `peek()`, `pendingCount()` e `hasPending()`.
+Os recebimentos mantêm a ordem de sequência e seu limite de lote. Após a
+atualização, um loop de recebimento pode retornar primeiro mensagens pendentes
+antigas que o cursor compartilhado ocultava e depois as mais recentes.
+
+Um recebimento em replay retorna o que sua etapa original consumiu. Se a
+chamada original não encontrou nada, o replay volta a não retornar nada. Um
+handler de atualização executado pela primeira vez continua podendo receber.
+Um fluxo mantido em uma propriedade agora registra os recebimentos na etapa
+atual do workflow, em vez da etapa em que o fluxo foi aberto. Recebimentos que
+versões anteriores registraram na etapa de abertura continuam sendo
+reproduzidos em replay.
+
+Antes de reverter uma aplicação embutida para uma versão anterior à 2.20.3,
+siga o [critério de replay](../testing.md#replay-before-deployment) com
+históricos gravados pelo pacote mais recente. Versões anteriores procuram os
+recebimentos de fluxos mantidos na etapa de abertura e podem fazer o replay
+dessas execuções de outra forma. A reversão também restaura os erros do
+cursor compartilhado, do replay de recebimentos vazios e da precisão do
+processamento de tarefas fake. Veja as
+[notas de compatibilidade da tag](https://github.com/durable-workflow/workflow/blob/2.20.3/CHANGELOG.md#2203---2026-11-04).
+
+A limitação de consultas em
+[workflow#1024](https://github.com/durable-workflow/workflow/issues/1024)
+permanece: uma consulta pode não retornar uma mensagem recebida por um handler
+de atualização porque faz o replay do handler na etapa errada. A consulta não
+altera linhas de mensagens. O replay do próprio workflow e a saída da execução
+concluída continuam retornando o que o handler recebeu.
 
 ## Recebimento de mensagens {#receiving-messages}
 

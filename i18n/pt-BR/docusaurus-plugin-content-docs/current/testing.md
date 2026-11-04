@@ -174,6 +174,15 @@ public function testTimerWorkflow(): void
 
 `WorkflowStub::runReadyTasks()` processa apenas tarefas cujo prazo já chegou. Ele não avança o relógio do sistema nem força temporizadores futuros a disparar antes da hora.
 
+O Workflow 2.20.3 processa tarefas fake no instante exato em que vencem,
+incluindo frações de segundo, com a precisão de timestamps persistida pelo
+modelo de tarefas configurado. Versões anteriores podiam ignorar tarefas do
+SQLite que venciam naquele instante. Um prazo futuro com frações de segundo
+permanece pendente até vencer. Atrasos de temporizador e backoff de novas
+tentativas continuam usando segundos inteiros. Veja os
+[limites de atualização e reversão de fluxos](./features/message-streams.md#stream-upgrades)
+antes de reverter uma aplicação embutida para um pacote anterior.
+
 ### Enviando sinais no modo fake {#sending-signals-in-fake-mode}
 
 Workflows que aguardam sinais podem recebê-los no modo fake. Quando você chama `$workflow->signal(...)`, o mecanismo registra o comando durável de sinal e cria uma tarefa de workflow. No modo fake, essa tarefa executa imediatamente no mesmo processo, então o workflow retoma de forma síncrona:
