@@ -4,7 +4,7 @@
 #   irm https://durable-workflow.com/install.ps1 | iex
 #
 # Environment variables:
-#   $env:VERSION                         Release tag, supported, prerelease, or stable (default: stable).
+#   $env:VERSION                         Release tag or stable/latest (default: stable).
 #   $env:DURABLE_WORKFLOW_INSTALL_DIR    Install directory (default: %USERPROFILE%\.durable-workflow\bin).
 #   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Release base URL override for tests.
 #   $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
@@ -25,13 +25,8 @@ $installDir = if ($env:DURABLE_WORKFLOW_INSTALL_DIR) {
     Join-Path $env:USERPROFILE '.durable-workflow\bin'
 }
 $version = if ($env:VERSION) { $env:VERSION } else { 'stable' }
-$version = if ($version -eq 'supported') {
-    'stable'
-} elseif ($version -eq 'prerelease') {
-    throw 'Prerelease auto-selection ended with the stable 2.0 launch; set VERSION to an exact historical tag.'
-} else {
-    $version
-}
+if ($version -eq 'supported') { $version = 'stable' }
+if ($version -eq 'prerelease') { throw 'Pass an explicit prerelease tag with VERSION=...' }
 $releaseVersion = if ($version.StartsWith('v')) {
     $version.Substring(1)
 } else {
@@ -102,8 +97,16 @@ try {
         }
 
         Write-Host '==> Verifying GitHub artifact attestations' -ForegroundColor Green
-        gh attestation verify $tmp --repo $repo
-        gh attestation verify $sums --repo $repo
+        # Only the repository's release workflows, run from main or a release
+        # tag on GitHub-hosted runners, can have signed a release asset.
+        $repoPattern = [regex]::Escape($repo)
+        $signer = "^https://github\.com/$repoPattern/\.github/workflows/(release|release-rust)\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?)$"
+        foreach ($subject in @($tmp, $sums)) {
+            gh attestation verify $subject --repo $repo --cert-identity-regex $signer --deny-self-hosted-runners
+            if ($LASTEXITCODE -ne 0) {
+                throw "Attestation verification failed for $subject."
+            }
+        }
     }
 
     Move-Item -Force -Path $tmp -Destination $dest
