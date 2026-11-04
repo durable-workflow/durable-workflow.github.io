@@ -28,6 +28,27 @@ Usa la fachada de primera clase al escribir workflows:
 
 No escribas directamente filas `workflow_messages` ni de cursor desde el workflow de la aplicación. La fachada es el contrato estable; los servicios de nivel inferior existen para integrar paquete y runtime.
 
+:::warning No es seguro ante la reproducción en el código del workflow hasta Workflow 2.20.0
+
+El código del workflow se reproduce en cada tarea de workflow posterior y en cada consulta. En
+las versiones de Workflow hasta la 2.20.0 inclusive, las llamadas de flujos de mensajes siguientes no tienen
+en cuenta la reproducción ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+
+- `outbox()->sendReference()` escribe un nuevo mensaje saliente y entrante cada
+  vez que el código se reproduce, por lo que un consumidor puede recibir el mismo mensaje más de
+  una vez. Da a cada envío lógico un `idempotencyKey` estable, como
+  `reply:{turn}`, y deduplica por `idempotency_key` al consumir.
+  Deduplica por `payload_reference` solo cuando cada envío lógico use una
+  referencia distinta.
+- `inbox()->receive()` y `receiveOne()` pueden devolver un mensaje distinto, o
+  ninguno, cuando el código se reproduce, y pueden saltarse mensajes pendientes. Hasta que una versión
+  lo corrija, no las llames desde código de workflow que se ejecute en más de una
+  tarea de workflow, como el código que ejecuta una actividad o espera una señal o un temporizador. Recibe los
+  mensajes fuera del código del workflow, o entrega la carga con una
+  [señal](./signals.md).
+
+:::
+
 ## Recibir mensajes {#receiving-messages}
 
 Usa `peek()` para inspeccionar mensajes pendientes sin avanzar el cursor duradero. Usa `receive()` o `receiveOne()` cuando estés listo para consumirlos y registrar el avance en el historial.
