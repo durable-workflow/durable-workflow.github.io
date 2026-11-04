@@ -38,27 +38,29 @@ N’écrivez pas directement les lignes `workflow_messages` ou de curseur depuis
 le code applicatif du workflow. La façade est le contrat stable. Les services
 de messages de bas niveau servent à l’intégration du package et du runtime.
 
-:::warning Non sûr à la relecture dans le code de workflow jusqu’à Workflow 2.20.0
+:::warning Flux de messages dans Workflow 2.20.0 et versions antérieures
 
 Le code de workflow est relu à chaque tâche de workflow ultérieure et à chaque
-requête de lecture. Dans les versions de Workflow jusqu’à 2.20.0 incluse, les
-appels de flux de messages ci-dessous ne tiennent pas compte de la relecture
-([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)) :
+requête de lecture. Dans les versions de Workflow jusqu’à 2.20.0 incluse,
+`outbox()->sendReference()` écrit un nouveau message sortant et un nouveau
+message entrant à chaque relecture, et `inbox()->receive()` et `receiveOne()`
+peuvent renvoyer un autre message, ou aucun, lors de la relecture
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+Workflow 2.20.1 corrige ce problème : une relecture renvoie ce que l’appel
+d’origine a envoyé ou reçu, et une requête de lecture n’écrit ni ne consomme
+jamais de message.
 
-- `outbox()->sendReference()` écrit un nouveau message sortant et un nouveau
-  message entrant à chaque relecture du code ; un consommateur peut donc recevoir
-  plusieurs fois le même message. Donnez à chaque envoi logique un
-  `idempotencyKey` stable, comme `reply:{turn}`, et dédupliquez par
-  `idempotency_key` lors de la consommation. Ne dédupliquez par
-  `payload_reference` que si chaque envoi logique utilise une référence
-  différente.
-- `inbox()->receive()` et `receiveOne()` peuvent renvoyer un autre message, ou
-  aucun, lors de la relecture du code, et peuvent sauter des messages en
-  attente. Tant qu’aucune version ne corrige ce problème, ne les appelez pas
-  depuis du code de workflow qui s’exécute sur plus d’une tâche de workflow,
-  comme du code qui exécute une activité ou attend un signal ou un temporisateur. Recevez les messages
-  hors du code de workflow, ou transmettez la charge utile par un
-  [signal](./signals.md).
+- Les lignes dupliquées par les versions antérieures ne sont pas supprimées.
+  Donnez à chaque envoi logique un `idempotencyKey` stable, comme
+  `reply:{turn}`, et dédupliquez par `idempotency_key` lors de la consommation
+  d’un flux écrit par une version antérieure. Les messages qu’une version
+  antérieure a consommés sous la mauvaise étape restent consommés.
+- Dans toutes les versions, les signaux et tous les flux partagent un même
+  curseur de messages ; un signal livré après un message de flux en attente
+  masque donc ce message
+  ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
+  Ne recevez qu’après qu’un signal ou une condition indique qu’un message est
+  présent, et envoyez ce signal avant le message.
 
 :::
 

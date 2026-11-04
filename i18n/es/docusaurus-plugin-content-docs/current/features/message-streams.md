@@ -28,24 +28,26 @@ Usa la fachada de primera clase al escribir workflows:
 
 No escribas directamente filas `workflow_messages` ni de cursor desde el workflow de la aplicación. La fachada es el contrato estable; los servicios de nivel inferior existen para integrar paquete y runtime.
 
-:::warning No es seguro ante la reproducción en el código del workflow hasta Workflow 2.20.0
+:::warning Flujos de mensajes en Workflow 2.20.0 y versiones anteriores
 
 El código del workflow se reproduce en cada tarea de workflow posterior y en cada consulta. En
-las versiones de Workflow hasta la 2.20.0 inclusive, las llamadas de flujos de mensajes siguientes no tienen
-en cuenta la reproducción ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+las versiones de Workflow hasta la 2.20.0 inclusive, `outbox()->sendReference()` escribe un nuevo
+mensaje saliente y entrante en cada reproducción, e `inbox()->receive()` y
+`receiveOne()` pueden devolver un mensaje distinto, o ninguno, en la reproducción
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+Workflow 2.20.1 lo corrige: una reproducción devuelve lo que la llamada original envió o
+recibió, y una consulta nunca escribe ni consume un mensaje.
 
-- `outbox()->sendReference()` escribe un nuevo mensaje saliente y entrante cada
-  vez que el código se reproduce, por lo que un consumidor puede recibir el mismo mensaje más de
-  una vez. Da a cada envío lógico un `idempotencyKey` estable, como
-  `reply:{turn}`, y deduplica por `idempotency_key` al consumir.
-  Deduplica por `payload_reference` solo cuando cada envío lógico use una
-  referencia distinta.
-- `inbox()->receive()` y `receiveOne()` pueden devolver un mensaje distinto, o
-  ninguno, cuando el código se reproduce, y pueden saltarse mensajes pendientes. Hasta que una versión
-  lo corrija, no las llames desde código de workflow que se ejecute en más de una
-  tarea de workflow, como el código que ejecuta una actividad o espera una señal o un temporizador. Recibe los
-  mensajes fuera del código del workflow, o entrega la carga con una
-  [señal](./signals.md).
+- Las filas que las versiones anteriores duplicaron no se eliminan. Da a cada envío
+  lógico un `idempotencyKey` estable, como `reply:{turn}`, y deduplica por
+  `idempotency_key` al consumir un flujo que escribió una versión anterior.
+  Los mensajes que una versión anterior consumió en el paso equivocado siguen
+  consumidos.
+- En todas las versiones, las señales y todos los flujos comparten un único cursor de mensajes, por lo que
+  una señal entregada después de un mensaje pendiente de un flujo oculta ese mensaje
+  ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
+  Recibe solo después de que una señal o una condición indique que hay un mensaje, y envía
+  esa señal antes del mensaje.
 
 :::
 

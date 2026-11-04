@@ -37,25 +37,28 @@ Não grave linhas de `workflow_messages` ou de cursor diretamente pelo código
 de workflow da aplicação. A fachada é o contrato estável. Os serviços de
 mensagens de nível inferior existem para integração do pacote com o runtime.
 
-:::warning Não é seguro para replay no código do workflow até o Workflow 2.20.0
+:::warning Fluxos de mensagens no Workflow 2.20.0 e anteriores
 
 O código do workflow passa por replay em cada tarefa de workflow posterior e em
-cada consulta. Nas versões do Workflow até a 2.20.0, as chamadas de fluxo de
-mensagens abaixo não levam o replay em conta
-([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+cada consulta. Nas versões do Workflow até a 2.20.0, `outbox()->sendReference()`
+grava uma nova mensagem de saída e uma nova mensagem de entrada a cada replay, e
+`inbox()->receive()` e `receiveOne()` podem retornar uma mensagem diferente, ou
+nenhuma, no replay
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+O Workflow 2.20.1 corrige isso: um replay retorna o que a chamada original
+enviou ou recebeu, e uma consulta nunca grava nem consome uma mensagem.
 
-- `outbox()->sendReference()` grava uma nova mensagem de saída e uma nova
-  mensagem de entrada a cada replay do código, então um consumidor pode receber
-  a mesma mensagem mais de uma vez. Dê a cada envio lógico um `idempotencyKey`
-  estável, como `reply:{turn}`, e elimine duplicatas por `idempotency_key` ao
-  consumir. Elimine duplicatas por `payload_reference` somente quando cada envio
-  lógico usar uma referência diferente.
-- `inbox()->receive()` e `receiveOne()` podem retornar uma mensagem diferente,
-  ou nenhuma, quando o código passa por replay, e podem pular mensagens
-  pendentes. Até que uma versão corrija isso, não as chame a partir de código de
-  workflow que execute mais de uma tarefa de workflow, como código que executa uma atividade ou
-  aguarda um sinal ou um timer. Receba as mensagens fora do código do workflow ou
-  entregue o payload com um [sinal](./signals.md).
+- As linhas que versões anteriores duplicaram não são removidas. Dê a cada envio
+  lógico um `idempotencyKey` estável, como `reply:{turn}`, e elimine duplicatas
+  por `idempotency_key` ao consumir um fluxo que uma versão anterior gravou. As
+  mensagens que uma versão anterior consumiu sob a etapa errada permanecem
+  consumidas.
+- Em todas as versões, os sinais e todos os fluxos compartilham um único cursor
+  de mensagens, então um sinal entregue depois de uma mensagem de fluxo pendente
+  oculta essa mensagem
+  ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
+  Receba somente depois que um sinal ou uma condição indicar que há uma mensagem,
+  e envie esse sinal antes da mensagem.
 
 :::
 
