@@ -63,6 +63,22 @@ pip install %%artifact.pythonPackagePin%%
 
 SDK は HTTP に [httpx](https://www.python-httpx.org/)、唯一の公開 v2 ペイロードコーデックが使う Apache Avro ワイヤー形式のエンコードに `fastavro` Python パッケージへ依存します。Prometheus メトリクス対応は任意です。
 
+## Worker のアップグレード {#upgrading-workers}
+
+Python SDK 2.14.1 は、Python のバージョンや Worker の再起動によって
+`wait_condition()` のフィンガープリントが変わる問題を修正します。同じタスク
+キューを共有するすべての Worker をまとめてアップグレードしてください。
+実行が v2 の待機フィンガープリントを記録した後は、その実行をリプレイする
+可能性のあるすべての Worker を 2.14.1 以降に保ってください。そのキューの
+Worker を SDK 2.14.1 より前のバージョンに戻さないでください。
+
+一致しなくなった従来の v1 フィンガープリントは検証不能として受け入れられる
+ため、この互換経路では述語の変更を検出できません。同じ行にあり、`list`、
+`dict`、`set` の内包表記を含む `wait_condition()` の lambda は、結合された
+フィンガープリントを共有します。新しいワークフロー定義では、これらの述語を
+別々の行に置き、切り替えを検出できるようにしてください。
+[2.14.1 タグの互換性に関する注記](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04)を参照してください。
+
 ## クイックスタート {#quickstart}
 
 次は、アクティビティを1つ持つワークフローを定義し、ローカルの Durable Workflow Server に対して開始して結果を待つ完全な Python プログラムです。

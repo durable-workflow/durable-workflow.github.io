@@ -63,6 +63,19 @@ pip install %%artifact.pythonPackagePin%%
 
 SDK 使用 [httpx](https://www.python-httpx.org/) 进行 HTTP 通信，使用 `fastavro` Python 包编码唯一公开 v2 负载编解码器所采用的 Apache Avro 线格式。Prometheus 指标支持为可选项。
 
+## 升级 Worker {#upgrading-workers}
+
+Python SDK 2.14.1 修复了 `wait_condition()` 指纹在不同 Python 版本之间或
+Worker 重启后发生变化的问题。请一起升级共享同一任务队列的所有 Worker。
+运行一旦记录了 v2 等待指纹，所有可能重放它的 Worker 都必须使用 2.14.1
+或更高版本。不要将该队列中 Worker 使用的 SDK 回退到 2.14.1 以下的版本。
+
+不再匹配的旧版 v1 指纹会以无法验证的状态被接受，因此这条兼容路径无法检测
+谓词变更。在同一行定义、且包含 `list`、`dict` 或 `set` 推导式的
+`wait_condition()` lambda 共用一个组合指纹。在新的工作流定义中，请将这些
+谓词放在不同的行上，以便检测它们之间的切换。参阅
+[2.14.1 标签中的兼容性说明](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04)。
+
 ## 快速入门 {#quickstart}
 
 下面的完整 Python 程序定义带一个活动的工作流，在本地 Durable Workflow Server 上启动并等待结果：
