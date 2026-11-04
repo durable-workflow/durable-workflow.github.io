@@ -28,12 +28,12 @@ keywords:
 
 不要从应用工作流代码直接写入 `workflow_messages` 行或游标行。门面才是稳定契约；底层消息服务用于包／运行时集成。
 
-:::warning 在 Workflow 2.20.0 及更早版本中，工作流代码内的调用不可安全重放
+:::warning Workflow 2.20.0 及更早版本中的消息流
 
-工作流代码会在之后的每个工作流任务和每次查询时重放。在 Workflow 2.20.0 及更早的版本中，下列消息流调用没有考虑重放（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）：
+工作流代码会在之后的每个工作流任务和每次查询时重放。在 Workflow 2.20.0 及更早的版本中，`outbox()->sendReference()` 每次重放都会写入新的出站消息和入站消息，而 `inbox()->receive()` 和 `receiveOne()` 在重放时可能返回不同的消息或不返回消息（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。Workflow 2.20.1 修复了此问题：重放会返回原始调用所发送或接收的内容，查询永远不会写入或消费消息。
 
-- `outbox()->sendReference()` 每次代码重放都会写入新的出站消息和入站消息，因此消费者可能多次收到同一条消息。请为每次逻辑发送提供稳定的 `idempotencyKey`，例如 `reply:{turn}`，并在消费时按 `idempotency_key` 去重。只有当每次逻辑发送使用不同的引用时，才按 `payload_reference` 去重。
-- `inbox()->receive()` 和 `receiveOne()` 在代码重放时可能返回不同的消息或不返回消息，并可能跳过待处理消息。在某个版本修复此问题之前，不要在会运行多个工作流任务的工作流代码中调用它们，例如运行活动或等待信号或计时器的代码。请在工作流代码之外接收消息，或通过[信号](./signals.md)传递载荷。
+- 早期版本重复写入的行不会被删除。请为每次逻辑发送提供稳定的 `idempotencyKey`，例如 `reply:{turn}`，并在消费由早期版本写入的流时按 `idempotency_key` 去重。早期版本在错误步骤下消费的消息仍保持已消费状态。
+- 在所有版本中，信号和所有流共享同一个消息游标，因此在待处理流消息之后送达的信号会隐藏该消息（[workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)）。只有在信号或条件表明有消息到达后才接收，并在发送消息之前发送该信号。
 
 :::
 
