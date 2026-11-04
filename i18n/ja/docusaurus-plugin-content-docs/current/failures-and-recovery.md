@@ -418,6 +418,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Core のタイムライン要約の上限 {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 以降**は、派生タイムライン要約全体を UTF-8 の 65,535 バイト以内に制限します。ラベル、句読点、` [truncated]` マーカー、コールバック復旧通知も含みます。正本として記録された失敗、元の型、再試行不可の判断は保持します。受信側ランタイムの実際の `composer.lock` を確認してください。[通常インストールしたパッケージの検証記録](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577)は、SDK の報告上限とは別に要約の境界を確認しています。
+
+SDK の報告用 62 KiB の余裕は、古い Core の要約書き込みを修正せず、別の[正本の失敗ストレージ上限](https://github.com/durable-workflow/.github/issues/225)も解消しません。[履歴に基づく datetime 修復](./features/search-attributes.md#repair-datetime-search-attributes)にも、実際にインストールした Workflow 2.12.0 以降が必要です。修復対象は派生検索行であり、失敗したタイムライン書き込みや欠落した正本の履歴ではありません。Server イメージを修正済みと判断するには、そのイメージ内の Core と HTTP・データベース経路の検証が別途必要です。
+
 ## サービスモードの PHP 障害レポートの上限 {#php-failure-report-limits}
 
 PHP SDK **3.5.0 以降**では、サービスモードで送信する障害レポートの上限は、UTF-8 メッセージが 62 KiB、スタックが 128 KiB、任意のメタデータの合計が 64 KiB、マーカーを含むエンコード済み本文全体が 1 MiB です。既知の転送上限がより小さい場合は、その値が適用されます。[PHP のレポートガイド](./polyglot/php.md#bounded-failure-reports)では、設定、省略の診断情報、維持されるリトライの意味、ローカルの初回実行とコールドリプレイの一致を説明しています。これは SDK のレポート上限です。組み込み実行での記録と Core の要約保存には、それぞれ別の契約があります。

@@ -427,6 +427,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Core timeline summary bounds {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 or newer** bounds the complete derived timeline summary to 65,535 UTF-8 bytes, including labels, punctuation, the ` [truncated]` marker and any callback-recovery notice. It preserves the authoritative recorded failure, original type and non-retryable decision. Check the receiving runtime's actual `composer.lock`. The [normal installed-package receipt](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) verifies the summary boundaries independently of SDK reporting limits.
+
+The SDKs' 62 KiB reporting headroom does not fix an older Core summary writer or remove the separate [canonical failure-storage limits](https://github.com/durable-workflow/.github/issues/225). The [history-backed datetime repair](./features/search-attributes.md#repair-datetime-search-attributes) also requires installed Workflow 2.12.0 or newer. It repairs derived search rows, not failed timeline writes or missing authoritative history. A Server image needs its own installed-Core and HTTP/database acceptance before it can be called fixed.
+
 ## PHP service-mode failure report limits {#php-failure-report-limits}
 
 PHP SDK **3.5.0 or newer** bounds outgoing service-mode failure reports to 62 KiB UTF-8 messages, 128 KiB stacks, 64 KiB combined optional metadata and a 1 MiB complete encoded body, including markers. Lower known transport limits apply. The [PHP reporting guide](./polyglot/php.md#bounded-failure-reports) explains configuration, omission diagnostics, preserved retry semantics and local first-execution/cold-replay equality. These are SDK-specific reporting bounds; embedded recording and Core summary storage retain their separate contracts.

@@ -477,6 +477,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Límites del resumen de timeline de Core {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 o posterior** limita el resumen derivado completo del timeline a 65.535 bytes UTF-8, incluidas etiquetas, puntuación, el marcador ` [truncated]` y cualquier aviso de recuperación de callback. Conserva el fallo registrado autoritativo, su tipo original y la decisión de no reintentar. Compruebe el `composer.lock` real del runtime receptor. El [recibo con paquete instalado normalmente](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) verifica los límites del resumen independientemente de los límites de reporte del SDK.
+
+El margen de 62 KiB de los SDK no corrige un escritor de resúmenes de Core antiguo ni elimina los [límites separados de almacenamiento canónico de fallos](https://github.com/durable-workflow/.github/issues/225). La [reparación de datetime basada en historial](./features/search-attributes.md#repair-datetime-search-attributes) también exige Workflow 2.12.0 o posterior realmente instalado. Repara filas de búsqueda derivadas, no escrituras fallidas del timeline ni historial autoritativo ausente. Una imagen Server necesita su propia aceptación del Core instalado y de HTTP/base de datos antes de considerarse corregida.
+
 ## Límites de los informes de error de PHP en modo servicio {#php-failure-report-limits}
 
 El SDK de PHP **3.5.0 o posterior** limita los informes de error salientes en modo servicio a mensajes UTF-8 de 62 KiB, pilas de 128 KiB, 64 KiB de metadatos opcionales combinados y un cuerpo completo codificado de 1 MiB, incluidos los marcadores. Se aplican los límites de transporte conocidos que sean menores. La [guía de informes de PHP](./polyglot/php.md#bounded-failure-reports) explica la configuración, los diagnósticos de omisión, la semántica de reintentos conservada y la igualdad entre la primera ejecución local y la reproducción en frío. Estos límites corresponden a los informes del SDK. El registro integrado y el almacenamiento de resúmenes del Core mantienen sus propios contratos.
