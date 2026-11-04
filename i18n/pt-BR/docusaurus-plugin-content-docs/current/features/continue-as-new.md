@@ -166,6 +166,9 @@ class PollingWorkflow extends Workflow
 
 Para loops de longa duração com entrada humana ou de assistentes, prefira a
 fachada própria `$this->inbox()` / `$this->outbox()` de
-[Fluxos de mensagens](./message-streams.md). Mensagens pendentes do fluxo e a
-posição do cursor passam à nova execução, enquanto mensagens consumidas
-permanecem na execução original como evidência histórica.
+[Fluxos de mensagens](./message-streams.md). A posição do cursor passa à nova
+execução, enquanto mensagens consumidas permanecem na execução original como
+evidência histórica. Nas versões do Workflow até a 2.20.1, mensagens do fluxo
+ainda pendentes ao continuar como novo ficam na execução encerrada
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)); veja
+[Fluxos de mensagens](./message-streams.md#continue-as-new).

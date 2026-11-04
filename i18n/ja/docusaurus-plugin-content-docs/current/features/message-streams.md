@@ -98,7 +98,7 @@ final class AssistantReplyWorkflow extends Workflow
 
 ## 新しい実行への継続 {#continue-as-new}
 
-メッセージストリームはインスタンスを中心とします。continue-as-new 時、未消費の受信メッセージとカーソル位置を次の実行に転送します。消費済みメッセージは履歴の証拠として元の実行に残ります。
+メッセージストリームはインスタンスを中心とします。continue-as-new 時、カーソル位置は次の実行に引き継がれ、消費済みメッセージは履歴の証拠として元の実行に残ります。Workflow 2.20.1 までのリリースでは、continue-as-new の時点で保留中のメッセージは終了した実行に残り、次の実行には届きません（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)）。修正リリースまでは、`continueAsNew()` を呼ぶ前に保留中のメッセージを受信するか、引き継ぎ後も残す必要がある入力を[シグナル](./signals.md)として送信してください。実行がまだ適用していない受理済みシグナルは次の実行に移ります。
 
 そのため長期ワークフローは、公開メッセージルートを維持して履歴を減らせます。
 

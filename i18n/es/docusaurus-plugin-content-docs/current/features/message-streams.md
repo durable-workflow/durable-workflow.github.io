@@ -112,7 +112,7 @@ Esto mantiene pequeño el historial y permite validar el almacén por separado d
 
 ## Continuar como nueva ejecución {#continue-as-new}
 
-Los flujos se centran en la instancia. Al continuar como nueva ejecución, los mensajes entrantes pendientes y el cursor se transfieren a la sucesora. Los consumidos siguen vinculados a la original como evidencia.
+Los flujos se centran en la instancia. Al continuar como nueva ejecución, el cursor pasa a la sucesora y los mensajes consumidos siguen vinculados a la original como evidencia histórica. En las versiones de Workflow hasta la 2.20.1, los mensajes aún pendientes cuando la ejecución continúa como nueva permanecen en la ejecución cerrada y la sucesora nunca los recibe ([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)). Hasta que una versión lo corrija, recibe los mensajes pendientes antes de llamar a `continueAsNew()`, o envía como [señal](./signals.md) la entrada que deba sobrevivir al traspaso: las señales aceptadas que la ejecución aún no haya aplicado pasan a la sucesora.
 
 Un workflow prolongado puede desprenderse del historial conservando la misma ruta pública de mensajes:
 
