@@ -21,7 +21,10 @@ runtime embebido de Laravel. Combina funcionalidades que tienen sus propias guí
 [consultas](./features/queries.md) para el estado y
 [continuar como nueva ejecución](./features/continue-as-new.md) para acotar el
 historial. Los workers en modo servicio usan las mismas primitivas a través de
-sus [guías de SDK](./polyglot/deployment-modes.md).
+sus [guías de SDK](./polyglot/deployment-modes.md). La aplicación de ejemplo
+también ejecuta esta conversación en un worker del SDK de PHP; consulta
+[Conversación en un worker de PHP en modo servicio](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)
+(`php artisan app:service-mode-conversation`).
 
 El código fuente es `ConversationWorkflow` en la
 [aplicación de ejemplo](./sample-app.md), en
@@ -45,7 +48,9 @@ php artisan app:conversation \
 Sin `--message`, el comando pide la entrada. Un mensaje que contenga «refund»
 hace que el modelo falso proponga una acción, y el comando pide aprobación.
 `--decision=decline` responde con un rechazo a las aprobaciones programadas en
-el guion. Abre `/waterline` para inspeccionar cada ejecución de la cadena.
+el guion. Abre `/waterline` para inspeccionar cada ejecución de la cadena. La
+conversación termina tras una hora sin mensajes, y una propuesta que ningún
+revisor decide en cinco minutos no cambia nada.
 
 ## Cómo funciona un turno {#how-a-turn-works}
 
@@ -58,8 +63,12 @@ el guion. Abre `/waterline` para inspeccionar cada ejecución de la cadena.
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -67,17 +76,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -90,12 +100,13 @@ class ConversationWorkflow extends Workflow
    el resultado registrado en vez de volver a llamar al modelo.
 3. Cuando el modelo propone una acción, el workflow le asigna un ID con
    `uuid4()`, que registra el valor en el historial para que la reproducción
-   devuelva el mismo ID. Después espera una señal `decision` que repita ese ID;
-   la consulta `status` lo informa. Las señales se almacenan por nombre, así que
-   una decisión sobre cualquier otra propuesta (enviada antes de tiempo, dos
+   devuelva el mismo ID. Después espera hasta `$approvalTimeout`, con
+   independencia del plazo de inactividad, una señal `decision` que repita ese
+   ID; la consulta `status` lo informa. Las señales se almacenan por nombre, así
+   que una decisión sobre cualquier otra propuesta (enviada antes de tiempo, dos
    veces o reintentada tras una respuesta incierta) se ignora en lugar de
-   aplicarse a la siguiente propuesta. Solo una aprobación de la propuesta
-   pendiente ejecuta `ApplyApprovedActionActivity`. Un rechazo o un vencimiento
+   aplicarse a la siguiente propuesta, y no amplía el plazo. Solo una aprobación
+   de la propuesta pendiente ejecuta `ApplyApprovedActionActivity`. Un rechazo o un vencimiento
    del plazo registra la respuesta y no cambia nada.
 4. `RecordReplyActivity` escribe la respuesta en la tabla
    `conversation_records` de la aplicación con una referencia formada a partir

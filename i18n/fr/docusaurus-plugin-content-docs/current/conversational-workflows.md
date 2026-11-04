@@ -22,7 +22,10 @@ les [activités](./defining-workflows/activities.md) pour le travail du modèle,
 les [requêtes de lecture](./features/queries.md) pour le statut et la
 [continuation dans une nouvelle exécution](./features/continue-as-new.md) pour
 borner l’historique. Les workers en mode service utilisent les mêmes primitives
-via leurs [guides SDK](./polyglot/deployment-modes.md).
+via leurs [guides SDK](./polyglot/deployment-modes.md). L’application exemple
+exécute aussi cette conversation sur un worker du SDK PHP ; consultez
+[Conversation sur un worker PHP en mode service](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)
+(`php artisan app:service-mode-conversation`).
 
 La source est `ConversationWorkflow` dans l’[application exemple](./sample-app.md),
 sous [`app/Workflows/Conversation`](https://github.com/durable-workflow/sample-app/tree/main/app/Workflows/Conversation).
@@ -46,7 +49,9 @@ php artisan app:conversation \
 Sans `--message`, la commande demande une saisie. Un message contenant « refund »
 amène le modèle factice à proposer une action, et la commande demande alors une
 approbation. `--decision=decline` répond par un refus aux approbations scriptées.
-Ouvrez `/waterline` pour inspecter chaque exécution de la chaîne.
+Ouvrez `/waterline` pour inspecter chaque exécution de la chaîne. La
+conversation se termine après une heure sans message, et une proposition
+qu’aucun approbateur ne tranche dans les cinq minutes ne modifie rien.
 
 ## Déroulement d’un tour {#how-a-turn-works}
 
@@ -59,8 +64,12 @@ Ouvrez `/waterline` pour inspecter chaque exécution de la chaîne.
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -68,17 +77,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -92,12 +102,14 @@ class ConversationWorkflow extends Workflow
    résultat enregistré au lieu d’appeler de nouveau le modèle.
 3. Lorsque le modèle propose une action, le workflow lui attribue un identifiant
    avec `uuid4()`, qui enregistre la valeur dans l’historique : la relecture
-   renvoie donc le même identifiant. Il attend ensuite un signal `decision` qui
-   reprend cet identifiant ; la requête de lecture `status` l’indique. Les
-   signaux sont mis en mémoire tampon par nom : une décision portant sur une
-   autre proposition (envoyée trop tôt, deux fois, ou renvoyée après une réponse
-   incertaine) est donc ignorée au lieu de s’appliquer à la proposition
-   suivante. Seule une approbation de la proposition en attente exécute
+   renvoie donc le même identifiant. Il attend ensuite, pendant au plus
+   `$approvalTimeout`, indépendamment du délai d’inactivité, un signal
+   `decision` qui reprend cet identifiant ; la requête de lecture `status`
+   l’indique. Les signaux sont mis en mémoire tampon par nom : une décision
+   portant sur une autre proposition (envoyée trop tôt, deux fois, ou renvoyée
+   après une réponse incertaine) est donc ignorée au lieu de s’appliquer à la
+   proposition suivante, et elle ne prolonge pas l’échéance. Seule une
+   approbation de la proposition en attente exécute
    `ApplyApprovedActionActivity`. Un refus ou une expiration enregistre la
    réponse et ne modifie rien.
 4. `RecordReplyActivity` écrit la réponse dans la table applicative

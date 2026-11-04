@@ -14,7 +14,7 @@ keywords:
 
 # 会話型ワークフローのリファレンス {#conversational-workflow-reference}
 
-このページは、組み込み Laravel ランタイムで長期間続く会話を扱う、実行可能なリファレンスです。それぞれ個別のガイドがある機能を組み合わせています。順序付き入力には[シグナル](./features/signals.md)、モデルの処理には[アクティビティ](./defining-workflows/activities.md)、ステータスには[クエリ](./features/queries.md)、履歴の制限には[新しい実行への継続](./features/continue-as-new.md)を使います。サービスモードの Worker は、各 [SDK ガイド](./polyglot/deployment-modes.md)を通じて同じプリミティブを使います。
+このページは、組み込み Laravel ランタイムで長期間続く会話を扱う、実行可能なリファレンスです。それぞれ個別のガイドがある機能を組み合わせています。順序付き入力には[シグナル](./features/signals.md)、モデルの処理には[アクティビティ](./defining-workflows/activities.md)、ステータスには[クエリ](./features/queries.md)、履歴の制限には[新しい実行への継続](./features/continue-as-new.md)を使います。サービスモードの Worker は、各 [SDK ガイド](./polyglot/deployment-modes.md)を通じて同じプリミティブを使います。サンプルアプリでは、この会話を PHP SDK の Worker でも実行できます。[PHP サービスモードの Worker での会話](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)（`php artisan app:service-mode-conversation`）を参照してください。
 
 ソースは[サンプルアプリ](./sample-app.md)の [`app/Workflows/Conversation`](https://github.com/durable-workflow/sample-app/tree/main/app/Workflows/Conversation) にある `ConversationWorkflow` です。決定的な偽のモデルを使うため、AI プロバイダーのアカウントやシークレットは不要です。これは永続性パターンのリファレンスであり、本番用のチャットボットではありません。レイテンシや規模についての保証もしません。
 
@@ -30,7 +30,7 @@ php artisan app:conversation \
   --turns-per-run=2
 ```
 
-`--message` を指定しない場合、コマンドは入力を求めます。"refund" を含むメッセージを送ると偽のモデルが操作を提案し、コマンドは承認を求めます。`--decision=decline` を指定すると、スクリプトによる承認に拒否で応答します。`/waterline` を開くと、連鎖内の各実行を調べられます。
+`--message` を指定しない場合、コマンドは入力を求めます。"refund" を含むメッセージを送ると偽のモデルが操作を提案し、コマンドは承認を求めます。`--decision=decline` を指定すると、スクリプトによる承認に拒否で応答します。`/waterline` を開くと、連鎖内の各実行を調べられます。メッセージがないまま一時間経過すると会話は終了します。また、どのレビュー担当者も五分以内に決定しなかった提案は、何も変更しません。
 
 ## ターンの仕組み {#how-a-turn-works}
 
@@ -43,8 +43,12 @@ php artisan app:conversation \
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -52,17 +56,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -71,7 +76,7 @@ class ConversationWorkflow extends Workflow
 
 1. 各 `message` シグナルが一つのユーザー入力です。ワークフローは受理したメッセージを、受理した順に一ターンずつ適用します。
 2. モデル呼び出しはアクティビティ内で実行します。リプレイでは、モデルを再度呼び出さずに記録済みの結果を再利用します。
-3. モデルが操作を提案すると、ワークフローは `uuid4()` でその提案に ID を付けます。`uuid4()` は値を履歴に記録するため、リプレイしても同じ ID が返ります。次に、その ID を指定した `decision` シグナルを待ちます。ID は `status` クエリで確認できます。シグナルは名前ごとにバッファーされるため、別の提案に対する決定（早すぎる送信、二重送信、不確かな応答の後の再送）は次の提案に適用されず、無視されます。保留中の提案が承認された場合だけ `ApplyApprovedActionActivity` を実行します。拒否またはタイムアウトの場合は応答を記録し、何も変更しません。
+3. モデルが操作を提案すると、ワークフローは `uuid4()` でその提案に ID を付けます。`uuid4()` は値を履歴に記録するため、リプレイしても同じ ID が返ります。次に、その ID を指定した `decision` シグナルを、非アクティブタイムアウトとは別に、最大 `$approvalTimeout` まで待ちます。ID は `status` クエリで確認できます。シグナルは名前ごとにバッファーされるため、別の提案に対する決定（早すぎる送信、二重送信、不確かな応答の後の再送）は次の提案に適用されず、無視されます。無視された決定によって期限が延びることもありません。保留中の提案が承認された場合だけ `ApplyApprovedActionActivity` を実行します。拒否またはタイムアウトの場合は応答を記録し、何も変更しません。
 4. `RecordReplyActivity` は、ワークフロー ID とターン番号から組み立てた参照で、アプリケーションの `conversation_records` テーブルに応答を書き込みます。履歴にはその参照だけを保存します。
 5. `status` クエリは、フェーズ（`waiting_for_input`、`thinking`、`awaiting_approval`、`applying_action`、`recording_reply`、`continuing_as_new`、`completed` のいずれか）、世代、ターン数、保留中の提案、最新の応答参照を報告します。応答テキストはその参照で読み取ります。
 

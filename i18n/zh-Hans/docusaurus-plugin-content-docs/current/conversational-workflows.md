@@ -14,7 +14,7 @@ keywords:
 
 # 对话式工作流参考 {#conversational-workflow-reference}
 
-本页是嵌入式 Laravel 运行时中长期对话的一个可运行参考。它组合了几项各有独立指南的功能：用[信号](./features/signals.md)传递有序输入，用[活动](./defining-workflows/activities.md)执行模型工作，用[查询](./features/queries.md)获取状态，用[继续为新运行](./features/continue-as-new.md)限制历史规模。服务模式 Worker 通过各自的 [SDK 指南](./polyglot/deployment-modes.md)使用相同的基础原语。
+本页是嵌入式 Laravel 运行时中长期对话的一个可运行参考。它组合了几项各有独立指南的功能：用[信号](./features/signals.md)传递有序输入，用[活动](./defining-workflows/activities.md)执行模型工作，用[查询](./features/queries.md)获取状态，用[继续为新运行](./features/continue-as-new.md)限制历史规模。服务模式 Worker 通过各自的 [SDK 指南](./polyglot/deployment-modes.md)使用相同的基础原语。示例应用还在 PHP SDK Worker 上运行这个对话；参见[在 PHP 服务模式 Worker 上运行对话](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)（`php artisan app:service-mode-conversation`）。
 
 源码是[示例应用](./sample-app.md)中位于 [`app/Workflows/Conversation`](https://github.com/durable-workflow/sample-app/tree/main/app/Workflows/Conversation) 的 `ConversationWorkflow`。它使用确定性的模拟模型，因此无需 AI 提供商账号或密钥。它是持久性模式的参考，不是生产级聊天机器人，也不作任何延迟或规模承诺。
 
@@ -30,7 +30,7 @@ php artisan app:conversation \
   --turns-per-run=2
 ```
 
-不带 `--message` 时，命令会请求输入。包含 “refund” 的消息会让模拟模型提议一个操作，命令随后请求审批。`--decision=decline` 以拒绝答复脚本化的审批。打开 `/waterline` 可检查链中的每个运行。
+不带 `--message` 时，命令会请求输入。包含 “refund” 的消息会让模拟模型提议一个操作，命令随后请求审批。`--decision=decline` 以拒绝答复脚本化的审批。打开 `/waterline` 可检查链中的每个运行。对话在一小时内没有收到消息后结束；如果审批人在五分钟内未对提议作出决定，则不做任何更改。
 
 ## 一轮对话如何执行 {#how-a-turn-works}
 
@@ -43,8 +43,12 @@ php artisan app:conversation \
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -52,17 +56,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -71,7 +76,7 @@ class ConversationWorkflow extends Workflow
 
 1. 每个 `message` 信号是一条用户输入。工作流按消息被接受的顺序，每轮应用一条已接受的消息。
 2. 模型调用在活动中执行。重放复用已记录的结果，而不会再次调用模型。
-3. 模型提议操作时，工作流用 `uuid4()` 为该提议生成 ID。`uuid4()` 会把该值记录到历史中，因此重放时返回相同的 ID。随后工作流等待携带该 ID 的 `decision` 信号；`status` 查询会报告这个 ID。信号按名称缓冲，因此针对其他提议的决定（过早发送、重复发送或在响应不确定后重试）会被忽略，而不会应用到下一个提议。只有批准当前待处理的提议才会运行 `ApplyApprovedActionActivity`。拒绝或超时会记录回复，不做任何更改。
+3. 模型提议操作时，工作流用 `uuid4()` 为该提议生成 ID。`uuid4()` 会把该值记录到历史中，因此重放时返回相同的 ID。随后工作流最多等待 `$approvalTimeout`（独立于不活动超时）来接收携带该 ID 的 `decision` 信号；`status` 查询会报告这个 ID。信号按名称缓冲，因此针对其他提议的决定（过早发送、重复发送或在响应不确定后重试）会被忽略，而不会应用到下一个提议，也不会延长截止时间。只有批准当前待处理的提议才会运行 `ApplyApprovedActionActivity`。拒绝或超时会记录回复，不做任何更改。
 4. `RecordReplyActivity` 将回复写入应用的 `conversation_records` 表，存储在由工作流 ID 和轮次编号构成的引用下。历史只存储该引用。
 5. `status` 查询报告阶段（`waiting_for_input`、`thinking`、`awaiting_approval`、`applying_action`、`recording_reply`、`continuing_as_new` 或 `completed`）、代次、轮次计数、任何待处理的提议以及最新回复引用。通过该引用读取回复文本。
 

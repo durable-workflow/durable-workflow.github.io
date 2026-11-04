@@ -21,7 +21,10 @@ runtime Laravel embutido. Ela combina recursos que têm seus próprios guias:
 [consultas](./features/queries.md) para o status e
 [continuar como novo](./features/continue-as-new.md) para limitar o histórico.
 Workers no modo de serviço usam as mesmas primitivas por meio de seus
-[guias de SDK](./polyglot/deployment-modes.md).
+[guias de SDK](./polyglot/deployment-modes.md). O aplicativo de exemplo também
+executa esta conversa em um worker do SDK PHP; consulte
+[Conversa em um worker PHP no modo de serviço](https://github.com/durable-workflow/sample-app#conversation-on-a-php-service-mode-worker)
+(`php artisan app:service-mode-conversation`).
 
 O código-fonte é o `ConversationWorkflow` no
 [aplicativo de exemplo](./sample-app.md), em
@@ -45,7 +48,9 @@ php artisan app:conversation \
 Sem `--message`, o comando pede a entrada. Uma mensagem que contenha "refund"
 faz o modelo falso propor uma ação, e o comando pede aprovação.
 `--decision=decline` responde às aprovações roteirizadas com uma recusa. Abra
-`/waterline` para inspecionar cada execução da cadeia.
+`/waterline` para inspecionar cada execução da cadeia. A conversa termina após
+uma hora sem mensagens, e uma proposta que nenhum revisor decida em até cinco
+minutos não altera nada.
 
 ## Como funciona um turno {#how-a-turn-works}
 
@@ -58,8 +63,12 @@ faz o modelo falso propor uma ação, e o comando pede aprovação.
 ])]
 class ConversationWorkflow extends Workflow
 {
-    public function handle(array $state = [], int $turnsPerRun = 3, int $inactivitySeconds = 3600): array
-    {
+    public function handle(
+        array $state = [],
+        int $turnsPerRun = 3,
+        string $inactivityTimeout = '1 hour',
+        string $approvalTimeout = '5 minutes',
+    ): array {
         $this->state = array_replace($this->state, $state);
 
         while (true) {
@@ -67,17 +76,18 @@ class ConversationWorkflow extends Workflow
                 return continueAsNew(
                     array_replace($this->state, ['generation' => $this->state['generation'] + 1]),
                     $turnsPerRun,
-                    $inactivitySeconds,
+                    $inactivityTimeout,
+                    $approvalTimeout,
                 );
             }
 
-            $text = await('message', $inactivitySeconds);
+            $text = await('message', $inactivityTimeout);
 
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
             //   uuid4() records an ID for a proposed action (replay-safe)
-            //   await('decision', ...) waits for a decision naming that ID
+            //   await('decision', ...) waits up to $approvalTimeout for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -90,11 +100,12 @@ class ConversationWorkflow extends Workflow
    resultado registrado em vez de chamar o modelo novamente.
 3. Quando o modelo propõe uma ação, o workflow atribui a ela um ID com
    `uuid4()`, que registra o valor no histórico para que o replay retorne o
-   mesmo ID. Depois, aguarda um sinal `decision` que repita esse ID; a consulta
+   mesmo ID. Depois, aguarda por até `$approvalTimeout`, separadamente do tempo
+   limite de inatividade, um sinal `decision` que repita esse ID; a consulta
    `status` o informa. Os sinais ficam em buffer por nome, então uma decisão
    sobre qualquer outra proposta (enviada antes da hora, duas vezes ou
    reenviada após uma resposta incerta) é ignorada em vez de ser aplicada à
-   próxima proposta. Somente uma aprovação da proposta pendente executa
+   próxima proposta, e não estende o prazo. Somente uma aprovação da proposta pendente executa
    `ApplyApprovedActionActivity`. Uma recusa ou um tempo limite registra a
    resposta e não altera nada.
 4. `RecordReplyActivity` grava a resposta na tabela `conversation_records` da
