@@ -1,7 +1,7 @@
 {
   "schema": "durable-workflow.docs.stable-releases",
   "schema_version": 1,
-  "updated_at": "2026-11-03",
+  "updated_at": "2026-11-04",
   "artifacts": {
     "cli": "2.3.6",
     "helm-chart": "1.0.3",
