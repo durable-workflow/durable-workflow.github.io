@@ -474,6 +474,7 @@ Rotas por execução rejeitam explicitamente destinos históricos ou incorretos:
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | Cancela somente se a execução for a atual. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | Termina somente se a execução for a atual. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Repara somente se a execução for a atual. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | Fazer redrive da execução com falha selecionada: inicia um sucessor que reutiliza os passos concluídos. O `request_id` opcional faz uma nova tentativa retornar o mesmo sucessor. Uma recusa retorna `reason`. Veja [Fazer redrive de uma execução com falha](../failures-and-recovery.md#redrive). |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Arquiva somente se a execução for atual e fechada. |
 
 Os comandos levam valores de negócio em envelopes Avro. Os SDKs oficiais os codificam automaticamente. Um cliente HTTP direto deve usar o envelope `{codec, blob}` do codificador Avro oficial ou a referência do runtime abaixo. O documento HTTP externo é JSON; JSON de negócio sem codificação não é um codec alternativo.

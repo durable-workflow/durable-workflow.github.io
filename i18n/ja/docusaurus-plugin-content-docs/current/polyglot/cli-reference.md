@@ -155,6 +155,7 @@ dw server:info --output=json \
 | `dw workflow:cancel [workflow-id]` | 1ワークフローまたは選択したバッチをキャンセルとして閉じる。コードのクリーンアップは動かない。 | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | ワークフローを強制終了。 | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | 停滞または再試行可能な実行の修復を Server に要求。 | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | 失敗した実行を、完了したステップを再利用する新しい実行で続行します。[失敗した実行を redrive する](../failures-and-recovery.md#redrive) を参照してください。 | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | 閉じた実行をアーカイブ。 | `--reason`, `--json` |
 
 例:

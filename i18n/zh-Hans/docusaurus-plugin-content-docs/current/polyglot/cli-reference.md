@@ -155,6 +155,7 @@ dw server:info --output=json \
 | `dw workflow:cancel [workflow-id]` | 将单个工作流或选定批次关闭为已取消；不运行工作流代码清理。 | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | 强制终止工作流。 | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | 请求 Server 修复卡住或可重试运行。 | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | 在一个复用已完成步骤的新运行中继续失败的运行。参见 [对失败的运行执行 redrive](../failures-and-recovery.md#redrive)。 | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | 归档已关闭运行。 | `--reason`, `--json` |
 
 示例：

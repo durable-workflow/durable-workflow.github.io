@@ -495,6 +495,7 @@ historiques ou les mauvaises exécutions :
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | Annuler uniquement l'exécution actuelle sélectionnée. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | Terminer uniquement l'exécution actuelle sélectionnée. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Réparer uniquement l'exécution actuelle sélectionnée. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | Faire un redrive de l’exécution échouée sélectionnée : démarre un successeur qui réutilise ses étapes terminées. Le `request_id` facultatif fait qu’une nouvelle tentative renvoie le même successeur. Un refus renvoie `reason`. Voir [Faire un redrive d’une exécution échouée](../failures-and-recovery.md#redrive). |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archiver uniquement l'exécution sélectionnée actuelle et fermée. |
 
 Les commandes transportent les valeurs métier dans des enveloppes Avro. Les SDK officiels les encodent automatiquement. Un client HTTP direct doit utiliser l’enveloppe `{codec, blob}` de l’encodeur Avro officiel ou la référence du runtime ci-dessous. Le document HTTP extérieur reste JSON ; le JSON métier brut n’est pas un autre codec de charge utile.

@@ -104,7 +104,7 @@ redrive 会在同一工作流实例的新运行中继续一个失败的运行。
 
 失败的运行保持关闭且不变。新运行称为后继运行，它获得下一个运行编号，并成为实例的当前运行。它的 `continued_from_run_id` 指向失败的运行。它的 `WorkflowStarted` 事件记录 `recovery_kind: redrive` 和 `resume_step_sequence`，后者是恢复执行的步骤。
 
-本节介绍 Workflow 2.19.0 及更高版本中的 redrive。更早的 Workflow 版本以及原生 Server 中的 redrive 接受的运行更少。请参阅[更早的版本与原生 Server](#redrive-earlier-releases)。
+本节介绍 Workflow 2.20.1 及更高版本中的 redrive。更早的 Workflow 版本以及原生 Server 中的 redrive 接受的运行更少。请参阅[更早的版本与原生 Server](#redrive-earlier-releases)。
 
 后继运行从头重放工作流代码：
 
@@ -113,12 +113,15 @@ redrive 会在同一工作流实例的新运行中继续一个失败的运行。
 - 在失败步骤之前已触发的 `timer()` 会在后继运行中记录为已触发。后继运行不会再次等待它。
 - 工作流代码在失败步骤之前 upsert 的备忘录或搜索属性会按步骤顺序复用，后继运行保留相同的值。
 - 已接收并应用其信号的信号等待（`await('name')`）会连同该信号的值一起复用。该信号不会再次投递。
+- 在失败步骤之前已被接受、应用并完成的更新，会在相同位置重新记录。重放会用记录的参数运行更新处理程序，因此工作流状态保持一致。更新不会再次投递。被拒绝的更新，以及在执行前就被失败关闭的更新，会被省略。
+- 复用的工作流代码中的 `outbox()->sendReference()` 和 `inbox()->receive()` 会返回失败运行发送或消费过的消息，不会再次发送或消费。
 - 如果运行因活动失败而结束，失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
 - 如果运行在工作流代码中失败或因结构限制失败，后继运行会从工作流代码未曾到达的步骤处恢复执行。
 - 失败步骤之后的所有内容都像在新运行中一样执行。
 - 运行开始时设置的备忘录和搜索属性会像 continue-as-new 一样传递给后继运行。
 - 后继运行保留失败运行的执行截止时间。它的运行超时从 redrive 时重新开始计算。
-- 每个被复用的步骤都带有 `reused_from_run_id` 和 `reused_recorded_at`。
+- 每个被复用的步骤都带有 `reused_from_run_id` 和 `reused_recorded_at`。在复用的更新或信号事件上，这两个字段总是成对出现。
+- 复用过步骤的后继运行可以再次 redrive。每个复用的步骤保留最初记录它的运行，`reused_from_run_id` 指向它被 redrive 时的来源运行，因此一连串 redrive 中每个步骤只复用一次。
 - 在嵌入式模式下，后继运行中的 `Workflow::now()` 从失败运行的开始时间起算。重放使用 `reused_recorded_at`，因此复用步骤之后的 `Workflow::now()` 与失败运行中的时间一致。被第二次 redrive 复用的步骤保留其首次运行的时间。
 
 ### 请求 redrive {#request-a-redrive}
@@ -175,11 +178,11 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 
 - 该运行是实例的当前运行。
 - 运行失败的原因是活动失败到达工作流代码且未被捕获，或者是工作流代码抛出异常或结构限制使其停止。因工作流超时失败的运行会被拒绝。
-- 失败步骤之前的每个步骤都是已完成的活动、副作用、版本标记、已触发的 `timer()`、备忘录或搜索属性的 upsert，或者已接收并应用其信号的信号等待。活动、副作用和信号的负载必须以内联方式存储。存放在外部负载存储中的负载会被拒绝。
+- 失败步骤之前的每个步骤都是已完成的活动、副作用、版本标记、已触发的 `timer()`、备忘录或搜索属性的 upsert、已接收并应用其信号的信号等待，或者以相同参数被接受、应用并完成的更新。被拒绝的更新，以及在执行前就被失败关闭的更新，是允许的，会被省略。活动、副作用、信号和更新的负载必须以内联方式存储。存放在外部负载存储中的负载会被拒绝。
 - 工作流定义与运行开始时记录的指纹一致，或者你传入了 `allow_definition_change` 且修正后的代码能够重放已完成的步骤。同一定义上的工作流代码失败会被拒绝。
 - 执行截止时间尚未过去。
 - 运行没有父工作流、子工作流或本地活动，且其输入以内联方式存储。
-- 如果运行由服务模式 Worker 启动，失败之前的步骤只能是活动、副作用、版本标记和已触发的计时器。
+- 如果运行由服务模式 Worker 启动，失败之前的步骤只能是活动、副作用、版本标记和已触发的计时器。备忘录和搜索属性的 upsert、信号等待以及已应用的更新，在服务模式运行中会被拒绝。
 
 拒绝结果会指出第一条未满足的规则：
 
@@ -189,19 +192,24 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 | `source_run_not_current` | 该实例存在更新的运行。 |
 | `unrecorded_failure_boundary` | 运行的失败没有记录对应的步骤，例如 2.19.0 之前的版本记录的工作流代码失败。 |
 | `workflow_code_failure_requires_corrected_definition` | 工作流代码抛出了异常，且定义没有变化，因此同样的代码会再次抛出异常。 |
-| `unsupported_history` | 失败之前的历史中包含 redrive 无法复用的步骤，例如更新、子工作流或已取消的计时器。 |
+| `unsupported_history` | 失败之前的历史包含 redrive 无法复用的步骤，例如子工作流或已取消的计时器。 |
 | `unsupported_local_activity` | 历史中包含本地活动。 |
 | `unsupported_timer` | 历史中包含条件或信号超时、取消清理计时器，或位于取消作用域或并行组中的计时器。 |
 | `incomplete_timer_step` | 某个计时器步骤没有同时具备调度事件和触发事件。 |
 | `unsupported_signal_wait` | 某个信号等待设置了超时，或位于取消作用域或并行组中。 |
 | `unsupported_pending_signal` | 运行收到了一个从未应用的信号。 |
 | `incomplete_signal_step` | 某个信号等待没有同时具备接收和应用记录，或者应用记录中没有记录的值。 |
-| `mismatched_signal_receipt` | 某个信号接收记录指向另一个运行、实例、命令或等待，或者同一条接收记录被应用到两个等待上。 |
+| `mismatched_signal_receipt` | 某个信号接收记录指向另一个运行、实例、命令或等待，同一条接收记录被应用到两个等待上，或者某个复用的信号事件只有 `reused_from_run_id` 和 `reused_recorded_at` 中的一个，或指向另一个来源。 |
+| `unsupported_pending_update` | 运行接受了一个更新，但从未应用或关闭它。 |
+| `mismatched_update_history` | 某个更新的事件不属于任何可接受的形态，指向另一个运行、更新、命令或处理程序，在接受和应用之间改变了参数，或者 `reused_from_run_id` 与 `reused_recorded_at` 不成对。 |
+| `incomplete_update_step` | 某个已应用的更新没有带结果的成功完成。 |
 | `invalid_step_sequence` | 某个被复用的步骤没有有效的步骤编号。 |
 | `duplicate_step_sequence` | 两个被复用的步骤使用了同一个步骤编号。 |
 | `external_activity_result_not_supported` | 某个已完成活动的结果存放在外部负载存储中。 |
 | `external_side_effect_result_not_supported` | 某个副作用的结果存放在外部负载存储中。 |
-| `external_signal_payload_not_supported` | 某个信号的参数或已应用的值存放在外部负载存储中。 |
+| `external_signal_payload_not_supported` | 某个信号的参数或已应用的值存放在外部负载存储中。任何 `external_storage` 键都算外部存储，即使值为 null。 |
+| `external_update_payload_not_supported` | 某个更新的参数或结果存放在外部负载存储中。 |
+| `unavailable_update_payload` | 某个更新以内联方式存储的参数或结果无法解码。 |
 | `missing_activity_result`, `unavailable_activity_result` | 某个已完成活动的结果缺失或无法解码。 |
 | `unsupported_visibility_metadata` | 工作流代码在后继运行不会复用的步骤上写入了备忘录或搜索属性。 |
 | `unsupported_source_metadata` | 运行是作为另一个工作流的子工作流启动的。 |
@@ -211,8 +219,9 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 | `definition_incompatible_with_prefix` | 修正后的代码无法重放已完成的步骤。`definition_mismatch` 指出第一个不同的步骤。 |
 | `definition_check_over_budget` | 已完成的历史超出了重放检查允许的历史预算。 |
 | `definition_change_requires_replay_check` | 运行由服务模式 Worker 启动，因此 redrive 无法检查已变更的定义。 |
-| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert 或信号等待。在能够逐个检查各 SDK 运行时重放这些步骤的能力之前，Workflow 2.19.0 会拒绝服务模式运行中的这些步骤。 |
+| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert、信号等待或已应用的更新。在能够针对每个 SDK 运行时检查其能否重放这些步骤之前，redrive 会在服务模式运行中拒绝这些步骤。 |
 | `request_id_already_used` | 该 `request_id` 已用于该实例的另一次 redrive。 |
+| `already_redriven` | 对于已经被 redrive 过的运行，由运行详情和 `describe()` 报告。对它发起的 redrive 请求会改为返回现有的后继运行。 |
 | `invalid_request_id` | `request_id` 超过 191 个字符。 |
 | `run_not_found`, `instance_not_found` | 该命名空间中不存在此运行或实例。 |
 
@@ -228,13 +237,19 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 
 在 Workflow 2.19.0 及更高版本中，运行修正后代码的后继运行会在运行详情中以 `workflow_definition_changed_from`、在 `describe()` 中以 `run.definition_changed_from` 报告被替换的指纹。
 
+在 Workflow 2.20.0 及更高版本中，运行详情和 `describe()` 会把 redrive 链接报告为有类型的血缘。后继运行的 `parents` 和失败运行的 `continuedWorkflows` 会以 `link_type: redrive` 和 `history_authority: typed_history` 列出它，步骤和时间取自后继运行的 `WorkflowStarted`。历史无法确认的链接只会列出一次，并带有 `history_authority: mutable_open_fallback` 和 `diagnostic_only: true`。
+
 ### 更早的版本与原生 Server {#redrive-earlier-releases}
+
+Workflow 2.20.0 不会拒绝任何 2.20.1 接受的内容。在 2.20.0 中，复用的工作流代码里的 `outbox()->sendReference()` 和 `inbox()->receive()` 会再次发送或消费（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。
+
+Workflow 2.19.0 会拒绝已应用的更新（`unsupported_history`）。它还会拒绝对复用过更新（`unsupported_history`）或信号等待（`mismatched_signal_receipt`）的后继运行进行 redrive。运行详情和 `describe()` 会把 redrive 链接显示为诊断用的回退。
 
 Workflow 2.18.0 会复用已完成的活动、副作用、版本标记和已触发的计时器。它会拒绝工作流代码 upsert 的备忘录或搜索属性（`unsupported_history`）、信号等待（`unsupported_history`）、在工作流代码中失败的运行（`unrecorded_failure_boundary`）以及已变更的定义（`workflow_definition_unavailable_or_changed`）。
 
 2.18.0 之前的 Workflow 版本接受的运行范围更窄。失败活动之前的每个步骤都必须是已完成的活动。该历史中的副作用、版本标记或计时器会以 `unsupported_history` 被拒绝，任何备忘录或搜索属性都会以 `unsupported_visibility_metadata` 被拒绝。运行详情和 `describe()` 不会报告 `can_redrive` 或 `redrive_blocked_reason`。
 
-2.19.0 之前的版本会忽略被复用的信号、备忘录和搜索属性步骤上的 `reused_recorded_at`。在 Workflow 2.19.0 的后继运行复用这些步骤之后，如需回滚，请先确保继续使用 2.19.0 或更高版本的 Worker，或者确认不会有此类历史被重放。
+2.19.0 之前的版本会忽略复用的信号、备忘录和搜索属性步骤上的 `reused_recorded_at`。在 Workflow 2.19.0 或更高版本的后继运行复用这些步骤之后，请继续使用 2.19.0 或更高版本的 Worker，或在回滚前确认没有这样的历史会被重放。对于复用了更新或链式信号等待的 2.20.0 后继运行，Workflow 2.19.0 的重放、导入和恢复方式与 2.20.0 相同。
 
 原生 Server 中的 redrive 仍适用 2.18.0 之前的规则。原生 Server 对当前规则的支持在 [server#980](https://github.com/durable-workflow/server/issues/980) 中跟踪。
 

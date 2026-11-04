@@ -491,6 +491,7 @@ Run-targeted command routes reject historical or wrong-run targets explicitly:
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | Cancel only if the selected run is current. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | Terminate only if the selected run is current. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Repair only if the selected run is current. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | Redrive the selected failed run: start a successor that reuses its completed steps. The optional `request_id` makes a retry return the same successor. A refusal returns `reason`. See [Redrive a failed run](../failures-and-recovery.md#redrive). |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archive only if the selected run is current and closed. |
 
 Commands carry business values in Avro payload envelopes. First-party SDKs
