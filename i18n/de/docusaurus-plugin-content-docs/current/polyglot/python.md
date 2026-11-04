@@ -93,6 +93,23 @@ Das SDK verwendet [httpx](https://www.python-httpx.org/) für HTTP und das
 Python-Paket `fastavro` zum Codieren des Apache-Avro-Übertragungsformats des
 einzigen öffentlichen v2-Nutzlast-Codecs. Prometheus-Metriken sind optional.
 
+## Worker aktualisieren {#upgrading-workers}
+
+Python SDK 2.14.1 behebt Fingerprints von `wait_condition()`, die sich zwischen
+Python-Versionen oder bei einem Worker-Neustart änderten. Aktualisiere alle
+Worker einer Task Queue gemeinsam. Sobald ein Lauf einen v2-Fingerprint für
+eine Warteoperation aufzeichnet, müssen alle Worker, die ihn per Replay
+ausführen können, auf 2.14.1 oder neuer bleiben. Setze die Worker in dieser
+Task Queue nicht auf eine SDK-Version vor 2.14.1 zurück.
+
+Alte v1-Fingerprints, die nicht mehr übereinstimmen, werden als nicht prüfbar
+akzeptiert. Dieser Kompatibilitätspfad erkennt daher keine Änderungen am
+Prädikat. Lambdas für `wait_condition()`, die in derselben Zeile stehen und
+Comprehensions für `list`, `dict` oder `set` enthalten, teilen sich einen
+gemeinsamen Fingerprint. Platziere diese Prädikate in neuen Workflow-Definitionen
+in getrennten Zeilen, damit ein Wechsel zwischen ihnen erkannt wird. Siehe die
+[Kompatibilitätshinweise zum Tag 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
+
 ## Schnellstart {#quickstart}
 
 Dieses vollständige Python-Programm definiert einen Workflow mit einer Aktivität, startet ihn gegen einen lokalen Durable Workflow Server und wartet auf das Ergebnis:

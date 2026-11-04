@@ -93,6 +93,21 @@ The SDK depends on [httpx](https://www.python-httpx.org/) for HTTP and on the
 `fastavro` Python package to encode the Apache Avro wire format used by the
 only public v2 payload codec. Prometheus metrics support is optional.
 
+## Upgrading workers {#upgrading-workers}
+
+Python SDK 2.14.1 fixes `wait_condition()` fingerprints that changed across
+Python versions or worker restarts. Upgrade every worker sharing a task queue
+together. Once a run records a v2 wait fingerprint, keep all workers that can
+replay it on 2.14.1 or later. Do not roll the workers on that queue back to an
+SDK version below 2.14.1.
+
+Legacy v1 fingerprints that no longer match are accepted as unverifiable, so
+that compatibility path cannot detect predicate changes. `wait_condition()`
+lambdas on the same line that contain `list`, `dict` or `set` comprehensions
+share one combined fingerprint. Put those predicates on separate lines in new
+workflow definitions to detect switching between them. See the
+[tagged 2.14.1 compatibility notes](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
+
 ## Quickstart
 
 Here is a complete Python program that defines a workflow with one activity, starts it against a local Durable Workflow server, and waits for the result:
