@@ -38,6 +38,13 @@ test('refuses javascript URLs and unreviewed inline-style attributes', () => {
 });
 
 test('allows only reviewed URL schemes, including normalized control-character cases', () => {
+  for (const url of ['javascript:alert(1)', 'vbscript:msgbox(1)', ' \tJaVaScRiPt:alert(1)', ' \r\nVbScRiPt:msgbox(1)', 'java&#x09;script:alert(1)']) {
+    for (const [tag, attribute] of [['a', 'href'], ['script', 'src'], ['form', 'action'], ['img', 'src']]) {
+      const {policy, inventory} = fixture(`<${tag} ${attribute}="${url}"></${tag}>`);
+      assert.equal(inventory.pages[0].unsafe_urls.length, 1, `${tag} ${attribute}`);
+      assert.throws(() => candidateRule(inventory, policy), /Unsafe URL scheme/);
+    }
+  }
   for (const url of ['vbscript:msgbox(1)', 'java&#x09;script:alert(1)', 'data:text/html,test', 'file:///tmp/test', 'unknown:payload', 'crate::Span(alert(1))']) {
     const {policy, inventory} = fixture(`<a href="${url}">Link</a>`);
     assert.throws(() => candidateRule(inventory, policy), /Unsafe URL scheme/);
