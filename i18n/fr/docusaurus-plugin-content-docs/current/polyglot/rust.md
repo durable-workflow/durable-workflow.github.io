@@ -42,6 +42,12 @@ fournit l’index du SDK et les points d’entrée généraux. Pour les modules,
 structures, traits et méthodes de la crate, consultez la
 [référence d’API générée du SDK Rust](https://rust.durable-workflow.com/durable_workflow/).
 
+Le SDK Rust 4.12.0 fournit aussi [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)
+aux outils qui doivent appeler les routes de Server et examiner les octets
+exacts de la réponse, ses en-têtes et ses codes de statut. Les requêtes raw
+font une seule tentative. Utilisez les méthodes typées du client pour le code
+applicatif.
+
 Le SDK Rust stable prend en charge les temporisateurs durables, workflows
 enfants, nouvelles tentatives et délais d’activité, activités locales, sessions
 de worker, exécution sticky, signaux, gestionnaires de requête de lecture par
@@ -72,9 +78,9 @@ l’exécution Waterline locale et le chemin des preuves JSON structurées.
 
 Ce modèle volontairement réduit privilégie le transport et utilise
 `serde_json::Value`. Ce n’est pas le seul contrat recommandé pour une
-application Rust. Poursuivez avec l’[exemple d’entrées/sorties typées](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
+application Rust. Poursuivez avec l’[exemple d’entrées/sorties typées](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs),
 l’[exemple de politique d’activité couvrant tentatives, délais, battements
-de cœur et échecs terminaux](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)
+de cœur et échecs terminaux](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)
 et l’[exemple d’activité locale](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs).
 Le paquet, l’exemple du dépôt et la référence d’API générée restent les
 parcours directs pour les utilisateurs ne souhaitant pas l’application d’exemple.
@@ -136,6 +142,17 @@ enregistrent un délai de réouverture plus court. Gardez ces exécutions sur de
 workers en version 4.11.2 ou ultérieure pendant les déploiements progressifs
 et les retours en arrière. Consultez les
 [notes de compatibilité du tag 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
+Le SDK Rust 4.12.0 relit aussi les ouvertures répétées enregistrées alors
+qu’une attente de condition était encore ouverte, notamment les groupes de
+conditions `parallel` ou `select` réveillés par un seul signal sur PHP Server
+2.x. Chaque membre consomme sa propre réouverture, même si un temporisateur
+se trouve entre les membres. Un délai expiré enregistré avant l’ouverture
+suivante met toujours fin à cette attente logique. Les anciens workers peuvent
+refuser ces historiques. Gardez les exécutions concernées sur 4.12.0 ou une
+version ultérieure et testez la relecture avec l’ancien worker prévu avant
+tout retour en arrière. Consultez les
+[notes de compatibilité du tag 4.12.0](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120).
 
 ## Listes de workflows et historique complet d’une exécution {#workflow-lists-and-history}
 
@@ -426,7 +443,7 @@ et le [guide d’affinité portable des workers](./portable-worker-affinity.md).
 
 ## Préparer l’exemple du dépôt publié {#prepare-the-released-repository-example}
 
-L’[exemple `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
+L’[exemple `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)
 enregistre un worker Rust, démarre un workflow, envoie un signal, exécute une
 activité, émet un battement d’activité et attend le résultat terminé.
 Comme il exécute client applicatif et worker dans un même processus, le parcours

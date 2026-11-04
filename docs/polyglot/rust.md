@@ -40,6 +40,11 @@ provides the SDK index and general entry points. For crate modules, structs,
 traits, and methods, continue to the generated [Rust SDK API
 reference](https://rust.durable-workflow.com/durable_workflow/).
 
+Rust SDK 4.12.0 also provides [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)
+for tools that need to call Server routes and inspect exact response bytes,
+headers and status codes. Raw requests make one attempt. Use typed client
+methods for application code.
+
 The stable Rust SDK supports durable
 timers, child workflows, activity retries and timeouts, local activities, worker sessions, sticky execution, signals, replayed query
 handlers, cancellation and termination, server-enforced workflow deadlines,
@@ -70,9 +75,9 @@ path to structured JSON evidence.
 This intentionally small, transport-first scaffold uses `serde_json::Value`;
 it is not the only recommended Rust application contract. Continue to the
 crate's existing [typed input/output
-example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
+example](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs),
 [retry, timeout, heartbeat, and terminal-failure activity policy
-example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)
+example](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)
 and [local activity example](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs).
 The package,
 repository example, and generated API reference below remain the direct paths
@@ -130,6 +135,14 @@ Workers on 4.11.1 or earlier refuse histories that record a shorter reopen
 timeout. Keep those runs on workers using 4.11.2 or later during rolling
 deployments and rollback. See the
 [tagged 4.11.2 compatibility notes](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
+Rust SDK 4.12.0 also replays repeated opens recorded while a condition wait
+was still open, including `parallel` or `select` condition groups woken by one
+signal on PHP Server 2.x. Each member consumes its own reopen, even with a
+timer between members. A timeout recorded before the next open still ends
+that logical wait. Earlier workers can refuse these histories. Keep affected
+runs on 4.12.0 or later, and test replay with the intended older worker before rollback. See
+the [tagged 4.12.0 compatibility notes](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120).
 
 ## Workflow lists and complete run history {#workflow-lists-and-history}
 
@@ -415,7 +428,7 @@ and [portable worker-affinity guide](./portable-worker-affinity.md).
 ## Prepare the released repository example
 
 The repository's
-[`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
+[`hello_world` example](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)
 registers a Rust worker, starts a workflow, sends a signal, runs an activity,
 reports an activity heartbeat, and waits for the completed result. Because that
 example runs the application client and worker in one process, the no-account

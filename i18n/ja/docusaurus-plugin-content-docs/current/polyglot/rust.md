@@ -25,6 +25,12 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 [Rust ドキュメントのトップページ](https://rust.durable-workflow.com/)は SDK インデックスと一般的な入口を提供します。crate のモジュール、構造体、トレイト、メソッドは生成された [Rust SDK API リファレンス](https://rust.durable-workflow.com/durable_workflow/)へ進んでください。
 
+Rust SDK 4.12.0 は、Server のルートを呼び出し、正確なレスポンスバイト、
+ヘッダー、ステータスコードを調べるツール向けに
+[`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)も提供します。
+raw リクエストは一度だけ試行します。アプリケーションコードには型付きの
+クライアントメソッドを使ってください。
+
 安定版 Rust SDK は、永続タイマー、子ワークフロー、アクティビティの再試行とタイムアウト、ローカルアクティビティ、Worker セッション、スティッキー実行、シグナル、リプレイされるクエリハンドラー、キャンセルと終了、Server が強制するワークフロー期限、型付き副作用、バージョンマーカー、更新、型付きの終了・リプレイ失敗に対応します。スケジュール管理の提供はまだ表明していません。全 SDK が同じ機能範囲を持つと想定せず、[2.0 機能インデックス](/docs/capabilities/)を使ってください。
 
 ## ローカルの Sample App プレイグラウンドを試す {#try-the-local-sample-app-playground}
@@ -38,7 +44,7 @@ scripts/playground rust
 
 ローカルプレイグラウンドは呼び出し元が所有するワークフローとアクティビティのソースを生成し、現在の安定版成果物を選択し、公開された Server と Waterline を起動します。ID、ワークフロー型、アクティビティ型、タスクキューが生成した契約と一致する Worker 登録を待ってから、ワークフローを開始します。成功には期待した完了結果と履歴が必要です。その後、ターミナルは正確なローカル Waterline 実行リンクと構造化 JSON 証跡のパスを表示します。
 
-意図的に小さくトランスポートを優先したこのひな形は `serde_json::Value` を使いますが、推奨される Rust アプリケーション契約はこれだけではありません。crate の既存の[型付き入出力例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)、[再試行・タイムアウト・ハートビート・終了失敗のアクティビティポリシー例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)、[ローカルアクティビティ例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)へ進んでください。Sample App を使わない利用者には、以下のパッケージ、リポジトリ例、生成 API リファレンスが直接の経路です。
+意図的に小さくトランスポートを優先したこのひな形は `serde_json::Value` を使いますが、推奨される Rust アプリケーション契約はこれだけではありません。crate の既存の[型付き入出力例](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)、[再試行・タイムアウト・ハートビート・終了失敗のアクティビティポリシー例](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)、[ローカルアクティビティ例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)へ進んでください。Sample App を使わない利用者には、以下のパッケージ、リポジトリ例、生成 API リファレンスが直接の経路です。
 
 ## パッケージとソース {#package-and-source}
 
@@ -77,6 +83,15 @@ Rust SDK 4.11.2 は、グループに含まれない `wait_condition` のタイ�
 拒否します。ローリングデプロイやロールバックの際も、該当する実行は
 4.11.2 以降の Worker で処理してください。
 [4.11.2 タグの互換性に関する注記](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112)を参照してください。
+
+Rust SDK 4.12.0 は、条件待機がまだ開いている間に記録された繰り返しの開始も
+リプレイします。PHP Server 2.x で一つのシグナルによって起床する `parallel` や
+`select` の条件グループも対象です。メンバーの間にタイマーがあっても、各メンバーは
+自分の再開始を消費します。次の開始より前にタイムアウトが記録された場合は、
+引き続きその論理的な待機を終了します。以前の Worker はこれらの履歴を拒否する
+場合があります。該当する実行は 4.12.0 以降で処理し、ロールバックの前に、
+戻す予定の古い Worker でリプレイをテストしてください。
+[4.12.0 タグの互換性に関する注記](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120)を参照してください。
 
 ## ワークフロー一覧と実行の全履歴 {#workflow-lists-and-history}
 
@@ -327,7 +342,7 @@ Server はコールドリプレイのために終了結果を記録します。�
 
 ## リリース済みリポジトリ例の準備 {#prepare-the-released-repository-example}
 
-リポジトリの [`hello_world` 例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)は、Rust Worker の登録、ワークフロー開始、シグナル送信、アクティビティ実行、アクティビティハートビート報告を行い、完了結果を待ちます。この例はアプリケーションクライアントと Worker を同一プロセスで動かすため、以下のアカウント不要の手順ではセルフホスト Server に接続します。プロビジョニング済み Cloud 名前空間は、別々のロール別認証情報を持つ任意の第2ランタイムです。
+リポジトリの [`hello_world` 例](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)は、Rust Worker の登録、ワークフロー開始、シグナル送信、アクティビティ実行、アクティビティハートビート報告を行い、完了結果を待ちます。この例はアプリケーションクライアントと Worker を同一プロセスで動かすため、以下のアカウント不要の手順ではセルフホスト Server に接続します。プロビジョニング済み Cloud 名前空間は、別々のロール別認証情報を持つ任意の第2ランタイムです。
 
 再現可能なソース演習には、認定済みの組に記録された正確な crate ソースを取得します。以下の値は機械可読の正本から生成されます。どちらの接続手順からも直接移動できるよう、例のディレクトリは絶対パスです。
 
