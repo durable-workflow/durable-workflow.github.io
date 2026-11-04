@@ -9,7 +9,7 @@
     "sdk-python": "2.14.1",
     "sdk-rust": "4.11.0",
     "server": "3.0.5",
-    "waterline": "2.13.2",
+    "waterline": "2.14.0",
     "workflow": "2.20.2"
   },
   "helm_chart": {
