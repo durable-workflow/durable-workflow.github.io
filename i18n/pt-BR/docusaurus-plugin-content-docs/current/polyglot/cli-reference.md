@@ -232,6 +232,7 @@ runtime, não no arquivo de perfil.
 | `dw workflow:cancel [workflow-id]` | Fecha um workflow ou lote selecionado como cancelado; não executa limpeza no código do workflow. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Força a terminação de um workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Pede ao servidor para reparar uma execução presa ou retentável. | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | Continuar uma execução com falha em uma nova execução que reutiliza os passos concluídos. Veja [Fazer redrive de uma execução com falha](../failures-and-recovery.md#redrive). | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | Arquiva uma execução fechada. | `--reason`, `--json` |
 
 Exemplos:

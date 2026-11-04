@@ -155,6 +155,7 @@ Prefiere `--token-env=NAME` en producción para mantener secretos en el entorno 
 | `dw workflow:cancel [workflow-id]` | Cerrar un workflow o lote seleccionado como cancelado; no ejecuta limpieza del código. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Terminar un workflow por la fuerza. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Solicitar reparación de una ejecución atascada o reintentable. | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | Continuar una ejecución fallida en una nueva ejecución que reutiliza sus pasos completados. Consulte [Hacer redrive de una ejecución fallida](../failures-and-recovery.md#redrive). | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | Archivar una ejecución cerrada. | `--reason`, `--json` |
 
 Ejemplos:

@@ -345,6 +345,7 @@ Los comandos dirigidos a ejecución rechazan explícitamente destinos histórico
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | Cancelar solo si la ejecución es actual. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | Terminar solo si la ejecución es actual. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Reparar solo si la ejecución es actual. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | Hacer redrive de la ejecución fallida seleccionada: inicia un sucesor que reutiliza sus pasos completados. Una ejecución que ya recibió un redrive devuelve su sucesor existente, y un `request_id` ya usado para otro redrive se rechaza. Un rechazo devuelve `reason`. Consulte [Hacer redrive de una ejecución fallida](../failures-and-recovery.md#redrive). |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Archivar solo si la ejecución es actual y está cerrada. |
 
 Los comandos llevan valores de negocio en sobres Avro. Los SDK oficiales los codifican automáticamente. Un cliente HTTP directo debe usar el sobre `{codec, blob}` del codificador Avro oficial o la referencia del runtime descrita abajo. El documento HTTP exterior es JSON; el JSON de negocio sin codificar no es un códec alternativo.
