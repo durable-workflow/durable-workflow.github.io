@@ -255,7 +255,7 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 workflow потребують щонайменше однієї секунди. Попередні випуски SDK приймають лише секунди.
 PHP SDK 3.9.0 додає `nesbot/carbon` (`^2.72.6|^3.8.4`) як обов'язкову залежність, тож
 тривалості перетворюються тим самим парсером, що й у вбудованому пакеті.
-[Довідник тривалостей PHP SDK](https://php.durable-workflow.com/build/workflows-activities/)
+[Довідник тривалостей PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations)
 перелічує всі одиниці.
 
 ## Сумісність входу та відновлення {#entry-compatibility-and-recovery}

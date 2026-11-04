@@ -258,7 +258,7 @@ benötigen mindestens eine Sekunde. Frühere SDK-Releases akzeptieren nur
 Sekunden. PHP SDK 3.9.0 fügt `nesbot/carbon` (`^2.72.6|^3.8.4`) als
 erforderliche Abhängigkeit hinzu, sodass Dauerangaben mit demselben Parser wie
 im eingebetteten Paket umgerechnet werden. Die
-[Dauerreferenz des PHP SDK](https://php.durable-workflow.com/build/workflows-activities/)
+[Dauerreferenz des PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations)
 listet alle Einheiten auf.
 
 ## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
