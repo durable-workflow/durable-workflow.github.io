@@ -90,8 +90,11 @@ ID nicht wieder frei.
 ### IDs sind sichtbare Metadaten {#ids-are-visible-metadata}
 
 Instanz-IDs erscheinen im Klartext in Waterline, URLs, CLI-Ausgaben, Protokollen,
-Historienexporten und der Datenbank. Payload-Codecs einschließlich
-Payload-Verschlüsselung schützen diese Kennungen nicht. Verwenden Sie
+Historienexporten und der Datenbank. Avro-Kodierung verschlüsselt Payloads nicht
+und schützt diese Kennungen nicht. Veröffentlichte Pakete haben keinen
+unterstützten Hook für clientseitige Payload-Verschlüsselung.
+[Shared-Issue #217](https://github.com/durable-workflow/.github/issues/217)
+verfolgt diese Funktion. Verwenden Sie
 undurchsichtige Referenzen statt E-Mail-Adressen, Namen, Zugriffstoken oder
 anderer personenbezogener oder geheimer Daten. Halten Sie sensible
 Geschäftsdetails in Payload-Feldern, die durch die Datenverarbeitungsrichtlinie

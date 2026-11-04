@@ -76,9 +76,12 @@ réservé. Changer le type de workflow ne le rend pas de nouveau disponible.
 ### Les identifiants sont des métadonnées visibles {#ids-are-visible-metadata}
 
 Les identifiants d’instance apparaissent en clair dans Waterline, les URL, les
-sorties CLI, les journaux, les exports d’historique et la base de données. Les
-codecs de données utiles, y compris le chiffrement, ne couvrent pas ces
-identifiants. Utilisez des références opaques plutôt que des adresses e-mail,
+sorties CLI, les journaux, les exports d’historique et la base de données.
+L’encodage Avro ne chiffre pas les données utiles et ne protège pas ces
+identifiants. Les paquets publiés ne proposent aucun hook pris en charge pour
+le chiffrement des données utiles côté client.
+[L’issue partagée #217](https://github.com/durable-workflow/.github/issues/217)
+suit cette fonctionnalité. Utilisez des références opaques plutôt que des adresses e-mail,
 des noms, des jetons d’accès ou d’autres données personnelles ou secrètes.
 Conservez les détails métier sensibles dans les champs de données utiles
 protégés par la politique de traitement des données de votre application.
