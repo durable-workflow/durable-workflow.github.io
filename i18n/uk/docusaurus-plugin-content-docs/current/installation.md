@@ -23,6 +23,8 @@ sidebar_position: 3
 - PHP 8.1 або новіший
 - Laravel 9 або новіший
 
+Дивіться [сумісність баз даних](./polyglot/database-support.md): заяви вбудованого режиму та Server, точні перевірені конфігурації й межі кваліфікації.
+
 Durable Workflow підтримує всі драйвери черг Laravel, крім `sync`, зокрема:
 
 - Amazon SQS

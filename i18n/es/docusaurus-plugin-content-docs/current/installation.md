@@ -22,6 +22,8 @@ Esta página describe la integración en Laravel.
 - PHP 8.1 o posterior
 - Laravel 9 o posterior
 
+Consulte [Compatibilidad de bases de datos](./polyglot/database-support.md) para las declaraciones de modo embebido y Server, configuraciones exactas probadas y límites de cualificación.
+
 Durable Workflow funciona con los drivers de colas que admite Laravel, excepto
 el driver `sync`. Entre ellos están:
 

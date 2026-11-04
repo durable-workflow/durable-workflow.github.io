@@ -15,6 +15,8 @@ Wenn Sie zwischen der Einbettung des Pakets und dem eigenständigen Server wähl
 - PHP 8.1 oder neuer
 - Laravel 9 oder neuer
 
+Prüfen Sie die [Datenbankkompatibilität](./polyglot/database-support.md) für eingebettete und Server-Deklarationen, genaue Testkonfigurationen und Qualifikationsgrenzen.
+
 Durable Workflow unterstützt alle Laravel-Queue-Treiber außer `sync`, darunter:
 
 - Amazon SQS

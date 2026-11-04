@@ -135,7 +135,7 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-支持 MySQL 8.0+、PostgreSQL 13+、SQLite 3.35+。原生 Server 接受 `DB_CONNECTION=sqlite`（默认值）、`mysql`、`mariadb` 或 `pgsql`，并会等待尚未接受连接的 MySQL 或 PostgreSQL 数据库。
+声明的基线为 MySQL 8.0、PostgreSQL 13 和 SQLite 3.35。[数据库表](./database-support.md)区分这些兼容性声明、确切源码测试与已发布镜像验证。原生 Server 接受 `DB_CONNECTION=sqlite`（默认）、`mysql`、`mariadb` 或 `pgsql`，并等待尚未接受连接的 MySQL 或 PostgreSQL 数据库。
 
 ### 缓存与队列（仅 PHP 2.x） {#cache-and-queue-php-2x-only}
 
