@@ -65,6 +65,21 @@ Server negocia las cabeceras del protocolo de workers dentro de la versión prin
 
 La negociación rechaza las incompatibilidades. Se rechaza una cabecera ausente o malformada, otra versión principal o una versión menor del worker superior a la anunciada por el servidor. Las versiones del SDK y de Server se gestionan por separado. Sus manifiestos de protocolo en runtime determinan la compatibilidad.
 
+## Plazos de espera de condiciones y actualización de workers {#condition-wait-deadlines}
+
+El SDK Rust 4.11.2 mide el timeout de un `wait_condition` fuera de un grupo
+desde su primera apertura. Si un despertar encuentra el predicado todavía
+falso, la espera se vuelve a abrir con el tiempo restante, por lo que las
+señales ajenas no alargan su plazo. Las esperas en grupos `parallel` o
+`select` siguen abriéndose de nuevo con el timeout definido en el código para
+mantener la compatibilidad con PHP Server 2.11.8.
+
+Los workers con la versión 4.11.1 o anterior rechazan los historiales que
+registran un timeout menor al volver a abrir la espera. Mantén esas
+ejecuciones en workers con la versión 4.11.2 o posterior durante los
+despliegues graduales y las reversiones. Consulta las
+[notas de compatibilidad de la etiqueta 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
 ## Listas de workflows e historial completo de una ejecución {#workflow-lists-and-history}
 
 Estas API requieren Rust SDK **4.6.0 o posterior**; revise `Cargo.lock`, pues la combinación de instalación anterior puede seleccionar un crate más antiguo. La [aceptación del paquete instalado normalmente](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) verifica tres páginas de lista, seis de historial, un payload de 128 KiB, exportación/reproducción y el ejemplo de solo lectura con Server 2.11.0 publicado. Las pruebas sin servidor requieren 4.5.0; estos métodos e iteradores de listas/historial requieren 4.6.0. La combinación seleccionada de Server/SDK no cambia.

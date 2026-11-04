@@ -122,6 +122,21 @@ celle annoncée par Server est refusée. Les versions de publication SDK et
 Server sont suivies indépendamment. Leurs manifestes de protocole runtime
 déterminent la compatibilité.
 
+## Échéances des attentes de condition et mise à niveau des workers {#condition-wait-deadlines}
+
+Le SDK Rust 4.11.2 mesure le délai d’un `wait_condition` hors groupe depuis
+sa première ouverture. Si le prédicat reste faux au réveil, l’attente est
+rouverte avec le temps restant, de sorte que les signaux sans rapport avec la
+condition ne repoussent pas son échéance. Les attentes dans un groupe
+`parallel` ou `select` sont toujours rouvertes avec le délai défini dans le
+code pour rester compatibles avec PHP Server 2.11.8.
+
+Les workers en version 4.11.1 ou antérieure refusent les historiques qui
+enregistrent un délai de réouverture plus court. Gardez ces exécutions sur des
+workers en version 4.11.2 ou ultérieure pendant les déploiements progressifs
+et les retours en arrière. Consultez les
+[notes de compatibilité du tag 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
 ## Listes de workflows et historique complet d’une exécution {#workflow-lists-and-history}
 
 Ces API nécessitent Rust SDK **4.6.0 ou ultérieur** ; vérifiez `Cargo.lock`, car la combinaison d’installation précédente peut choisir un crate plus ancien. L’[acceptation du paquet installé normalement](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) vérifie trois pages de liste, six d’historique, un payload de 128 KiB, export/replay et l’exemple en lecture seule avec Server 2.11.0 publié. Les outils de test hors ligne nécessitent 4.5.0 ; ces méthodes et itérateurs de liste/historique nécessitent 4.6.0. La combinaison Server/SDK sélectionnée reste inchangée.

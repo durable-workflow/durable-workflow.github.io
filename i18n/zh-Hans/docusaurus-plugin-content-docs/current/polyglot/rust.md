@@ -65,6 +65,17 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 协商默认拒绝不合规请求。缺失或格式错误的头、不同主版本，或高于 Server 公布次版本的 Worker 次版本都会被拒绝。SDK 和 Server 发布版本独立跟踪，由运行时协议清单决定兼容性。
 
+## 条件等待期限与 Worker 升级 {#condition-wait-deadlines}
+
+Rust SDK 4.11.2 从未分组的 `wait_condition` 首次打开时开始计算超时。
+如果唤醒时谓词仍为假，等待会以剩余时间重新打开，因此无关信号不会延长
+等待期限。为兼容 PHP Server 2.11.8，`parallel` 或 `select` 组中的等待
+仍使用代码中原先指定的超时重新打开。
+
+使用 4.11.1 或更早版本的 Worker 会拒绝重开超时缩短的历史。在滚动部署
+和回滚期间，请继续使用 4.11.2 或更高版本的 Worker 处理这些运行。参阅
+[4.11.2 标签中的兼容性说明](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112)。
+
 ## 工作流列表与完整运行历史 {#workflow-lists-and-history}
 
 这些 API 要求 Rust SDK **4.6.0 或更新版本**；请检查 `Cargo.lock`，因为上面的独立安装组合可能选择更旧的 crate。[普通安装包验收](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910)已用发布的 Server 2.11.0 验证三页列表、六页历史、128 KiB payload、导出/replay 和只读示例。离线测试辅助 API 要求 4.5.0；这里的列表/历史方法和迭代器要求 4.6.0。这不改变所选 Server/SDK 组合。
