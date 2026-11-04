@@ -5,9 +5,14 @@ on:
     paths:
       - static/install.sh
       - static/install.ps1
+      - static/stable-releases.json
       - scripts/installer-source.json
       - scripts/check-installer-source.test.js
       - .github/workflows/installers.yml
+  schedule:
+    # Weekly, so a change to published release assets or attestations is
+    # noticed even when no installer file changes.
+    - cron: '17 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -16,10 +21,6 @@ permissions:
 concurrency:
   group: cli-installers-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  # The published stable CLI these runs install end to end.
-  CLI_VERSION: 2.3.5
 
 jobs:
   shell-installer:
@@ -38,39 +39,57 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           persist-credentials: false
+      - name: Read the selected stable CLI
+        run: |
+          version="$(python3 -c 'import json; print(json.load(open("static/stable-releases.json"))["artifacts"]["cli"])')"
+          echo "CLI_VERSION=$version" >> "$GITHUB_ENV"
       - name: Install the stable CLI with signer-pinned attestations
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ env.CLI_VERSION }}
           DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-bin
           DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
         run: |
           # The installer reports "not ready" (exit 1) unless dw resolves on PATH.
           export PATH="$DURABLE_WORKFLOW_INSTALL_DIR:$PATH"
-          sh static/install.sh
-          dw --version | tee "$RUNNER_TEMP/version.txt"
-          grep -F "$CLI_VERSION" "$RUNNER_TEMP/version.txt"
+          VERSION="$CLI_VERSION" sh static/install.sh
+          actual="$(dw --version)"
+          echo "$actual"
+          case "$actual" in
+            "dw $CLI_VERSION ("*) ;;
+            *) echo "installed dw is not $CLI_VERSION: $actual" >&2; exit 1 ;;
+          esac
       - name: Refuse a release signed by another workflow
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ env.CLI_VERSION }}
           DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-refused
           DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
         run: |
           # Same installer, but it only trusts a workflow that never signed the release.
           sed 's/(release|release-rust)/(not-release)/' static/install.sh > "$RUNNER_TEMP/install-wrong-signer.sh"
-          ! cmp -s static/install.sh "$RUNNER_TEMP/install-wrong-signer.sh"
+          if cmp -s static/install.sh "$RUNNER_TEMP/install-wrong-signer.sh"; then
+            echo 'the signer substitution did not change the installer' >&2
+            exit 1
+          fi
           export PATH="$DURABLE_WORKFLOW_INSTALL_DIR:$PATH"
-          if sh "$RUNNER_TEMP/install-wrong-signer.sh" > "$RUNNER_TEMP/refused.log" 2>&1; then
+          if VERSION="$CLI_VERSION" sh "$RUNNER_TEMP/install-wrong-signer.sh" > "$RUNNER_TEMP/refused.log" 2>&1; then
             cat "$RUNNER_TEMP/refused.log"
             echo 'installer accepted a release signed by an unexpected workflow' >&2
             exit 1
           fi
           cat "$RUNNER_TEMP/refused.log"
-          # Refused by the attestation check, not by an earlier step.
           grep -F 'Verifying GitHub artifact attestations' "$RUNNER_TEMP/refused.log"
-          grep -F 'verifying with issuer' "$RUNNER_TEMP/refused.log"
           test ! -e "$DURABLE_WORKFLOW_INSTALL_DIR/dw"
+          # gh reports only a generic failure, so show the signer identity is
+          # what decides: the same file verifies with the real pin and fails
+          # with the substituted one.
+          curl -fsSL -o "$RUNNER_TEMP/SHA256SUMS" "https://github.com/durable-workflow/cli/releases/download/$CLI_VERSION/SHA256SUMS"
+          real='^https://github\.com/durable-workflow/cli/\.github/workflows/(release|release-rust)\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?)$'
+          wrong='^https://github\.com/durable-workflow/cli/\.github/workflows/(not-release)\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?)$'
+          gh attestation verify "$RUNNER_TEMP/SHA256SUMS" --repo durable-workflow/cli --cert-identity-regex "$real" --deny-self-hosted-runners
+          if gh attestation verify "$RUNNER_TEMP/SHA256SUMS" --repo durable-workflow/cli --cert-identity-regex "$wrong" --deny-self-hosted-runners; then
+            echo 'the substituted signer pin unexpectedly verified' >&2
+            exit 1
+          fi
 
   powershell-installer:
     name: install.ps1 (windows-latest)
@@ -84,28 +103,36 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           persist-credentials: false
+      - name: Read the selected stable CLI
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw static/stable-releases.json | ConvertFrom-Json).artifacts.cli
+          "CLI_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Install the stable CLI with signer-pinned attestations
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ env.CLI_VERSION }}
           DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
         run: |
+          $env:VERSION = $env:CLI_VERSION
           $env:DURABLE_WORKFLOW_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'dw-bin'
           & ./static/install.ps1
-          $version = & (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version | Out-String
-          Write-Host $version
-          if (-not $version.Contains($env:CLI_VERSION)) { throw "Installed dw is not $env:CLI_VERSION" }
+          $actual = (& (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe') --version | Out-String).Trim()
+          Write-Host $actual
+          if ($actual -notmatch ('^dw ' + [regex]::Escape($env:CLI_VERSION) + ' \(')) { throw "Installed dw is not ${env:CLI_VERSION}: $actual" }
       - name: Refuse a release signed by another workflow
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ env.CLI_VERSION }}
           DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
         run: |
+          $env:VERSION = $env:CLI_VERSION
           $env:DURABLE_WORKFLOW_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'dw-refused'
+          $original = Get-Content -Raw ./static/install.ps1
+          $changed = $original.Replace('(release|release-rust)', '(not-release)')
+          if ($changed -eq $original) { throw 'the signer substitution did not change the installer' }
           $wrong = Join-Path $env:RUNNER_TEMP 'install-wrong-signer.ps1'
-          (Get-Content -Raw ./static/install.ps1).Replace('(release|release-rust)', '(not-release)') | Set-Content -NoNewline $wrong
+          $changed | Set-Content -NoNewline $wrong
           $refused = $false
           try { & $wrong } catch {
             if ("$_" -notlike 'Attestation verification failed*') { throw }
