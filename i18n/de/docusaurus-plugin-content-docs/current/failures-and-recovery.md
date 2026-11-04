@@ -114,14 +114,14 @@ Der Nachfolger spielt den Workflow-Code von Anfang an erneut ab:
 - Ein Memo oder Suchattribut, das der Workflow-Code vor dem fehlgeschlagenen Schritt per Upsert gesetzt hat, wird in Schrittreihenfolge wiederverwendet, und der Nachfolger behält dieselben Werte.
 - Eine Signalwarteoperation (`await('name')`), die ihr Signal empfangen und angewendet hat, wird mit dem Wert des Signals wiederverwendet. Das Signal wird nicht erneut zugestellt.
 - Ein Update, das vor dem fehlgeschlagenen Schritt angenommen, angewendet und abgeschlossen wurde, wird an derselben Stelle erneut aufgezeichnet. Das Replay führt den Update-Handler mit den aufgezeichneten Argumenten aus, sodass der Zustand des Workflows übereinstimmt. Das Update wird nicht erneut zugestellt. Ein abgelehntes Update und eines, das der Fehler vor seiner Ausführung geschlossen hat, werden ausgelassen.
-- `outbox()->sendReference()` und `inbox()->receive()` in wiederverwendetem Workflow-Code geben die Nachricht zurück, die der fehlgeschlagene Lauf gesendet oder konsumiert hat. Sie senden oder konsumieren sie nicht erneut.
+- `outbox()->sendReference()` und `inbox()->receive()` in wiederverwendetem Workflow-Code geben die Nachricht zurück, die der fehlgeschlagene Lauf gesendet oder konsumiert hat. Sie senden oder konsumieren sie nicht erneut. Ein Receive im Replay, dessen ursprünglicher Aufruf nichts gefunden hat, liest den Stream erneut.
 - Wenn ein Aktivitätsfehler den Lauf beendet hat, wird der fehlgeschlagene Aktivitätsaufruf als neue Aktivitätsausführung mit der Wiederholungsrichtlinie aus dem Workflow-Code eingeplant. Seine Versuche beginnen von vorn.
 - Wenn der Lauf im Workflow-Code oder an einem strukturellen Limit fehlgeschlagen ist, setzt der Nachfolger an dem Schritt fort, den der Workflow-Code nie erreicht hat.
 - Alles nach dem fehlgeschlagenen Schritt läuft wie in einem neuen Lauf.
 - Memos und Suchattribute, die beim Start des Laufs gesetzt wurden, gehen wie bei Continue-as-new auf den Nachfolger über.
 - Der Nachfolger übernimmt die Ausführungsfrist des fehlgeschlagenen Laufs. Sein Lauf-Zeitlimit beginnt beim Redrive neu.
 - Jeder wiederverwendete Schritt trägt `reused_from_run_id` und `reused_recorded_at`. Bei einem wiederverwendeten Update- oder Signalereignis treten die beiden immer als Paar auf.
-- Ein Nachfolger, der Schritte wiederverwendet hat, kann erneut per Redrive fortgesetzt werden. Jeder wiederverwendete Schritt behält den Lauf, der ihn zuerst aufgezeichnet hat, und `reused_from_run_id` nennt den Lauf, aus dem er per Redrive hervorging. So verwendet eine Kette von Redrives jeden Schritt nur einmal wieder.
+- Ein Nachfolger, der Schritte wiederverwendet hat, kann erneut per Redrive fortgesetzt werden. Ein wiederverwendeter Signal- oder Update-Payload behält in `workflow_run_id` den Lauf, der ihn zuerst aufgezeichnet hat, `reused_from_run_id` nennt den Lauf, aus dem er per Redrive hervorging, und jeder wiederverwendete Schritt behält den Zeitpunkt seiner ersten Ausführung. So verwendet eine Kette von Redrives jeden Schritt nur einmal wieder.
 - Im Embedded-Modus beginnt `Workflow::now()` im Nachfolger bei der Startzeit des fehlgeschlagenen Laufs. Das Replay verwendet `reused_recorded_at`. Deshalb entspricht `Workflow::now()` nach einem wiederverwendeten Schritt der Zeit im fehlgeschlagenen Lauf. Ein Schritt, den ein zweiter Redrive wiederverwendet, behält den Zeitpunkt seiner ersten Ausführung.
 
 ### Redrive anfordern {#request-a-redrive}
@@ -202,7 +202,7 @@ Eine Ablehnung nennt die erste Regel, die nicht erfüllt ist:
 | `mismatched_signal_receipt` | Ein Signalempfang nennt einen anderen Lauf, eine andere Instanz, einen anderen Befehl oder eine andere Warteoperation, ein Empfang wird auf zwei Warteoperationen angewendet, oder ein wiederverwendetes Signalereignis hat nur eines von `reused_from_run_id` und `reused_recorded_at` oder nennt eine andere Quelle. |
 | `unsupported_pending_update` | Der Lauf hat ein Update angenommen, das er weder angewendet noch geschlossen hat. |
 | `mismatched_update_history` | Die Ereignisse eines Updates entsprechen keiner der zulässigen Formen, nennen einen anderen Lauf, ein anderes Update, einen anderen Befehl oder Handler, ändern die Argumente zwischen Annahme und Anwendung oder haben ein unvollständiges Paar aus `reused_from_run_id` und `reused_recorded_at`. |
-| `incomplete_update_step` | Ein angewendetes Update hat keinen erfolgreichen Abschluss mit Ergebnis. |
+| `incomplete_update_step` | Der Abschluss eines angewendeten Updates zeichnet einen Fehler auf oder hat kein Ergebnis. |
 | `invalid_step_sequence` | Ein wiederverwendeter Schritt hat keine gültige Schrittnummer. |
 | `duplicate_step_sequence` | Zwei wiederverwendete Schritte haben dieselbe Schrittnummer. |
 | `external_activity_result_not_supported` | Ein abgeschlossenes Aktivitätsergebnis liegt im externen Payload-Speicher. |
@@ -241,7 +241,7 @@ In Workflow 2.20.0 und später melden die Laufdetails und `describe()` die Redri
 
 ### Frühere Releases und der native Server {#redrive-earlier-releases}
 
-Workflow 2.20.0 lehnt nichts ab, was 2.20.1 annimmt. In 2.20.0 senden oder konsumieren `outbox()->sendReference()` und `inbox()->receive()` in wiederverwendetem Workflow-Code erneut ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+Workflow 2.20.0 lehnt nichts ab, was 2.20.1 annimmt. In 2.20.0 sendet `outbox()->sendReference()` in wiederverwendetem Workflow-Code erneut, und ein `inbox()->receive()` im Replay kann andere oder keine Nachrichten zurückgeben oder eine neuere Nachricht konsumieren ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
 
 Workflow 2.19.0 lehnt ein angewendetes Update ab (`unsupported_history`). Es lehnt außerdem den Redrive eines Nachfolgers ab, der ein Update (`unsupported_history`) oder eine Signalwarteoperation (`mismatched_signal_receipt`) wiederverwendet hat. Laufdetails und `describe()` zeigen Redrive-Verknüpfungen als diagnostischen Fallback.
 

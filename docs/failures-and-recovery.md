@@ -117,14 +117,14 @@ The successor replays workflow code from the start:
 - A memo or search attribute that workflow code upserted before the failed step is reused in step order, and the successor keeps the same values.
 - A signal wait (`await('name')`) that received and applied its signal is reused with the signal's value. The signal is not delivered again.
 - An update that was accepted, applied and completed before the failed step is recorded again at the same position. Replay runs the update handler from its recorded arguments, so the workflow's state matches. The update is not delivered again. A rejected update, and one the failure closed before it ran, are left out.
-- `outbox()->sendReference()` and `inbox()->receive()` in reused workflow code return the message the failed run sent or consumed. They don't send or consume it again.
+- `outbox()->sendReference()` and `inbox()->receive()` in reused workflow code return the message the failed run sent or consumed. They don't send or consume it again. A replayed receive whose original call found nothing reads the stream again.
 - If an activity failure ended the run, the failed activity call is scheduled as a new activity execution, using the retry policy in the workflow code. Its attempts start again.
 - If the run failed in workflow code or on a structural limit, the successor resumes at the step the workflow code never reached.
 - Everything after the failed step runs as it would in a new run.
 - Memos and search attributes set when the run started carry over to the successor, as they do for continue-as-new.
 - The successor keeps the failed run's execution deadline. Its run timeout starts again at the redrive.
 - Each reused step carries `reused_from_run_id` and `reused_recorded_at`. On a reused update or signal event, the two always come as a pair.
-- A successor that reused steps can be redriven again. Each reused step keeps the run that first recorded it, and `reused_from_run_id` names the run it was redriven from, so a chain of redrives reuses each step once.
+- A successor that reused steps can be redriven again. A reused signal or update payload keeps the run that first recorded it in `workflow_run_id`, `reused_from_run_id` names the run it was redriven from, and every reused step keeps the time it first ran, so a chain of redrives reuses each step once.
 - In embedded mode, `Workflow::now()` in the successor starts at the failed run's start time. Replay uses `reused_recorded_at`, so `Workflow::now()` after a reused step equals the time in the failed run. A step reused by a second redrive keeps the time it first ran.
 
 ### Request a redrive {#request-a-redrive}
@@ -205,7 +205,7 @@ A refusal names the first rule that failed:
 | `mismatched_signal_receipt` | A signal receipt names another run, instance, command or wait, one receipt is applied to two waits, or a reused signal event has only one of `reused_from_run_id` and `reused_recorded_at`, or names another source. |
 | `unsupported_pending_update` | The run accepted an update that it never applied or closed. |
 | `mismatched_update_history` | An update's events are not one of the accepted shapes, name another run, update, command or handler, change the arguments between acceptance and application, or have a broken `reused_from_run_id` and `reused_recorded_at` pair. |
-| `incomplete_update_step` | An applied update has no successful completion with a result. |
+| `incomplete_update_step` | An applied update's completion records a failure or has no result. |
 | `invalid_step_sequence` | A reused step does not have a valid step number. |
 | `duplicate_step_sequence` | Two reused steps share one step number. |
 | `external_activity_result_not_supported` | A completed activity result is stored in external payload storage. |
@@ -244,7 +244,7 @@ In Workflow 2.20.0 and later, run detail and `describe()` report the redrive lin
 
 ### Earlier releases and the native Server {#redrive-earlier-releases}
 
-Workflow 2.20.0 refuses nothing that 2.20.1 accepts. In 2.20.0, `outbox()->sendReference()` and `inbox()->receive()` in reused workflow code send or consume again ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+Workflow 2.20.0 refuses nothing that 2.20.1 accepts. In 2.20.0, `outbox()->sendReference()` in reused workflow code sends again, and a replayed `inbox()->receive()` can return different messages or none, or consume a newer message ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
 
 Workflow 2.19.0 refuses an applied update (`unsupported_history`). It also refuses to redrive a successor that reused an update (`unsupported_history`) or a signal wait (`mismatched_signal_receipt`). Run detail and `describe()` show redrive links as diagnostic fallbacks.
 

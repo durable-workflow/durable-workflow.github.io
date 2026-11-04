@@ -114,14 +114,14 @@ redrive 会在同一工作流实例的新运行中继续一个失败的运行。
 - 工作流代码在失败步骤之前 upsert 的备忘录或搜索属性会按步骤顺序复用，后继运行保留相同的值。
 - 已接收并应用其信号的信号等待（`await('name')`）会连同该信号的值一起复用。该信号不会再次投递。
 - 在失败步骤之前已被接受、应用并完成的更新，会在相同位置重新记录。重放会用记录的参数运行更新处理程序，因此工作流状态保持一致。更新不会再次投递。被拒绝的更新，以及在执行前就被失败关闭的更新，会被省略。
-- 复用的工作流代码中的 `outbox()->sendReference()` 和 `inbox()->receive()` 会返回失败运行发送或消费过的消息，不会再次发送或消费。
+- 复用的工作流代码中的 `outbox()->sendReference()` 和 `inbox()->receive()` 会返回失败运行发送或消费过的消息，不会再次发送或消费。原始调用没有找到任何消息的 receive 在重放时会再次读取 stream。
 - 如果运行因活动失败而结束，失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
 - 如果运行在工作流代码中失败或因结构限制失败，后继运行会从工作流代码未曾到达的步骤处恢复执行。
 - 失败步骤之后的所有内容都像在新运行中一样执行。
 - 运行开始时设置的备忘录和搜索属性会像 continue-as-new 一样传递给后继运行。
 - 后继运行保留失败运行的执行截止时间。它的运行超时从 redrive 时重新开始计算。
 - 每个被复用的步骤都带有 `reused_from_run_id` 和 `reused_recorded_at`。在复用的更新或信号事件上，这两个字段总是成对出现。
-- 复用过步骤的后继运行可以再次 redrive。每个复用的步骤保留最初记录它的运行，`reused_from_run_id` 指向它被 redrive 时的来源运行，因此一连串 redrive 中每个步骤只复用一次。
+- 复用过步骤的后继运行可以再次 redrive。复用的信号或更新负载会在 `workflow_run_id` 中保留最初记录它的运行，`reused_from_run_id` 指向它被 redrive 时的来源运行，且每个复用的步骤都保留其首次运行的时间，因此一连串 redrive 中每个步骤只复用一次。
 - 在嵌入式模式下，后继运行中的 `Workflow::now()` 从失败运行的开始时间起算。重放使用 `reused_recorded_at`，因此复用步骤之后的 `Workflow::now()` 与失败运行中的时间一致。被第二次 redrive 复用的步骤保留其首次运行的时间。
 
 ### 请求 redrive {#request-a-redrive}
@@ -202,7 +202,7 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 | `mismatched_signal_receipt` | 某个信号接收记录指向另一个运行、实例、命令或等待，同一条接收记录被应用到两个等待上，或者某个复用的信号事件只有 `reused_from_run_id` 和 `reused_recorded_at` 中的一个，或指向另一个来源。 |
 | `unsupported_pending_update` | 运行接受了一个更新，但从未应用或关闭它。 |
 | `mismatched_update_history` | 某个更新的事件不属于任何可接受的形态，指向另一个运行、更新、命令或处理程序，在接受和应用之间改变了参数，或者 `reused_from_run_id` 与 `reused_recorded_at` 不成对。 |
-| `incomplete_update_step` | 某个已应用的更新没有带结果的成功完成。 |
+| `incomplete_update_step` | 某个已应用更新的完成记录了失败，或没有结果。 |
 | `invalid_step_sequence` | 某个被复用的步骤没有有效的步骤编号。 |
 | `duplicate_step_sequence` | 两个被复用的步骤使用了同一个步骤编号。 |
 | `external_activity_result_not_supported` | 某个已完成活动的结果存放在外部负载存储中。 |
@@ -241,7 +241,7 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 
 ### 更早的版本与原生 Server {#redrive-earlier-releases}
 
-Workflow 2.20.0 不会拒绝任何 2.20.1 接受的内容。在 2.20.0 中，复用的工作流代码里的 `outbox()->sendReference()` 和 `inbox()->receive()` 会再次发送或消费（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。
+Workflow 2.20.0 不会拒绝任何 2.20.1 接受的内容。在 2.20.0 中，复用的工作流代码里的 `outbox()->sendReference()` 会再次发送，而重放的 `inbox()->receive()` 可能返回不同的消息或什么都不返回，也可能消费一条更新的消息（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。
 
 Workflow 2.19.0 会拒绝已应用的更新（`unsupported_history`）。它还会拒绝对复用过更新（`unsupported_history`）或信号等待（`mismatched_signal_receipt`）的后继运行进行 redrive。运行详情和 `describe()` 会把 redrive 链接显示为诊断用的回退。
 
