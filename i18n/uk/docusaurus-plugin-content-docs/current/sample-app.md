@@ -56,6 +56,7 @@ README та галерея змінюються разом.
 | Запуск workflow webhook з очікуванням signal | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Деталі run із `WorkflowStarted` від входу webhook і подією `SignalReceived` для `ready` |
 | Цикл activity AI зі стійкою повторною спробою/перевіркою | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Деталі run із повторними спробами activity та `ActivityCompleted`, що задовольняє валідатор |
 | AI-агент із signal та компенсацією saga | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Деталі run із посиланням потоку повідомлень, історією update та activity компенсації після помилки saga |
+| Тривала розмова зі схваленням людиною та continue-as-new | `App\Workflows\Conversation\ConversationWorkflow` | `php artisan app:conversation` | Список run з одним run на покоління; деталі run із подіями `SignalReceived` для `message` і `decision`, activity моделі та відповіді й продовженим run |
 
 Стовпець екрана Waterline називає очікувані події здорового run.
 Якщо однієї немає локально, ця прогалина допомагає швидко знайти
@@ -72,6 +73,8 @@ README та галерея змінюються разом.
 | [Saga](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
 | [Signal](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
 | [Потоки повідомлень](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Continue As New](/docs/features/continue-as-new) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
+| [Еталонний розмовний workflow](/docs/conversational-workflows) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
 | [Дочірні workflow](/docs/features/child-workflows) | Окремого запису галереї ще немає. Використовуйте посібник дочірніх workflow. |
 | [Side effect](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
 | [Webhook](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
