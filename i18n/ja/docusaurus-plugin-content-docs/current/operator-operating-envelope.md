@@ -281,11 +281,15 @@ Waterline の `GET /waterline/api/v2/health` は、設定 Namespace の同じ詳
 
 次には Worker のメトリクス、トレース、ログを使います。
 
-- ワークフロー・アクティビティの `schedule_to_start` 遅延
+- ワークフロー・アクティビティの `schedule_to_start`（検証済みの Server/SDK ペアのみ） 遅延
 - ポーリング成功率と同期・先行配信の動作
 - Sticky キャッシュのサイズと退避
 - Worker の CPU、メモリ、スレッド、イベントループ負荷
 - アクティビティや Worker が出す独自アプリケーションメトリクス
+
+共通のレコーダー名は `durable_workflow_worker_task_schedule_to_start_seconds` です。単位は秒のヒストグラムで、タグは `task_kind` と `task_queue` だけです。[リビジョン 2 の契約](https://github.com/durable-workflow/.github/blob/23f9bc3c3798cb6aab6ccf5f9cd210854b820c65/sdk-metrics/README.md#schedule-to-start-observations)では、真偽値 `server_capabilities.claimed_task_ready_age: true` と有効な整数 `task.ready_age_ms` が必要です。ワークフロー・アクティビティの実際の分派時に、SDK は Server が計算した実行可能時点からリース確定までの時間を記録します。配信、処理、予定された待機、再試行のバックオフは含みません。Worker と Server の時計を引き算しないでください。機能、値、既知の実行可能時点が欠ける場合はサンプルなしであり、ゼロではありません。有効なゼロは記録します。
+
+Python の[ソースフック](https://github.com/durable-workflow/sdk-python/pull/264)はマージ済みですが未公開です。Server の公開とインストール済み・エクスポート済みの検証は [Python #188](https://github.com/durable-workflow/sdk-python/issues/188) で未完了です。既存の要求、ポーリング、処理の指標からこのヒストグラムは得られません。正確なペアの検証までは、利用可能な `operator_metrics.tasks.oldest_ready_due_at` と `operator_metrics.tasks.max_ready_due_age_ms` でアラートを設定します。これらは集計された滞留シグナルで、タスクごとの遅延やその分布を代替しません。
 
 同期クエリ、ライブデバッグなど非永続の制御呼び出しは、画面で別に分類してください。永続タスク滞留に含まず、Waterline の修復カウンターも変更しません。
 
@@ -315,9 +319,9 @@ Namespace の `active_workers_supporting_required` がゼロになると、Water
 | --- | --- | --- | --- | --- |
 | 準備判定の停止 | `workflow:v2:doctor --strict`、`GET /waterline/api/v2/health` | 停止 | `doctor --strict` がエラー、または健康が `status = error` / HTTP `503` | 更新・切替を止め、前提を修復し、準備と互換性を再確認。 |
 | 互換 Worker の覆域 | `operator_metrics.workers.*`、`worker_compatibility`、`no_compatible_worker_for_task` | 停止 | 必要な Namespace・`(connection, queue)` で `active_workers_supporting_required = 0` | 非互換 Worker をドレインし、互換 Worker を登録。新規取得を信頼する前に `correctness` 解消を確認。 |
-| 永続キュー遅延 | Waterline キュー画面、`operator_metrics.backlog.*`、Worker の `schedule_to_start` | 持続すれば停止、短ければ参考 | 互換 Worker がいるのに最古の準備年齢・開始待ちが公開基準を超え続ける | Worker 容量を増やし、受付上限とスケジューラー・マッチングの進捗を確認。 |
+| 永続キュー遅延 | Waterline キュー画面、`operator_metrics.backlog.*`、Worker の `schedule_to_start`（検証済みの Server/SDK ペアのみ） | 持続すれば停止、短ければ参考 | 互換 Worker がいるのに最古の準備年齢・開始待ちが公開基準を超え続ける | Worker 容量を増やし、受付上限とスケジューラー・マッチングの進捗を確認。 |
 | ポーラー負荷・受付飽和 | キュー詳細、`dw task-queue:describe`、`status`、古いポーラー、追加・配信率 | `no_active_workers`・`no_slots`・`unavailable` は停止。意図した `throttled` は参考 | `saturated` のまま年齢・流入配信差が増加、または予定保守外で停止状態へ変化 | 枠や失われた Worker 群を戻す。無計画な増設前に上限とロック依存が意図どおりか確認。 |
-| ワークフロー開始滞留 | `operator_metrics.starts.*`、開始テレメトリ、最初のタスクの `schedule_to_start` | 持続すれば停止、短ければ参考 | 互換性・キュー容量があるのに `pending_commands`、`ready_tasks`、`max_pending_ms` が基準超過 | 開始コマンドが永続タスクになり、マッチング・配信が最初のタスクを作るか確認。増設前に開始経路と一般遅延を分ける。 |
+| ワークフロー開始滞留 | `operator_metrics.starts.*`、開始テレメトリ、最初のタスクの `schedule_to_start`（検証済みの Server/SDK ペアのみ） | 持続すれば停止、短ければ参考 | 互換性・キュー容量があるのに `pending_commands`、`ready_tasks`、`max_pending_ms` が基準超過 | 開始コマンドが永続タスクになり、マッチング・配信が最初のタスクを作るか確認。増設前に開始経路と一般遅延を分ける。 |
 | プロジェクション差分と修復負債 | `run_summary_projection` / `selected_run_projections`、`operator_metrics.repair.*` | 参考 | 予定再構築の時間枠を超えて継続、または最古候補年齢が増える | プレビュー、修復を行い、警告解消と年齢の基準復帰を確認。 |
 | 再試行・失敗の急増 | `operator_metrics.backlog.unhealthy_tasks`、永続実行診断、Worker エラー | 参考。進捗を妨げれば停止へ | 配信・取得失敗、リース切れ、試行枯渇が基準を超えて継続 | 対象タスクを調べ、Worker と永続エラーを照合し、通信ドレイン・キュー隔離を判断。 |
 | 起床高速化の劣化 | `long_poll_wake_acceleration` と `acceleration` 集計 | 参考 | キャッシュ・通知保守後も警告が続く | キャッシュ・通知伝播を調査。`correctness` も劣化しない限り正しさの障害にしない。 |
@@ -421,8 +425,8 @@ Durable Workflow v2 は各環境で測るべき軸を定義します。本番が
 | --- | --- | --- |
 | プロジェクションの健全性 | 定常 `needs_rebuild = 0`、意図的な差分後の再構築時間、古い・孤立行の削除時間 | `/waterline/api/v2/health`、`/waterline/api/stats`、`workflow:v2:rebuild-projections` |
 | キュー負荷 | 滞留・最古準備の年齢、実行可能と遅延数、追加・配信率、配信超過年齢、古いポーラー、`accepting`・`saturated`・`throttled`・`no_slots`・`no_active_workers` | Waterline の統計・キュー画面と `operator_metrics.backlog.*` / `operator_metrics.tasks.*` |
-| 開始遅延 | 受付済みだが最初のタスク作成待ちのコマンド、最古開始待ち年齢、最初の取得 | `operator_metrics.starts.*` と Worker の `schedule_to_start` |
-| スケジュールから開始までの遅延 | 投入から開始までのワークフロー・アクティビティのキュー待ち | Worker SDK メトリクス |
+| 開始遅延 | 受付済みだが最初のタスク作成待ちのコマンド、最古開始待ち年齢、最初の取得 | `operator_metrics.starts.*` と Worker の `schedule_to_start`（検証済みの Server/SDK ペアのみ） |
+| Schedule-to-start 遅延 | Server が測定したワークフロー・アクティビティの実行可能時点からリースまでの時間。予定待機とバックオフを除外 | 正確な Server/SDK ペアを検証した後の Worker SDK ヒストグラムのみ |
 | 多数タイマーの起床 | 集中発火時の通知伝播と、予定発火時刻から準備タスクの可視化までの遅れ | Worker テレメトリと同一リージョンの起床調整確認 |
 | 修復走査コスト | 候補数、選択数、最古候補、最古欠落実行、走査圧力 | `operator_metrics.repair.*` |
 | 履歴負荷 | イベント数、履歴サイズ、continue-as-new 推奨閾値 | `operator_metrics.history.*` |

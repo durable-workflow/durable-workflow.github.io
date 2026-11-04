@@ -15,6 +15,8 @@ sidebar_position: 3
 - PHP 8.1 以降
 - Laravel 9 以降
 
+組み込みと Server の宣言、正確なテスト構成、検証の限界は[データベースの互換性](./polyglot/database-support.md)を確認してください。
+
 Laravel が対応するキュードライバーを利用できます。**`sync` ドライバーは対象外です。** 例えば次のドライバーを使えます。
 
 - Amazon SQS

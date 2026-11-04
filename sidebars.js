@@ -19,6 +19,7 @@ const sidebars = {
         'polyglot/runtime-migration',
         'polyglot/cloud-control-plane',
         'polyglot/server',
+        'polyglot/database-support',
         'polyglot/cancellation',
         'polyglot/workflow-streams',
         'polyglot/service-operations',

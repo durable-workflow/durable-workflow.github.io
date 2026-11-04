@@ -1560,6 +1560,8 @@ Le SDK enregistre :
 | `durable_workflow_worker_tasks` | Compteur | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | Histogramme | `task_kind`, `task_queue`, `outcome` |
 
+L’histogramme distinct `durable_workflow_worker_task_schedule_to_start_seconds` ne figure pas dans le paquet stable sélectionné. Son [hook source SDK](https://github.com/durable-workflow/sdk-python/pull/264) est intégré mais non publié. La publication du Server et l’acceptation installée/exportée restent en attente dans [#188](https://github.com/durable-workflow/sdk-python/issues/188). Les six métriques ci-dessus ne fournissent pas cette mesure. Utilisez provisoirement les [signaux d’âge de file du guide opérateur](/docs/operator-operating-envelope#worker-and-sdk-telemetry).
+
 ## Planifications {#schedules-1}
 
 Créez et gérez des workflows planifiés via le client :
@@ -2091,9 +2093,19 @@ Le worker ne tente jamais de détecter ou deviner le format.
 | `list` | `ArrayValue` | `array` (liste) |
 | `dict[str, ...]` | `MapValue` | `array` (table à clés de chaîne) |
 
-Adaptez les types Python spécifiques, dataclasses, ensembles, tuples et objets
-datetime, en chaînes canoniques, entiers, tables ou listes avant leur usage
-comme valeurs de workflow ou d'activité.
+### Valeurs typées des activités {#typed-activity-values}
+
+Le SDK stable sélectionné prend en charge les dataclasses et enums aux frontières des activités. Il envoie une dataclass comme table de ses champs à clés de chaîne et un `Enum` comme `.value`, avec les mêmes octets Avro que des valeurs neutres explicites.
+
+| Frontière | Comportement publié sur activation explicite |
+| --- | --- |
+| Arguments d’activité | `@activity.defn(..., typed=True)` décode les arguments positionnels selon les annotations des paramètres. |
+| Résultats d’activité | `ctx.schedule_activity(..., result_type=T)` décode le résultat terminé au yield du workflow, y compris dans les groupes parallèles et `ctx.select(...)`. |
+| Valeurs de workflow, enfant, client, signal, requête, mise à jour et validateur | Les adaptateurs étendus de [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) sont intégrés mais non publiés. Conservez une conversion explicite en valeurs neutres à ces frontières. |
+
+Les annotations de réception prises en charge sont les dataclasses, `Enum` (dont `IntEnum` et `StrEnum`), `Optional[T]` / `T | None`, `list[T]`, `dict[str, T]`, `str`, `int`, `float`, `bool`, `bytes` et `Any`. Toute autre annotation, dont une union de deux types autres que `None`, lève `TypeError` à la déclaration ou à l’appel. Le décodage reste explicite. `result_type` est local : jamais envoyé, comparé ou inscrit dans l’historique. La [référence publiée du SDK](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values) détaille les valeurs par défaut, champs inconnus et erreurs `TypedValueError`.
+
+Les ensembles, tuples et objets datetime, UUID, Decimal, pydantic et attrs nécessitent encore un adaptateur explicite vers des chaînes, nombres, tables ou listes canoniques. Modifier cette forme durable change la compatibilité du workflow.
 
 ## Utiliser un serveur partagé {#running-against-a-shared-server}
 

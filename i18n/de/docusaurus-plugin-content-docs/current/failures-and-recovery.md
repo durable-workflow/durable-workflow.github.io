@@ -420,6 +420,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Grenzen für Core-Zeitleistenzusammenfassungen {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 oder neuer** begrenzt die vollständige abgeleitete Zeitleistenzusammenfassung auf 65.535 UTF-8-Bytes, einschließlich Bezeichnungen, Satzzeichen, des Markers ` [truncated]` und eines Hinweises zur Callback-Wiederherstellung. Maßgeblicher aufgezeichneter Fehler, ursprünglicher Typ und Nicht-Wiederholbarkeitsentscheidung bleiben erhalten. Prüfen Sie die tatsächliche `composer.lock` des empfangenden Runtimes. Der [Nachweis mit normal installiertem Paket](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) prüft die Zusammenfassungsgrenzen unabhängig von SDK-Berichtsgrenzen.
+
+Die 62-KiB-Berichtsreserve der SDKs korrigiert weder einen älteren Core-Zusammenfassungsschreiber noch die separaten [Speichergrenzen kanonischer Fehler](https://github.com/durable-workflow/.github/issues/225). Auch die [historiengestützte Datetime-Reparatur](./features/search-attributes.md#repair-datetime-search-attributes) erfordert installiertes Workflow 2.12.0 oder neuer. Sie repariert abgeleitete Suchzeilen, keine fehlgeschlagenen Zeitleistenschreibvorgänge oder fehlende maßgebliche Historie. Ein Server-Image braucht eigene Abnahme des installierten Core und der HTTP-/Datenbankpfade, bevor es als korrigiert gilt.
+
 ## Limits für PHP-Fehlerberichte im Service-Modus {#php-failure-report-limits}
 
 Das PHP SDK **ab 3.5.0** begrenzt ausgehende Fehlerberichte im Service-Modus auf 62 KiB UTF-8 für Meldungen, 128 KiB für Stacks, 64 KiB für optionale Metadaten zusammen und 1 MiB für den vollständigen codierten Body einschließlich Markierungen. Niedrigere bekannte Transportlimits gelten weiterhin. Der [PHP-Leitfaden für Fehlerberichte](./polyglot/php.md#bounded-failure-reports) erläutert Konfiguration, Auslassungsdiagnosen, unveränderte Retry-Semantik und identische Beobachtungen bei erster Ausführung und kaltem Replay. Diese Grenzen gelten für SDK-Berichte. Eingebettete Fehleraufzeichnung und Core-Summary-Speicherung haben eigene Verträge.
