@@ -158,12 +158,14 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 ]);
 ```
 
-每个值只转换一次，向上取整为整秒，与嵌入式 `timer()` 和 `await()` 的做法完全相同，
-因此 `'30 minutes'`、`1800` 和 `CarbonInterval::minutes(30)` 记录的历史相同。SDK 会拒绝
-`'PT30M'` 之类的 ISO 8601 字符串（请改为传入 `new DateInterval('PT30M')`）、负值和
-无法解析的文本。零时长对定时器和条件等待有效；活动和子工作流超时至少需要一秒。
-更早的 SDK 版本只接受秒数。参见
-[PHP SDK 时长参考](https://php.durable-workflow.com/build/workflows-activities/#durations)。
+每个值只转换一次，向上取整为整秒，因此 `'30 minutes'`、`1800` 和
+`CarbonInterval::minutes(30)` 记录的历史相同。字符串的转换方式与嵌入式 `timer()` 和
+`await()` 完全相同。SDK 会拒绝 `'PT30M'` 之类的 ISO 8601 字符串（请改为传入
+`new DateInterval('PT30M')`）、负值、月或更长日历单位的小数部分、超过 15 位数字的部分，
+以及无法解析的文本。`'30'` 之类的数字字符串保持原有含义：定时器和条件超时会将其向上取整为
+整秒，而活动和子工作流选项会原样传递。零时长对定时器和条件等待有效；活动和子工作流超时
+至少需要一秒。更早的 SDK 版本只接受秒数。
+[PHP SDK 时长参考](https://php.durable-workflow.com/build/workflows-activities/)列出了所有单位。
 
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 

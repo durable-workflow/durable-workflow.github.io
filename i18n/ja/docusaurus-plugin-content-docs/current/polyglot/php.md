@@ -159,12 +159,15 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 ]);
 ```
 
-各値は組み込みの `timer()` と `await()` とまったく同じように、一度だけ整数秒へ切り上げて変換されます。
-そのため `'30 minutes'`、`1800`、`CarbonInterval::minutes(30)` は同じ履歴を記録します。SDK は
-`'PT30M'` のような ISO 8601 文字列（代わりに `new DateInterval('PT30M')` を渡してください）、
-負の値、解析できないテキストを拒否します。タイマーと条件待機では 0 の期間も有効ですが、
-アクティビティと子ワークフローのタイムアウトは 1 秒以上が必要です。それ以前の SDK リリースは
-秒数のみを受け付けます。[PHP SDK の期間指定リファレンス](https://php.durable-workflow.com/build/workflows-activities/#durations)を参照してください。
+各値は一度だけ整数秒へ切り上げて変換されます。そのため `'30 minutes'`、`1800`、
+`CarbonInterval::minutes(30)` は同じ履歴を記録します。文字列は組み込みの `timer()` と `await()` と
+まったく同じように変換されます。SDK は `'PT30M'` のような ISO 8601 文字列（代わりに
+`new DateInterval('PT30M')` を渡してください）、負の値、月またはそれより長い暦単位の端数、
+15 桁を超える部分、解析できないテキストを拒否します。`'30'` のような数値文字列は従来の意味を保ちます。
+タイマーと条件タイムアウトでは整数秒に切り上げられ、アクティビティと子ワークフローのオプションでは
+そのまま渡されます。タイマーと条件待機では 0 の期間も有効ですが、アクティビティと子ワークフローの
+タイムアウトは 1 秒以上が必要です。それ以前の SDK リリースは秒数のみを受け付けます。
+すべての単位は [PHP SDK の期間指定リファレンス](https://php.durable-workflow.com/build/workflows-activities/)に記載されています。
 
 ## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
 

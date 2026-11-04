@@ -509,10 +509,10 @@ La simulation client n'exécute pas le code du worker distant.
 Les durées se transposent depuis les workflows embarqués. À partir du SDK PHP 3.9.0,
 les temporisateurs, les délais d'attente conditionnelle et les délais des activités
 et des workflows enfants en mode service acceptent les mêmes chaînes `'30 minutes'`
-et valeurs `CarbonInterval` que `timer()` et `await()` en mode embarqué, avec le
-même arrondi à la seconde entière. Réécrivez les chaînes ISO 8601 sous la forme
-`new DateInterval(...)` et gardez les délais des activités et des workflows enfants
-à une seconde ou plus. Consultez les
+que `timer()` et `await()` en mode embarqué, avec le même arrondi à la seconde
+entière, ainsi que des valeurs `DateInterval` et `CarbonInterval`. Réécrivez les
+chaînes ISO 8601 sous la forme `new DateInterval(...)` et gardez les délais des
+activités et des workflows enfants à une seconde ou plus. Consultez les
 [durées du SDK PHP](/docs/polyglot/php/#durations).
 
 ## Drainer, basculer et revenir en arrière {#drain-cut-over-and-roll-back}

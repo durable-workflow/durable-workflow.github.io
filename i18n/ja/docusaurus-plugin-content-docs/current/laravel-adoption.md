@@ -453,8 +453,8 @@ Cloud・Server なしで Laravel アプリのやり取りを検証します。�
 
 期間指定は組み込みワークフローからそのまま引き継げます。PHP SDK 3.9.0 以降、サービスモードの
 タイマー、条件待機のタイムアウト、アクティビティと子ワークフローのタイムアウトは、組み込みの
-`timer()` と `await()` と同じ `'30 minutes'` 形式の文字列と `CarbonInterval` 値を受け付け、
-同じく整数秒に切り上げます。ISO 8601 文字列は `new DateInterval(...)` に書き換え、アクティビティと
+`timer()` と `await()` と同じ `'30 minutes'` 形式の文字列を同じく整数秒に切り上げて受け付けるほか、
+`DateInterval` と `CarbonInterval` 値も受け付けます。ISO 8601 文字列は `new DateInterval(...)` に書き換え、アクティビティと
 子ワークフローのタイムアウトは 1 秒以上にしてください。
 [PHP SDK の期間指定](/docs/polyglot/php/#durations)を参照してください。
 

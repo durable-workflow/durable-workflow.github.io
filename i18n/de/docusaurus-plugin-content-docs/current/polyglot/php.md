@@ -243,15 +243,20 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 ]);
 ```
 
-Jeder Wert wird einmalig in ganze Sekunden umgerechnet und dabei aufgerundet,
-genau wie beim eingebetteten `timer()` und `await()`. Daher zeichnen
-`'30 minutes'`, `1800` und `CarbonInterval::minutes(30)` dieselbe Historie auf.
-Das SDK lehnt ISO-8601-Strings wie `'PT30M'` (übergeben Sie stattdessen
-`new DateInterval('PT30M')`), negative Werte und nicht parsebaren Text ab. Eine
-Dauer von null ist für Timer und Bedingungswarteoperationen gültig; Zeitlimits
-von Aktivitäten und Kind-Workflows benötigen mindestens eine Sekunde. Frühere
-SDK-Releases akzeptieren nur Sekunden. Siehe die
-[Dauerreferenz des PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations).
+Jeder Wert wird einmalig in ganze Sekunden umgerechnet und dabei aufgerundet.
+Daher zeichnen `'30 minutes'`, `1800` und `CarbonInterval::minutes(30)`
+dieselbe Historie auf. Strings werden genau wie beim eingebetteten `timer()` und
+`await()` umgerechnet. Das SDK lehnt ISO-8601-Strings wie `'PT30M'` (übergeben
+Sie stattdessen `new DateInterval('PT30M')`), negative Werte, Bruchteile eines
+Monats oder einer längeren Kalendereinheit, Angaben mit mehr als 15 Ziffern und
+nicht parsebaren Text ab. Ein numerischer String wie `'30'` behält seine
+bisherige Bedeutung: Timer und Bedingungszeitlimits runden ihn auf ganze
+Sekunden auf, und Aktivitäts- und Kind-Workflow-Optionen geben ihn unverändert
+weiter. Eine Dauer von null ist für Timer und Bedingungswarteoperationen gültig;
+Zeitlimits von Aktivitäten und Kind-Workflows benötigen mindestens eine Sekunde.
+Frühere SDK-Releases akzeptieren nur Sekunden. Die
+[Dauerreferenz des PHP SDK](https://php.durable-workflow.com/build/workflows-activities/)
+listet alle Einheiten auf.
 
 ## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 

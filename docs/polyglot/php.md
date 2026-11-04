@@ -237,14 +237,18 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 ]);
 ```
 
-Each value converts once to whole seconds, rounding up, exactly as the embedded
-`timer()` and `await()` do, so `'30 minutes'`, `1800` and
-`CarbonInterval::minutes(30)` record the same history. The SDK rejects ISO 8601
-strings such as `'PT30M'` (pass `new DateInterval('PT30M')` instead), negative
-values and unparseable text. A zero duration is valid for timers and condition
-waits; activity and child workflow timeouts need at least one second. Earlier
-SDK releases accept seconds only. See the
-[PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/#durations).
+Each value converts once to whole seconds, rounding up, so `'30 minutes'`,
+`1800` and `CarbonInterval::minutes(30)` record the same history. Strings
+convert exactly as the embedded `timer()` and `await()` do. The SDK rejects
+ISO 8601 strings such as `'PT30M'` (pass `new DateInterval('PT30M')` instead),
+negative values, fractions of a month or a longer calendar unit, parts with more
+than 15 digits, and unparseable text. A numeric string such as `'30'` keeps its
+earlier meaning: timers and condition timeouts round it up to whole seconds,
+and activity and child workflow options pass it through unchanged. A zero
+duration is valid for timers and condition waits; activity and child workflow
+timeouts need at least one second. Earlier SDK releases accept seconds only.
+The [PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/)
+lists every unit.
 
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}
 

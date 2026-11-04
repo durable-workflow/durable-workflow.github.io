@@ -453,7 +453,7 @@ $workflows->assertResultRequested('order-1001');
 
 时长写法可沿用嵌入式工作流。从 PHP SDK 3.9.0 起，服务模式下的定时器、条件等待超时
 以及活动和子工作流超时，接受与嵌入式 `timer()` 和 `await()` 相同的 `'30 minutes'`
-字符串和 `CarbonInterval` 值，并同样向整秒取整。请将 ISO 8601 字符串改写为
+字符串，并同样向整秒取整，也接受 `DateInterval` 和 `CarbonInterval` 值。请将 ISO 8601 字符串改写为
 `new DateInterval(...)`，并使活动和子工作流超时保持在一秒或以上。参见
 [PHP SDK 时长](/docs/polyglot/php/#durations)。
 

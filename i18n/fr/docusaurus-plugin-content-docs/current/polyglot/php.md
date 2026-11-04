@@ -247,15 +247,20 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 ```
 
 Chaque valeur est convertie une seule fois en secondes entières, arrondie à la
-seconde supérieure, exactement comme le font `timer()` et `await()` en mode
-embarqué : `'30 minutes'`, `1800` et `CarbonInterval::minutes(30)` enregistrent
-donc le même historique. Le SDK refuse les chaînes ISO 8601 comme `'PT30M'`
-(passez plutôt `new DateInterval('PT30M')`), les valeurs négatives et le texte
-impossible à analyser. Une durée nulle est valide pour les temporisateurs et les
-attentes conditionnelles ; les délais des activités et des workflows enfants
-exigent au moins une seconde. Les versions antérieures du SDK acceptent uniquement
-des secondes. Consultez la
-[référence des durées du SDK PHP](https://php.durable-workflow.com/build/workflows-activities/#durations).
+seconde supérieure : `'30 minutes'`, `1800` et `CarbonInterval::minutes(30)`
+enregistrent donc le même historique. Les chaînes sont converties exactement comme
+le font `timer()` et `await()` en mode embarqué. Le SDK refuse les chaînes
+ISO 8601 comme `'PT30M'` (passez plutôt `new DateInterval('PT30M')`), les valeurs
+négatives, les fractions de mois ou d’une unité calendaire plus longue, les parties
+de plus de 15 chiffres et le texte impossible à analyser. Une chaîne numérique comme
+`'30'` conserve sa signification antérieure : les temporisateurs et les délais
+d’attente conditionnelle l’arrondissent à la seconde entière supérieure, et les
+options des activités et des workflows enfants la transmettent telle quelle. Une
+durée nulle est valide pour les temporisateurs et les attentes conditionnelles ;
+les délais des activités et des workflows enfants exigent au moins une seconde. Les
+versions antérieures du SDK acceptent uniquement des secondes. La
+[référence des durées du SDK PHP](https://php.durable-workflow.com/build/workflows-activities/)
+répertorie toutes les unités.
 
 ## Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
 

@@ -243,15 +243,20 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 ```
 
 Cada valor se convierte una sola vez a segundos enteros, redondeando hacia
-arriba, exactamente como hacen `timer()` y `await()` integrados, de modo que
-`'30 minutes'`, `1800` y `CarbonInterval::minutes(30)` registran el mismo
-historial. El SDK rechaza las cadenas ISO 8601 como `'PT30M'` (pasa
-`new DateInterval('PT30M')` en su lugar), los valores negativos y el texto que
-no se puede interpretar. Una duración cero es válida para temporizadores y
-esperas por condición; los tiempos de espera de actividades y workflows hijos
-requieren al menos un segundo. Las versiones anteriores del SDK solo aceptan
-segundos. Consulta la
-[referencia de duraciones del PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations).
+arriba, de modo que `'30 minutes'`, `1800` y `CarbonInterval::minutes(30)`
+registran el mismo historial. Las cadenas se convierten exactamente como hacen
+`timer()` y `await()` integrados. El SDK rechaza las cadenas ISO 8601 como
+`'PT30M'` (pasa `new DateInterval('PT30M')` en su lugar), los valores negativos,
+las fracciones de un mes o de una unidad de calendario mayor, las partes con más
+de 15 dígitos y el texto que no se puede interpretar. Una cadena numérica como
+`'30'` conserva su significado anterior: los temporizadores y los tiempos de
+espera por condición la redondean hacia arriba a segundos enteros, y las
+opciones de actividades y workflows hijos la pasan sin cambios. Una duración
+cero es válida para temporizadores y esperas por condición; los tiempos de
+espera de actividades y workflows hijos requieren al menos un segundo. Las
+versiones anteriores del SDK solo aceptan segundos. La
+[referencia de duraciones del PHP SDK](https://php.durable-workflow.com/build/workflows-activities/)
+enumera todas las unidades.
 
 ## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 

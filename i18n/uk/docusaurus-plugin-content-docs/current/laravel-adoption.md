@@ -514,8 +514,9 @@ SDK. Fake клієнта не виконує код віддаленого worke
 
 Тривалості переносяться з embedded workflow. Починаючи з PHP SDK 3.9.0, timers
 у service mode, тайм-аути очікування умов і тайм-аути activity та дочірніх workflow
-приймають ті самі рядки `'30 minutes'` і значення `CarbonInterval`, що й embedded
-`timer()` та `await()`, з тим самим округленням до цілих секунд. Переписуйте
+приймають ті самі рядки `'30 minutes'`, що й embedded `timer()` та `await()`,
+з тим самим округленням до цілих секунд, а також значення `DateInterval` і
+`CarbonInterval`. Переписуйте
 рядки ISO 8601 як `new DateInterval(...)` і задавайте тайм-аути activity та дочірніх
 workflow щонайменше в одну секунду. Див.
 [тривалості PHP SDK](/docs/polyglot/php/#durations).
