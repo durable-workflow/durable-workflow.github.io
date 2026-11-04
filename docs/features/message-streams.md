@@ -36,24 +36,26 @@ Do not write `workflow_messages` rows or cursor rows directly from application
 workflow code. The facade is the stable contract; lower-level message services
 exist for package/runtime integration.
 
-:::warning Not replay-safe in workflow code through Workflow 2.20.0
+:::warning Message streams in Workflow 2.20.0 and earlier
 
 Workflow code replays on every later workflow task and on every query. In
-Workflow releases through 2.20.0, the message-stream calls below do not account
-for replay ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+Workflow releases through 2.20.0, `outbox()->sendReference()` writes a new
+outbound and inbound message on each replay, and `inbox()->receive()` and
+`receiveOne()` can return a different message, or none, on replay
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+Workflow 2.20.1 fixes this: a replay returns what the original call sent or
+received, and a query never writes or consumes a message.
 
-- `outbox()->sendReference()` writes a new outbound and inbound message each
-  time the code replays, so a consumer can receive the same message more than
-  once. Give each logical send a stable `idempotencyKey`, such as
-  `reply:{turn}`, and deduplicate by `idempotency_key` when consuming.
-  Deduplicate by `payload_reference` only when each logical send uses a
-  different reference.
-- `inbox()->receive()` and `receiveOne()` can return a different message, or
-  none, when the code replays, and can skip pending messages. Until a release
-  fixes this, do not call them from workflow code that runs more than one
-  workflow task, such as code that runs an activity, or waits for a signal or
-  timer. Receive the messages outside workflow code, or deliver the payload
-  with a [signal](./signals.md).
+- Rows that earlier releases duplicated are not removed. Give each logical
+  send a stable `idempotencyKey`, such as `reply:{turn}`, and deduplicate by
+  `idempotency_key` when consuming a stream that an earlier release wrote.
+  Messages that an earlier release consumed under the wrong step stay
+  consumed.
+- In every release, signals and all streams share one message cursor, so a
+  signal delivered after a pending stream message hides that message
+  ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
+  Receive only after a signal or condition says a message is there, and send
+  that signal before the message.
 
 :::
 
