@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://durable-workflow.github.io/cli-json-envelopes/v3/schemas/service-call.schema.json",
+  "title": "dw service-call:describe --json",
+  "type": "object",
+  "required": ["namespace", "id", "status", "service_call_attempts", "retry_attempt_count"],
+  "properties": {
+    "namespace": {"type": "string"},
+    "id": {"type": "string"},
+    "status": {"type": "string"},
+    "caller_namespace": {"type": ["string", "null"]},
+    "caller_workflow_instance_id": {"type": ["string", "null"]},
+    "caller_workflow_run_id": {"type": ["string", "null"]},
+    "target_namespace": {"type": ["string", "null"]},
+    "linked_workflow_instance_id": {"type": ["string", "null"]},
+    "linked_workflow_run_id": {"type": ["string", "null"]},
+    "linked_workflow_update_id": {"type": ["string", "null"]},
+    "call_deadline_at": {"type": ["string", "null"]},
+    "service_call_attempts": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "retry_attempt_count": {"type": "integer", "minimum": 0},
+    "caller_observed_error_type": {"type": ["string", "null"]},
+    "typed_error_message": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

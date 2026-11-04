@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: durable-workflow.v2.waterline-read-api
+  version: "5"
+  summary: Waterline observability read and operator action API
+  description: >
+    Normative OpenAPI specification for the Waterline `/waterline/api/*`
+    JSON surface. Read routes return diagnostic object families specified
+    by durable-workflow.v2.waterline-diagnostic-objects. Operator action
+    routes proxy Durable command surfaces and return command/actionability
+    envelopes.
+x-durable-workflow-catalog-entry: waterline_read_api
+x-durable-workflow-catalog-schema: durable-workflow.v2.platform-protocol-specs.catalog
+x-durable-workflow-catalog-version: 16
+x-durable-workflow-evolution-rule: additive_minor_breaking_major
+x-durable-workflow-object-families:
+  - name: waterline_read_envelope
+    owner_repo: durable-workflow/waterline
+  - name: waterline_operator_action_envelope
+    owner_repo: durable-workflow/waterline
+servers:
+  - url: /waterline/api
+paths:
+  /stats:
+    get: { tags: [dashboard], operationId: getWaterlineStats, responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" } } }
+  /v2/health:
+    get: { tags: [diagnostics], operationId: getWaterlineV2Health, responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "503": { $ref: "#/components/responses/DiagnosticEnvelope" } } }
+  /flows/{bucket}:
+    get:
+      tags: [workflows]
+      operationId: listWaterlineFlowsByBucket
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema: { type: string, enum: [completed, failed, cancelled, terminated, running] }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /flows/{id}:
+    get:
+      tags: [workflows]
+      operationId: getWaterlineLegacyFlow
+      parameters: [{ $ref: "#/components/parameters/FlowId" }]
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "404": { $ref: "#/components/responses/ErrorEnvelope" }
+  /flows/{id}/history-export:
+    get:
+      tags: [history]
+      operationId: exportWaterlineLegacyFlowHistory
+      parameters: [{ $ref: "#/components/parameters/FlowId" }]
+      responses:
+        "200":
+          description: History export bundle.
+          content:
+            application/json:
+              schema: { $ref: "./history-export-bundle.schema.json" }
+  /flows/{id}/updates/{updateId}:
+    get:
+      tags: [workflows]
+      operationId: getWaterlineLegacyFlowUpdate
+      parameters:
+        - $ref: "#/components/parameters/FlowId"
+        - $ref: "#/components/parameters/UpdateId"
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /flows/{id}/{command}/{name}:
+    post:
+      tags: [commands]
+      operationId: commandWaterlineLegacyFlowByName
+      parameters:
+        - $ref: "#/components/parameters/FlowId"
+        - name: command
+          in: path
+          required: true
+          schema: { type: string, enum: [queries, signals, updates] }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "202": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "422": { $ref: "#/components/responses/ErrorEnvelope" }
+  /flows/{id}/{action}:
+    post:
+      tags: [commands]
+      operationId: terminalWaterlineLegacyFlowAction
+      parameters:
+        - $ref: "#/components/parameters/FlowId"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [repair, cancel, terminate, archive] }
+      requestBody: { $ref: "#/components/requestBodies/ActionReason" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "202": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "409": { $ref: "#/components/responses/ErrorEnvelope" }
+  /instances/{instanceId}:
+    get:
+      tags: [workflows]
+      operationId: getWaterlineInstance
+      parameters: [{ $ref: "#/components/parameters/InstanceId" }]
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /instances/{instanceId}/history-export:
+    get:
+      tags: [history]
+      operationId: exportWaterlineCurrentRunHistory
+      parameters: [{ $ref: "#/components/parameters/InstanceId" }]
+      responses:
+        "200":
+          description: History export bundle.
+          content:
+            application/json:
+              schema: { $ref: "./history-export-bundle.schema.json" }
+  /instances/{instanceId}/runs/{runId}:
+    get:
+      tags: [workflows]
+      operationId: getWaterlineInstanceRun
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /instances/{instanceId}/runs/{runId}/history-export:
+    get:
+      tags: [history]
+      operationId: exportWaterlineSelectedRunHistory
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: History export bundle.
+          content:
+            application/json:
+              schema: { $ref: "./history-export-bundle.schema.json" }
+  /instances/{instanceId}/runs/{runId}/updates/{updateId}:
+    get:
+      tags: [workflows]
+      operationId: getWaterlineSelectedRunUpdate
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/UpdateId"
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /instances/{instanceId}/runs/{runId}/{command}/{name}:
+    post:
+      tags: [commands]
+      operationId: commandWaterlineSelectedRunByName
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/RunId"
+        - name: command
+          in: path
+          required: true
+          schema: { type: string, enum: [queries, signals, updates] }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "202": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /instances/{instanceId}/runs/{runId}/{action}:
+    post:
+      tags: [commands]
+      operationId: terminalWaterlineSelectedRunAction
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/RunId"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [repair, cancel, terminate, archive] }
+      requestBody: { $ref: "#/components/requestBodies/ActionReason" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "202": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "409": { $ref: "#/components/responses/ErrorEnvelope" }
+  /instances/{instanceId}/updates/{updateId}:
+    get:
+      tags: [workflows]
+      operationId: getWaterlineInstanceUpdate
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/UpdateId"
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /instances/{instanceId}/{command}/{name}:
+    post:
+      tags: [commands]
+      operationId: commandWaterlineInstanceByName
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - name: command
+          in: path
+          required: true
+          schema: { type: string, enum: [queries, signals, updates] }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody: { $ref: "#/components/requestBodies/CommandArguments" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "202": { $ref: "#/components/responses/DiagnosticEnvelope" }
+  /instances/{instanceId}/{action}:
+    post:
+      tags: [commands]
+      operationId: terminalWaterlineInstanceAction
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [repair, cancel, terminate, archive] }
+      requestBody: { $ref: "#/components/requestBodies/ActionReason" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "202": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "409": { $ref: "#/components/responses/ErrorEnvelope" }
+  /v2/services/endpoints:
+    get: { tags: [services], operationId: listWaterlineServiceEndpoints, responses: { "200": { $ref: "#/components/responses/PaginatedDiagnosticEnvelope" } } }
+  /v2/services/endpoints/{endpointId}:
+    get: { tags: [services], operationId: getWaterlineServiceEndpoint, parameters: [{ name: endpointId, in: path, required: true, schema: { type: string } }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /v2/services/services:
+    get: { tags: [services], operationId: listWaterlineServices, responses: { "200": { $ref: "#/components/responses/PaginatedDiagnosticEnvelope" } } }
+  /v2/services/services/{serviceId}:
+    get: { tags: [services], operationId: getWaterlineService, parameters: [{ name: serviceId, in: path, required: true, schema: { type: string } }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /v2/services/operations:
+    get: { tags: [services], operationId: listWaterlineServiceOperations, responses: { "200": { $ref: "#/components/responses/PaginatedDiagnosticEnvelope" } } }
+  /v2/services/operations/{operationId}:
+    get: { tags: [services], operationId: getWaterlineServiceOperation, parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /v2/services/calls:
+    get: { tags: [services], operationId: listWaterlineServiceCalls, responses: { "200": { $ref: "#/components/responses/PaginatedDiagnosticEnvelope" } } }
+  /v2/services/calls/{callId}:
+    get: { tags: [services], operationId: getWaterlineServiceCall, parameters: [{ name: callId, in: path, required: true, schema: { type: string } }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /v2/schedules:
+    get: { tags: [schedules], operationId: listWaterlineSchedules, responses: { "200": { $ref: "#/components/responses/PaginatedDiagnosticEnvelope" } } }
+  /v2/schedules/{scheduleId}:
+    get: { tags: [schedules], operationId: getWaterlineSchedule, parameters: [{ $ref: "#/components/parameters/ScheduleId" }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+    delete: { tags: [schedules], operationId: deleteWaterlineSchedule, parameters: [{ $ref: "#/components/parameters/ScheduleId" }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /v2/schedules/{scheduleId}/history:
+    get: { tags: [schedules], operationId: getWaterlineScheduleHistory, parameters: [{ $ref: "#/components/parameters/ScheduleId" }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /v2/schedules/{scheduleId}/{action}:
+    post:
+      tags: [schedules]
+      operationId: runWaterlineScheduleAction
+      parameters:
+        - $ref: "#/components/parameters/ScheduleId"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [pause, resume, trigger, backfill] }
+      requestBody: { $ref: "#/components/requestBodies/ActionReason" }
+      responses:
+        "200": { $ref: "#/components/responses/DiagnosticEnvelope" }
+        "422": { $ref: "#/components/responses/ErrorEnvelope" }
+  /saved-views:
+    get: { tags: [preferences], operationId: listWaterlineSavedViews, responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" } } }
+    post: { tags: [preferences], operationId: createWaterlineSavedView, requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "201": { $ref: "#/components/responses/DiagnosticEnvelope" }, "422": { $ref: "#/components/responses/ErrorEnvelope" } } }
+  /saved-views/{view}:
+    get: { tags: [preferences], operationId: getWaterlineSavedView, parameters: [{ name: view, in: path, required: true, schema: { type: string } }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "404": { $ref: "#/components/responses/ErrorEnvelope" } } }
+    put: { tags: [preferences], operationId: updateWaterlineSavedView, parameters: [{ name: view, in: path, required: true, schema: { type: string } }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" }, "422": { $ref: "#/components/responses/ErrorEnvelope" } } }
+    delete: { tags: [preferences], operationId: deleteWaterlineSavedView, parameters: [{ name: view, in: path, required: true, schema: { type: string } }], responses: { "204": { description: Saved view deleted. } } }
+  /preferences/{surface}:
+    get: { tags: [preferences], operationId: getWaterlinePreferences, parameters: [{ name: surface, in: path, required: true, schema: { type: string } }], responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" } } }
+    put: { tags: [preferences], operationId: updateWaterlinePreferences, parameters: [{ name: surface, in: path, required: true, schema: { type: string } }], requestBody: { $ref: "#/components/requestBodies/JsonObject" }, responses: { "200": { $ref: "#/components/responses/DiagnosticEnvelope" } } }
+components:
+  parameters:
+    FlowId: { name: id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    InstanceId: { name: instanceId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    RunId: { name: runId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    UpdateId: { name: updateId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ScheduleId: { name: scheduleId, in: path, required: true, schema: { type: string, minLength: 1 } }
+  requestBodies:
+    JsonObject:
+      required: false
+      content:
+        application/json:
+          schema: { type: object, additionalProperties: true }
+    CommandArguments:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+            properties:
+              arguments: { type: array, items: true }
+              submit: { type: [boolean, "null"] }
+    ActionReason:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+            properties:
+              reason: { type: [string, "null"] }
+              from: { type: [string, "null"], format: date-time }
+              to: { type: [string, "null"], format: date-time }
+  responses:
+    DiagnosticEnvelope:
+      description: Waterline diagnostic response.
+      content:
+        application/json:
+          schema: { $ref: "./waterline-diagnostic-objects.schema.json" }
+    PaginatedDiagnosticEnvelope:
+      description: Paginated Waterline diagnostic response.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "./waterline-diagnostic-objects.schema.json"
+              - type: object
+                required: [data, current_page, per_page, total, last_page]
+                properties:
+                  data: { type: array, items: { type: object, additionalProperties: true } }
+                  current_page: { type: integer, minimum: 1 }
+                  per_page: { type: integer, minimum: 1 }
+                  total: { type: integer, minimum: 0 }
+                  last_page: { type: integer, minimum: 1 }
+    ErrorEnvelope:
+      description: Waterline error response.
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+            properties:
+              error: { type: string }
+              message: { type: string }
