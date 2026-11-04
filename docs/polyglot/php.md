@@ -250,7 +250,7 @@ activity and child workflow timeouts need at least one second. Earlier SDK
 releases accept seconds only. PHP SDK 3.9.0 adds `nesbot/carbon`
 (`^2.72.6|^3.8.4`) as a required dependency, so durations convert with the
 same parser as the embedded package.
-The [PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/)
+The [PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/#durations)
 lists every unit.
 
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}

@@ -260,7 +260,7 @@ workflows filhos exigem pelo menos um segundo. Releases anteriores do SDK aceita
 apenas segundos. O SDK PHP 3.9.0 adiciona `nesbot/carbon` (`^2.72.6|^3.8.4`)
 como dependência obrigatória, de modo que as durações são convertidas com o
 mesmo parser do pacote embarcado. A
-[referência de durações do SDK PHP](https://php.durable-workflow.com/build/workflows-activities/)
+[referência de durações do SDK PHP](https://php.durable-workflow.com/build/workflows-activities/#durations)
 lista todas as unidades.
 
 ## Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}

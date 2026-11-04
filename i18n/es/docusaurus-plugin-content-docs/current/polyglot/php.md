@@ -258,7 +258,7 @@ requieren al menos un segundo. Las versiones anteriores del SDK solo aceptan
 segundos. PHP SDK 3.9.0 añade `nesbot/carbon` (`^2.72.6|^3.8.4`) como
 dependencia obligatoria, de modo que las duraciones se convierten con el mismo
 analizador que el paquete integrado. La
-[referencia de duraciones del PHP SDK](https://php.durable-workflow.com/build/workflows-activities/)
+[referencia de duraciones del PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations)
 enumera todas las unidades.
 
 ## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
