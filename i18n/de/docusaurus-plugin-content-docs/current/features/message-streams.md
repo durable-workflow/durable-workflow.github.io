@@ -137,14 +137,16 @@ Payload-Speicher getrennt von der dauerhaften Nachrichtenreihenfolge prüfen.
 
 ## Continue-as-new {#continue-as-new}
 
-Nachrichtenströme orientieren sich an Instanzen. Bei Continue-as-new geht die
-Cursor-Position auf den fortgesetzten Lauf über, und verbrauchte Nachrichten
-bleiben als historische Nachweise am ursprünglichen Lauf. In Workflow-Releases
-bis einschließlich 2.20.1 bleiben Nachrichten, die beim Continue-as-new noch
-ausstehen, am geschlossenen Lauf, und der fortgesetzte Lauf erhält sie nie
-([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)).
-Bis ein Release dies behebt, empfangen Sie ausstehende Nachrichten, bevor Sie
-`continueAsNew()` aufrufen, oder senden Sie Eingaben, die die Übergabe
+Nachrichtenströme orientieren sich an Instanzen. Bei Continue-as-new gehen
+ausstehende eingehende Nachrichten auf den fortgesetzten Lauf über, die
+Cursor-Position wird übernommen, und verbrauchte Nachrichten bleiben als
+historische Nachweise am ursprünglichen Lauf. Workflow 2.20.1 und früher
+übertrugen nur den Cursor: Nachrichten, die beim Continue-as-new noch
+ausstanden, blieben am geschlossenen Lauf, und der fortgesetzte Lauf erhielt sie
+nie
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018),
+behoben in 2.20.2). Empfangen Sie in diesen Releases ausstehende Nachrichten,
+bevor Sie `continueAsNew()` aufrufen, oder senden Sie Eingaben, die die Übergabe
 überstehen müssen, als [Signal](./signals.md): Angenommene Signale, die der Lauf
 noch nicht angewendet hat, gehen auf den fortgesetzten Lauf über.
 
