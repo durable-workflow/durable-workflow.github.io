@@ -17,7 +17,7 @@ test "$#" -eq 1 || usage
 
 case "$target" in
     php)
-        exec "$COMPOSER_BIN" require 'durable-workflow/sdk:^2.0'
+        exec "$COMPOSER_BIN" require 'durable-workflow/sdk:^3.9'
         ;;
     workflow)
         exec "$COMPOSER_BIN" require 'durable-workflow/workflow:^2.0'
@@ -37,7 +37,7 @@ case "$target" in
         exec "$PIP_BIN" install 'durable-workflow>=2,<3'
         ;;
     rust)
-        exec "$CARGO_BIN" add 'durable-workflow@2'
+        exec "$CARGO_BIN" add 'durable-workflow@4'
         ;;
     *)
         usage
