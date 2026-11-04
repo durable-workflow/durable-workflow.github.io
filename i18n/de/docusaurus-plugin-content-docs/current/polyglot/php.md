@@ -248,13 +248,16 @@ Daher zeichnen `'30 minutes'`, `1800` und `CarbonInterval::minutes(30)`
 dieselbe Historie auf. Strings werden genau wie beim eingebetteten `timer()` und
 `await()` umgerechnet. Das SDK lehnt ISO-8601-Strings wie `'PT30M'` (übergeben
 Sie stattdessen `new DateInterval('PT30M')`), negative Werte, Bruchteile eines
-Monats oder einer längeren Kalendereinheit, Angaben mit mehr als 15 Ziffern und
+Monats oder einer längeren Kalendereinheit, Angaben mit mehr als 15 ganzzahligen Ziffern und
 nicht parsebaren Text ab. Ein numerischer String wie `'30'` behält seine
 bisherige Bedeutung: Timer und Bedingungszeitlimits runden ihn auf ganze
 Sekunden auf, und Aktivitäts- und Kind-Workflow-Optionen geben ihn unverändert
-weiter. Eine Dauer von null ist für Timer und Bedingungswarteoperationen gültig;
-Zeitlimits von Aktivitäten und Kind-Workflows benötigen mindestens eine Sekunde.
-Frühere SDK-Releases akzeptieren nur Sekunden. Die
+weiter. Eine Dauer von null ist für Timer, Bedingungswarteoperationen und
+`wait_timeout_seconds` gültig; Zeitlimits von Aktivitäten und Kind-Workflows
+benötigen mindestens eine Sekunde. Frühere SDK-Releases akzeptieren nur
+Sekunden. PHP SDK 3.9.0 fügt `nesbot/carbon` (`^2.72.6|^3.8.4`) als
+erforderliche Abhängigkeit hinzu, sodass Dauerangaben mit demselben Parser wie
+im eingebetteten Paket umgerechnet werden. Die
 [Dauerreferenz des PHP SDK](https://php.durable-workflow.com/build/workflows-activities/)
 listet alle Einheiten auf.
 

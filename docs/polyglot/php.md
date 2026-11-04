@@ -242,11 +242,14 @@ Each value converts once to whole seconds, rounding up, so `'30 minutes'`,
 convert exactly as the embedded `timer()` and `await()` do. The SDK rejects
 ISO 8601 strings such as `'PT30M'` (pass `new DateInterval('PT30M')` instead),
 negative values, fractions of a month or a longer calendar unit, parts with more
-than 15 digits, and unparseable text. A numeric string such as `'30'` keeps its
+than 15 integer digits, and unparseable text. A numeric string such as `'30'` keeps its
 earlier meaning: timers and condition timeouts round it up to whole seconds,
 and activity and child workflow options pass it through unchanged. A zero
-duration is valid for timers and condition waits; activity and child workflow
-timeouts need at least one second. Earlier SDK releases accept seconds only.
+duration is valid for timers, condition waits and `wait_timeout_seconds`;
+activity and child workflow timeouts need at least one second. Earlier SDK
+releases accept seconds only. PHP SDK 3.9.0 adds `nesbot/carbon`
+(`^2.72.6|^3.8.4`) as a required dependency, so durations convert with the
+same parser as the embedded package.
 The [PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/)
 lists every unit.
 
