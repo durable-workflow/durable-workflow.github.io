@@ -510,6 +510,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Limites des résumés de chronologie Core {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 ou ultérieur** limite le résumé dérivé complet de la chronologie à 65 535 octets UTF-8, libellés, ponctuation, marqueur ` [truncated]` et éventuel avis de récupération de callback compris. L’échec enregistré faisant autorité, son type initial et la décision de non-reprise restent intacts. Vérifiez le `composer.lock` réel du runtime récepteur. Le [reçu du paquet installé normalement](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) vérifie les limites du résumé indépendamment des limites de rapport SDK.
+
+La marge de rapport de 62 KiB des SDK ne corrige pas un ancien rédacteur de résumés Core et ne supprime pas les [limites distinctes du stockage canonique des échecs](https://github.com/durable-workflow/.github/issues/225). La [réparation datetime fondée sur l’historique](./features/search-attributes.md#repair-datetime-search-attributes) exige aussi Workflow 2.12.0 ou ultérieur réellement installé. Elle répare des lignes de recherche dérivées, pas des écritures de chronologie échouées ni un historique faisant autorité manquant. Une image Server nécessite sa propre acceptation du Core installé et des chemins HTTP/base de données avant d’être déclarée corrigée.
+
 ## Limites des rapports d’échec PHP en mode service {#php-failure-report-limits}
 
 Le SDK PHP **3.5.0 ou ultérieur** borne les rapports d’échec sortants en mode service à des messages UTF-8 de 62 KiB, des piles de 128 KiB, 64 KiB de métadonnées facultatives combinées et un corps complet encodé de 1 MiB, marqueurs compris. Les limites de transport connues plus basses s’appliquent. Le [guide des rapports PHP](./polyglot/php.md#bounded-failure-reports) explique la configuration, les diagnostics d’omission, la sémantique de nouvelle tentative conservée et l’égalité entre première exécution locale et relecture à froid. Ces limites concernent les rapports du SDK. L’enregistrement embarqué et le stockage des résumés du Core gardent leurs contrats distincts.

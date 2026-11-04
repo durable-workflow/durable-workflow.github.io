@@ -281,11 +281,15 @@ Waterline 的 `GET /waterline/api/v2/health` 在 `queue_visibility.*` 下发布�
 
 以下内容使用 Worker 指标、追踪与日志：
 
-- 工作流和活动的 `schedule_to_start` 延迟
+- 工作流和活动的 `schedule_to_start`（仅适用于已验证的 Server/SDK 组合） 延迟
 - 轮询成功率及同步/急切分派行为
 - Sticky 缓存大小与驱逐
 - Worker CPU、内存、线程和事件循环压力
 - 活动或 Worker 代码发出的自定义应用指标
+
+共享记录器名称为 `durable_workflow_worker_task_schedule_to_start_seconds`，是以秒为单位的直方图，标签仅有 `task_kind` 和 `task_queue`。[第 2 版契约](https://github.com/durable-workflow/.github/blob/23f9bc3c3798cb6aab6ccf5f9cd210854b820c65/sdk-metrics/README.md#schedule-to-start-observations)要求布尔值 `server_capabilities.claimed_task_ready_age: true` 和有效整数 `task.ready_age_ms`。在实际分派工作流或活动时，SDK 记录 Server 计算的从可执行时刻到租约提交的时长，不含投递、处理、计划等待和重试退避。不要相减 Worker 与 Server 的时钟。缺少能力、数值或已知就绪起点时不产生样本，而不是记录零。有效的零仍会记录。
+
+Python 的[源码钩子](https://github.com/durable-workflow/sdk-python/pull/264)已合并但尚未发布。Server 发布以及安装包与导出验证仍在 [Python #188](https://github.com/durable-workflow/sdk-python/issues/188) 中等待完成。现有请求、轮询和处理指标不提供该直方图。在确切组合通过验证前，可使用可用的 `operator_metrics.tasks.oldest_ready_due_at` 和 `operator_metrics.tasks.max_ready_due_age_ms` 告警。这些聚合积压信号不测量每个任务的延迟，也不替代其分布。
 
 同步查询、实时调试及其他非持久化控制平面调用应在仪表盘中单独标记，不计入持久化任务积压，也不改变 Waterline 修复计数器。
 
@@ -315,9 +319,9 @@ Waterline 的 `GET /waterline/api/v2/health` 在 `queue_visibility.*` 下发布�
 | --- | --- | --- | --- | --- |
 | 就绪阻断 | `workflow:v2:doctor --strict`、`GET /waterline/api/v2/health` | 阻断 | `doctor --strict` 错误或健康返回 `status = error` / HTTP `503` | 停止发布/切换，修复前提，再检查就绪和兼容性。 |
 | 兼容 Worker 覆盖 | `operator_metrics.workers.*`、`worker_compatibility`、`no_compatible_worker_for_task` | 阻断 | 命名空间或所需范围 `active_workers_supporting_required = 0` | 排空不兼容 Worker，注册兼容 Worker，信任新领取前确认 `correctness` 恢复。 |
-| 持久队列延迟 | Waterline 队列、`operator_metrics.backlog.*`、Worker `schedule_to_start` | 持续则阻断，短暂则建议 | 兼容 Worker 可用时，最老就绪年龄或开始等待持续高于公开基线 | 增加 Worker 容量，检查准入限制及调度/匹配进展。 |
+| 持久队列延迟 | Waterline 队列、`operator_metrics.backlog.*`、Worker `schedule_to_start`（仅适用于已验证的 Server/SDK 组合） | 持续则阻断，短暂则建议 | 兼容 Worker 可用时，最老就绪年龄或开始等待持续高于公开基线 | 增加 Worker 容量，检查准入限制及调度/匹配进展。 |
 | 轮询压力与准入饱和 | 队列详情、`dw task-queue:describe`、`status`、过期轮询者及添加/分派率 | `no_active_workers`、`no_slots`、`unavailable` 阻断；有意 `throttled` 为建议 | 持续饱和且最老年龄与速率缺口增长，或计划维护外进入阻断状态 | 增加槽位、恢复轮询群；盲目扩容前确认 Server 上限和锁依赖按预期工作。 |
-| 启动积压 | `operator_metrics.starts.*`、控制平面启动遥测及首任务 `schedule_to_start` | 持续则阻断，短暂则建议 | 兼容 Worker 与容量可用时，`pending_commands`、`ready_tasks` 或 `max_pending_ms` 持续超基线 | 端到端确认启动命令转为持久任务，匹配/分派及时创建首任务；扩容前区分启动欠账和普通延迟。 |
+| 启动积压 | `operator_metrics.starts.*`、控制平面启动遥测及首任务 `schedule_to_start`（仅适用于已验证的 Server/SDK 组合） | 持续则阻断，短暂则建议 | 兼容 Worker 与容量可用时，`pending_commands`、`ready_tasks` 或 `max_pending_ms` 持续超基线 | 端到端确认启动命令转为持久任务，匹配/分派及时创建首任务；扩容前区分启动欠账和普通延迟。 |
 | 投影偏移与修复欠账 | `run_summary_projection` / `selected_run_projections`、`operator_metrics.repair.*` | 建议 | 超过计划重建窗口仍警告，或最大候选年龄持续增加 | 预览并执行修复，确认警告解除、过期年龄回归基线。 |
 | 重试或失败风暴 | `operator_metrics.backlog.unhealthy_tasks`、运行诊断和 Worker 错误 | 建议；阻止持久进展时升级阻断 | 分派/领取失败、过期租约或重试耗尽持续高于基线 | 调查失败任务类别，对比 Worker 与持久错误，决定排空流量或隔离队列。 |
 | 唤醒加速降级 | `long_poll_wake_acceleration` 与 `acceleration` 汇总 | 建议 | 缓存/通知维护窗口后仍持续警告 | 检查缓存或唤醒传播；除非 `correctness` 也降级，不视为正确性故障。 |
@@ -421,8 +425,8 @@ Durable Workflow v2 公开应在自有环境测量的维度。在生产流量依
 | --- | --- | --- |
 | 投影健康 | 稳态 `needs_rebuild = 0`、人为偏移后的重建时长和过期/孤立清理时间 | `/waterline/api/v2/health`、`/waterline/api/stats`、`workflow:v2:rebuild-projections` |
 | 队列压力 | 积压年龄、最老就绪年龄、可运行/延迟数量、添加/分派率、分派逾期年龄、过期轮询者及 `accepting`、`saturated`、`throttled`、`no_slots`、`no_active_workers` | Waterline 统计和队列视图，以及 `operator_metrics.backlog.*` / `operator_metrics.tasks.*` |
-| 工作流启动延迟 | 已接受但等待首任务创建的启动、最老待启动年龄及准入后首任务领取 | `operator_metrics.starts.*` 与 Worker `schedule_to_start` |
-| 调度到开始延迟 | 工作流/活动从入队到开始的等待 | Worker SDK 指标 |
+| 工作流启动延迟 | 已接受但等待首任务创建的启动、最老待启动年龄及准入后首任务领取 | `operator_metrics.starts.*` 与 Worker `schedule_to_start`（仅适用于已验证的 Server/SDK 组合） |
+| Schedule-to-start 延迟 | Server 测量的工作流或活动任务从可执行时刻到租约的时长，不含计划等待和退避 | 仅在确切 Server/SDK 组合通过验证后使用 Worker SDK 直方图 |
 | 定时器扇出唤醒 | 突发定时器的唤醒传播时间，以及计划触发到就绪任务可见的延迟 | Worker 遥测及同区域唤醒协调检查 |
 | 修复扫描成本 | 候选数、选中数、最大候选年龄、最大缺失运行年龄和扫描压力 | `operator_metrics.repair.*` |
 | 历史压力 | 事件数、历史大小与 continue-as-new 建议阈值 | `operator_metrics.history.*` |

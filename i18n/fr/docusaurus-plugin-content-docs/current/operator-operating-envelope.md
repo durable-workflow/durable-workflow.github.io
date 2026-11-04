@@ -278,11 +278,15 @@ Ces champs sont locaux au nœud. Lors d’une transition de formes, interrogez c
 
 Utilisez métriques, traces et journaux worker pour :
 
-- Latence `schedule_to_start` des workflows et activités
+- Latence `schedule_to_start` (uniquement avec un couple Server/SDK qualifié) des workflows et activités
 - Succès des polls et distribution synchrone ou immédiate
 - Taille et évictions du cache sticky
 - Pression CPU, mémoire, threads et boucle d’événements
 - Métriques applicatives émises par activités ou workers
+
+Le nom commun du recorder est `durable_workflow_worker_task_schedule_to_start_seconds`, un histogramme en secondes portant exactement les tags `task_kind` et `task_queue`. Le [contrat révision 2](https://github.com/durable-workflow/.github/blob/23f9bc3c3798cb6aab6ccf5f9cd210854b820c65/sdk-metrics/README.md#schedule-to-start-observations) exige le booléen `server_capabilities.claimed_task_ready_age: true` et un entier valide `task.ready_age_ms`. Lors de la distribution réelle d’une tâche workflow/activité, le SDK enregistre la durée calculée par le Server entre éligibilité et attribution du lease. Livraison, traitement, attente programmée et backoff des reprises sont exclus. Ne soustrayez pas les horloges du worker et du Server. Une capacité, valeur ou origine d’éligibilité connue manquante ne produit aucun échantillon, pas zéro. Un zéro valide est bien enregistré.
+
+Le [hook Python](https://github.com/durable-workflow/sdk-python/pull/264) est intégré mais non publié. La publication du Server et l’acceptation installée/exportée restent en attente dans [Python #188](https://github.com/durable-workflow/sdk-python/issues/188). Les métriques de requête, poll et traitement ne fournissent pas cet histogramme. Avant qualification du couple exact, alertez sur `operator_metrics.tasks.oldest_ready_due_at` et `operator_metrics.tasks.max_ready_due_age_ms` lorsqu’ils sont disponibles. Ces signaux agrégés de retard ne mesurent pas la latence par tâche et ne remplacent pas sa distribution.
 
 Étiquetez séparément requêtes synchrones, débogage en direct et autres commandes non durables. Elles ne comptent pas dans le retard durable et ne changent pas les compteurs de réparation Waterline.
 
@@ -312,7 +316,7 @@ Les seuils d’alerte dépendent du déploiement. Publiez vos valeurs d’âge d
 | --- | --- | --- | --- | --- |
 | Disponibilité bloquée | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Bloquant | Erreur de `doctor --strict`, `status = error` ou HTTP `503` | Arrêter mise à jour/bascule, corriger, vérifier disponibilité et compatibilité |
 | Couverture compatible | `operator_metrics.workers.*`, `worker_compatibility`, `no_compatible_worker_for_task` | Bloquant | `active_workers_supporting_required = 0` pour namespace ou `(connection, queue)` requis | Retirer incompatibles, enregistrer compatibles, vérifier l’agrégat `correctness` |
-| Retard durable | Files Waterline, `operator_metrics.backlog.*`, `schedule_to_start` worker | Bloquant si soutenu, indicatif si bref | Âge prêt ou latence au-dessus de la référence malgré workers compatibles | Ajouter capacité, inspecter admission et progrès du planificateur/attribution |
+| Retard durable | Files Waterline, `operator_metrics.backlog.*`, `schedule_to_start` (uniquement avec un couple Server/SDK qualifié) worker | Bloquant si soutenu, indicatif si bref | Âge prêt ou latence au-dessus de la référence malgré workers compatibles | Ajouter capacité, inspecter admission et progrès du planificateur/attribution |
 | Pollers et saturation | Détail file, `dw task-queue:describe`, `status`, pollers périmés, entrée/distribution | Bloquant pour `no_active_workers`, `no_slots`, `unavailable` ; indicatif pour `throttled` volontaire | `saturated` avec âge et écart de débit croissants, ou états bloquants hors maintenance | Ajouter emplacements, restaurer cohorte, vérifier plafond/verrou avant de dimensionner |
 | Retard de démarrage | `operator_metrics.starts.*`, télémétrie contrôle et première tâche | Bloquant si soutenu | `pending_commands`, `ready_tasks`, `max_pending_ms` trop élevés malgré capacité | Vérifier commande vers tâche, création rapide, attribution ; séparer dette de démarrage et retard worker |
 | Dérive/réparation | `run_summary_projection`, `selected_run_projections`, `operator_metrics.repair.*` | Indicatif | Avertissement après une fenêtre de reconstruction ou âge croissant | Prévisualiser, réparer puis confirmer retour à la référence |
@@ -418,8 +422,8 @@ Durable Workflow v2 publie les dimensions à mesurer dans votre environnement. E
 | --- | --- | --- |
 | Projections | `needs_rebuild = 0`, durée après dérive intentionnelle, nettoyage des orphelins | `/waterline/api/v2/health`, `/waterline/api/stats`, `workflow:v2:rebuild-projections` |
 | Pression des files | Âges retard/prêt, tâches actionnables/différées, entrée/distribution, retard de distribution, pollers périmés, `accepting`/`saturated`/`throttled`/`no_slots`/`no_active_workers` | Vues Waterline, `operator_metrics.backlog.*`, `operator_metrics.tasks.*` |
-| Démarrages | Commandes acceptées sans première tâche, âge et prise en charge initiale | `operator_metrics.starts.*`, `schedule_to_start` |
-| Avant démarrage | Attente workflow et activité entre mise en file et démarrage | Métriques SDK worker |
+| Démarrages | Commandes acceptées sans première tâche, âge et prise en charge initiale | `operator_metrics.starts.*`, `schedule_to_start` (uniquement avec un couple Server/SDK qualifié) |
+| Latence schedule-to-start | Durée mesurée par le Server entre éligibilité et lease des tâches workflow/activité, hors attente programmée et backoff | Histogramme SDK worker après qualification du couple exact Server/SDK |
 | Rafale de timers | Propagation des réveils, écart heure prévue/visibilité de tâche prête | Télémétrie worker et coordination monorégion |
 | Réparation | Candidats, sélectionnés, âge maximal candidat/run manquant, pression de scan | `operator_metrics.repair.*` |
 | Historique | Nombre, taille et seuils continue-as-new | `operator_metrics.history.*` |

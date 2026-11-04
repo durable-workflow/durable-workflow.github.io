@@ -416,6 +416,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Core 时间线摘要上限 {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 及以上**将完整的派生时间线摘要限制为 65,535 个 UTF-8 字节，包括标签、标点、` [truncated]` 标记和回调恢复提示。记录的权威失败、原始类型和不可重试决定保持不变。请检查接收端运行时实际的 `composer.lock`。[正常安装包的验证记录](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577)独立于 SDK 报告上限验证了摘要边界。
+
+SDK 的 62 KiB 报告余量不会修复旧 Core 的摘要写入，也不会消除独立的[权威失败存储上限](https://github.com/durable-workflow/.github/issues/225)。[基于历史的 datetime 修复](./features/search-attributes.md#repair-datetime-search-attributes)同样要求实际安装的 Workflow 2.12.0 及以上。它修复派生搜索行，不修复失败的时间线写入或缺失的权威历史。Server 镜像仍需对其中安装的 Core 和 HTTP/数据库路径独立验证后，才能称为已修复。
+
 ## PHP 服务模式失败报告上限 {#php-failure-report-limits}
 
 PHP SDK **3.5.0 或更新版本**将服务模式下发出的失败报告限制为：UTF-8 消息 62 KiB、堆栈 128 KiB、可选元数据合计 64 KiB，以及包含标记的完整编码请求体 1 MiB。已知传输上限更低时，以较低值为准。[PHP 报告指南](./polyglot/php.md#bounded-failure-reports)说明了配置、省略诊断信息、保留的重试语义，以及本地首次执行与冷重放的一致性。这些是 SDK 报告的边界。嵌入式记录和 Core 摘要存储遵循各自独立的契约。

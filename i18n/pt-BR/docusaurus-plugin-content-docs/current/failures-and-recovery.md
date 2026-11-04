@@ -495,6 +495,12 @@ class RetryableWorkflow extends Workflow
 }
 ```
 
+## Limites do resumo de timeline do Core {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 ou posterior** limita o resumo derivado completo da timeline a 65.535 bytes UTF-8, incluindo rótulos, pontuação, marcador ` [truncated]` e eventual aviso de recuperação de callback. Preserva a falha registrada autoritativa, o tipo original e a decisão de não repetir. Confira o `composer.lock` real do runtime receptor. O [recibo do pacote instalado normalmente](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) verifica os limites do resumo separadamente dos limites de reporte do SDK.
+
+A margem de reporte de 62 KiB dos SDKs não corrige um escritor de resumos Core antigo nem remove os [limites separados de armazenamento canônico de falhas](https://github.com/durable-workflow/.github/issues/225). A [reparação datetime baseada no histórico](./features/search-attributes.md#repair-datetime-search-attributes) também exige Workflow 2.12.0 ou posterior realmente instalado. Repara linhas de busca derivadas, não gravações de timeline que falharam ou histórico autoritativo ausente. Uma imagem Server precisa da própria aceitação do Core instalado e dos caminhos HTTP/banco de dados antes de ser considerada corrigida.
+
 ## Limites de relatórios de falha PHP no modo de serviço {#php-failure-report-limits}
 
 O SDK PHP **3.5.0 ou posterior** limita os relatórios de falha enviados no modo de serviço a mensagens UTF-8 de 62 KiB, pilhas de 128 KiB, 64 KiB de metadados opcionais combinados e um corpo completo codificado de 1 MiB, incluindo os marcadores. Limites de transporte conhecidos menores são respeitados. O [guia de relatórios PHP](./polyglot/php.md#bounded-failure-reports) explica a configuração, os diagnósticos de omissão, a semântica de novas tentativas preservada e a igualdade entre a primeira execução local e o replay a frio. Esses limites se aplicam aos relatórios do SDK. O registro embarcado e o armazenamento de resumos do Core mantêm contratos separados.
