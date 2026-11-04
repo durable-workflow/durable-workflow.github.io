@@ -8,20 +8,24 @@ on:
 permissions:
   contents: read
 
+# One deployment at a time. A newer push waits for the deployment in progress
+# instead of cancelling it part-way.
 concurrency:
   group: public-docs-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy to GitHub Pages
+  # Runs dependency and build code with a read-only token. It can only
+  # produce the Pages artifact.
+  build:
+    name: Build website
     if: >-
       github.repository == 'durable-workflow/durable-workflow.github.io' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
@@ -33,8 +37,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Apply reviewed dependency patches
+        run: npx --no-install patch-package
       - name: Validate analytics configuration
         env:
           CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
@@ -48,11 +54,40 @@ jobs:
           DOCS_TRANSLATION_BASE: ${{ github.event.before }}
           CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
         run: npm run build
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
-          user_name: github-actions[bot]
-          user_email: 41898282+github-actions[bot]@users.noreply.github.com
-          force_orphan: true
+          path: build
+
+  # Holds the Pages deployment credentials and runs no repository or
+  # dependency code: it only publishes the artifact built above.
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: >-
+      github.repository == 'durable-workflow/durable-workflow.github.io' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      pages: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Requires Settings > Pages > Source = "GitHub Actions". With the old
+      # gh-pages branch source, stop here: the site keeps serving its last
+      # deployment.
+      - name: Require the GitHub Actions Pages source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          build_type="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type)"
+          if [ "$build_type" != workflow ]; then
+            echo "::error::Pages source is '$build_type'. Set Settings > Pages > Source to GitHub Actions, then re-run this workflow."
+            exit 1
+          fi
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5
