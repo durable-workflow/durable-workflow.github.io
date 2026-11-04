@@ -118,6 +118,19 @@ or a worker minor newer than the server's advertised minor is rejected. The
 SDK and Server release versions are tracked independently. Their runtime
 protocol manifests determine compatibility.
 
+## Condition wait deadlines and worker upgrades {#condition-wait-deadlines}
+
+Rust SDK 4.11.2 measures an ungrouped `wait_condition` timeout from its first
+open. When a wake finds the predicate still false, the wait reopens with its
+remaining time, so unrelated signals do not extend its deadline. Waits in
+`parallel` or `select` groups still reopen with the authored timeout for
+compatibility with PHP Server 2.11.8.
+
+Workers on 4.11.1 or earlier refuse histories that record a shorter reopen
+timeout. Keep those runs on workers using 4.11.2 or later during rolling
+deployments and rollback. See the
+[tagged 4.11.2 compatibility notes](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
 ## Workflow lists and complete run history {#workflow-lists-and-history}
 
 These APIs require Rust SDK **4.6.0 or later**; check `Cargo.lock` because the separate installation tuple above may select an older crate. The [normal installed-package acceptance](https://github.com/durable-workflow/sdk-rust/issues/122#issuecomment-6363352910) verifies three list pages, six history pages, a 128 KiB payload, export/replay and the read-only example against published Server 2.11.0. Offline testing helpers require 4.5.0; these listing/history methods and iterators require 4.6.0. This does not change the selected Server/SDK tuple.
