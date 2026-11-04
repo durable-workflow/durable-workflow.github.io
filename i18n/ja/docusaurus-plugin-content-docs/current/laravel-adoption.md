@@ -486,6 +486,8 @@ Composer 要件の変更では、処理中ワークフロー、履歴、遅延�
 
 旧パッケージ、キュー、テーブル、秘密、Waterline の廃止は最後の手順であり、切り替えの仕組みではありません。
 
+サービスモードのランタイム間の移行には、[ランタイム間でワークロードを移す](/docs/polyglot/runtime-migration/)を参照してください。Server の履歴エクスポートは、稼働状態のインポートではありません。
+
 ## 選んだ経路へ進む {#continue-with-the-chosen-path}
 
 - [安定版 v1 のインストール](/docs/1.x/installation/)

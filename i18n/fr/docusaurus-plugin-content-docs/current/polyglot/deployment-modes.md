@@ -158,6 +158,8 @@ Trois règles de migration sont impératives :
 
 ## Références associées {#related-references}
 
+[Déplacer les charges entre runtimes](/docs/polyglot/runtime-migration/) couvre drainage et bascule entre Server autohébergés, de Server vers Cloud et de Cloud vers Server.
+
 - [Installation](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [SDK PHP](/docs/polyglot/php)

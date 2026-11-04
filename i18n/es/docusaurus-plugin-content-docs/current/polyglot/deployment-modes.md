@@ -133,6 +133,8 @@ Respeta estas tres reglas:
 
 ## Referencias relacionadas {#related-references}
 
+[Trasladar cargas entre runtimes](/docs/polyglot/runtime-migration/) cubre el drenaje y el corte entre Server autogestionados, de Server a Cloud y de Cloud a Server.
+
 - [Instalación](/docs/installation)
 - [Server](/docs/polyglot/server)
 - [SDK PHP](/docs/polyglot/php)
