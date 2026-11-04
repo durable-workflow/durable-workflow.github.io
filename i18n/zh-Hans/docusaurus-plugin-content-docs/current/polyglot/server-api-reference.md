@@ -344,6 +344,7 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | 仅在选定运行仍为当前运行时取消。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | 仅在选定运行仍为当前运行时终止。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | 仅在选定运行仍为当前运行时修复。 |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | 对所选的失败运行执行 redrive：启动一个复用其已完成步骤的后继运行。已经 redrive 过的运行会返回现有的后继运行，已用于另一次 redrive 的 `request_id` 会被拒绝。拒绝时返回 `reason`。参见 [对失败的运行执行 redrive](../failures-and-recovery.md#redrive)。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | 仅在选定运行为当前运行且已关闭时归档。 |
 
 命令通过 Avro 负载封装传递业务值，官方 SDK 自动完成编码。直接 HTTP 客户端必须使用官方 Avro 编码器的 `{codec, blob}` 封装，或下述运行时外部引用。外围 HTTP 文档是 JSON，但原始业务 JSON 不是另一种负载编解码格式。

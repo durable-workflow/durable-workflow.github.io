@@ -238,6 +238,7 @@ der Laufzeitumgebung statt in der Profildatei bleiben.
 | `dw workflow:cancel [workflow-id]` | Einen Workflow oder ausgewählten Batch als abgebrochen schließen; keine Bereinigung durch Workflow-Code. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Workflow zwangsweise terminieren. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Server um Reparatur eines festhängenden oder wiederholbaren Laufs bitten. | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | Einen fehlgeschlagenen Lauf in einem neuen Lauf fortsetzen, der die abgeschlossenen Schritte wiederverwendet. Siehe [Einen fehlgeschlagenen Lauf per Redrive fortsetzen](../failures-and-recovery.md#redrive). | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | Geschlossenen Lauf archivieren. | `--reason`, `--json` |
 
 Beispiele:

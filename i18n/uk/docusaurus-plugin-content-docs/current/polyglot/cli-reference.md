@@ -231,6 +231,7 @@ JSON містить стабільне поле `status` для автомати
 | `dw workflow:cancel [workflow-id]` | Закрити один workflow чи вибрану групу як скасовані без очищення в коді workflow. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Примусово завершити workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Попросити сервер відновити застрягле виконання чи виконання, що допускає повторну спробу. | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | Продовжити невдалий запуск у новому запуску, який повторно використовує завершені кроки. Див. [Redrive невдалого запуску](../failures-and-recovery.md#redrive). | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | Архівувати закрите виконання. | `--reason`, `--json` |
 
 Приклади:

@@ -244,6 +244,7 @@ l'environnement du runtime plutôt que dans le fichier de profil.
 | `dw workflow:cancel [workflow-id]` | Fermer un workflow ou un lot sélectionné comme annulé ; aucun nettoyage du code de workflow n'est exécuté. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Forcer la terminaison d'un workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Demander au serveur de réparer une exécution bloquée ou réessayable. | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | Poursuivre une exécution échouée dans une nouvelle exécution qui réutilise ses étapes terminées. Voir [Faire un redrive d’une exécution échouée](../failures-and-recovery.md#redrive). | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | Archiver une exécution fermée. | `--reason`, `--json` |
 
 Exemples :

@@ -451,6 +451,7 @@ Server також надає кооперативні маршрути `request-
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | Скасувати лише поточне вибране виконання. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | Примусово завершити лише поточне вибране виконання. |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | Виправити лише поточне вибране виконання. |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | Запустити redrive для вибраного невдалого запуску: стартує наступник, який повторно використовує завершені кроки. Запуск, для якого вже зроблено redrive, повертає наявного наступника, а `request_id`, уже використаний для іншого redrive, відхиляється. Відмова повертає `reason`. Див. [Redrive невдалого запуску](../failures-and-recovery.md#redrive). |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | Архівувати лише поточне й закрите вибране виконання. |
 
 Команди передають бізнес-значення в Avro-конвертах. SDK першої сторони кодують їх автоматично. Прямий HTTP-клієнт має використовувати конверт `{codec, blob}` офіційного Avro-кодувальника або посилання runtime нижче. Зовнішній HTTP-документ є JSON; звичайний бізнес-JSON не є іншим кодеком даних.
