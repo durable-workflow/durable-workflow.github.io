@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: read
-  attestations: read
 
 concurrency:
   group: cli-installers-${{ github.ref }}
@@ -31,6 +30,9 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    permissions:
+      contents: read
+      attestations: read
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
@@ -43,8 +45,10 @@ jobs:
           DURABLE_WORKFLOW_INSTALL_DIR: ${{ runner.temp }}/dw-bin
           DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS: '1'
         run: |
+          # The installer reports "not ready" (exit 1) unless dw resolves on PATH.
+          export PATH="$DURABLE_WORKFLOW_INSTALL_DIR:$PATH"
           sh static/install.sh
-          "$DURABLE_WORKFLOW_INSTALL_DIR/dw" --version | tee "$RUNNER_TEMP/version.txt"
+          dw --version | tee "$RUNNER_TEMP/version.txt"
           grep -F "$CLI_VERSION" "$RUNNER_TEMP/version.txt"
       - name: Refuse a release signed by another workflow
         env:
@@ -56,16 +60,25 @@ jobs:
           # Same installer, but it only trusts a workflow that never signed the release.
           sed 's/(release|release-rust)/(not-release)/' static/install.sh > "$RUNNER_TEMP/install-wrong-signer.sh"
           ! cmp -s static/install.sh "$RUNNER_TEMP/install-wrong-signer.sh"
-          if sh "$RUNNER_TEMP/install-wrong-signer.sh"; then
+          export PATH="$DURABLE_WORKFLOW_INSTALL_DIR:$PATH"
+          if sh "$RUNNER_TEMP/install-wrong-signer.sh" > "$RUNNER_TEMP/refused.log" 2>&1; then
+            cat "$RUNNER_TEMP/refused.log"
             echo 'installer accepted a release signed by an unexpected workflow' >&2
             exit 1
           fi
+          cat "$RUNNER_TEMP/refused.log"
+          # Refused by the attestation check, not by an earlier step.
+          grep -F 'Verifying GitHub artifact attestations' "$RUNNER_TEMP/refused.log"
+          grep -F 'verifying with issuer' "$RUNNER_TEMP/refused.log"
           test ! -e "$DURABLE_WORKFLOW_INSTALL_DIR/dw"
 
   powershell-installer:
     name: install.ps1 (windows-latest)
     runs-on: windows-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      attestations: read
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
@@ -94,6 +107,12 @@ jobs:
           $wrong = Join-Path $env:RUNNER_TEMP 'install-wrong-signer.ps1'
           (Get-Content -Raw ./static/install.ps1).Replace('(release|release-rust)', '(not-release)') | Set-Content -NoNewline $wrong
           $refused = $false
-          try { & $wrong } catch { $refused = $true; Write-Host "Refused as expected: $_" }
+          try { & $wrong } catch {
+            if ("$_" -notlike 'Attestation verification failed*') { throw }
+            $refused = $true
+            Write-Host "Refused as expected: $_"
+          }
           if (-not $refused) { throw 'installer accepted a release signed by an unexpected workflow' }
           if (Test-Path (Join-Path $env:DURABLE_WORKFLOW_INSTALL_DIR 'dw.exe')) { throw 'refused install left dw.exe behind' }
+          # The expected gh failure leaves a nonzero exit code behind.
+          $global:LASTEXITCODE = 0
