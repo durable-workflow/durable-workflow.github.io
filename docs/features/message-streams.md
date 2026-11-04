@@ -129,13 +129,14 @@ store separately from durable message ordering.
 
 ## Continue-As-New
 
-Message streams are instance-first. When a workflow continues as new, the
-cursor position carries forward to the continued run, and consumed messages
-remain attached to the original run as historical evidence. In Workflow
-releases through 2.20.1, messages still pending when the run continues as new
-stay on the closed run, and the continued run never receives them
-([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)).
-Until a release fixes this, receive pending messages before you call
+Message streams are instance-first. When a workflow continues as new, pending
+inbound messages move to the continued run, the cursor position carries
+forward, and consumed messages remain attached to the original run as
+historical evidence. Workflow 2.20.1 and earlier moved only the cursor:
+messages still pending when the run continued as new stayed on the closed run,
+and the continued run never received them
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018),
+fixed in 2.20.2). On those releases, receive pending messages before you call
 `continueAsNew()`, or send input that must survive the handoff as a
 [signal](./signals.md): accepted signals that the run has not applied move to
 the continued run.
