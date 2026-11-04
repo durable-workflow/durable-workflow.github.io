@@ -36,6 +36,27 @@ Do not write `workflow_messages` rows or cursor rows directly from application
 workflow code. The facade is the stable contract; lower-level message services
 exist for package/runtime integration.
 
+:::warning Not replay-safe in workflow code through Workflow 2.20.0
+
+Workflow code replays on every later workflow task and on every query. In
+Workflow releases through 2.20.0, the message-stream calls below do not account
+for replay ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+
+- `outbox()->sendReference()` writes a new outbound and inbound message each
+  time the code replays, so a consumer can receive the same message more than
+  once. Give each logical send a stable `idempotencyKey`, such as
+  `reply:{turn}`, and deduplicate by `idempotency_key` when consuming.
+  Deduplicate by `payload_reference` only when each logical send uses a
+  different reference.
+- `inbox()->receive()` and `receiveOne()` can return a different message, or
+  none, when the code replays, and can skip pending messages. Until a release
+  fixes this, do not call them from workflow code that runs more than one
+  workflow task, such as code that runs an activity, or waits for a signal or
+  timer. Receive the messages outside workflow code, or deliver the payload
+  with a [signal](./signals.md).
+
+:::
+
 ## Receiving Messages
 
 Use `peek()` when a workflow needs to inspect pending inbound messages without
