@@ -112,7 +112,7 @@ Le redrive poursuit une exécution échouée dans une nouvelle exécution de la 
 
 L’exécution échouée reste fermée et inchangée. La nouvelle exécution, appelée successeur, reçoit le numéro d’exécution suivant et devient l’exécution courante de l’instance. Son `continued_from_run_id` désigne l’exécution échouée. Son événement `WorkflowStarted` enregistre `recovery_kind: redrive` et `resume_step_sequence`, l’étape où l’exécution reprend.
 
-Cette section décrit le redrive dans Workflow 2.19.0 et les versions ultérieures. Les versions antérieures de Workflow, ainsi que le redrive du Server natif, acceptent moins d’exécutions. Voir [Versions antérieures et Server natif](#redrive-earlier-releases).
+Cette section décrit le redrive dans Workflow 2.20.1 et les versions ultérieures. Les versions antérieures de Workflow, ainsi que le redrive du Server natif, acceptent moins d’exécutions. Voir [Versions antérieures et Server natif](#redrive-earlier-releases).
 
 Le successeur rejoue le code du workflow depuis le début :
 
@@ -121,12 +121,15 @@ Le successeur rejoue le code du workflow depuis le début :
 - Un `timer()` déclenché avant l’étape échouée est enregistré dans le successeur comme déjà déclenché. Le successeur ne l’attend pas à nouveau.
 - Un mémo ou un attribut de recherche sur lequel le code du workflow a fait un upsert avant l’étape échouée est réutilisé dans l’ordre des étapes, et le successeur garde les mêmes valeurs.
 - Une attente de signal (`await('name')`) qui a reçu et appliqué son signal est réutilisée avec la valeur du signal. Le signal n’est pas remis à nouveau.
+- Un update accepté, appliqué et terminé avant l’étape échouée est enregistré de nouveau à la même position. Le replay exécute le handler de l’update avec ses arguments enregistrés, si bien que l’état du workflow correspond. L’update n’est pas livré de nouveau. Un update rejeté, et un update que l’échec a fermé avant son exécution, sont laissés de côté.
+- `outbox()->sendReference()` et `inbox()->receive()` dans le code de workflow réutilisé renvoient le message que l’exécution échouée a envoyé ou consommé. Ils ne l’envoient ni ne le consomment de nouveau. Un receive rejoué dont l’appel d’origine n’a rien trouvé relit le stream.
 - Si un échec d’activité a mis fin à l’exécution, l’appel d’activité échoué est planifié comme une nouvelle exécution d’activité, avec la politique de nouvelles tentatives du code du workflow. Ses tentatives repartent de zéro.
 - Si l’exécution a échoué dans le code du workflow ou sur une limite structurelle, le successeur reprend à l’étape que le code du workflow n’a jamais atteinte.
 - Tout ce qui suit l’étape échouée s’exécute comme dans une nouvelle exécution.
 - Les mémos et attributs de recherche définis au démarrage de l’exécution passent au successeur, comme pour continue-as-new.
 - Le successeur conserve l’échéance d’exécution de l’exécution échouée. Son délai d’exécution repart au moment du redrive.
-- Chaque étape réutilisée porte `reused_from_run_id` et `reused_recorded_at`.
+- Chaque étape réutilisée porte `reused_from_run_id` et `reused_recorded_at`. Sur un événement d’update ou de signal réutilisé, les deux vont toujours de pair.
+- Un successeur qui a réutilisé des étapes peut à son tour faire l’objet d’un redrive. Un payload de signal ou d’update réutilisé garde dans `workflow_run_id` l’exécution qui l’a enregistré en premier, `reused_from_run_id` désigne l’exécution d’où vient le redrive, et chaque étape réutilisée garde l’heure de sa première exécution, si bien qu’une chaîne de redrives réutilise chaque étape une seule fois.
 - En mode embedded, `Workflow::now()` dans le successeur commence à l’heure de démarrage de l’exécution échouée. Le rejeu utilise `reused_recorded_at`, donc `Workflow::now()` après une étape réutilisée correspond à l’heure de l’exécution échouée. Une étape réutilisée par un second redrive garde l’heure de sa première exécution.
 
 ### Demander un redrive {#request-a-redrive}
@@ -183,11 +186,11 @@ Le redrive accepte une exécution échouée lorsque toutes ces conditions sont r
 
 - L’exécution est l’exécution courante de l’instance.
 - L’exécution a échoué parce qu’un échec d’activité a atteint le code du workflow sans y être intercepté, ou parce que le code du workflow a levé une exception ou qu’une limite structurelle l’a arrêtée. Une exécution qui a échoué sur un délai du workflow est refusée.
-- Chaque étape avant l’étape échouée est une activité terminée, un effet de bord, un marqueur de version, un `timer()` déclenché, un upsert de mémo ou d’attribut de recherche, ou une attente de signal qui a reçu et appliqué son signal. Les payloads d’activité, d’effet de bord et de signal doivent être stockés en ligne. Un payload conservé dans le stockage externe des payloads est refusé.
+- Chaque étape avant l’étape échouée est une activité terminée, un effet de bord, un marqueur de version, un `timer()` déclenché, un upsert de mémo ou d’attribut de recherche, une attente de signal qui a reçu et appliqué son signal, ou un update accepté, appliqué et terminé avec les mêmes arguments. Un update rejeté, et un update que l’échec a fermé avant son exécution, sont admis et laissés de côté. Les payloads d’activité, d’effet de bord, de signal et d’update doivent être stockés en ligne. Un payload placé dans le stockage externe des payloads est refusé.
 - La définition du workflow correspond à l’empreinte enregistrée au démarrage de l’exécution, ou vous avez passé `allow_definition_change` et le code corrigé rejoue les étapes terminées. Un échec du code du workflow sur la même définition est refusé.
 - L’échéance d’exécution n’est pas dépassée.
 - L’exécution n’a ni workflow parent, ni workflows enfants, ni activités locales, et son entrée est stockée en ligne.
-- Si un worker de service a démarré l’exécution, les étapes avant l’échec sont uniquement des activités, des effets de bord, des marqueurs de version et des minuteurs déclenchés.
+- Si un worker de service a démarré l’exécution, les étapes avant l’échec sont uniquement des activités, des effets de bord, des marqueurs de version et des minuteurs déclenchés. Les upserts de mémo et d’attribut de recherche, les attentes de signal et les updates appliqués sont refusés pour les exécutions de service.
 
 Un refus indique la première règle non respectée :
 
@@ -197,19 +200,24 @@ Un refus indique la première règle non respectée :
 | `source_run_not_current` | Une exécution plus récente de l’instance existe. |
 | `unrecorded_failure_boundary` | L’échec de l’exécution n’a aucune étape enregistrée, par exemple un échec du code du workflow enregistré par une version antérieure à 2.19.0. |
 | `workflow_code_failure_requires_corrected_definition` | Le code du workflow a levé une exception et la définition n’a pas changé, donc le même code la lèverait à nouveau. |
-| `unsupported_history` | L’historique avant l’échec contient une étape que le redrive ne peut pas réutiliser, par exemple une mise à jour, un workflow enfant ou un minuteur annulé. |
+| `unsupported_history` | L’historique avant l’échec contient une étape que le redrive ne peut pas réutiliser, comme un workflow enfant ou un minuteur annulé. |
 | `unsupported_local_activity` | L’historique contient une activité locale. |
 | `unsupported_timer` | L’historique contient un délai de condition ou de signal, un minuteur de nettoyage d’annulation, ou un minuteur dans une portée d’annulation ou un groupe parallèle. |
 | `incomplete_timer_step` | Il manque à une étape de minuteur son événement de planification ou de déclenchement. |
 | `unsupported_signal_wait` | Une attente de signal a un délai, ou se trouve dans une portée d’annulation ou un groupe parallèle. |
 | `unsupported_pending_signal` | L’exécution a reçu un signal qu’elle n’a jamais appliqué. |
 | `incomplete_signal_step` | Il manque à une attente de signal sa réception ou son application, ou l’application n’a aucune valeur enregistrée. |
-| `mismatched_signal_receipt` | Une réception de signal désigne une autre exécution, instance, commande ou attente, ou une même réception est appliquée à deux attentes. |
+| `mismatched_signal_receipt` | Une réception de signal désigne une autre exécution, instance, commande ou attente, une même réception est appliquée à deux attentes, ou un événement de signal réutilisé n’a qu’un seul de `reused_from_run_id` et `reused_recorded_at`, ou désigne une autre source. |
+| `unsupported_pending_update` | L’exécution a accepté un update qu’elle n’a jamais appliqué ni fermé. |
+| `mismatched_update_history` | Les événements d’un update n’ont aucune des formes acceptées, désignent une autre exécution, un autre update, une autre commande ou un autre handler, changent les arguments entre l’acceptation et l’application, ou ont une paire `reused_from_run_id` et `reused_recorded_at` incomplète. |
+| `incomplete_update_step` | La fin d’un update appliqué enregistre un échec ou n’a pas de résultat. |
 | `invalid_step_sequence` | Une étape réutilisée n’a pas de numéro d’étape valide. |
 | `duplicate_step_sequence` | Deux étapes réutilisées partagent le même numéro d’étape. |
 | `external_activity_result_not_supported` | Un résultat d’activité terminée se trouve dans le stockage externe des payloads. |
 | `external_side_effect_result_not_supported` | Un résultat d’effet de bord se trouve dans le stockage externe des payloads. |
-| `external_signal_payload_not_supported` | Les arguments ou la valeur appliquée d’un signal se trouvent dans le stockage externe des payloads. |
+| `external_signal_payload_not_supported` | Les arguments ou la valeur appliquée d’un signal se trouvent dans le stockage externe des payloads. Toute clé `external_storage` compte, même nulle. |
+| `external_update_payload_not_supported` | Les arguments ou le résultat d’un update se trouvent dans le stockage externe des payloads. |
+| `unavailable_update_payload` | Les arguments ou le résultat en ligne d’un update ne peuvent pas être décodés. |
 | `missing_activity_result`, `unavailable_activity_result` | Un résultat d’activité terminée est absent ou ne peut pas être décodé. |
 | `unsupported_visibility_metadata` | Le code du workflow a écrit un mémo ou un attribut de recherche à une étape que le successeur ne réutiliserait pas. |
 | `unsupported_source_metadata` | L’exécution a été démarrée comme enfant d’un autre workflow. |
@@ -219,8 +227,9 @@ Un refus indique la première règle non respectée :
 | `definition_incompatible_with_prefix` | Le code corrigé ne peut pas rejouer les étapes terminées. `definition_mismatch` indique la première étape qui diffère. |
 | `definition_check_over_budget` | L’historique terminé dépasse le budget d’historique autorisé par la vérification de relecture. |
 | `definition_change_requires_replay_check` | Un worker de service a démarré l’exécution, donc le redrive ne peut pas vérifier une définition modifiée. |
-| `service_redrive_history_not_qualified` | Un worker de service a démarré l’exécution, et les étapes avant l’échec comprennent un upsert de mémo, un upsert d’attribut de recherche ou une attente de signal. Workflow 2.19.0 refuse ces étapes pour les exécutions en mode service tant qu’il ne peut pas vérifier, pour chaque runtime de SDK, sa capacité à les relire. |
+| `service_redrive_history_not_qualified` | Un worker de service a démarré l’exécution, et les étapes avant l’échec comprennent un upsert de mémo, un upsert d’attribut de recherche, une attente de signal ou un update appliqué. Le redrive refuse ces étapes pour les exécutions de service jusqu’à pouvoir vérifier, pour chaque runtime de SDK, qu’il sait les rejouer. |
 | `request_id_already_used` | Le `request_id` a déjà servi pour un autre redrive de l’instance. |
+| `already_redriven` | Signalé par le détail d’exécution et `describe()` pour une exécution qui a déjà fait l’objet d’un redrive. Une demande de redrive pour cette exécution renvoie le successeur existant. |
 | `invalid_request_id` | Le `request_id` dépasse 191 caractères. |
 | `run_not_found`, `instance_not_found` | L’exécution ou l’instance n’existe pas dans l’espace de noms. |
 
@@ -236,13 +245,19 @@ Une exécution qui n’a pas échoué indique `run_not_failed`. Une exécution d
 
 Dans Workflow 2.19.0 et les versions ultérieures, un successeur qui exécute du code corrigé indique l’empreinte remplacée sous `workflow_definition_changed_from` dans le détail d’exécution et sous `run.definition_changed_from` dans `describe()`.
 
+Dans Workflow 2.20.0 et versions ultérieures, le détail d’exécution et `describe()` présentent le lien de redrive comme une lignée typée. `parents` du successeur et `continuedWorkflows` de l’exécution échouée l’indiquent avec `link_type: redrive` et `history_authority: typed_history`, en reprenant l’étape et l’heure du `WorkflowStarted` du successeur. Un lien que l’historique ne confirme pas apparaît une fois avec `history_authority: mutable_open_fallback` et `diagnostic_only: true`.
+
 ### Versions antérieures et Server natif {#redrive-earlier-releases}
+
+Workflow 2.20.0 ne refuse rien de ce que 2.20.1 accepte. Dans 2.20.0, `outbox()->sendReference()` dans le code de workflow réutilisé envoie de nouveau, et un `inbox()->receive()` rejoué peut renvoyer d’autres messages ou aucun, ou consommer un message plus récent ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
+
+Workflow 2.19.0 refuse un update appliqué (`unsupported_history`). Il refuse aussi le redrive d’un successeur qui a réutilisé un update (`unsupported_history`) ou une attente de signal (`mismatched_signal_receipt`). Le détail d’exécution et `describe()` affichent les liens de redrive comme repli de diagnostic.
 
 Workflow 2.18.0 réutilise les activités terminées, les effets de bord, les marqueurs de version et les minuteurs déclenchés. Il refuse un mémo ou un attribut de recherche sur lequel le code du workflow a fait un upsert (`unsupported_history`), une attente de signal (`unsupported_history`), une exécution qui a échoué dans le code du workflow (`unrecorded_failure_boundary`) et une définition modifiée (`workflow_definition_unavailable_or_changed`).
 
 Les versions de Workflow antérieures à 2.18.0 acceptent un ensemble plus restreint d’exécutions. Chaque étape avant l’activité échouée doit être une activité terminée. Un effet de bord, un marqueur de version ou un minuteur dans cet historique est refusé avec `unsupported_history`, et tout mémo ou attribut de recherche est refusé avec `unsupported_visibility_metadata`. Le détail d’exécution et `describe()` n’indiquent ni `can_redrive` ni `redrive_blocked_reason`.
 
-Les versions antérieures à 2.19.0 ignorent `reused_recorded_at` sur les étapes réutilisées de signal, de mémo et d’attribut de recherche. Après qu’un successeur de Workflow 2.19.0 a réutilisé ces étapes, gardez des workers en version 2.19.0 ou ultérieure, ou confirmez qu’aucun historique de ce type ne peut être rejoué, avant de revenir à une version antérieure.
+Les versions antérieures à 2.19.0 ignorent `reused_recorded_at` sur les étapes de signal, de mémo et d’attribut de recherche réutilisées. Une fois qu’un successeur de Workflow 2.19.0 ou ultérieur a réutilisé ces étapes, gardez des workers 2.19.0 ou ultérieurs, ou vérifiez qu’aucun historique de ce type ne peut être rejoué, avant de revenir en arrière. En mode embarqué, Workflow 2.19.0 rejoue, importe et reprend un successeur 2.20.0 qui a réutilisé un update ou une attente de signal enchaînée de la même façon que 2.20.0 ([preuve de qualification](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)).
 
 Le redrive du Server natif applique toujours les règles antérieures à 2.18.0. La prise en charge des règles actuelles par le Server natif est suivie dans [server#980](https://github.com/durable-workflow/server/issues/980).
 

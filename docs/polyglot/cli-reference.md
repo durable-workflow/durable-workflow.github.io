@@ -241,6 +241,7 @@ runtime environment and not in the profile file.
 | `dw workflow:cancel [workflow-id]` | Close one workflow or a selected batch as cancelled; no workflow-code cleanup runs. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Force terminate a workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Ask the server to repair a stuck or retryable run. | `--json` |
+| `dw workflow:redrive <workflow-id> <run-id>` | Redrive a failed run in a new run that reuses its completed steps. See [Redrive a failed run](../failures-and-recovery.md#redrive). | `--request-id`, `--json` |
 | `dw workflow:archive <workflow-id>` | Archive a closed run. | `--reason`, `--json` |
 
 Examples:
