@@ -37,6 +37,7 @@ php artisan app:conversation \
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -60,7 +61,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -69,7 +71,7 @@ class ConversationWorkflow extends Workflow
 
 1. 每个 `message` 信号是一条用户输入。工作流按消息被接受的顺序，每轮应用一条已接受的消息。
 2. 模型调用在活动中执行。重放复用已记录的结果，而不会再次调用模型。
-3. 模型提议操作时，工作流等待 `decision` 信号。只有批准才会运行 `ApplyApprovedActionActivity`。拒绝或超时会记录回复，不做任何更改。
+3. 模型提议操作时，工作流用 `uuid4()` 为该提议生成 ID。`uuid4()` 会把该值记录到历史中，因此重放时返回相同的 ID。随后工作流等待携带该 ID 的 `decision` 信号；`status` 查询会报告这个 ID。信号按名称缓冲，因此针对其他提议的决定（过早发送、重复发送或在响应不确定后重试）会被忽略，而不会应用到下一个提议。只有批准当前待处理的提议才会运行 `ApplyApprovedActionActivity`。拒绝或超时会记录回复，不做任何更改。
 4. `RecordReplyActivity` 将回复写入应用的 `conversation_records` 表，存储在由工作流 ID 和轮次编号构成的引用下。历史只存储该引用。
 5. `status` 查询报告阶段（`waiting_for_input`、`thinking`、`awaiting_approval`、`applying_action`、`recording_reply`、`continuing_as_new` 或 `completed`）、代次、轮次计数、任何待处理的提议以及最新回复引用。通过该引用读取回复文本。
 

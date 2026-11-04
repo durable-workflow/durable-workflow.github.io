@@ -52,6 +52,7 @@ php artisan app:conversation \
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -75,7 +76,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -86,9 +88,15 @@ class ConversationWorkflow extends Workflow
    прийняті повідомлення по одному ходу за раз у порядку їхнього прийняття.
 2. Виклик моделі виконується в activity. Відтворення повторно використовує
    зафіксований результат замість повторного виклику моделі.
-3. Коли модель пропонує дію, workflow чекає на signal `decision`. Лише
-   схвалення запускає `ApplyApprovedActionActivity`. Відмова або тайм-аут
-   записують відповідь і нічого не змінюють.
+3. Коли модель пропонує дію, workflow призначає їй ID через `uuid4()`. Він
+   записує значення в історію, тож відтворення повертає той самий ID. Потім
+   workflow чекає на signal `decision`, що повторює цей ID; query `status`
+   повідомляє його. Signals буферизуються за назвою, тому рішення щодо
+   будь-якої іншої пропозиції (надіслане зарано, двічі або повторно після
+   невизначеної відповіді) ігнорується, а не застосовується до наступної
+   пропозиції. Лише схвалення пропозиції, що очікує, запускає
+   `ApplyApprovedActionActivity`. Відмова або тайм-аут записують відповідь і
+   нічого не змінюють.
 4. `RecordReplyActivity` записує відповідь у таблицю застосунку
    `conversation_records` за посиланням, побудованим з ID workflow і номера
    ходу. Історія зберігає лише це посилання.

@@ -37,6 +37,7 @@ php artisan app:conversation \
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -60,7 +61,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -69,7 +71,7 @@ class ConversationWorkflow extends Workflow
 
 1. 各 `message` シグナルが一つのユーザー入力です。ワークフローは受理したメッセージを、受理した順に一ターンずつ適用します。
 2. モデル呼び出しはアクティビティ内で実行します。リプレイでは、モデルを再度呼び出さずに記録済みの結果を再利用します。
-3. モデルが操作を提案すると、ワークフローは `decision` シグナルを待ちます。承認された場合だけ `ApplyApprovedActionActivity` を実行します。拒否またはタイムアウトの場合は応答を記録し、何も変更しません。
+3. モデルが操作を提案すると、ワークフローは `uuid4()` でその提案に ID を付けます。`uuid4()` は値を履歴に記録するため、リプレイしても同じ ID が返ります。次に、その ID を指定した `decision` シグナルを待ちます。ID は `status` クエリで確認できます。シグナルは名前ごとにバッファーされるため、別の提案に対する決定（早すぎる送信、二重送信、不確かな応答の後の再送）は次の提案に適用されず、無視されます。保留中の提案が承認された場合だけ `ApplyApprovedActionActivity` を実行します。拒否またはタイムアウトの場合は応答を記録し、何も変更しません。
 4. `RecordReplyActivity` は、ワークフロー ID とターン番号から組み立てた参照で、アプリケーションの `conversation_records` テーブルに応答を書き込みます。履歴にはその参照だけを保存します。
 5. `status` クエリは、フェーズ（`waiting_for_input`、`thinking`、`awaiting_approval`、`applying_action`、`recording_reply`、`continuing_as_new`、`completed` のいずれか）、世代、ターン数、保留中の提案、最新の応答参照を報告します。応答テキストはその参照で読み取ります。
 

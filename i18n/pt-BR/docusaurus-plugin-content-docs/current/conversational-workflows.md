@@ -52,6 +52,7 @@ faz o modelo falso propor uma ação, e o comando pede aprovação.
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -75,7 +76,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -86,9 +88,15 @@ class ConversationWorkflow extends Workflow
    mensagens aceitas um turno por vez, na ordem em que foram aceitas.
 2. A chamada ao modelo é executada em uma atividade. O replay reutiliza o
    resultado registrado em vez de chamar o modelo novamente.
-3. Quando o modelo propõe uma ação, o workflow aguarda um sinal `decision`.
-   Somente uma aprovação executa `ApplyApprovedActionActivity`. Uma recusa ou
-   um tempo limite registra a resposta e não altera nada.
+3. Quando o modelo propõe uma ação, o workflow atribui a ela um ID com
+   `uuid4()`, que registra o valor no histórico para que o replay retorne o
+   mesmo ID. Depois, aguarda um sinal `decision` que repita esse ID; a consulta
+   `status` o informa. Os sinais ficam em buffer por nome, então uma decisão
+   sobre qualquer outra proposta (enviada antes da hora, duas vezes ou
+   reenviada após uma resposta incerta) é ignorada em vez de ser aplicada à
+   próxima proposta. Somente uma aprovação da proposta pendente executa
+   `ApplyApprovedActionActivity`. Uma recusa ou um tempo limite registra a
+   resposta e não altera nada.
 4. `RecordReplyActivity` grava a resposta na tabela `conversation_records` da
    aplicação, sob uma referência construída a partir do ID do workflow e do
    número do turno. O histórico armazena apenas essa referência.

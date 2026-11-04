@@ -52,6 +52,7 @@ makes the fake model propose an action, and the command asks for approval.
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -75,7 +76,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -86,9 +88,14 @@ class ConversationWorkflow extends Workflow
    messages one turn at a time, in the order they were accepted.
 2. The model call runs in an activity. Replay reuses the recorded result instead
    of calling the model again.
-3. When the model proposes an action, the workflow waits for a `decision`
-   signal. Only an approval runs `ApplyApprovedActionActivity`. A decline or a
-   timeout records the reply and changes nothing.
+3. When the model proposes an action, the workflow gives it an ID with
+   `uuid4()`, which records the value in history so replay returns the same ID.
+   It then waits for a `decision` signal that repeats that ID; the `status`
+   query reports it. Signals are buffered by name, so a decision for any other
+   proposal (sent early, twice, or retried after an uncertain response) is
+   ignored rather than applied to the next proposal. Only an approval of the
+   pending proposal runs `ApplyApprovedActionActivity`. A decline or a timeout
+   records the reply and changes nothing.
 4. `RecordReplyActivity` writes the reply to the application's
    `conversation_records` table under a reference built from the workflow ID and
    turn number. History stores only that reference.

@@ -55,6 +55,7 @@ Kette zu untersuchen.
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -78,7 +79,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -90,9 +92,15 @@ class ConversationWorkflow extends Workflow
    Annahme an.
 2. Der Modellaufruf läuft in einer Aktivität. Replay verwendet das
    aufgezeichnete Ergebnis wieder, statt das Modell erneut aufzurufen.
-3. Schlägt das Modell eine Aktion vor, wartet der Workflow auf ein Signal
-   `decision`. Nur eine Genehmigung führt `ApplyApprovedActionActivity` aus.
-   Eine Ablehnung oder ein Timeout zeichnet die Antwort auf und ändert nichts.
+3. Schlägt das Modell eine Aktion vor, gibt der Workflow ihr mit `uuid4()` eine
+   ID. `uuid4()` zeichnet den Wert in der Historie auf, sodass ein Replay dieselbe
+   ID liefert. Danach wartet der Workflow auf ein Signal `decision`, das diese ID
+   wiederholt; die Abfrage `status` meldet sie. Signale werden nach Namen
+   gepuffert. Eine Entscheidung zu einem anderen Vorschlag (zu früh, doppelt oder
+   nach einer unsicheren Antwort erneut gesendet) wird daher ignoriert und nicht
+   auf den nächsten Vorschlag angewendet. Nur eine Genehmigung des offenen
+   Vorschlags führt `ApplyApprovedActionActivity` aus. Eine Ablehnung oder ein
+   Timeout zeichnet die Antwort auf und ändert nichts.
 4. `RecordReplyActivity` schreibt die Antwort in die Anwendungstabelle
    `conversation_records`, unter einer Referenz aus Workflow-ID und
    Zugnummer. Die Historie speichert nur diese Referenz.

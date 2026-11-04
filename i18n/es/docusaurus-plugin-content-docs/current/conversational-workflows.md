@@ -52,6 +52,7 @@ el guion. Abre `/waterline` para inspeccionar cada ejecución de la cadena.
 ```php
 #[Signal('message', [['name' => 'text', 'type' => 'string']])]
 #[Signal('decision', [
+    ['name' => 'proposalId', 'type' => 'string'],
     ['name' => 'approved', 'type' => 'bool'],
     ['name' => 'reviewer', 'type' => 'string'],
 ])]
@@ -75,7 +76,8 @@ class ConversationWorkflow extends Workflow
             // A null text is the inactivity timeout; "/end" finishes.
             // Otherwise one turn runs:
             //   activity(FakeModelActivity::class, ...) proposes a reply
-            //   await('decision', ...) holds a proposed action for a reviewer
+            //   uuid4() records an ID for a proposed action (replay-safe)
+            //   await('decision', ...) waits for a decision naming that ID
             //   activity(RecordReplyActivity::class, ...) stores the reply
         }
     }
@@ -86,9 +88,15 @@ class ConversationWorkflow extends Workflow
    mensajes aceptados de uno en uno por turno, en el orden en que se aceptaron.
 2. La llamada al modelo se ejecuta en una actividad. La reproducción reutiliza
    el resultado registrado en vez de volver a llamar al modelo.
-3. Cuando el modelo propone una acción, el workflow espera una señal
-   `decision`. Solo una aprobación ejecuta `ApplyApprovedActionActivity`. Un
-   rechazo o un vencimiento del plazo registra la respuesta y no cambia nada.
+3. Cuando el modelo propone una acción, el workflow le asigna un ID con
+   `uuid4()`, que registra el valor en el historial para que la reproducción
+   devuelva el mismo ID. Después espera una señal `decision` que repita ese ID;
+   la consulta `status` lo informa. Las señales se almacenan por nombre, así que
+   una decisión sobre cualquier otra propuesta (enviada antes de tiempo, dos
+   veces o reintentada tras una respuesta incierta) se ignora en lugar de
+   aplicarse a la siguiente propuesta. Solo una aprobación de la propuesta
+   pendiente ejecuta `ApplyApprovedActionActivity`. Un rechazo o un vencimiento
+   del plazo registra la respuesta y no cambia nada.
 4. `RecordReplyActivity` escribe la respuesta en la tabla
    `conversation_records` de la aplicación con una referencia formada a partir
    del ID del workflow y el número de turno. El historial solo almacena esa
