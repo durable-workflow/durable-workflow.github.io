@@ -1812,7 +1812,7 @@ SDK は共有 `durable_workflow.protocol.Value` スキーマ内の名前付き�
 | アクティビティ結果 | `ctx.schedule_activity(..., result_type=T)` がワークフローの yield で完了結果をデコードします。並列グループと `ctx.select(...)` も対象です。 |
 | ワークフロー、子、クライアント、シグナル、クエリ、更新、バリデーターの値 | [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) の拡張アダプターはマージ済みですが未公開です。これらの境界では中立値への明示的な変換を続けてください。 |
 
-受信時に使える型注釈は dataclass、`Enum`（`IntEnum`、`StrEnum` を含む）、`Optional[T]` / `T | None`、`list[T]`、`dict[str, T]`、`str`、`int`、`float`、`bool`、`bytes`、`Any` です。`None` 以外の 2 型の Union など、他の注釈は宣言時または呼び出し時に `TypeError` になります。デコードは明示的に有効化します。`result_type` はローカルで、送信、比較、履歴保存の対象になりません。既定値、未知のフィールド、`TypedValueError` の扱いは[公開済み SDK リファレンス](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/reference.md#typed-activity-values)を参照してください。
+受信時に使える型注釈は dataclass、`Enum`（`IntEnum`、`StrEnum` を含む）、`Optional[T]` / `T | None`、`list[T]`、`dict[str, T]`、`str`、`int`、`float`、`bool`、`bytes`、`Any` です。`None` 以外の 2 型の Union など、他の注釈は宣言時または呼び出し時に `TypeError` になります。デコードは明示的に有効化します。`result_type` はローカルで、送信、比較、履歴保存の対象になりません。既定値、未知のフィールド、`TypedValueError` の扱いは[公開済み SDK リファレンス](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values)を参照してください。
 
 集合、タプル、datetime、UUID、Decimal、pydantic、attrs のオブジェクトには、引き続き正規の文字列、数値、マップ、リストへの明示的なアダプターが必要です。この永続値の形を変えると、ワークフローの互換性が変わります。
 

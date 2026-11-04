@@ -2121,7 +2121,7 @@ and `StrEnum`), `Optional[T]` / `T | None`, `list[T]`, `dict[str, T]`, `str`,
 `int`, `float`, `bool`, `bytes` and `Any`. Other annotations, including a union
 of two non-`None` types, raise `TypeError` at declaration or call time.
 Decoding remains opt-in. `result_type` is local and is never sent, compared or
-written to history. See the [published SDK reference](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/reference.md#typed-activity-values)
+written to history. See the [published SDK reference](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values)
 for defaults, unknown fields and `TypedValueError` handling.
 
 Sets, tuples, datetime, UUID, Decimal, pydantic and attrs objects still require

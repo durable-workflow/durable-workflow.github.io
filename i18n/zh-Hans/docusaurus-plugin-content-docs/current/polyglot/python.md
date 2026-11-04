@@ -1784,7 +1784,7 @@ SDK 在共享的 `durable_workflow.protocol.Value` 模式中显式选择具名�
 | 活动结果 | `ctx.schedule_activity(..., result_type=T)` 在工作流的 yield 处解码已完成结果，也适用于并行组和 `ctx.select(...)`。 |
 | 工作流、子工作流、客户端、信号、查询、更新及验证器的值 | [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) 的扩展适配器已合并但尚未发布。这些边界仍需显式转换为中立值。 |
 
-接收时支持的注解为数据类、`Enum`（含 `IntEnum`、`StrEnum`）、`Optional[T]` / `T | None`、`list[T]`、`dict[str, T]`、`str`、`int`、`float`、`bool`、`bytes` 和 `Any`。其他注解，包括两个非 `None` 类型的联合，会在声明或调用时引发 `TypeError`。解码仍需显式启用。`result_type` 仅在本地使用，不发送、不比较，也不写入历史。默认值、未知字段和 `TypedValueError` 的处理见[已发布 SDK 参考](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/reference.md#typed-activity-values)。
+接收时支持的注解为数据类、`Enum`（含 `IntEnum`、`StrEnum`）、`Optional[T]` / `T | None`、`list[T]`、`dict[str, T]`、`str`、`int`、`float`、`bool`、`bytes` 和 `Any`。其他注解，包括两个非 `None` 类型的联合，会在声明或调用时引发 `TypeError`。解码仍需显式启用。`result_type` 仅在本地使用，不发送、不比较，也不写入历史。默认值、未知字段和 `TypedValueError` 的处理见[已发布 SDK 参考](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values)。
 
 集合、元组及 datetime、UUID、Decimal、pydantic、attrs 对象仍需显式适配为规范字符串、数值、映射或列表。更改这种持久化值结构会改变工作流兼容性。
 
