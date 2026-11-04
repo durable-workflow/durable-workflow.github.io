@@ -152,4 +152,4 @@ class PollingWorkflow extends Workflow
 }
 ```
 
-长期运行的人类输入或助手循环，优先使用正式的 `$this->inbox()` / `$this->outbox()` [消息流](./message-streams.md)门面。待处理流消息和游标位置转移到新运行，已消费消息留在原运行，作为历史证据。
+长期运行的人类输入或助手循环，优先使用正式的 `$this->inbox()` / `$this->outbox()` [消息流](./message-streams.md)门面。游标位置转移到新运行，已消费消息留在原运行，作为历史证据。在 Workflow 2.20.1 及之前的版本中，继续为新运行时仍待处理的流消息会留在已关闭的运行上（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)）；参见[消息流](./message-streams.md#continue-as-new)。

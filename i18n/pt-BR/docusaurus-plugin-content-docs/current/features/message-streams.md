@@ -135,9 +135,16 @@ o armazenamento de payloads separadamente da ordenação durável de mensagens.
 ## Continuar como novo {#continue-as-new}
 
 Fluxos de mensagens priorizam a instância. Quando um workflow continua como
-novo, mensagens de entrada pendentes e a posição do cursor são transferidas
-para a nova execução. Mensagens consumidas permanecem vinculadas à execução
-original como evidência histórica.
+novo, a posição do cursor é levada adiante para a nova execução, e mensagens
+consumidas permanecem vinculadas à execução original como evidência histórica.
+Nas versões do Workflow até a 2.20.1, mensagens ainda pendentes quando a
+execução continua como nova ficam na execução encerrada, e a nova execução
+nunca as recebe
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)).
+Até que uma versão corrija isso, receba as mensagens pendentes antes de chamar
+`continueAsNew()`, ou envie entradas que precisam sobreviver à transição como
+um [sinal](./signals.md): sinais aceitos que a execução ainda não aplicou
+passam para a nova execução.
 
 Assim, um workflow de longa duração pode iniciar uma nova execução com um
 histórico menor e manter a mesma rota pública de mensagens:

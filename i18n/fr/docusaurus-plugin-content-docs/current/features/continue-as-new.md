@@ -166,5 +166,9 @@ class PollingWorkflow extends Workflow
 
 Pour les boucles longues d’entrées humaines ou d’assistant, préférez la façade
 native `$this->inbox()` / `$this->outbox()` des [Flux de messages](./message-streams.md).
-Les messages en attente et la position du curseur passent à la nouvelle exécution.
-Les messages consommés restent sur l’exécution d’origine comme preuves historiques.
+La position du curseur passe à la nouvelle exécution, tandis que les messages
+consommés restent sur l’exécution d’origine comme preuves historiques. Dans les
+versions de Workflow jusqu’à 2.20.1 incluse, les messages de flux encore en
+attente lors de la continuation restent sur l’exécution fermée
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)) ;
+voir [Flux de messages](./message-streams.md#continue-as-new).

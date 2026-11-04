@@ -152,4 +152,4 @@ class PollingWorkflow extends Workflow
 }
 ```
 
-人の入力やアシスタントの長期ループには、正式な `$this->inbox()` / `$this->outbox()` の[メッセージストリーム](./message-streams.md)ファサードを優先します。保留中のメッセージとカーソルは新しい実行に移り、消費済みメッセージは証拠として元の実行の履歴に残ります。
+人の入力やアシスタントの長期ループには、正式な `$this->inbox()` / `$this->outbox()` の[メッセージストリーム](./message-streams.md)ファサードを優先します。カーソル位置は新しい実行に移り、消費済みメッセージは証拠として元の実行の履歴に残ります。Workflow 2.20.1 までのリリースでは、continue-as-new の時点で保留中のストリームメッセージは終了した実行に残ります（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)）。[メッセージストリーム](./message-streams.md#continue-as-new)を参照してください。
