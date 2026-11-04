@@ -94,6 +94,23 @@ El SDK depende de [httpx](https://www.python-httpx.org/) para HTTP y de `fastavr
 para codificar el formato Apache Avro del único códec público de cargas v2.
 El soporte de métricas Prometheus es opcional.
 
+## Actualizar los workers {#upgrading-workers}
+
+Python SDK 2.14.1 corrige las huellas de `wait_condition()` que cambiaban entre
+versiones de Python o al reiniciar un worker. Actualiza a la vez todos los
+workers que comparten una cola de tareas. Cuando una ejecución registre una
+huella de espera v2, mantén en 2.14.1 o posterior todos los workers que puedan
+reproducirla. No vuelvas a desplegar versiones del SDK anteriores a 2.14.1 en
+esa cola.
+
+Las huellas v1 heredadas que ya no coinciden se aceptan como no verificables,
+por lo que esa ruta de compatibilidad no detecta cambios en el predicado. Las
+lambdas de `wait_condition()` en una misma línea que contienen comprensiones
+de `list`, `dict` o `set` comparten una huella combinada. En las nuevas
+definiciones de workflow, coloca esos predicados en líneas separadas para
+detectar un cambio de uno a otro. Consulta las
+[notas de compatibilidad de la etiqueta 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
+
 ## Inicio rápido {#quickstart}
 
 Este programa completo define un workflow con una actividad, lo inicia contra

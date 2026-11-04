@@ -95,6 +95,23 @@ O SDK depende de [httpx](https://www.python-httpx.org/) para HTTP e do pacote
 Python `fastavro` para codificar o formato de transmissão Apache Avro usado
 pelo único codec público de payload v2. O suporte a métricas Prometheus é opcional.
 
+## Atualizar os workers {#upgrading-workers}
+
+O Python SDK 2.14.1 corrige as impressões digitais de `wait_condition()` que
+mudavam entre versões do Python ou após reiniciar um worker. Atualize juntos
+todos os workers que compartilham uma fila de tarefas. Quando uma execução
+registrar uma impressão digital de espera v2, mantenha todos os workers que
+possam fazer seu replay na versão 2.14.1 ou posterior. Não volte a implantar uma
+versão do SDK anterior à 2.14.1 nessa fila.
+
+As impressões digitais v1 legadas que deixam de coincidir são aceitas como não
+verificáveis, portanto esse caminho de compatibilidade não detecta mudanças
+no predicado. Lambdas de `wait_condition()` na mesma linha que contêm
+compreensões de `list`, `dict` ou `set` compartilham uma impressão digital
+combinada. Nas novas definições de workflow, coloque esses predicados em linhas
+separadas para detectar a troca entre eles. Veja as
+[notas de compatibilidade da tag 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
+
 ## Início rápido {#quickstart}
 
 Este é um programa Python completo que define um workflow com uma atividade,
