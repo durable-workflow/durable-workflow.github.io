@@ -80,7 +80,7 @@ El instalador escribe `dw.exe` en `%USERPROFILE%\.durable-workflow\bin` y añade
 
 A partir de CLI 2.5.0, las publicaciones no incluyen PHAR. Si ejecutas `php dw.phar`, cambia al binario independiente, que no necesita PHP, con el instalador de shell o de PowerShell anterior. Después elimina `dw.phar`. Los instaladores verifican el binario con el `SHA256SUMS` de la publicación antes de instalarlo.
 
-Si no canalizas scripts hacia una shell, descarga la publicación y verifícala primero. Elige el artefacto de tu plataforma:
+Si no canalizas scripts hacia una shell, descarga la publicación y verifícala primero. Elige el artefacto de tu plataforma: `dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` o `dw-windows-x86_64.exe`.
 
 ```bash
 mkdir release
@@ -105,6 +105,8 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 Añade `%LOCALAPPDATA%\Programs\dw` a tu `PATH` si aún no está.
 
 En una instalación PHAR 2.x, `dw upgrade` sigue respondiendo "Download the matching PHAR manually". Ese mensaje procede de la publicación antigua y no puede cambiarse, así que utiliza los comandos anteriores. Las instalaciones de binario independiente se actualizan con `dw upgrade` como siempre.
+
+En un Mac con Intel, migra desde 2.x con el instalador de shell. El `dw upgrade` publicado de 2.x no tiene ningún artefacto de macOS x86_64 al que cambiar.
 
 </details>
 

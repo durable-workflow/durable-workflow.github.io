@@ -105,6 +105,7 @@ de l'installer.
 
 Si vous ne redirigez pas de scripts vers un shell, téléchargez la version et
 vérifiez-la d'abord. Choisissez l'artefact de votre plateforme :
+`dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` ou `dw-windows-x86_64.exe`.
 
 ```bash
 mkdir release
@@ -132,6 +133,10 @@ Dans une installation PHAR 2.x, `dw upgrade` répond toujours « Download the
 matching PHAR manually ». Ce message provient de l'ancienne version et ne peut
 pas être modifié ; utilisez donc les commandes ci-dessus. Les installations du
 binaire autonome se mettent à jour normalement avec `dw upgrade`.
+
+Sur un Mac Intel, migrez depuis la 2.x avec l'installateur shell. La commande
+`dw upgrade` publiée en 2.x ne dispose d'aucun artefact macOS x86_64 vers lequel
+migrer.
 
 </details>
 

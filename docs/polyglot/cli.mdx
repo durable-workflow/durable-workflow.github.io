@@ -101,7 +101,8 @@ above. Then delete `dw.phar`. The installers check the binary against the
 release's `SHA256SUMS` before installing it.
 
 If you don't pipe scripts into a shell, download the release and verify it
-first. Pick your platform's asset:
+first. Pick your platform's asset: `dw-linux-x86_64`, `dw-linux-aarch64`,
+`dw-macos-aarch64`, `dw-macos-x86_64` or `dw-windows-x86_64.exe`.
 
 ```bash
 mkdir release
@@ -129,6 +130,9 @@ In a 2.x PHAR install, `dw upgrade` still answers "Download the matching PHAR
 manually". That message comes from the old release and can't be changed, so
 use the commands above instead. Standalone-binary installs upgrade as usual
 with `dw upgrade`.
+
+On an Intel Mac, move from 2.x with the shell installer. Published 2.x
+`dw upgrade` has no macOS x86_64 asset to move to.
 
 </details>
 

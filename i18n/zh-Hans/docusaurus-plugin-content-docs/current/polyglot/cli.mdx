@@ -80,7 +80,7 @@ dw --version
 
 自 CLI 2.5.0 起，发布不再包含 PHAR。如果你运行 `php dw.phar`，请使用上方 shell 或 PowerShell 安装器切换到无需 PHP 的独立二进制文件，然后删除 `dw.phar`。安装器会在安装前根据发布的 `SHA256SUMS` 校验二进制文件。
 
-如果你不将脚本通过管道传给 shell，请先下载发布并进行验证。选择与你平台对应的制品：
+如果你不将脚本通过管道传给 shell，请先下载发布并进行验证。选择与你平台对应的制品：`dw-linux-x86_64`、`dw-linux-aarch64`、`dw-macos-aarch64`、`dw-macos-x86_64` 或 `dw-windows-x86_64.exe`。
 
 ```bash
 mkdir release
@@ -105,6 +105,8 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 如果 `%LOCALAPPDATA%\Programs\dw` 尚未在 `PATH` 中，请将其加入。
 
 在 2.x PHAR 安装中，`dw upgrade` 仍会回复 "Download the matching PHAR manually"。该消息来自旧发布且无法更改，请改用上方命令。独立二进制文件安装照常使用 `dw upgrade` 升级。
+
+在 Intel Mac 上，请使用 shell 安装器从 2.x 迁移。已发布的 2.x `dw upgrade` 没有可迁移到的 macOS x86_64 制品。
 
 </details>
 

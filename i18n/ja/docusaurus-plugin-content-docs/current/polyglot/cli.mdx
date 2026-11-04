@@ -80,7 +80,7 @@ dw --version
 
 CLI 2.5.0 以降、リリースには PHAR が含まれません。`php dw.phar` を実行している場合は、上記のシェルまたは PowerShell インストーラーで、PHP が不要な単独バイナリへ切り替えてください。その後 `dw.phar` を削除します。インストーラーは、インストール前にリリースの `SHA256SUMS` でバイナリを検証します。
 
-スクリプトをシェルへパイプしない場合は、先にリリースをダウンロードして検証します。使用するプラットフォームのアセットを選んでください。
+スクリプトをシェルへパイプしない場合は、先にリリースをダウンロードして検証します。使用するプラットフォームのアセット（`dw-linux-x86_64`、`dw-linux-aarch64`、`dw-macos-aarch64`、`dw-macos-x86_64`、`dw-windows-x86_64.exe` のいずれか）を選んでください。
 
 ```bash
 mkdir release
@@ -105,6 +105,8 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 `%LOCALAPPDATA%\Programs\dw` がまだ `PATH` にない場合は追加してください。
 
 2.x の PHAR インストールでは、`dw upgrade` は引き続き "Download the matching PHAR manually" と応答します。このメッセージは旧リリースに由来し変更できないため、代わりに上記のコマンドを使ってください。単独バイナリのインストールは、通常どおり `dw upgrade` で更新できます。
+
+Intel Mac では、シェルインストーラーで 2.x から移行してください。公開済みの 2.x の `dw upgrade` には、移行先となる macOS x86_64 のアセットがありません。
 
 </details>
 

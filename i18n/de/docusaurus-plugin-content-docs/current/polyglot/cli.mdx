@@ -106,6 +106,7 @@ gegen die `SHA256SUMS` des Release.
 
 Wenn Sie keine Skripte an eine Shell weiterleiten, laden Sie das Release
 herunter und prüfen Sie es zuerst. Wählen Sie das Artefakt Ihrer Plattform:
+`dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` oder `dw-windows-x86_64.exe`.
 
 ```bash
 mkdir release
@@ -135,6 +136,10 @@ In einer 2.x-PHAR-Installation antwortet `dw upgrade` weiterhin mit "Download th
 matching PHAR manually". Diese Meldung stammt aus dem alten Release und lässt
 sich nicht ändern; verwenden Sie stattdessen die obigen Befehle. Installationen
 der eigenständigen Binärdatei aktualisieren sich wie gewohnt mit `dw upgrade`.
+
+Auf einem Intel-Mac wechseln Sie von 2.x mit der Shell-Installation. Das
+veröffentlichte `dw upgrade` aus 2.x hat kein macOS-x86_64-Artefakt, zu dem es
+wechseln könnte.
 
 </details>
 

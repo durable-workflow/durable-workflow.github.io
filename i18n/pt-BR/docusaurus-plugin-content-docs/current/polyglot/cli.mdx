@@ -103,6 +103,7 @@ verificam o binário com o `SHA256SUMS` do release antes de instalá-lo.
 
 Se você não encaminha scripts para um shell, baixe o release e verifique-o
 primeiro. Escolha o artefato da sua plataforma:
+`dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` ou `dw-windows-x86_64.exe`.
 
 ```bash
 mkdir release
@@ -130,6 +131,9 @@ Em uma instalação PHAR 2.x, `dw upgrade` ainda responde "Download the matching
 manually". Essa mensagem vem do release antigo e não pode ser alterada, então
 use os comandos acima. Instalações de binário independente são atualizadas
 normalmente com `dw upgrade`.
+
+Em um Mac Intel, migre do 2.x com o instalador shell. O `dw upgrade` publicado
+no 2.x não tem um artefato macOS x86_64 para o qual migrar.
 
 </details>
 

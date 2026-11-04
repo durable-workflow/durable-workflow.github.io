@@ -103,6 +103,7 @@ PowerShell installer вище. Потім видаліть `dw.phar`. Installers
 
 Якщо ви не передаєте scripts безпосередньо в shell, спершу завантажте випуск і
 перевірте його. Виберіть артефакт для своєї платформи:
+`dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` або `dw-windows-x86_64.exe`.
 
 ```bash
 mkdir release
@@ -130,6 +131,9 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 manually". Це повідомлення походить зі старого випуску й не може бути змінене,
 тому використовуйте наведені вище команди. Standalone-встановлення binary
 оновлюються як зазвичай через `dw upgrade`.
+
+На Mac з Intel переходьте з 2.x за допомогою shell installer. Опублікований
+`dw upgrade` у 2.x не має артефакту macOS x86_64, на який можна перейти.
 
 </details>
 
