@@ -436,11 +436,30 @@ changes as worker health.
 
 Use worker metrics, traces, and logs for:
 
-- Workflow and activity `schedule_to_start` latency
+- Workflow and activity `schedule_to_start` latency when the exact Server/SDK pair is qualified
 - Poll success rate and sync/eager-dispatch behavior
 - Sticky-cache size and eviction behavior
 - Worker CPU, memory, thread, and event-loop pressure
 - Custom application metrics emitted from activities or worker code
+
+The shared recorder name is `durable_workflow_worker_task_schedule_to_start_seconds`,
+a histogram in seconds with exactly `task_kind` and `task_queue` tags. The
+[revision-2 contract](https://github.com/durable-workflow/.github/blob/23f9bc3c3798cb6aab6ccf5f9cd210854b820c65/sdk-metrics/README.md#schedule-to-start-observations)
+requires Boolean `server_capabilities.claimed_task_ready_age: true` and a valid
+integer `task.ready_age_ms`. At actual workflow/activity dispatch, the SDK records
+the Server-computed eligibility-to-lease duration, excluding delivery, processing,
+scheduled delay and retry backoff. Do not subtract worker and Server clocks.
+Missing capability, value or known ready origin means no sample, not zero.
+A valid zero remains a sample.
+
+Python's [source hook](https://github.com/durable-workflow/sdk-python/pull/264)
+is merged but unreleased. Server publication and installed/exported acceptance
+remain pending in [Python #188](https://github.com/durable-workflow/sdk-python/issues/188).
+The existing request, poll and processing metrics do not supply this histogram.
+Until the exact pair is qualified, alert on
+`operator_metrics.tasks.oldest_ready_due_at` and
+`operator_metrics.tasks.max_ready_due_age_ms` where available. These aggregate
+backlog signals do not measure per-task latency or replace its distribution.
 
 Synchronous queries, live-debug tooling, and other non-durable control-plane
 calls should be labeled separately in your dashboards. They do not count as
@@ -492,9 +511,9 @@ window for the topology you operate.
 | --- | --- | --- | --- | --- |
 | Blocking readiness | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Blocking | `doctor --strict` returns an error or the health endpoint returns `status = error` / HTTP `503` | Stop rollout or traffic shift, fix the blocking prerequisite, then rerun readiness and compatibility checks. |
 | Compatible-worker coverage | `operator_metrics.workers.*`, `worker_compatibility` health check, run diagnostic `no_compatible_worker_for_task` | Blocking | `active_workers_supporting_required = 0` for a namespace or required `(connection, queue)` scope | Drain incompatible workers, register compatible workers, and confirm the `correctness` rollup clears before trusting new claims. |
-| Durable queue lag | Waterline queue views, `operator_metrics.backlog.*`, worker `schedule_to_start` telemetry | Blocking when sustained; advisory when brief | The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available | Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress. |
+| Durable queue lag | Waterline queue views, `operator_metrics.backlog.*`, qualified worker `schedule_to_start` telemetry | Blocking when sustained; advisory when brief | The oldest ready-task age or schedule-to-start latency stays above the published topology baseline while compatible workers are available | Add worker capacity, inspect task-queue admission limits, and verify the scheduler or matching path is still making forward progress. |
 | Poller pressure and admission saturation | Task-queue detail routes, `dw task-queue:describe`, queue `status`, stale pollers, and queue-local add/dispatch rates | Blocking for `no_active_workers`, `no_slots`, or `unavailable`; advisory for intentional `throttled` states | One queue stays `saturated` while its oldest-ready age and add-vs-dispatch gap keep growing, or any queue flips to `no_active_workers`, `no_slots`, or `unavailable` outside a planned maintenance window | Add worker slots, restore the missing poller cohort, or confirm the server-side cap and lock dependency are behaving as designed before you scale blindly. |
-| Workflow-start backlog | `operator_metrics.starts.*`, control-plane start telemetry, worker `schedule_to_start` telemetry for first workflow tasks | Blocking when sustained; advisory when brief | `pending_commands`, `ready_tasks`, or `max_pending_ms` stay above the published topology baseline while compatible workers and queue capacity are available | Inspect the start boundary end to end: confirm start commands are turning into durable tasks, verify matching or dispatch is creating the first task promptly, and separate start-path debt from general worker lag before scaling. |
+| Workflow-start backlog | `operator_metrics.starts.*`, control-plane start telemetry, qualified worker `schedule_to_start` telemetry for first workflow tasks | Blocking when sustained; advisory when brief | `pending_commands`, `ready_tasks`, or `max_pending_ms` stay above the published topology baseline while compatible workers and queue capacity are available | Inspect the start boundary end to end: confirm start commands are turning into durable tasks, verify matching or dispatch is creating the first task promptly, and separate start-path debt from general worker lag before scaling. |
 | Projection drift and repair debt | `run_summary_projection` / `selected_run_projections` health checks, `operator_metrics.repair.*` | Advisory | Drift warnings persist past one planned rebuild window or the max candidate age keeps climbing | Run the rebuild or repair previews, execute the repair, then verify the warning clears and stale ages return to baseline. |
 | Retry or failure storm | `operator_metrics.backlog.unhealthy_tasks`, durable run diagnostics, worker error telemetry | Advisory, escalating to blocking if it prevents durable progress | Dispatch-failed, claim-failed, expired-lease, or retry-exhaustion facts climb above the topology baseline and stay elevated | Inspect the failing task family, compare worker telemetry with durable error facts, and decide whether to drain traffic or isolate the affected queue. |
 | Wake acceleration degradation | `long_poll_wake_acceleration` health check and the `acceleration` category rollup | Advisory | The acceleration warning persists after cache or notifier maintenance windows | Investigate cache or wake propagation health. Do not treat this as a correctness outage unless the `correctness` rollup also degrades. |
@@ -664,8 +683,8 @@ traffic depends on them:
 | --- | --- | --- |
 | Projection health | Steady-state `needs_rebuild = 0`, rebuild duration after intentional drift, and stale/orphan cleanup time | `/waterline/api/v2/health`, `/waterline/api/stats`, `workflow:v2:rebuild-projections` |
 | Queue pressure | Backlog age, oldest ready task age, runnable vs delayed task counts, task add vs dispatch rate, dispatch-overdue age, stale poller count, and queue admission status (`accepting`, `saturated`, `throttled`, `no_slots`, `no_active_workers`) | Waterline dashboard stats and queue views plus `operator_metrics.backlog.*` / `operator_metrics.tasks.*` |
-| Workflow-start latency | Accepted start commands waiting for first-task creation, oldest pending-start age, and first-task pickup after admission | `operator_metrics.starts.*` plus worker `schedule_to_start` telemetry |
-| Schedule-to-start latency | Workflow and activity queue wait from enqueue to start | Worker SDK metrics |
+| Workflow-start latency | Accepted start commands waiting for first-task creation, oldest pending-start age, and first-task pickup after admission | `operator_metrics.starts.*` plus qualified worker `schedule_to_start` telemetry |
+| Schedule-to-start latency | Server-measured eligibility-to-lease duration for workflow/activity tasks, excluding scheduled delay and backoff | Worker SDK histogram only after the exact Server/SDK pair is qualified |
 | Timer fan-out wake-up behavior | Wake-signal propagation time and the lag between scheduled fire time and ready-task visibility during burst timers | Worker telemetry plus same-region wake coordination checks |
 | Repair-loop sweep cost | Candidate counts, selected counts, max candidate age, max missing-run age, and scan-pressure behavior | `operator_metrics.repair.*` |
 | History pressure | Event count, history size, and continue-as-new recommendation thresholds | `operator_metrics.history.*` |
