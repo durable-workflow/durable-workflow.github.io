@@ -5,7 +5,7 @@
 #   curl -fsSL https://durable-workflow.com/install.sh | sh
 #
 # Environment variables:
-#   VERSION                              Release tag, supported, prerelease, or stable (default: stable).
+#   VERSION                              Release tag or stable/latest (default: stable).
 #   DURABLE_WORKFLOW_INSTALL_DIR         Install directory (default: ~/.local/bin).
 #   DURABLE_WORKFLOW_BIN_NAME            Executable name (default: dw).
 #   DURABLE_WORKFLOW_RELEASE_BASE_URL    Release base URL override for tests.
@@ -61,13 +61,10 @@ fi
 asset="dw-${os}-${arch}"
 command -v curl >/dev/null 2>&1 || err "curl is required"
 
-if [ "$VERSION" = "supported" ]; then
-    VERSION="stable"
-fi
-
-if [ "$VERSION" = "prerelease" ]; then
-    err "prerelease auto-selection ended with the stable 2.0 launch; set VERSION to an exact historical tag"
-fi
+case "$VERSION" in
+    supported) VERSION=stable ;;
+    prerelease) err "pass an explicit prerelease tag with VERSION=..." ;;
+esac
 
 if [ "$VERSION" = "latest" ] || [ "$VERSION" = "stable" ]; then
     url="${RELEASE_BASE_URL}/latest/download/${asset}"
@@ -130,13 +127,17 @@ if [ "$VERIFY_ATTESTATIONS" = "1" ]; then
     command -v gh >/dev/null 2>&1 || err "gh is required when DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS=1"
 
     info "Verifying GitHub artifact attestations"
-    if [ "$OUTPUT_MODE" = "json" ]; then
-        gh attestation verify "$tmp" --repo "$REPO" >&2
-        gh attestation verify "$sums" --repo "$REPO" >&2
-    else
-        gh attestation verify "$tmp" --repo "$REPO"
-        gh attestation verify "$sums" --repo "$REPO"
-    fi
+    # Only the repository's release workflows, run from main or a release
+    # tag on GitHub-hosted runners, can have signed a release asset.
+    repo_pattern=$(printf '%s' "$REPO" | sed 's/[.]/\\./g')
+    signer="^https://github\\.com/${repo_pattern}/\\.github/workflows/(release|release-rust)\\.yml@refs/(heads/main|tags/v?[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.+-]+)?)\$"
+    for subject in "$tmp" "$sums"; do
+        if [ "$OUTPUT_MODE" = "json" ]; then
+            gh attestation verify "$subject" --repo "$REPO" --cert-identity-regex "$signer" --deny-self-hosted-runners >&2
+        else
+            gh attestation verify "$subject" --repo "$REPO" --cert-identity-regex "$signer" --deny-self-hosted-runners
+        fi
+    done
 fi
 
 chmod +x "$tmp"
