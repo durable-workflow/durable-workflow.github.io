@@ -118,6 +118,7 @@ The successor replays workflow code from the start:
 - A signal wait (`await('name')`) that received and applied its signal is reused with the signal's value. The signal is not delivered again.
 - An update that was accepted, applied and completed before the failed step is recorded again at the same position. Replay runs the update handler from its recorded arguments, so the workflow's state matches. The update is not delivered again. A rejected update, and one the failure closed before it ran, are left out.
 - `outbox()->sendReference()` and `inbox()->receive()` in reused workflow code return the message the failed run sent or consumed. They don't send or consume it again. A replayed receive whose original call found nothing reads the stream again.
+- In Workflow 2.20.2 and later, inbound stream messages still pending on the failed run move to the successor. Workflow 2.20.1 and earlier left them on the failed run, so the successor never received them ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - If an activity failure ended the run, the failed activity call is scheduled as a new activity execution, using the retry policy in the workflow code. Its attempts start again.
 - If the run failed in workflow code or on a structural limit, the successor resumes at the step the workflow code never reached.
 - Everything after the failed step runs as it would in a new run.

@@ -120,6 +120,7 @@ A sucessora reproduz o código do workflow desde o início:
 - Uma espera de sinal (`await('name')`) que recebeu e aplicou o sinal é reutilizada com o valor do sinal. O sinal não é entregue de novo.
 - Um update que foi aceito, aplicado e concluído antes do passo com falha é registrado de novo na mesma posição. O replay executa o handler do update com os argumentos registrados, então o estado do workflow confere. O update não é entregue de novo. Um update rejeitado, e um que a falha fechou antes de ser executado, ficam de fora.
 - `outbox()->sendReference()` e `inbox()->receive()` no código de workflow reutilizado retornam a mensagem que a execução com falha enviou ou consumiu. Eles não a enviam nem a consomem de novo. Um receive em replay cuja chamada original não encontrou nada lê o stream de novo.
+- No Workflow 2.20.2 e posteriores, mensagens de entrada do stream ainda pendentes na execução com falha passam para a sucessora. O Workflow 2.20.1 e anteriores as deixavam na execução com falha, então a sucessora nunca as recebia ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Se uma falha de atividade encerrou a execução, a chamada de atividade que falhou é agendada como uma nova execução de atividade, com a política de novas tentativas do código do workflow. As tentativas recomeçam.
 - Se a execução falhou no código do workflow ou em um limite estrutural, a sucessora é retomada no passo que o código do workflow nunca alcançou.
 - Tudo o que vem depois do passo com falha é executado como em uma nova execução.

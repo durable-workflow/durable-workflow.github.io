@@ -98,7 +98,7 @@ final class AssistantReplyWorkflow extends Workflow
 
 ## 继续为新运行 {#continue-as-new}
 
-消息流以实例为中心。工作流继续为新运行时，游标位置延续到新运行，已消费消息仍附着在原运行上，作为历史证据。在 Workflow 2.20.1 及之前的版本中，继续为新运行时仍待处理的消息会留在已关闭的运行上，新运行永远收不到这些消息（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)）。在某个版本修复此问题之前，请在调用 `continueAsNew()` 之前接收待处理消息，或将必须在交接后保留的输入作为[信号](./signals.md)发送：运行尚未应用的已接受信号会转移到新运行。
+消息流以实例为中心。工作流继续为新运行时，待处理的入站消息会转移到新运行，游标位置随之延续，已消费消息仍附着在原运行上，作为历史证据。Workflow 2.20.1 及之前的版本只转移游标：继续为新运行时仍待处理的消息会留在已关闭的运行上，新运行永远收不到这些消息（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)，已在 2.20.2 中修复）。在这些版本中，请在调用 `continueAsNew()` 之前接收待处理消息，或将必须在交接后保留的输入作为[信号](./signals.md)发送：运行尚未应用的已接受信号会转移到新运行。
 
 因此，长期运行的工作流可以释放历史，同时保留同一公开消息路由：
 

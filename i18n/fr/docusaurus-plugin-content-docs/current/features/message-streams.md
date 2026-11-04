@@ -135,15 +135,15 @@ des données indépendamment de l’ordre durable des messages.
 
 ## Continuation dans une nouvelle exécution {#continue-as-new}
 
-Les flux privilégient l’instance. Lors d’une continuation, la position du
-curseur est reportée sur la nouvelle exécution, et les messages consommés restent
-attachés à l’ancienne comme preuves historiques. Dans les versions de Workflow
-jusqu’à 2.20.1 incluse, les messages encore en attente au moment de la
-continuation restent sur l’exécution fermée, et la nouvelle exécution ne les
-reçoit jamais
-([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)).
-En attendant une version qui corrige ce problème, recevez les messages en attente
-avant d’appeler `continueAsNew()`, ou envoyez les entrées qui doivent survivre au
+Les flux privilégient l’instance. Lors d’une continuation, les messages entrants
+en attente passent à la nouvelle exécution, la position du curseur est reportée,
+et les messages consommés restent attachés à l’ancienne comme preuves
+historiques. Workflow 2.20.1 et les versions antérieures ne reportaient que le
+curseur : les messages encore en attente au moment de la continuation restaient
+sur l’exécution fermée, et la nouvelle exécution ne les recevait jamais
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018),
+corrigé dans 2.20.2). Sur ces versions, recevez les messages en attente avant
+d’appeler `continueAsNew()`, ou envoyez les entrées qui doivent survivre au
 passage de relais sous forme de [signal](./signals.md) : les signaux acceptés que
 l’exécution n’a pas encore appliqués passent à la nouvelle exécution.
 
