@@ -165,7 +165,7 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 以及无法解析的文本。`'30'` 之类的数字字符串保持原有含义：定时器和条件超时会将其向上取整为
 整秒，而活动和子工作流选项会原样传递。零时长对定时器、条件等待和 `wait_timeout_seconds` 有效；活动和子工作流超时
 至少需要一秒。更早的 SDK 版本只接受秒数。PHP SDK 3.9.0 将 `nesbot/carbon`（`^2.72.6|^3.8.4`）添加为必需依赖，因此时长使用与嵌入式包相同的解析器进行转换。
-[PHP SDK 时长参考](https://php.durable-workflow.com/build/workflows-activities/)列出了所有单位。
+[PHP SDK 时长参考](https://php.durable-workflow.com/build/workflows-activities/#durations)列出了所有单位。
 
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 

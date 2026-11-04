@@ -168,7 +168,7 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 そのまま渡されます。タイマー、条件待機、`wait_timeout_seconds` では 0 の期間も有効ですが、アクティビティと子ワークフローの
 タイムアウトは 1 秒以上が必要です。それ以前の SDK リリースは秒数のみを受け付けます。PHP SDK 3.9.0 では `nesbot/carbon`
 （`^2.72.6|^3.8.4`）が必須の依存関係として追加されたため、期間は組み込みパッケージと同じパーサーで変換されます。
-すべての単位は [PHP SDK の期間指定リファレンス](https://php.durable-workflow.com/build/workflows-activities/)に記載されています。
+すべての単位は [PHP SDK の期間指定リファレンス](https://php.durable-workflow.com/build/workflows-activities/#durations)に記載されています。
 
 ## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
 
