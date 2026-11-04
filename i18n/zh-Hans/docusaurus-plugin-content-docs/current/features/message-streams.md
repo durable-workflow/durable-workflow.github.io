@@ -28,14 +28,42 @@ keywords:
 
 不要从应用工作流代码直接写入 `workflow_messages` 行或游标行。门面才是稳定契约；底层消息服务用于包／运行时集成。
 
-:::warning Workflow 2.20.0 及更早版本中的消息流
+:::warning Workflow 2.20.3 之前的消息流
 
-工作流代码会在之后的每个工作流任务和每次查询时重放。在 Workflow 2.20.0 及更早的版本中，`outbox()->sendReference()` 每次重放都会写入新的出站消息和入站消息，而 `inbox()->receive()` 和 `receiveOne()` 在重放时可能返回不同的消息或不返回消息（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。Workflow 2.20.1 修复了此问题：重放会返回原始调用所发送或接收的内容，查询永远不会写入或消费消息。
+工作流代码会在之后的每个工作流任务和每次查询时重放。在 Workflow 2.20.0 及更早的版本中，`outbox()->sendReference()` 每次重放都会写入新的出站消息和入站消息，而 `inbox()->receive()` 和 `receiveOne()` 在重放时可能返回不同的消息或不返回消息（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。Workflow 2.20.1 会记录发送和接收以供重放，并阻止查询写入或消费消息。
+空接收和跨步骤保留的流还需要下文介绍的 2.20.3 重放修复。
 
 - 早期版本重复写入的行不会被删除。请为每次逻辑发送提供稳定的 `idempotencyKey`，例如 `reply:{turn}`，并在消费由早期版本写入的流时按 `idempotency_key` 去重。早期版本在错误步骤下消费的消息仍保持已消费状态。
-- 在所有版本中，信号和所有流共享同一个消息游标，因此在待处理流消息之后送达的信号会隐藏该消息（[workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)）。只有在信号或条件表明有消息到达后才接收，并在发送消息之前发送该信号。
+- 信号、更新和所有流共享同一个消息游标。在 2.20.2 及更早版本中，信号、
+  更新或另一条流上的接收可能将游标移到待处理消息之后，从而隐藏这些消息
+  （[workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)）。
+  对于这些版本中的信号顺序问题，请在消息之前发送信号，并且只在信号或条件
+  表明有消息时才接收。
 
 :::
+
+## 流升级与回退 {#stream-upgrades}
+
+在 Workflow 2.20.3 中，共享游标不再对 `receive()`、`receiveOne()`、`peek()`、
+`pendingCount()` 或 `hasPending()` 隐藏待处理消息。接收仍遵守序号顺序和
+批次大小限制。升级后，接收循环可能先返回以前被共享游标隐藏的较早待处理
+消息，再返回较新的消息。
+
+重放的接收返回原始步骤消费的内容。如果原始调用没有找到消息，重放时仍然
+不返回消息。首次执行的更新处理器仍可以接收消息。保存在属性中的流现在按
+当前工作流步骤记录接收，而不是按打开流时的步骤记录。旧版本按打开步骤
+记录的接收仍可重放。
+
+在将嵌入式应用回退到 2.20.3 之前的版本前，请使用新包写入的历史通过
+[重放测试门槛](../testing.md#replay-before-deployment)。旧版本按打开步骤
+查找保留流的接收，可能以不同方式重放这些运行。回退还会恢复共享游标、
+空接收重放和 fake 任务处理精度问题。参阅
+[该标签的兼容性说明](https://github.com/durable-workflow/workflow/blob/2.20.3/CHANGELOG.md#2203---2026-11-04)。
+
+[workflow#1024](https://github.com/durable-workflow/workflow/issues/1024)
+中的查询限制仍然存在：查询可能不返回更新处理器已接收的消息，因为它在
+错误的步骤重放处理器。查询不会更改消息行。工作流自身的重放和完成后的
+输出仍会返回处理器接收的内容。
 
 ## 接收消息 {#receiving-messages}
 

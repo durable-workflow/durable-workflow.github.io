@@ -184,6 +184,15 @@ public function testTimerWorkflow(): void
 `WorkflowStub::runReadyTasks()` ne traite que les tâches déjà échues. Il
 n'avance pas l'horloge réelle et ne déclenche pas prématurément les temporisateurs futurs.
 
+Workflow 2.20.3 traite les tâches simulées à leur échéance exacte, y compris
+les fractions de seconde, avec la précision des horodatages persistés par le
+modèle de tâche configuré. Les anciennes versions pouvaient ignorer des
+tâches SQLite arrivant à échéance à cet instant. Une échéance future avec une
+fraction de seconde reste en attente jusqu’à son arrivée. Les délais de
+temporisateur et le backoff de nouvelle tentative restent en secondes entières.
+Consultez les [limites de mise à niveau des flux et de retour en arrière](./features/message-streams.md#stream-upgrades)
+avant de revenir à un paquet antérieur dans une application embarquée.
+
 ### Envoyer des signaux en mode simulé {#sending-signals-in-fake-mode}
 
 Les workflows en attente de signal peuvent en recevoir en mode simulé. À l'appel

@@ -170,6 +170,12 @@ public function testTimerWorkflow(): void
 
 `WorkflowStub::runReadyTasks()` 仅排空已经到期的任务。它不会快进实际时钟，也不会强制尚未到期的延迟定时器提前触发。
 
+Workflow 2.20.3 按配置的任务模型所持久化的时间戳精度，在准确的到期
+时刻处理 fake 任务，包括小数秒。旧版本可能跳过恰在该时刻到期的 SQLite
+任务。带小数秒的未来期限会保持待处理状态，直到真正到期。定时器延迟和
+重试退避仍使用整秒。在将嵌入式应用回退到旧包之前，请参阅
+[流升级与回退限制](./features/message-streams.md#stream-upgrades)。
+
 ### 在 fake 模式下发送信号 {#sending-signals-in-fake-mode}
 
 等待信号的工作流可以在 fake 模式下接收信号。调用 `$workflow->signal(...)` 时，引擎记录持久信号命令并创建工作流任务。Fake 模式下该任务内联执行，因此工作流同步恢复：

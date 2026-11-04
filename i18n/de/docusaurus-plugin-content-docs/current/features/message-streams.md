@@ -38,7 +38,7 @@ Schreiben Sie aus Workflow-Code der Anwendung keine `workflow_messages`- oder
 Cursor-Zeilen direkt. Die Fassade ist der stabile Vertrag. Niedrigere
 Nachrichtendienste existieren für die Paket-/Laufzeitintegration.
 
-:::warning Nachrichtenströme in Workflow 2.20.0 und früher
+:::warning Nachrichtenströme vor Workflow 2.20.3
 
 Workflow-Code wird bei jeder späteren Workflow-Aufgabe und bei jeder Abfrage
 erneut abgespielt (Replay). In Workflow-Releases bis einschließlich 2.20.0
@@ -46,9 +46,10 @@ schreibt `outbox()->sendReference()` bei jedem Replay eine neue ausgehende und
 eingehende Nachricht, und `inbox()->receive()` und `receiveOne()` können beim
 Replay eine andere Nachricht oder gar keine zurückgeben
 ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
-Workflow 2.20.1 behebt dies: Ein Replay gibt zurück, was der ursprüngliche
-Aufruf gesendet oder empfangen hat, und eine Abfrage schreibt oder verbraucht
-niemals eine Nachricht.
+Workflow 2.20.1 zeichnet Sendevorgänge und Empfangsvorgänge für das Replay auf
+und verhindert, dass Abfragen Nachrichten schreiben oder verbrauchen. Leere
+Empfangsaufrufe und über Schritte hinweg aufbewahrte Ströme benötigen die
+weiteren Replay-Korrekturen aus 2.20.3, die unten beschrieben werden.
 
 - Zeilen, die frühere Releases dupliziert haben, werden nicht entfernt. Geben
   Sie jedem logischen Sendevorgang einen stabilen `idempotencyKey`, etwa
@@ -56,14 +57,50 @@ niemals eine Nachricht.
   wenn Sie einen Strom verarbeiten, den ein früheres Release geschrieben hat.
   Nachrichten, die ein früheres Release unter dem falschen Schritt verbraucht
   hat, bleiben verbraucht.
-- In jedem Release teilen sich Signale und alle Ströme einen gemeinsamen
-  Nachrichten-Cursor. Ein Signal, das nach einer ausstehenden Stromnachricht
-  zugestellt wird, verbirgt daher diese Nachricht
+- Signale, Updates und alle Ströme teilen sich einen Nachrichten-Cursor.
+  Bis einschließlich 2.20.2 können ein Signal, ein Update oder ein Empfang
+  in einem anderen Strom ihn über ausstehende Nachrichten hinaus verschieben
+  und sie verbergen
   ([workflow#1011](https://github.com/durable-workflow/workflow/issues/1011)).
-  Empfangen Sie erst, nachdem ein Signal oder eine Bedingung anzeigt, dass eine
-  Nachricht vorhanden ist, und senden Sie dieses Signal vor der Nachricht.
+  Senden Sie für diesen Fall der Signalreihenfolge in diesen Versionen das
+  Signal vor der Nachricht und empfangen Sie erst, nachdem ein Signal oder
+  eine Bedingung anzeigt, dass eine Nachricht vorhanden ist.
 
 :::
+
+## Upgrades und Rollbacks von Nachrichtenströmen {#stream-upgrades}
+
+In Workflow 2.20.3 verbirgt der gemeinsame Cursor keine ausstehenden Nachrichten
+mehr vor `receive()`, `receiveOne()`, `peek()`, `pendingCount()` oder
+`hasPending()`. Empfangsvorgänge behalten Sequenzreihenfolge und Stapelgrenze
+bei. Nach dem Upgrade kann eine Empfangsschleife zuerst ältere ausstehende
+Nachrichten zurückgeben, die der gemeinsame Cursor bisher verborgen hat, und
+danach neuere Nachrichten.
+
+Ein Empfang beim Replay gibt zurück, was sein ursprünglicher Schritt
+verbraucht hat. Hat der ursprüngliche Aufruf nichts gefunden, gibt auch das
+Replay nichts zurück. Ein erstmals ausgeführter Update-Handler kann weiterhin
+empfangen. Ein in einer Eigenschaft aufbewahrter Strom zeichnet Empfang nun
+beim aktuellen Workflow-Schritt auf, statt beim Schritt, in dem er geöffnet
+wurde. Empfangsvorgänge, die frühere Releases beim Öffnungsschritt aufgezeichnet
+haben, lassen sich weiterhin per Replay ausführen.
+
+Bevor Sie eine eingebettete Anwendung auf eine Version vor 2.20.3 zurücksetzen,
+wenden Sie die [Replay-Prüfung](../testing.md#replay-before-deployment) auf
+Verläufe an, die das neuere Paket geschrieben hat. Frühere Versionen suchen
+den Empfang aufbewahrter Ströme beim Öffnungsschritt und können solche Läufe
+anders wiedergeben. Ein Rollback stellt außerdem die Fehler beim gemeinsamen
+Cursor, beim Replay leerer Empfangsaufrufe und bei der Genauigkeit der
+Fake-Aufgabenverarbeitung wieder her. Siehe die
+[Kompatibilitätshinweise zum Tag](https://github.com/durable-workflow/workflow/blob/2.20.3/CHANGELOG.md#2203---2026-11-04).
+
+Die Abfrageeinschränkung in
+[workflow#1024](https://github.com/durable-workflow/workflow/issues/1024)
+bleibt bestehen: Eine Abfrage kann für eine von einem Update-Handler empfangene
+Nachricht nichts zurückgeben, weil sie den Handler beim falschen Schritt
+wiedergibt. Die Abfrage ändert keine Nachrichtenzeilen. Beim eigenen Replay
+des Workflows und in seiner abgeschlossenen Ausgabe wird weiterhin
+zurückgegeben, was der Handler empfangen hat.
 
 ## Nachrichten empfangen {#receiving-messages}
 

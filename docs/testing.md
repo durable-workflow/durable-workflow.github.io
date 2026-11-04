@@ -173,6 +173,14 @@ public function testTimerWorkflow(): void
 
 `WorkflowStub::runReadyTasks()` only drains tasks that are already due. It does not fast-forward wall clock time or force future-delayed timers to fire early.
 
+Workflow 2.20.3 drains fake tasks at their exact due time, including fractional
+seconds, using the configured task model's persisted timestamp precision.
+Earlier versions could skip SQLite tasks due at that instant. A future
+fractional deadline stays pending until it is due. Timer delays and retry
+backoff still use whole seconds. See the
+[stream upgrade and rollback limits](./features/message-streams.md#stream-upgrades)
+before rolling an embedded application back to an older package.
+
 ### Sending Signals in Fake Mode
 
 Signal-waiting workflows can receive signals in fake mode. When you call `$workflow->signal(...)`, the engine records the durable signal command and creates a workflow task. In fake mode that task executes inline, so the workflow resumes synchronously:
