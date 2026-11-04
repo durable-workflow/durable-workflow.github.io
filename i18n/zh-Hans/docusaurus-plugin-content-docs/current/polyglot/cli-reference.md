@@ -54,7 +54,7 @@ keywords:
 | `dw debug workflow <workflow-id>` | 采集一个工作流卡住运行的诊断：状态、待处理任务、队列信息、失败及兼容性元数据。 | `--run-id`, 全局选项, `--json` |
 | `dw server:start-dev` | 为已配置的现有 Laravel 项目提供 HTTP 应用服务。要求外部 PHP。 | `--port`, `--host` （默认 `127.0.0.1`）, `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | 轮询工作流，直到终态或达到配置的轮询限制。 | `--run-id`, `--interval`, `--max-polls`, 全局选项 |
-| `dw upgrade` | 用更新或固定发布替换当前独立 `dw` 二进制文件。拒绝重写 Composer vendor、Homebrew cellar 和 PHAR 安装。 | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
+| `dw upgrade` | 用更新或固定发布替换当前独立 `dw` 二进制文件。拒绝重写 Composer vendor 和 Homebrew cellar 安装。 | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 验证契约结构时使用 `server:info`，分析 CLI 无法连接 Server 的原因时使用 `doctor`，支持团队需要单次运行的机器可读采集时使用 `debug workflow`。
 
@@ -64,7 +64,7 @@ keywords:
 
 命令默认绑定回环地址。显式使用 `--host=0.0.0.0` 才绑定所有接口。MySQL 和 PostgreSQL 模式分别要求项目 Compose 服务名为 `mysql` 或 `pgsql`，并且有 `redis`。依赖或 HTTP 进程失败返回非零值。HTTP 进程结束后，Compose 服务继续运行。
 
-POSIX 原生二进制文件将 SIGINT 和 SIGTERM 转发给活动子进程，并最多等待五秒让其进程组停止。源码和 PHAR 安装要求 PHP 的 `pcntl` 和 `posix` 扩展才能转发。Windows 使用自身的控制台中断行为。
+POSIX 原生二进制文件将 SIGINT 和 SIGTERM 转发给活动子进程，并最多等待五秒让其进程组停止。Windows 使用自身的控制台中断行为。
 
 使用已发布镜像运行独立 Durable Workflow Server 时，请按[服务快速入门](/docs/quickstart)操作。
 
@@ -118,11 +118,11 @@ dw server:info --output=json \
 | `upgraded` | 二进制文件已替换为 `target_version`。 |
 | `noop` | `current_version` 已匹配 `target_version`；`--force` 可绕过。 |
 | `dry-run` | `--dry-run` 已解析 `target_version`、`asset_url` 和 `checksum_url`，没有下载。 |
-| `refused` | 安装类型不是独立发布二进制文件（Composer vendor、Homebrew cellar 或 PHAR），或平台没有已发布制品。 |
+| `refused` | 安装类型不是独立发布二进制文件（Composer vendor 或 Homebrew cellar），或平台没有已发布制品。 |
 | `permission-denied` | 安装目录不可写；负载包含建议下一步的 `hint`。 |
 | `error` | 获取发布目录失败、校验和不匹配，或文件系统错误。 |
 
-拒绝时，JSON 负载的 `installation.kind` 标识管理工具（`composer-vendor`、`homebrew`、`phar` 或 `binary`），`reason` 指出应改用哪个管理方。公开且无需源码的自动化可通过 `https://durable-workflow.com/install.sh` 重新安装固定发布；Homebrew tap 管理的安装使用 `brew upgrade durable-workflow/tap/dw`。
+拒绝时，JSON 负载的 `installation.kind` 标识管理工具（`composer-vendor`、`homebrew`、`binary` 或 `unknown`），`reason` 指出应改用哪个管理方。只有运行自身 2.x 代码的 2.x PHAR 才会报告 `phar`。公开且无需源码的自动化可通过 `https://durable-workflow.com/install.sh` 重新安装固定发布；Homebrew tap 管理的安装使用 `brew upgrade durable-workflow/tap/dw`。
 
 ## 环境配置档 {#environment-profiles}
 
