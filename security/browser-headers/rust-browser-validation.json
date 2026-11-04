@@ -1,16 +1,20 @@
 {
   "outcome": "pass",
-  "scope": "Local source-prototype CSP compatibility only; no TLS/HSTS or public-rollout acceptance",
+  "scope": "Local artifact CSP compatibility only; no TLS/HSTS or public-rollout acceptance",
   "browser": "156.0.8078.4",
   "pages_checked": 54,
   "inline_hash_representatives": 49,
-  "source_preparation": {
+  "source_preparation": null,
+  "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "pull_request": 207,
-    "commit": "9ed50b7633a56ca09d1a17ddb46251d8ed2d8a60",
-    "tree": "cf2529434d01cc5796b3f87c7e0d7a3f955ad06c",
-    "scope": "Local source prototype only. Not a published artifact or live acceptance."
+    "run_id": 41920159597,
+    "artifact_id": 13365888605,
+    "tooling_revision": "ab18a6714eefe2d5e790e8e97e72660a15f6f92e",
+    "zip_bytes": 4071486,
+    "zip_sha256": "107ab5c37510c69669a87198be9789288a74312bd1023d03099c41e28b703bc3"
   },
+  "inventory_sha256": "abfcc07de3f87e1c7c25be520d6378f116b28b68a568cb9d960021de64170667",
+  "csp_sha256": "b002ffc9f95abc8145319d8a045aef9f0184d323d81ff9aec5a9de54d2f2d710",
   "checks": [
     "all inventoried inline-script hash representatives",
     "search",

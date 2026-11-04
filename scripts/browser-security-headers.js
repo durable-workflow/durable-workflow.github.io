@@ -5,9 +5,42 @@ const cheerio = require('cheerio');
 
 const INERT_SCRIPT_TYPES = new Set(['application/json', 'application/ld+json', 'text/json']);
 const RESOURCE_KINDS = ['script', 'style', 'img', 'font', 'connect', 'worker', 'media'];
-const sorted = (values) => [...new Set(values)].sort();
+// Rustdoc can retain unresolved intra-doc paths as inert custom-scheme links.
+// Keep their restricted Rust syntax distinct from executable URL schemes.
+const RUSTDOC_REFERENCE = /^(?:crate|super|TryFuture)::[A-Za-z][A-Za-z0-9_:]*(?:\(\))?$/;
+function compareText(left, right) {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+const sorted = (values) => [...new Set(values)].sort(compareText);
 const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const sourceHash = (value) => `sha256-${crypto.createHash('sha256').update(value).digest('base64')}`;
+
+function resourceOrigin(value, pageUrl) {
+  const url = new URL(value, pageUrl);
+  if (url.origin === new URL(pageUrl).origin) return "'self'";
+  if (['data:', 'blob:'].includes(url.protocol)) return url.protocol;
+  return url.origin;
+}
+
+function safeAttributeUrl(element, name, value, pageUrl) {
+  const protocol = new URL(value, pageUrl).protocol;
+  if (['http:', 'https:'].includes(protocol)) return true;
+  if (element.name === 'a' && name === 'href') {
+    return ['mailto:', 'tel:'].includes(protocol) || RUSTDOC_REFERENCE.test(value);
+  }
+  return element.name === 'img' && name === 'src' && protocol === 'data:';
+}
+
+function inspectAttributes(element, pageUrl, handlers, unsafeUrls) {
+  const attributes = element.attribs || {};
+  for (const [name, value] of Object.entries(attributes)) {
+    if (/^on[a-z]/i.test(name)) handlers.push({attribute: name, hash: sourceHash(value)});
+    if (!['src', 'href', 'action'].includes(name)) continue;
+    if (!safeAttributeUrl(element, name, value, pageUrl)) unsafeUrls.push(value);
+  }
+  return Object.hasOwn(attributes, 'style') ? 1 : 0;
+}
 
 function inspectHtml(html, pageUrl) {
   const $ = cheerio.load(html);
@@ -15,59 +48,44 @@ function inspectHtml(html, pageUrl) {
   const styles = [];
   const handlers = [];
   const resources = Object.fromEntries(RESOURCE_KINDS.map((kind) => [kind, []]));
-  const javascriptUrls = [];
+  const unsafeUrls = [];
   let styleAttributes = 0;
 
   function resource(kind, value) {
     if (!value || value.startsWith('#')) return;
-    const url = new URL(value, pageUrl);
-    if (url.protocol === 'javascript:') {
-      javascriptUrls.push(value);
-      return;
-    }
-    resources[kind].push(url.origin === new URL(pageUrl).origin ? "'self'" :
-      ['data:', 'blob:'].includes(url.protocol) ? url.protocol : url.origin);
+    resources[kind].push(resourceOrigin(value, pageUrl));
   }
 
   $('*').each((_, element) => {
-    const attributes = element.attribs || {};
-    for (const [name, value] of Object.entries(attributes)) {
-      if (/^on[a-z]/i.test(name)) handlers.push({attribute: name, hash: sourceHash(value)});
-      if (name === 'style') styleAttributes += 1;
-      if (['src', 'href', 'action'].includes(name) && /^\s*javascript:/i.test(value)) {
-        javascriptUrls.push(value);
-      }
-    }
-    if (element.name === 'script') {
-      if (attributes.src) resource('script', attributes.src);
-      else if (!INERT_SCRIPT_TYPES.has((attributes.type || '').toLowerCase().trim())) {
-        const text = $(element).text();
-        if (text.trim()) scripts.push(sourceHash(text));
-      }
-    }
-    if (element.name === 'style') {
-      const text = $(element).text();
-      if (text.trim()) styles.push(sourceHash(text));
-    }
-    if (element.name === 'link') {
-      const rel = (attributes.rel || '').split(/\s+/);
-      if (rel.includes('stylesheet')) resource('style', attributes.href);
-      if (rel.includes('preload') && attributes.as === 'font') resource('font', attributes.href);
-      if (rel.some((value) => ['icon', 'apple-touch-icon'].includes(value))) resource('img', attributes.href);
-    }
-    if (element.name === 'img') resource('img', attributes.src);
-    if (['audio', 'video', 'source'].includes(element.name)) resource('media', attributes.src);
+    styleAttributes += inspectAttributes(element, pageUrl, handlers, unsafeUrls);
   });
+  $('script').each((_, element) => {
+    const attributes = element.attribs || {};
+    if (attributes.src) resource('script', attributes.src);
+    else if (!INERT_SCRIPT_TYPES.has((attributes.type || '').toLowerCase().trim())) {
+      const text = $(element).text();
+      if (text.trim()) scripts.push(sourceHash(text));
+    }
+  });
+  $('style').each((_, element) => {
+    const text = $(element).text();
+    if (text.trim()) styles.push(sourceHash(text));
+  });
+  $('link').each((_, element) => {
+    const attributes = element.attribs || {};
+    const rel = (attributes.rel || '').split(/\s+/);
+    if (rel.includes('stylesheet')) resource('style', attributes.href);
+    if (rel.includes('preload') && attributes.as === 'font') resource('font', attributes.href);
+    if (rel.some((value) => ['icon', 'apple-touch-icon'].includes(value))) resource('img', attributes.href);
+  });
+  $('img').each((_, element) => resource('img', element.attribs.src));
+  $('audio, video, source').each((_, element) => resource('media', element.attribs.src));
   return {
     script_hashes: sorted(scripts), style_hashes: sorted(styles),
-    handlers: handlers.sort((a, b) => {
-      const left = `${a.attribute}:${a.hash}`;
-      const right = `${b.attribute}:${b.hash}`;
-      return left < right ? -1 : left > right ? 1 : 0;
-    }),
+    handlers: handlers.toSorted((a, b) => compareText(`${a.attribute}:${a.hash}`, `${b.attribute}:${b.hash}`)),
     style_attributes: styleAttributes,
     resource_origins: Object.fromEntries(RESOURCE_KINDS.map((kind) => [kind, sorted(resources[kind])])),
-    javascript_urls: sorted(javascriptUrls),
+    unsafe_urls: sorted(unsafeUrls),
   };
 }
 
@@ -77,7 +95,7 @@ function inventoryTree(root, policy) {
   const pages = [];
   function visit(directory) {
     const entries = fs.readdirSync(directory, {withFileTypes: true});
-    for (const entry of entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+    for (const entry of entries.toSorted((a, b) => compareText(a.name, b.name))) {
       const absolute = path.join(directory, entry.name);
       if (entry.isSymbolicLink()) throw new Error(`Symlinks are not inventory inputs: ${entry.name}`);
       if (entry.isDirectory()) visit(absolute);
@@ -118,26 +136,27 @@ function allowedSources(values, kind) {
   }));
 }
 
-function candidateRule(inventory, policy) {
+function verifyIdentity(inventory, policy) {
   if (policy.origin !== 'https://rust.durable-workflow.com' || inventory.origin !== policy.origin) {
     throw new Error('Only the Rust staging hostname is admitted by this design');
   }
   if (inventory.build_identity?.version !== policy.expected_build.version ||
       inventory.build_identity?.source_revision !== policy.expected_build.source_revision ||
-      inventory.build_identity?.crate_sha256 !== policy.expected_build.crate_sha256) {
+      inventory.build_identity?.crate_sha256 !== policy.expected_build.crate_sha256 ||
+      inventory.build_identity?.tooling_revision !== policy.expected_build.tooling_revision) {
     throw new Error('Inventory does not match the reviewed public build identity');
   }
   if (JSON.stringify(inventory.input_artifact) !== JSON.stringify(policy.input_artifact) ||
       JSON.stringify(inventory.source_preparation) !== JSON.stringify(policy.source_preparation || null)) {
     throw new Error('Artifact provenance changed');
   }
-  const sources = Object.fromEntries(RESOURCE_KINDS.map((kind) => [kind, allowedSources(policy.sources[kind] || [], kind)]));
-  const scripts = sorted(inventory.pages.flatMap((page) => page.script_hashes));
-  const styles = sorted(inventory.pages.flatMap((page) => page.style_hashes));
+}
+
+function verifyPages(inventory, sources) {
   const handlers = sorted(inventory.pages.flatMap((page) => page.handlers.map((handler) => handler.hash)));
   if (handlers.length) throw new Error('Inline event handlers require a source correction');
   for (const page of inventory.pages) {
-    if (page.javascript_urls.length) throw new Error(`javascript: URL on ${page.path}`);
+    if (page.unsafe_urls.length) throw new Error(`Unsafe URL scheme on ${page.path}`);
     if (page.style_attributes) throw new Error(`Unreviewed inline styles on ${page.path}`);
     for (const kind of RESOURCE_KINDS) {
       for (const origin of page.resource_origins[kind]) {
@@ -145,6 +164,11 @@ function candidateRule(inventory, policy) {
       }
     }
   }
+}
+
+function policyHeaders(inventory, sources) {
+  const scripts = sorted(inventory.pages.flatMap((page) => page.script_hashes));
+  const styles = sorted(inventory.pages.flatMap((page) => page.style_hashes));
   const tokens = (kind, hashes = []) => [...sources[kind], ...hashes.map((hash) => `'${hash}'`)].join(' ') || "'none'";
   const csp = [
     "default-src 'none'",
@@ -156,7 +180,7 @@ function candidateRule(inventory, policy) {
     `worker-src ${tokens('worker')}`, `media-src ${tokens('media')}`,
     "frame-src 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
   ].join('; ');
-  const values = {
+  return {
     'content-security-policy': csp,
     'strict-transport-security': 'max-age=300',
     'x-content-type-options': 'nosniff',
@@ -164,7 +188,14 @@ function candidateRule(inventory, policy) {
     'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
     'x-frame-options': 'DENY',
   };
-  for (const [name, value] of Object.entries(values)) {
+}
+
+function candidateRule(inventory, policy) {
+  verifyIdentity(inventory, policy);
+  const sources = Object.fromEntries(RESOURCE_KINDS.map((kind) => [kind, allowedSources(policy.sources[kind] || [], kind)]));
+  verifyPages(inventory, sources);
+  const headers = policyHeaders(inventory, sources);
+  for (const [name, value] of Object.entries(headers)) {
     if (Buffer.byteLength(`${name}: ${value}`, 'utf8') > 4096 || /[\r\n]/.test(value)) {
       throw new Error(`Header exceeds the reviewed 4 KB transform limit: ${name}`);
     }
@@ -183,7 +214,7 @@ function candidateRule(inventory, policy) {
       enabled: false,
       expression: '(http.host eq "rust.durable-workflow.com" and http.request.scheme eq "https")',
       action: 'rewrite',
-      action_parameters: {headers: Object.fromEntries(Object.entries(values).map(([name, value]) => [name, {operation: 'set', value}]))},
+      action_parameters: {headers: Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, {operation: 'set', value}]))},
     },
   };
 }

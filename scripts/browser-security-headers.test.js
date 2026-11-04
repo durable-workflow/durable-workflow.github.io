@@ -32,9 +32,18 @@ test('does not authorize inline handlers through matching script-element hashes'
 
 test('refuses javascript URLs and unreviewed inline-style attributes', () => {
   let {policy, inventory} = fixture('<a href="javascript:alert(1)">Bad</a>');
-  assert.throws(() => candidateRule(inventory, policy), /javascript: URL/);
+  assert.throws(() => candidateRule(inventory, policy), /Unsafe URL scheme/);
   ({policy, inventory} = fixture('<div style="display:none">Hidden</div>'));
   assert.throws(() => candidateRule(inventory, policy), /Unreviewed inline styles/);
+});
+
+test('allows only reviewed URL schemes, including normalized control-character cases', () => {
+  for (const url of ['vbscript:msgbox(1)', 'java&#x09;script:alert(1)', 'data:text/html,test', 'file:///tmp/test', 'unknown:payload', 'crate::Span(alert(1))']) {
+    const {policy, inventory} = fixture(`<a href="${url}">Link</a>`);
+    assert.throws(() => candidateRule(inventory, policy), /Unsafe URL scheme/);
+  }
+  const {policy, inventory} = fixture('<a href="mailto:help@example.com">Email</a><img src="data:image/png;base64,AA=="><a href="crate::Span">Unresolved Rust reference</a>');
+  assert.doesNotThrow(() => candidateRule(inventory, policy));
 });
 
 test('does not authorize observed external origins or dangerous schemes automatically', () => {
@@ -68,6 +77,7 @@ test('emits only a disabled Rust rule with conservative HSTS and response-only f
 test('refuses a changed build, artifact provenance or staging hostname', () => {
   for (const change of [
     (value) => { value.inventory.build_identity = {...value.inventory.build_identity, version: '4.12.1'}; },
+    (value) => { value.inventory.build_identity = {...value.inventory.build_identity, tooling_revision: 'unreviewed'}; },
     (value) => { value.inventory.input_artifact = {...value.inventory.input_artifact, artifact_id: 1}; },
     (value) => { value.policy.origin = value.inventory.origin = 'https://durable-workflow.com'; },
   ]) {

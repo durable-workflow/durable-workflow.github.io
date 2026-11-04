@@ -3,26 +3,20 @@
   "origin": "https://rust.durable-workflow.com",
   "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "run_id": 41900241978,
-    "artifact_id": 13358175469,
-    "tooling_revision": "5b6303722734ca9e46b0125194c6d2f39b2994f0",
-    "zip_bytes": 4071394,
-    "zip_sha256": "7bc71ba7545fe0c94060402ef3e101e76496a07f32d248c5757d968aa129fa82"
+    "run_id": 41920159597,
+    "artifact_id": 13365888605,
+    "tooling_revision": "ab18a6714eefe2d5e790e8e97e72660a15f6f92e",
+    "zip_bytes": 4071486,
+    "zip_sha256": "107ab5c37510c69669a87198be9789288a74312bd1023d03099c41e28b703bc3"
   },
-  "source_preparation": {
-    "repository": "durable-workflow/sdk-rust",
-    "pull_request": 207,
-    "commit": "9ed50b7633a56ca09d1a17ddb46251d8ed2d8a60",
-    "tree": "cf2529434d01cc5796b3f87c7e0d7a3f955ad06c",
-    "scope": "Local source prototype only. Not a published artifact or live acceptance."
-  },
+  "source_preparation": null,
   "build_identity": {
     "schema": "durable-workflow.rust-sdk.stable-docs/v1",
     "package": "durable-workflow",
     "version": "4.12.0",
     "crate_sha256": "620a8287af73c363dac61f0a91f20971a39f3b8cdc9513fbea85cdbd95a74ba4",
     "source_revision": "4b2440a5618ccc1c98960ea2e1e62127042c3590",
-    "tooling_revision": "5b6303722734ca9e46b0125194c6d2f39b2994f0"
+    "tooling_revision": "ab18a6714eefe2d5e790e8e97e72660a15f6f92e"
   },
   "files": [
     {
@@ -33,7 +27,7 @@
     {
       "path": "__build.json",
       "bytes": 332,
-      "sha256": "b06bd47b756f03a9f2c3012c18f9195544c31f60196fa4fb17c201ffdd42a3f9"
+      "sha256": "14870e6811be8cab73b015f48ad4df164447fe8f81bd19a8ae9e7a176b7e1165"
     },
     {
       "path": "activity_options/all.html",
@@ -1607,8 +1601,8 @@
     },
     {
       "path": "help.html",
-      "bytes": 3062,
-      "sha256": "54d622855c00e1448187b04b6108aa1f84e18a846300dad03f7e6214e9f7aa6f"
+      "bytes": 3059,
+      "sha256": "3a1e99f812ca0dd8a44c2ca6e5feed1f7eacb02e7ef87c6162d526c87183a816"
     },
     {
       "path": "index.html",
@@ -1797,8 +1791,8 @@
     },
     {
       "path": "settings.html",
-      "bytes": 3010,
-      "sha256": "ae41903d30a3a5ec7435ea3caa306ef1b92e70f83ec1ac45d0fbcc2d494e28eb"
+      "bytes": 3007,
+      "sha256": "2c1b8aa730f2555a2d16c9f000887e406d87809e033c0e19f29141514bbc7d33"
     },
     {
       "path": "src/activity_options/activity_options.rs.html",
@@ -2470,7 +2464,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "activity_options/index.html",
@@ -2495,7 +2489,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "avro_value_benchmark/all.html",
@@ -2520,7 +2514,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "avro_value_benchmark/index.html",
@@ -2545,7 +2539,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "condition_search_attributes/all.html",
@@ -2570,7 +2564,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "condition_search_attributes/index.html",
@@ -2595,7 +2589,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "continue_as_new/all.html",
@@ -2620,7 +2614,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "continue_as_new/index.html",
@@ -2645,7 +2639,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/activity_error/struct.ActivityError.html",
@@ -2664,7 +2658,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/activity_retry/enum.ActivityAttemptLimit.html",
@@ -2683,7 +2677,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/activity_retry/struct.ActivityRetryInfo.html",
@@ -2702,7 +2696,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/all.html",
@@ -2727,7 +2721,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cancellation_context/struct.CancellationContext.html",
@@ -2746,7 +2740,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cancellation_context/struct.CancellationLineage.html",
@@ -2765,7 +2759,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cancellation_context/struct.ScopedCancellationContext.html",
@@ -2784,7 +2778,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cancellation_context/struct.ScopedCancellationLineage.html",
@@ -2803,7 +2797,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cancellation_scope/struct.CancellationScopeOpenReceipt.html",
@@ -2822,7 +2816,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.AVRO_VALUE_SCHEMA_FINGERPRINT.html",
@@ -2847,7 +2841,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.AVRO_VALUE_SCHEMA_FINGERPRINT_HEX.html",
@@ -2872,7 +2866,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.AVRO_VALUE_SCHEMA_JSON.html",
@@ -2897,7 +2891,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.CONDITION_WAIT_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -2922,7 +2916,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.CONDITION_WAIT_OCCURRENCE_IDENTITY_CAPABILITY.html",
@@ -2947,7 +2941,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.CONDITION_WAIT_OCCURRENCE_IDENTITY_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -2972,7 +2966,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.CONTROL_PLANE_VERSION.html",
@@ -2997,7 +2991,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.DEFAULT_CODEC.html",
@@ -3022,7 +3016,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.DURABLE_SELECTION_CAPABILITY.html",
@@ -3047,7 +3041,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.DURABLE_SELECTION_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3072,7 +3066,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MEMO_UPSERTS_CAPABILITY.html",
@@ -3097,7 +3091,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MEMO_UPSERT_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3122,7 +3116,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MESSAGE_STREAMS_CAPABILITY.html",
@@ -3147,7 +3141,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MESSAGE_STREAMS_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3172,7 +3166,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MESSAGE_STREAM_CURSOR_SCHEMA.html",
@@ -3197,7 +3191,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MESSAGE_STREAM_MAX_BATCH.html",
@@ -3222,7 +3216,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MESSAGE_STREAM_SCHEMA.html",
@@ -3247,7 +3241,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MESSAGE_STREAM_SIGNAL.html",
@@ -3272,7 +3266,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3297,7 +3291,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.PORTABLE_WORKER_AFFINITY_MINIMUM_PROTOCOL_VERSION.html",
@@ -3322,7 +3316,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.QUERY_TASKS_CAPABILITY.html",
@@ -3347,7 +3341,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.QUERY_TASK_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3372,7 +3366,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.SDK_VERSION.html",
@@ -3397,7 +3391,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.SEARCH_ATTRIBUTE_UPDATE_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3422,7 +3416,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.TYPED_SEARCH_ATTRIBUTES_CAPABILITY.html",
@@ -3447,7 +3441,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.TYPED_SEARCH_ATTRIBUTES_MINIMUM_WORKER_PROTOCOL_VERSION.html",
@@ -3472,7 +3466,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.WORKER_PROTOCOL_VERSION.html",
@@ -3497,7 +3491,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/constant.WORKFLOW_UPDATES_CAPABILITY.html",
@@ -3522,7 +3516,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/enum.CancellationCallKind.html",
@@ -3541,7 +3535,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/enum.CancellationDeliveryReply.html",
@@ -3560,7 +3554,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CancellationDelivery.html",
@@ -3579,7 +3573,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CancellationDeliveryReceipt.html",
@@ -3598,7 +3592,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CancellationHistory.html",
@@ -3617,7 +3611,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CancellationRequest.html",
@@ -3636,7 +3630,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CancellationShield.html",
@@ -3655,7 +3649,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CooperativeCancellationOptions.html",
@@ -3674,7 +3668,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CooperativeCancellationRequested.html",
@@ -3693,7 +3687,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CooperativeWorkflowTask.html",
@@ -3712,7 +3706,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.CooperativeWorkflowTaskPoll.html",
@@ -3731,7 +3725,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.WorkflowCancellationRequest.html",
@@ -3750,7 +3744,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/cooperative_cancellation/struct.WorkflowTaskHeartbeat.html",
@@ -3769,7 +3763,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ActivityAttemptLimit.html",
@@ -3794,7 +3788,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ActivityBackoff.html",
@@ -3819,7 +3813,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ActivityFailureKind.html",
@@ -3844,7 +3838,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ActivityOptionsErrorKind.html",
@@ -3869,7 +3863,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.AvroValue.html",
@@ -3894,7 +3888,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.CancellationCallKind.html",
@@ -3919,7 +3913,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.CancellationDeliveryReply.html",
@@ -3944,7 +3938,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.CancellationPolicy.html",
@@ -3969,7 +3963,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ChildWorkflowFailureKind.html",
@@ -3994,7 +3988,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ConditionWaitOptionsError.html",
@@ -4019,7 +4013,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ConditionWaitResult.html",
@@ -4044,7 +4038,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.Error.html",
@@ -4069,7 +4063,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.FailureReportError.html",
@@ -4094,7 +4088,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.HandlerKind.html",
@@ -4119,7 +4113,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.HandlerValueKind.html",
@@ -4144,7 +4138,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.NexusOperationMode.html",
@@ -4169,7 +4163,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.NexusWaitFor.html",
@@ -4194,7 +4188,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ParallelAvroResult.html",
@@ -4219,7 +4213,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ParallelOperation.html",
@@ -4244,7 +4238,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ParallelResult.html",
@@ -4269,7 +4263,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.ParentClosePolicy.html",
@@ -4294,7 +4288,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.RawMethod.html",
@@ -4319,7 +4313,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.RegistrationKind.html",
@@ -4344,7 +4338,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.SearchAttributeUpdateError.html",
@@ -4369,7 +4363,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.SearchAttributeValue.html",
@@ -4394,7 +4388,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.SelectionKey.html",
@@ -4419,7 +4413,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.Value.html",
@@ -4444,7 +4438,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.WorkerPollOutcome.html",
@@ -4469,7 +4463,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.WorkerProtocolVersion.html",
@@ -4494,7 +4488,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.WorkflowCommandKind.html",
@@ -4519,7 +4513,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/enum.WorkflowTerminalKind.html",
@@ -4544,7 +4538,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/failure_reporting/enum.FailureReportError.html",
@@ -4563,7 +4557,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.decode_avro_value.html",
@@ -4588,7 +4582,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.decode_payload.html",
@@ -4613,7 +4607,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.encode_avro_value.html",
@@ -4638,7 +4632,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.encode_payload.html",
@@ -4663,7 +4657,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.portable_worker_affinity_capability_manifest.html",
@@ -4688,7 +4682,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.worker_protocol_compatible.html",
@@ -4713,7 +4707,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/fn.worker_protocol_supports_message_streams.html",
@@ -4738,7 +4732,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/index.html",
@@ -4766,7 +4760,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/local_activity/struct.LocalActivityOptions.html",
@@ -4785,7 +4779,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/macro.json!.html",
@@ -4804,7 +4798,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/macro.json.html",
@@ -4829,7 +4823,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/macro.wait_condition!.html",
@@ -4848,7 +4842,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/macro.wait_condition.html",
@@ -4873,7 +4867,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/constant.CLIENT_REQUESTS.html",
@@ -4898,7 +4892,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/constant.CLIENT_REQUEST_DURATION_SECONDS.html",
@@ -4923,7 +4917,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/constant.WORKER_POLLS.html",
@@ -4948,7 +4942,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/constant.WORKER_POLL_DURATION_SECONDS.html",
@@ -4973,7 +4967,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/constant.WORKER_TASKS.html",
@@ -4998,7 +4992,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/constant.WORKER_TASK_DURATION_SECONDS.html",
@@ -5023,7 +5017,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/index.html",
@@ -5048,7 +5042,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/prometheus/struct.PrometheusMetrics.html",
@@ -5067,7 +5061,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/struct.NoopMetrics.html",
@@ -5092,7 +5086,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/struct.PrometheusMetrics.html",
@@ -5117,7 +5111,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/trait.MetricsRecorder.html",
@@ -5142,7 +5136,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/metrics/type.MetricTags.html",
@@ -5167,7 +5161,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/nexus/enum.NexusOperationMode.html",
@@ -5186,7 +5180,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/nexus/enum.NexusWaitFor.html",
@@ -5205,7 +5199,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/nexus/struct.NexusOperationFailure.html",
@@ -5224,7 +5218,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/nexus/struct.NexusOperationResult.html",
@@ -5243,7 +5237,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/nexus/struct.NexusServiceCall.html",
@@ -5262,7 +5256,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/nexus/struct.NexusServiceOptions.html",
@@ -5281,7 +5275,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/index.html",
@@ -5306,7 +5300,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.PaginationError.html",
@@ -5331,7 +5325,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowHistoryIterator.html",
@@ -5356,7 +5350,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowHistoryOptions.html",
@@ -5381,7 +5375,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowHistoryPage.html",
@@ -5406,7 +5400,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowIterator.html",
@@ -5431,7 +5425,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowListOptions.html",
@@ -5456,7 +5450,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowListPage.html",
@@ -5481,7 +5475,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/pagination/struct.WorkflowSummary.html",
@@ -5506,7 +5500,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/raw_request/enum.RawMethod.html",
@@ -5525,7 +5519,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/raw_request/fn.worker_protocol_compatible.html",
@@ -5544,7 +5538,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/raw_request/struct.HttpRefusal.html",
@@ -5563,7 +5557,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/raw_request/struct.RawRequest.html",
@@ -5582,7 +5576,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/raw_request/struct.RawResponse.html",
@@ -5601,7 +5595,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/sticky_workflow_cache/struct.StickyCacheMetrics.html",
@@ -5620,7 +5614,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/sticky_workflow_cache/struct.StickyCacheOptions.html",
@@ -5639,7 +5633,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityCall.html",
@@ -5664,7 +5658,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityContext.html",
@@ -5689,7 +5683,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityError.html",
@@ -5714,7 +5708,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityFailure.html",
@@ -5739,7 +5733,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityHeartbeatResponse.html",
@@ -5764,7 +5758,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityOptions.html",
@@ -5789,7 +5783,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityOptionsError.html",
@@ -5814,7 +5808,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityRetryInfo.html",
@@ -5839,7 +5833,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityRetryPolicy.html",
@@ -5864,7 +5858,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityTask.html",
@@ -5889,7 +5883,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ActivityTaskRejection.html",
@@ -5914,7 +5908,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancelDurableOperationCall.html",
@@ -5939,7 +5933,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationContext.html",
@@ -5964,7 +5958,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationDelivery.html",
@@ -5989,7 +5983,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationDeliveryReceipt.html",
@@ -6014,7 +6008,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationHistory.html",
@@ -6039,7 +6033,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationLineage.html",
@@ -6064,7 +6058,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationRequest.html",
@@ -6089,7 +6083,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationScopeOpenReceipt.html",
@@ -6114,7 +6108,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CancellationShield.html",
@@ -6139,7 +6133,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ChildWorkflowAvroResult.html",
@@ -6164,7 +6158,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ChildWorkflowCall.html",
@@ -6189,7 +6183,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ChildWorkflowFailure.html",
@@ -6214,7 +6208,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ChildWorkflowOptions.html",
@@ -6239,7 +6233,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ChildWorkflowResult.html",
@@ -6264,7 +6258,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ChildWorkflowRetryPolicy.html",
@@ -6289,7 +6283,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.Client.html",
@@ -6314,7 +6308,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ClientBuilder.html",
@@ -6339,7 +6333,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ConditionWaitCall.html",
@@ -6364,7 +6358,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ConditionWaitOptions.html",
@@ -6389,7 +6383,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ContinueAsNewOptions.html",
@@ -6414,7 +6408,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ContinueAsNewOptionsError.html",
@@ -6439,7 +6433,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CooperativeCancellationOptions.html",
@@ -6464,7 +6458,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CooperativeCancellationRequested.html",
@@ -6489,7 +6483,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CooperativeWorkflowTask.html",
@@ -6514,7 +6508,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.CooperativeWorkflowTaskPoll.html",
@@ -6539,7 +6533,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.DuplicateRegistrationError.html",
@@ -6564,7 +6558,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.DurableOperationAwaitCall.html",
@@ -6589,7 +6583,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.DurableOperationCancelled.html",
@@ -6614,7 +6608,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.DurableOperationHandle.html",
@@ -6639,7 +6633,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.HandlerRegistration.html",
@@ -6664,7 +6658,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.HistoryEvent.html",
@@ -6689,7 +6683,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.HttpRefusal.html",
@@ -6714,7 +6708,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.LocalActivityOptions.html",
@@ -6739,7 +6733,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.MessageStream.html",
@@ -6764,7 +6758,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.MessageStreamMessage.html",
@@ -6789,7 +6783,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.NexusOperationFailure.html",
@@ -6814,7 +6808,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.NexusOperationResult.html",
@@ -6839,7 +6833,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.NexusServiceCall.html",
@@ -6864,7 +6858,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.NexusServiceOptions.html",
@@ -6889,7 +6883,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ParallelCall.html",
@@ -6914,7 +6908,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ParallelCompletion.html",
@@ -6939,7 +6933,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ParallelFailure.html",
@@ -6964,7 +6958,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ParallelGroupError.html",
@@ -6989,7 +6983,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ParallelGroupMetadata.html",
@@ -7014,7 +7008,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.PayloadEnvelope.html",
@@ -7039,7 +7033,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.PollActivityTaskResponse.html",
@@ -7064,7 +7058,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.PollQueryTaskResponse.html",
@@ -7089,7 +7083,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.PollWorkflowTaskResponse.html",
@@ -7114,7 +7108,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ProtocolFailure.html",
@@ -7139,7 +7133,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.QueryContext.html",
@@ -7164,7 +7158,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.QueryFailure.html",
@@ -7189,7 +7183,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.QuerySignal.html",
@@ -7214,7 +7208,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.QueryTask.html",
@@ -7239,7 +7233,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.RawRequest.html",
@@ -7264,7 +7258,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.RawResponse.html",
@@ -7289,7 +7283,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.RegisterWorkerResponse.html",
@@ -7314,7 +7308,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ReplayFailure.html",
@@ -7339,7 +7333,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.RequestIdConflict.html",
@@ -7364,7 +7358,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.Saga.html",
@@ -7389,7 +7383,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.SagaCompensationFailure.html",
@@ -7414,7 +7408,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ScopedCancellationContext.html",
@@ -7439,7 +7433,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.ScopedCancellationLineage.html",
@@ -7464,7 +7458,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.SearchAttributeUpdate.html",
@@ -7489,7 +7483,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.SelectCall.html",
@@ -7514,7 +7508,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.SelectionResult.html",
@@ -7539,7 +7533,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.SignalCall.html",
@@ -7564,7 +7558,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.StickyCacheMetrics.html",
@@ -7589,7 +7583,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.StickyCacheOptions.html",
@@ -7614,7 +7608,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.TimerCall.html",
@@ -7639,7 +7633,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.Uuid.html",
@@ -7664,7 +7658,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.Worker.html",
@@ -7689,7 +7683,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkerDeregistrationEnvelope.html",
@@ -7714,7 +7708,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkerHeartbeatObservation.html",
@@ -7739,7 +7733,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkerRetryPolicy.html",
@@ -7764,7 +7758,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkerSession.html",
@@ -7789,7 +7783,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkerSessionOptions.html",
@@ -7814,7 +7808,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowCancellationRequest.html",
@@ -7839,7 +7833,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowCancellationRequested.html",
@@ -7864,7 +7858,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowCommandOptions.html",
@@ -7889,7 +7883,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowCommandRejection.html",
@@ -7914,7 +7908,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowCommandResult.html",
@@ -7939,7 +7933,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowContext.html",
@@ -7964,7 +7958,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowDescription.html",
@@ -7989,7 +7983,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowHandle.html",
@@ -8014,7 +8008,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowHistoryBudget.html",
@@ -8039,7 +8033,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowIdentity.html",
@@ -8064,7 +8058,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowInstance.html",
@@ -8089,7 +8083,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowRedriveResult.html",
@@ -8114,7 +8108,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowResultOptions.html",
@@ -8139,7 +8133,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowStartOptions.html",
@@ -8164,7 +8158,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowStreamAppendItem.html",
@@ -8189,7 +8183,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowStreamAppendResult.html",
@@ -8214,7 +8208,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowStreamDescription.html",
@@ -8239,7 +8233,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowStreamItem.html",
@@ -8264,7 +8258,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowStreamPage.html",
@@ -8289,7 +8283,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowTask.html",
@@ -8314,7 +8308,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowTaskHeartbeat.html",
@@ -8339,7 +8333,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/struct.WorkflowTerminalOutcome.html",
@@ -8364,7 +8358,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/enum.Diagnostic.html",
@@ -8389,7 +8383,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/fn.capture.html",
@@ -8414,7 +8408,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/fn.dispatch.html",
@@ -8439,7 +8433,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/fn.identity.html",
@@ -8464,7 +8458,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/fn.links.html",
@@ -8489,7 +8483,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/fn.normalize.html",
@@ -8514,7 +8508,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/fn.supported.html",
@@ -8539,7 +8533,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/carrier/index.html",
@@ -8564,7 +8558,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/fn.current_log_context.html",
@@ -8589,7 +8583,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/index.html",
@@ -8614,7 +8608,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/struct.ExecutionLogRecord.html",
@@ -8639,7 +8633,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/struct.ExecutionLogger.html",
@@ -8664,7 +8658,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/struct.ExecutionLoggerProvider.html",
@@ -8689,7 +8683,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/telemetry/struct.ExecutionTelemetry.html",
@@ -8714,7 +8708,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/enum.TestingError.html",
@@ -8739,7 +8733,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/environment/struct.ReplayReport.html",
@@ -8758,7 +8752,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/environment/struct.WorkflowEnvironment.html",
@@ -8777,7 +8771,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/history/struct.WorkflowHistory.html",
@@ -8796,7 +8790,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/index.html",
@@ -8821,7 +8815,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/struct.ReplayReport.html",
@@ -8846,7 +8840,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/struct.WorkflowEnvironment.html",
@@ -8871,7 +8865,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/testing/struct.WorkflowHistory.html",
@@ -8896,7 +8890,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/type.Result.html",
@@ -8921,7 +8915,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/worker_session/struct.WorkerSession.html",
@@ -8940,7 +8934,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow/worker_session/struct.WorkerSessionOptions.html",
@@ -8959,7 +8953,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/all.html",
@@ -8984,7 +8978,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/constant.MEMO_BLOB.html",
@@ -9009,7 +9003,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.argument.html",
@@ -9034,7 +9028,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.assert_typed_memo_history.html",
@@ -9059,7 +9053,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.configured_worker.html",
@@ -9084,7 +9078,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.exercise.html",
@@ -9109,7 +9103,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.main.html",
@@ -9134,7 +9128,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.memo_entries.html",
@@ -9159,7 +9153,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.run_worker.html",
@@ -9184,7 +9178,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.wait_for_waiting_memo.html",
@@ -9209,7 +9203,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/fn.workflow_history.html",
@@ -9234,7 +9228,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_memo_restart/index.html",
@@ -9259,7 +9253,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/all.html",
@@ -9284,7 +9278,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/constant.CONTINUE_AS_NEW_SCENARIO.html",
@@ -9309,7 +9303,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/constant.SIDE_EFFECT_SCENARIO.html",
@@ -9334,7 +9328,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/constant.VERSION_MARKER_SCENARIO.html",
@@ -9359,7 +9353,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/fn.argument.html",
@@ -9384,7 +9378,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/fn.configured_worker.html",
@@ -9409,7 +9403,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/fn.exercise.html",
@@ -9434,7 +9428,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/fn.main.html",
@@ -9459,7 +9453,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/fn.run_worker.html",
@@ -9484,7 +9478,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/index.html",
@@ -9509,7 +9503,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "durable_workflow_replay_conformance/struct.ReplayState.html",
@@ -9534,7 +9528,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "hello_world/all.html",
@@ -9559,7 +9553,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "hello_world/index.html",
@@ -9584,7 +9578,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "help.html",
@@ -9609,7 +9603,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "index.html",
@@ -9632,7 +9626,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "local_activities/all.html",
@@ -9657,7 +9651,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "local_activities/index.html",
@@ -9682,7 +9676,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "metrics_prometheus/all.html",
@@ -9707,7 +9701,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "metrics_prometheus/index.html",
@@ -9732,7 +9726,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "nexus_cooperation/all.html",
@@ -9757,7 +9751,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "nexus_cooperation/index.html",
@@ -9782,7 +9776,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "parallel_saga/all.html",
@@ -9807,7 +9801,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "parallel_saga/index.html",
@@ -9832,7 +9826,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "runtime_payloads/all.html",
@@ -9857,7 +9851,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "runtime_payloads/index.html",
@@ -9882,7 +9876,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "settings.html",
@@ -9907,7 +9901,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/activity_options/activity_options.rs.html",
@@ -9932,7 +9926,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/avro_value_benchmark/avro_value_benchmark.rs.html",
@@ -9957,7 +9951,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/condition_search_attributes/condition_search_attributes.rs.html",
@@ -9982,7 +9976,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/continue_as_new/continue_as_new.rs.html",
@@ -10007,7 +10001,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/activity_error.rs.html",
@@ -10032,7 +10026,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/activity_hydration.rs.html",
@@ -10057,7 +10051,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/activity_lease/authority/session.rs.html",
@@ -10082,7 +10076,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/activity_lease/authority.rs.html",
@@ -10107,7 +10101,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/activity_lease.rs.html",
@@ -10132,7 +10126,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/activity_retry.rs.html",
@@ -10157,7 +10151,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/cancellation_context.rs.html",
@@ -10182,7 +10176,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/cancellation_replay_clock.rs.html",
@@ -10207,7 +10201,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/cancellation_scope.rs.html",
@@ -10232,7 +10226,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/cancellation_scope_history.rs.html",
@@ -10257,7 +10251,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/cancellation_scope_replay.rs.html",
@@ -10282,7 +10276,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/cooperative_cancellation.rs.html",
@@ -10307,7 +10301,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/failure_reporting.rs.html",
@@ -10332,7 +10326,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/lib.rs.html",
@@ -10357,7 +10351,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/local_activity.rs.html",
@@ -10382,7 +10376,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/metrics/prometheus.rs.html",
@@ -10407,7 +10401,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/metrics.rs.html",
@@ -10432,7 +10426,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/nexus.rs.html",
@@ -10457,7 +10451,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/pagination.rs.html",
@@ -10482,7 +10476,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/query_authority.rs.html",
@@ -10507,7 +10501,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/raw_request.rs.html",
@@ -10532,7 +10526,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/runtime_payloads.rs.html",
@@ -10557,7 +10551,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/runtime_uploads.rs.html",
@@ -10582,7 +10576,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/sticky_worker.rs.html",
@@ -10607,7 +10601,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/sticky_workflow_cache.rs.html",
@@ -10632,7 +10626,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/telemetry/carrier.rs.html",
@@ -10657,7 +10651,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/telemetry.rs.html",
@@ -10682,7 +10676,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/terminal_failure_detail.rs.html",
@@ -10707,7 +10701,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/testing/environment.rs.html",
@@ -10732,7 +10726,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/testing/history.rs.html",
@@ -10757,7 +10751,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/testing/mod.rs.html",
@@ -10782,7 +10776,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/testing/runner.rs.html",
@@ -10807,7 +10801,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/tls.rs.html",
@@ -10832,7 +10826,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/worker_capacity.rs.html",
@@ -10857,7 +10851,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/worker_session.rs.html",
@@ -10882,7 +10876,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow/workflow_hydration.rs.html",
@@ -10907,7 +10901,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow_memo_restart/durable-workflow-memo-restart.rs.html",
@@ -10932,7 +10926,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/durable_workflow_replay_conformance/durable-workflow-replay-conformance.rs.html",
@@ -10957,7 +10951,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/hello_world/hello_world.rs.html",
@@ -10982,7 +10976,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/local_activities/local_activities.rs.html",
@@ -11007,7 +11001,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/metrics_prometheus/metrics_prometheus.rs.html",
@@ -11032,7 +11026,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/nexus_cooperation/nexus_cooperation.rs.html",
@@ -11057,7 +11051,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/parallel_saga/parallel_saga.rs.html",
@@ -11082,7 +11076,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/runtime_payloads/runtime_payloads.rs.html",
@@ -11107,7 +11101,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/sticky_execution/sticky_execution.rs.html",
@@ -11132,7 +11126,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/worker_latency/worker_latency.rs.html",
@@ -11157,7 +11151,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/worker_sessions/worker_sessions.rs.html",
@@ -11182,7 +11176,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/workflow_pagination/workflow_pagination.rs.html",
@@ -11207,7 +11201,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "src/workflow_testing/workflow_testing.rs.html",
@@ -11232,7 +11226,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "sticky_execution/all.html",
@@ -11257,7 +11251,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "sticky_execution/index.html",
@@ -11282,7 +11276,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "worker_latency/all.html",
@@ -11307,7 +11301,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "worker_latency/index.html",
@@ -11332,7 +11326,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "worker_sessions/all.html",
@@ -11357,7 +11351,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "worker_sessions/index.html",
@@ -11382,7 +11376,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "workflow_pagination/all.html",
@@ -11407,7 +11401,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "workflow_pagination/index.html",
@@ -11432,7 +11426,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "workflow_testing/all.html",
@@ -11457,7 +11451,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     },
     {
       "path": "workflow_testing/index.html",
@@ -11482,7 +11476,7 @@
         "worker": [],
         "media": []
       },
-      "javascript_urls": []
+      "unsafe_urls": []
     }
   ]
 }

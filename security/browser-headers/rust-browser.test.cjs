@@ -3,9 +3,10 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const test = require('node:test');
 const {chromium} = require('playwright');
 
-async function main() {
+test('Rust artifact CSP and navigation compatibility', {timeout: 150000}, async () => {
   const root = path.resolve(process.argv[2]);
   const packet = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
   const inventory = JSON.parse(fs.readFileSync(process.argv[4], 'utf8'));
@@ -105,16 +106,17 @@ async function main() {
     assert.ok(frameMessages.length > 0, 'response frame-ancestors policy must block the framing control');
     assert.deepEqual(unexpected, []);
     console.log(JSON.stringify({
-      outcome: 'pass', scope: 'Local source-prototype CSP compatibility only; no TLS/HSTS or public-rollout acceptance',
+      outcome: 'pass', scope: 'Local artifact CSP compatibility only; no TLS/HSTS or public-rollout acceptance',
       browser: browser.version(), pages_checked: pages.size, inline_hash_representatives: representatives.size,
       source_preparation: packet.source_preparation,
+      input_artifact: packet.input_artifact,
+      inventory_sha256: packet.inventory_sha256,
+      csp_sha256: crypto.createHash('sha256').update(headers['content-security-policy']).digest('hex'),
       checks: ['all inventoried inline-script hash representatives', 'search', 'history back', 'direct-entry fallback', 'compact navigation', 'unapproved inline script refused', 'response framing refused'],
       external_requests: 'intercepted locally; none sent to production',
-    }, null, 2));
+    }));
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
   }
-}
-
-main().catch((error) => { console.error(error.stack); process.exitCode = 1; });
+});
