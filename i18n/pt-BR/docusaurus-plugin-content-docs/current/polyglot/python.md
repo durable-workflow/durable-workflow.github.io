@@ -1557,6 +1557,8 @@ O SDK registra:
 | `durable_workflow_worker_tasks` | Contador | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | Histograma | `task_kind`, `task_queue`, `outcome` |
 
+O histograma separado `durable_workflow_worker_task_schedule_to_start_seconds` não está no pacote estável selecionado. Seu [hook de código do SDK](https://github.com/durable-workflow/sdk-python/pull/264) foi integrado, mas não publicado. A publicação do Server e a aceitação instalada/exportada seguem pendentes em [#188](https://github.com/durable-workflow/sdk-python/issues/188). As seis métricas acima não fornecem essa medida. Use por enquanto os [sinais de idade da fila no guia de operação](/docs/operator-operating-envelope#worker-and-sdk-telemetry).
+
 ## Agendamentos {#schedules-1}
 
 Crie e gerencie workflows agendados pelo cliente:
@@ -2089,9 +2091,19 @@ retorna um resultado com tag Avro. Qualquer outra tag é rejeitada com
 | `list` | `ArrayValue` | `array` (lista) |
 | `dict[str, ...]` | `MapValue` | `array` (mapa com chaves string) |
 
-Adapte tipos específicos do Python, como dataclasses, conjuntos, tuplas e
-objetos datetime, a strings, inteiros, mapas ou listas canônicos antes de
-usá-los como valores de workflow ou atividade.
+### Valores tipados de atividades {#typed-activity-values}
+
+O SDK estável selecionado aceita dataclasses e enums nos limites de atividade. Envia uma dataclass como mapa dos campos com chaves string e um `Enum` como `.value`, preservando os mesmos bytes Avro dos valores neutros explícitos.
+
+| Limite | Comportamento publicado com ativação explícita |
+| --- | --- |
+| Argumentos de atividade | `@activity.defn(..., typed=True)` decodifica argumentos posicionais pelas anotações dos parâmetros. |
+| Resultados de atividade | `ctx.schedule_activity(..., result_type=T)` decodifica o resultado concluído no yield do workflow, inclusive em grupos paralelos e `ctx.select(...)`. |
+| Valores de workflow, filho, cliente, sinal, consulta, atualização e validador | Os adaptadores ampliados do [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) foram integrados, mas não publicados. Mantenha a conversão explícita para valores neutros nesses limites. |
+
+As anotações de recebimento aceitas são dataclasses, `Enum` (incluindo `IntEnum` e `StrEnum`), `Optional[T]` / `T | None`, `list[T]`, `dict[str, T]`, `str`, `int`, `float`, `bool`, `bytes` e `Any`. Outras anotações, inclusive união de dois tipos diferentes de `None`, geram `TypeError` na declaração ou chamada. A decodificação continua explícita. `result_type` é local e nunca é enviado, comparado ou gravado no histórico. A [referência publicada do SDK](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/reference.md#typed-activity-values) detalha padrões, campos desconhecidos e `TypedValueError`.
+
+Conjuntos, tuplas e objetos datetime, UUID, Decimal, pydantic e attrs ainda precisam de adaptadores explícitos para strings, números, mapas ou listas canônicos. Mudar essa forma durável é uma mudança de compatibilidade do workflow.
 
 ## Executar em um servidor compartilhado {#running-against-a-shared-server}
 

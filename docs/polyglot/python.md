@@ -1578,6 +1578,14 @@ The SDK records:
 | `durable_workflow_worker_tasks` | Counter | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | Histogram | `task_kind`, `task_queue`, `outcome` |
 
+The separate `durable_workflow_worker_task_schedule_to_start_seconds` histogram
+is not in the selected stable package. Its [SDK source hook](https://github.com/durable-workflow/sdk-python/pull/264)
+is merged but unreleased, and Server publication plus installed/exported
+acceptance remain pending in [#188](https://github.com/durable-workflow/sdk-python/issues/188).
+The six metrics above do not provide that measurement. Use the
+[operator guide's interim queue-age signals](/docs/operator-operating-envelope#worker-and-sdk-telemetry)
+while that delivery is pending.
+
 ## Schedules
 
 Create and manage scheduled workflows through the client:
@@ -2096,9 +2104,29 @@ Avro-tagged result. Any other tag fails closed with
 | `list` | `ArrayValue` | `array` (list) |
 | `dict[str, ...]` | `MapValue` | `array` (string-keyed map) |
 
-Adapt Python-specific types such as dataclasses, sets, tuples, and datetime
-objects to canonical strings, integers, maps, or lists before using them as
-workflow or activity values.
+### Typed activity values {#typed-activity-values}
+
+The selected stable SDK supports dataclasses and enums at activity boundaries.
+It sends a dataclass as a string-keyed map of its fields and an `Enum` as its
+`.value`, preserving the same Avro bytes as explicit neutral values.
+
+| Boundary | Published opt-in behavior |
+| --- | --- |
+| Activity arguments | `@activity.defn(..., typed=True)` decodes positional arguments using parameter annotations. |
+| Activity results | `ctx.schedule_activity(..., result_type=T)` decodes the completed result at the workflow's yield, including parallel groups and `ctx.select(...)`. |
+| Workflow, child, client, signal, query, update and validator values | The broader adapters in [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) are merged but unreleased. Keep explicit neutral-value conversion for these boundaries. |
+
+Supported receiving annotations are dataclasses, `Enum` (including `IntEnum`
+and `StrEnum`), `Optional[T]` / `T | None`, `list[T]`, `dict[str, T]`, `str`,
+`int`, `float`, `bool`, `bytes` and `Any`. Other annotations, including a union
+of two non-`None` types, raise `TypeError` at declaration or call time.
+Decoding remains opt-in. `result_type` is local and is never sent, compared or
+written to history. See the [published SDK reference](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/reference.md#typed-activity-values)
+for defaults, unknown fields and `TypedValueError` handling.
+
+Sets, tuples, datetime, UUID, Decimal, pydantic and attrs objects still require
+an explicit adapter to canonical strings, numbers, maps or lists. Changing that
+durable value shape is a workflow compatibility change.
 
 ## Running Against a Shared Server
 
