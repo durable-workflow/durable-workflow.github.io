@@ -3,7 +3,7 @@
   "schema_version": 1,
   "updated_at": "2026-11-03",
   "artifacts": {
-    "cli": "2.3.4",
+    "cli": "2.3.5",
     "helm-chart": "1.0.3",
     "sdk-php": "3.8.3",
     "sdk-python": "2.13.1",
