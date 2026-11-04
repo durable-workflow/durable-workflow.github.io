@@ -75,8 +75,11 @@ de workflow não disponibiliza esse ID novamente.
 ### IDs são metadados visíveis {#ids-are-visible-metadata}
 
 IDs de instância aparecem em texto simples no Waterline, nas URLs, na saída da
-CLI, nos logs, nas exportações de histórico e no banco de dados. Codecs de
-payload, incluindo criptografia de payload, não abrangem esses identificadores.
+CLI, nos logs, nas exportações de histórico e no banco de dados. A codificação
+Avro não criptografa payloads nem protege esses identificadores. Os pacotes
+publicados não oferecem um hook suportado para criptografia de payload no
+cliente. [A issue compartilhada #217](https://github.com/durable-workflow/.github/issues/217)
+acompanha essa funcionalidade.
 Use referências opacas em vez de endereços de e-mail, nomes, tokens de acesso ou
 outros dados pessoais ou secretos. Mantenha detalhes sensíveis de negócio em
 campos de payload protegidos pela política de tratamento de dados da aplicação.

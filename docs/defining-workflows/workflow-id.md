@@ -74,8 +74,10 @@ type does not make that ID available again.
 ### IDs are visible metadata
 
 Instance IDs appear in plaintext in Waterline, URLs, CLI output, logs, history
-exports and the database. Payload codecs, including payload encryption, do not
-cover these identifiers. Use opaque references instead of email addresses,
+exports and the database. Avro encoding does not encrypt payloads or protect
+these identifiers. Released packages have no supported client-side payload
+encryption hook. [Shared #217](https://github.com/durable-workflow/.github/issues/217)
+tracks that feature. Use opaque references instead of email addresses,
 names, access tokens or other personal or secret data. Keep sensitive business
 details in payload fields protected by your application's data-handling policy.
 An unguessable ID does not replace authorization.

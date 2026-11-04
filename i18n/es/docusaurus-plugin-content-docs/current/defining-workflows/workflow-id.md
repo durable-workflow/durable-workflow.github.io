@@ -75,8 +75,11 @@ no vuelve a liberarlo.
 ### Los IDs son metadatos visibles {#ids-are-visible-metadata}
 
 Los IDs de instancia aparecen en texto plano en Waterline, URL, salida de la CLI,
-registros, exportaciones y base de datos. Los códecs de cargas útiles, incluido
-el cifrado, no cubren estos identificadores. Usa referencias opacas en lugar de
+registros, exportaciones y base de datos. La codificación Avro no cifra las
+cargas útiles ni protege estos identificadores. Los paquetes publicados no
+ofrecen un hook compatible de cifrado de cargas útiles en el cliente.
+[El issue compartido #217](https://github.com/durable-workflow/.github/issues/217)
+lleva el seguimiento de esa función. Usa referencias opacas en lugar de
 correos, nombres, tokens u otros datos personales o secretos. Conserva los datos
 sensibles de negocio en campos de carga útil protegidos por la política de datos
 de tu aplicación. Un ID difícil de adivinar no sustituye la autorización.
