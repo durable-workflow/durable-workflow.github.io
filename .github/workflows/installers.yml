@@ -82,7 +82,7 @@ jobs:
           # gh reports only a generic failure, so show the signer identity is
           # what decides: the same file verifies with the real pin and fails
           # with the substituted one.
-          curl -fsSL -o "$RUNNER_TEMP/SHA256SUMS" "https://github.com/durable-workflow/cli/releases/download/$CLI_VERSION/SHA256SUMS"
+          curl --proto '=https' --proto-redir '=https' -fsSL -o "$RUNNER_TEMP/SHA256SUMS" "https://github.com/durable-workflow/cli/releases/download/$CLI_VERSION/SHA256SUMS"
           real='^https://github\.com/durable-workflow/cli/\.github/workflows/(release|release-rust)\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?)$'
           wrong='^https://github\.com/durable-workflow/cli/\.github/workflows/(not-release)\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?)$'
           gh attestation verify "$RUNNER_TEMP/SHA256SUMS" --repo durable-workflow/cli --cert-identity-regex "$real" --deny-self-hosted-runners
