@@ -178,10 +178,9 @@ class PollingWorkflow extends Workflow
 
 Für langlebige Schleifen mit menschlichen Eingaben oder Assistenten bevorzugen
 Sie die vollwertige Fassade `$this->inbox()` / `$this->outbox()` für
-[Nachrichtenströme](./message-streams.md). Die Cursor-Position geht auf den
-fortgesetzten Lauf über, während verbrauchte Nachrichten als Historiennachweis
-auf dem ursprünglichen Lauf bleiben. In Workflow-Releases bis einschließlich
-2.20.1 bleiben Stromnachrichten, die beim Continue-as-new noch ausstehen, auf dem
-geschlossenen Lauf
-([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)); siehe
-[Nachrichtenströme](./message-streams.md#continue-as-new).
+[Nachrichtenströme](./message-streams.md). Ausstehende Stromnachrichten und die
+Cursor-Position gehen auf den fortgesetzten Lauf über, während verbrauchte
+Nachrichten als Historiennachweis auf dem ursprünglichen Lauf bleiben. Workflow
+2.20.1 und früher ließen ausstehende Stromnachrichten auf dem geschlossenen Lauf
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018),
+behoben in 2.20.2); siehe [Nachrichtenströme](./message-streams.md#continue-as-new).
