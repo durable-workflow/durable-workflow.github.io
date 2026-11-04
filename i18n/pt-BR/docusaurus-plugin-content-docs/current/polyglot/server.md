@@ -146,7 +146,7 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Compatíveis: MySQL 8.0+, PostgreSQL 13+ e SQLite 3.35+. O Server nativo aceita `DB_CONNECTION=sqlite` (seu padrão), `mysql`, `mariadb` ou `pgsql` e aguarda um banco MySQL ou PostgreSQL que ainda não esteja aceitando conexões.
+As bases declaradas são MySQL 8.0, PostgreSQL 13 e SQLite 3.35. A [tabela de bancos](./database-support.md) separa essas declarações de compatibilidade dos testes exatos de código e da qualificação de imagens publicadas. O Server nativo aceita `DB_CONNECTION=sqlite` (padrão), `mysql`, `mariadb` ou `pgsql`, e espera um banco MySQL ou PostgreSQL que ainda não aceita conexões.
 
 ### Cache e fila (somente PHP 2.x) {#cache-and-queue-php-2x-only}
 

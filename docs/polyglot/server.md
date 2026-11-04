@@ -200,7 +200,9 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Supported: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+. The native Server
+Declared baselines are MySQL 8.0, PostgreSQL 13 and SQLite 3.35. The
+[database table](./database-support.md) separates those compatibility declarations
+from exact source tests and published-image qualification. The native Server
 accepts `DB_CONNECTION=sqlite` (its default), `mysql`, `mariadb` or `pgsql`, and
 waits for a MySQL or PostgreSQL database that is not accepting connections yet.
 

@@ -15,6 +15,8 @@ Si vous hésitez entre l’intégration du package et un Server indépendant, co
 - PHP 8.1 ou ultérieur
 - Laravel 9 ou ultérieur
 
+Consultez la [compatibilité des bases de données](./polyglot/database-support.md) pour les déclarations embarquées et Server, configurations exactes testées et limites de qualification.
+
 Durable Workflow prend en charge les pilotes de files de Laravel, **à l’exception de `sync`**, notamment :
 
 - Amazon SQS

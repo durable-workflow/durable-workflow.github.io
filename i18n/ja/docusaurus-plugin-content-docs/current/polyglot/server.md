@@ -136,7 +136,7 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-対応：MySQL 8.0 以降、PostgreSQL 13 以降、SQLite 3.35 以降。ネイティブ Server は `DB_CONNECTION=sqlite`（既定）、`mysql`、`mariadb`、`pgsql` を受け付け、まだ接続を受け付けていない MySQL・PostgreSQL データベースの準備を待ちます。
+宣言された基準は MySQL 8.0、PostgreSQL 13、SQLite 3.35 です。[データベース表](./database-support.md)は、この互換性宣言と正確なソーステスト、公開イメージの検証を区別します。ネイティブ Server は `DB_CONNECTION=sqlite`（既定）、`mysql`、`mariadb`、`pgsql` を受け付け、MySQL または PostgreSQL がまだ接続を受け付けない場合は待機します。
 
 ### キャッシュとキュー（PHP 2.x のみ） {#cache-and-queue-php-2x-only}
 

@@ -23,6 +23,8 @@ trata do Laravel integrado.
 - PHP 8.1 ou superior
 - Laravel 9 ou superior
 
+Confira [Compatibilidade de bancos de dados](./polyglot/database-support.md) para declarações do modo embutido e Server, configurações exatas testadas e limites de qualificação.
+
 O Durable Workflow pode usar qualquer driver de fila compatível com Laravel,
 exceto `sync`, incluindo:
 

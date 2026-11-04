@@ -22,6 +22,9 @@ the embedded Laravel path.
 - PHP 8.1 or later
 - Laravel 9 or later
 
+Check [Database Compatibility](./polyglot/database-support.md) for the embedded
+and Server declarations, exact tested configurations and qualification limits.
+
 Durable Workflow can be used with any queue driver that Laravel supports (except the `sync` driver), including:
 
 - Amazon SQS

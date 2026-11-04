@@ -15,6 +15,8 @@ sidebar_position: 3
 - PHP 8.1 或更高版本
 - Laravel 9 或更高版本
 
+参阅[数据库兼容性](./polyglot/database-support.md)，了解嵌入式与 Server 声明、确切测试配置及验证边界。
+
 Durable Workflow 支持 Laravel 的各类队列驱动，**不支持 `sync`**，例如：
 
 - Amazon SQS
