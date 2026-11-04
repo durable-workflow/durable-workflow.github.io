@@ -249,7 +249,7 @@ Workflow 2.18.0 会复用已完成的活动、副作用、版本标记和已触�
 
 2.18.0 之前的 Workflow 版本接受的运行范围更窄。失败活动之前的每个步骤都必须是已完成的活动。该历史中的副作用、版本标记或计时器会以 `unsupported_history` 被拒绝，任何备忘录或搜索属性都会以 `unsupported_visibility_metadata` 被拒绝。运行详情和 `describe()` 不会报告 `can_redrive` 或 `redrive_blocked_reason`。
 
-2.19.0 之前的版本会忽略复用的信号、备忘录和搜索属性步骤上的 `reused_recorded_at`。在 Workflow 2.19.0 或更高版本的后继运行复用这些步骤之后，请继续使用 2.19.0 或更高版本的 Worker，或在回滚前确认没有这样的历史会被重放。对于复用了更新或链式信号等待的 2.20.0 后继运行，Workflow 2.19.0 的重放、导入和恢复方式与 2.20.0 相同。
+2.19.0 之前的版本会忽略复用的信号、备忘录和搜索属性步骤上的 `reused_recorded_at`。在 Workflow 2.19.0 或更高版本的后继运行复用这些步骤之后，请继续使用 2.19.0 或更高版本的 Worker，或在回滚前确认没有这样的历史会被重放。在嵌入模式下，对于复用了更新或链式信号等待的 2.20.0 后继运行，Workflow 2.19.0 的重放、导入和恢复方式与 2.20.0 相同（[验证记录](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)）。
 
 原生 Server 中的 redrive 仍适用 2.18.0 之前的规则。原生 Server 对当前规则的支持在 [server#980](https://github.com/durable-workflow/server/issues/980) 中跟踪。
 

@@ -252,7 +252,7 @@ Workflow 2.18.0 reuses completed activities, side effects, version markers and f
 
 Workflow releases before 2.18.0 accept a narrower set of runs. Every step before the failed activity must be a completed activity. A side effect, version marker or timer in that history is refused with `unsupported_history`, and any memo or search attribute is refused with `unsupported_visibility_metadata`. Run detail and `describe()` do not report `can_redrive` or `redrive_blocked_reason`.
 
-Releases before 2.19.0 ignore `reused_recorded_at` on reused signal, memo and search-attribute steps. After a Workflow 2.19.0 or later successor reuses those steps, keep 2.19.0 or later workers, or confirm that no such history can replay, before you roll back. Workflow 2.19.0 replays, imports and resumes a 2.20.0 successor that reused an update or a chained signal wait the same way 2.20.0 does.
+Releases before 2.19.0 ignore `reused_recorded_at` on reused signal, memo and search-attribute steps. After a Workflow 2.19.0 or later successor reuses those steps, keep 2.19.0 or later workers, or confirm that no such history can replay, before you roll back. In embedded mode, Workflow 2.19.0 replays, imports and resumes a 2.20.0 successor that reused an update or a chained signal wait the same way 2.20.0 does ([qualification receipt](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)).
 
 Redrive in the native Server still applies the rules from before 2.18.0. Native Server support for the current rules is tracked in [server#980](https://github.com/durable-workflow/server/issues/980).
 

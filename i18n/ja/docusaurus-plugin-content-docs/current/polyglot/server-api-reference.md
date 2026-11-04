@@ -345,7 +345,7 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/cancel` | 選択実行が現在の場合だけキャンセル。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/terminate` | 選択実行が現在の場合だけ終了。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/repair` | 選択実行が現在の場合だけ修復。 |
-| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | 選択した失敗済みの実行を redrive します。完了したステップを再利用する後継実行を開始します。任意の `request_id` を渡すと、再試行しても同じ後継実行が返ります。拒否された場合は `reason` を返します。[失敗した実行を redrive する](../failures-and-recovery.md#redrive) を参照してください。 |
+| `POST` | `/api/workflows/{workflowId}/runs/{runId}/redrive` | 選択した失敗済みの実行を redrive します。完了したステップを再利用する後継実行を開始します。すでに redrive された実行は既存の後継実行を返し、別の redrive ですでに使われた `request_id` は拒否されます。拒否された場合は `reason` を返します。[失敗した実行を redrive する](../failures-and-recovery.md#redrive) を参照してください。 |
 | `POST` | `/api/workflows/{workflowId}/runs/{runId}/archive` | 選択実行が現在かつ閉じている場合だけアーカイブ。 |
 
 コマンドは業務値を Avro ペイロードエンベロープで運びます。公式 SDK が自動でエンコードします。直接 HTTP クライアントは、公式 Avro エンコーダーの `{codec, blob}` エンベロープか、以下のランタイム外部参照を使ってください。外側の HTTP 文書は JSON ですが、生の業務 JSON は別のペイロードコーデックとして使えません。
