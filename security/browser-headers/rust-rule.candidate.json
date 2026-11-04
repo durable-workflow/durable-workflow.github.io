@@ -1,0 +1,57 @@
+{
+  "schema": "durable-workflow.browser-security-rule-candidate/v1",
+  "rollout_approved": false,
+  "phase": "http_response_headers_transform",
+  "inventory_sha256": "8745f7cc78fc39e4979bbaff51ebbc45bf8474eefe73dca291c73db13c14e839",
+  "compatibility_accepted": false,
+  "input_artifact": {
+    "repository": "durable-workflow/sdk-rust",
+    "run_id": 41900241978,
+    "artifact_id": 13358175469,
+    "tooling_revision": "5b6303722734ca9e46b0125194c6d2f39b2994f0",
+    "zip_bytes": 4071394,
+    "zip_sha256": "7bc71ba7545fe0c94060402ef3e101e76496a07f32d248c5757d968aa129fa82"
+  },
+  "source_preparation": {
+    "repository": "durable-workflow/sdk-rust",
+    "pull_request": 207,
+    "commit": "9ed50b7633a56ca09d1a17ddb46251d8ed2d8a60",
+    "tree": "cf2529434d01cc5796b3f87c7e0d7a3f955ad06c",
+    "scope": "Local source prototype only. Not a published artifact or live acceptance."
+  },
+  "rule": {
+    "ref": "docs-security-headers-rust-v1",
+    "description": "Rust documentation security headers; disabled pending reviewed rollout",
+    "enabled": false,
+    "expression": "(http.host eq \"rust.durable-workflow.com\" and http.request.scheme eq \"https\")",
+    "action": "rewrite",
+    "action_parameters": {
+      "headers": {
+        "content-security-policy": {
+          "operation": "set",
+          "value": "default-src 'none'; script-src 'self' https://static.cloudflareinsights.com 'sha256-+ebVpyrVTh0uPCg5ooCzuSzQ/TWuQhK4ND+2KFGm8GQ=' 'sha256-+ebjA0WamZ/XQBFANbvQ4At0xLLzhA5dE12gDQsdRfo=' 'sha256-+wzPXtMhAzDnK7+9IcgCl4ZpR4a2B7cDMeMDbRASLUs=' 'sha256-/EXGnDaCFM4kyp0N+gueX0spVrOyxp2Vf8sMDupDNEk=' 'sha256-/tte742n9RVwVg3y9jHlXHMYXtJl93QOFdXpPn6unFo=' 'sha256-05XLmVuH/ddc43biI70DU+wDu0x5RUePD7Vn+6a+0VY=' 'sha256-1APuv/u0iUi0c/ev2N/oUcTSvw/naiNvwGNeVgAmV2M=' 'sha256-2vAMIGlgzU73im6LFrY46/uzR/VesRC7rDSyxl/7Qx0=' 'sha256-5HuiJgu+MFCwORLGUJb4PWSu3pXkzIjMhmvb6rvycuY=' 'sha256-5UedoGvVHMvzC0ZiARVOEg7EuG6d3j6dWdaclRg/I/8=' 'sha256-6gzlP4/8ZOdhGLQg4iKgFVzZnEDZW0myDm4UB6/pSK4=' 'sha256-7VXpESWpIwqYgGGzo9ygfLS8kWyuu6ZKRbAHOOYio8s=' 'sha256-7rtt7qG9XaPj7eGVfa9i/Z7ZqdTTUCSe4NZM81gJJoE=' 'sha256-8Y/Ikw0OsF2UeeUnv61S1zw4JFvwCHaebvVwkm1+y8s=' 'sha256-9+t+fU6SnCyQZhQepmnTr1rn/qi2B0RqpcXcv/zakck=' 'sha256-9WxeWVvc3HOlaGH52g/F2m5N9N1uJQ2tO1vduo449JU=' 'sha256-9f0yt+iiIr1oDmV7ipo/QAeuGUiEj35bEvqs04yUabk=' 'sha256-BhDGjB1BTgdk0ktNDsi6owiWW05vHeGpabUZIEaijcs=' 'sha256-Dt2Ij+eYJsB1fsBJmvyFQSSihv9s61A7ZBjIyL/qIvE=' 'sha256-Fa1zAfWkjUSl3LQwa44BjrN0tMsx+j9NZRYAau0rNVw=' 'sha256-GW9N0bNzGmQwUHUrZ/DYe9sWAdgi5DfWZ5m28tKhSh0=' 'sha256-IX7ZsWtDykKICd2LMHk/b1gOjW3EBrj0vJOma1HUO0w=' 'sha256-LWln09ORjFb2knmRf2tdxRq2fnC5c8E9pADkM6Dp4mc=' 'sha256-MJZgQIA3C7R2CF908qihE4aUphp3rDBeFjzjrKay/qE=' 'sha256-OMRY2YyWC+jkCmAVhyLpxnSMh2uWICt6KovVTeCaSdg=' 'sha256-OV9nNbwf5M44avFUQw0V1zPPaUGKxXoOJ1CFbWvizEw=' 'sha256-QRatoBFQciuSDZKFGsxmM7EkfLi5+7njdMQ99oGhsvo=' 'sha256-RR+iduHnZxlicD5pcfFP6GL/4WhG1ImmMRZ/PKwwNA4=' 'sha256-RslAMi/Kn+9u+7ovAFjDuwAxL6KiLfN/7jKYNmvTkO8=' 'sha256-SS8vDuDciMlbOlmdimJ00pxPojnZri6AYBOCnUbNg/U=' 'sha256-U/l4faI39Rgk3UpmpWrNV7BhlsKzOi1J+5TW2R/jS6k=' 'sha256-U6vF4hEZ8IZfCXTrXTRoNJKUbtVfan/K72AMcxPg1Wk=' 'sha256-U7rukNpD4yVNHDwfPzEIr+wH/K1mIKpmUyzGpjz5azI=' 'sha256-X3vokARLN1I+lpKlprRoJge3ujflHKkZEapQvbU0Phw=' 'sha256-Z0R2kKXoXTTbnJFiiT2TIFcWUzmfsmHon7QOqpTNcC8=' 'sha256-bRPGJVTGAd/tVbWWCEqUGk8O56H3id6SZAMOJf6RtL4=' 'sha256-c8KM1d0PgYlwbW/LWL1yxvwtBxC6HmeZwl3duCJP6N0=' 'sha256-dpYXBBVZ3wBouWSh1mjLjb0tsF3nCYFjyQDcL1Vt0Es=' 'sha256-gsBGXivZg6Ernd4RrPrDPxv0y8aIEEvt+ekhRvWe7XQ=' 'sha256-hKq4qRyBTrLzoGAW/Pi3cMZX6njqOpjtbuKD4YArLVs=' 'sha256-lDCJSjlSf96EwHg0ufQlvsxMpeYAo8IByYesbs58t3s=' 'sha256-njGJMJcyU3PTerBYT4C8cf9H1VqA2nbshk/tCtC7ni0=' 'sha256-oDluF1fbs7U13kdzikGp9YQCYYCQNJV+xqiiPBrFGUI=' 'sha256-qJIa3UsFmxQWxIYPH+D28WokcnETksvWVZp6LI2uu7k=' 'sha256-sGQQo6YtjfDAOBLR9Dw8sLzFCwc8F8PBelb++7ICymQ=' 'sha256-um3Jh4MwAFwFeY24bRwUJKDWbBz0rTg58rUi++X7/yo=' 'sha256-wTpGrWZFcyPxnyh14trfVVoHbn3zNPPaydvtuD0y9JA=' 'sha256-wdT3yY/HQ5QXPK9md1n2JwLx7g1zhyXRoByRoEsgEPQ=' 'sha256-wkOr4CR+q6SoL0gNNj8Ij4b6WNhP1+Qw42UlQyCKB6w='; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src 'self' data: https://github.com https://img.shields.io https://sonarcloud.io; font-src 'self'; connect-src 'self' https://cloud.durable-workflow.com https://cloudflareinsights.com; worker-src 'self'; media-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        },
+        "strict-transport-security": {
+          "operation": "set",
+          "value": "max-age=300"
+        },
+        "x-content-type-options": {
+          "operation": "set",
+          "value": "nosniff"
+        },
+        "referrer-policy": {
+          "operation": "set",
+          "value": "strict-origin-when-cross-origin"
+        },
+        "permissions-policy": {
+          "operation": "set",
+          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        },
+        "x-frame-options": {
+          "operation": "set",
+          "value": "DENY"
+        }
+      }
+    }
+  }
+}
