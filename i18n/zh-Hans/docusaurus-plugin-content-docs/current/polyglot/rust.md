@@ -25,6 +25,10 @@ import ProductPromotion from '@site/src/components/ProductPromotion';
 
 [Rust 文档首页](https://rust.durable-workflow.com/)提供 SDK 索引及常用入口。crate 模块、结构体、trait 和方法请继续查看生成的 [Rust SDK API 参考](https://rust.durable-workflow.com/durable_workflow/)。
 
+Rust SDK 4.12.0 还提供 [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)，
+供需要调用 Server 路由并检查响应的准确字节、标头和状态码的工具使用。
+raw 请求只尝试一次。应用代码请使用类型化的客户端方法。
+
 稳定版 Rust SDK 支持持久定时器、子工作流、活动重试和超时、本地活动、Worker 会话、粘性执行、信号、经重放的查询处理器、取消和终止、Server 强制执行的工作流截止时间、类型化副作用、版本标记、更新，以及类型化终态/重放失败。它尚未声明支持计划管理。请使用 [2.0 能力索引](/docs/capabilities/)，不要假定每个 SDK 的功能覆盖范围完全一致。
 
 ## 试用本地 Sample App 试验环境 {#try-the-local-sample-app-playground}
@@ -38,7 +42,7 @@ scripts/playground rust
 
 本地试验环境生成由调用方拥有的工作流和活动源码，选择当前稳定制品，并启动已发布的 Server 和 Waterline。它先等待与生成契约中的标识、工作流类型、活动类型和任务队列完全匹配的 Worker 注册，再启动工作流。成功要求获得预期的完成结果和历史；随后终端输出精确的本地 Waterline 运行链接和结构化 JSON 证据路径。
 
-这个有意保持简小、先关注传输的脚手架使用 `serde_json::Value`；它不是唯一推荐的 Rust 应用契约。继续查看 crate 现有的[类型化输入/输出示例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)、[重试、超时、心跳和终态失败活动策略示例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)，以及[本地活动示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)。对于不想使用 Sample App 的用户，下方包、仓库示例及生成的 API 参考仍是直接路径。
+这个有意保持简小、先关注传输的脚手架使用 `serde_json::Value`；它不是唯一推荐的 Rust 应用契约。继续查看 crate 现有的[类型化输入/输出示例](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)、[重试、超时、心跳和终态失败活动策略示例](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)，以及[本地活动示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)。对于不想使用 Sample App 的用户，下方包、仓库示例及生成的 API 参考仍是直接路径。
 
 ## 包与源码 {#package-and-source}
 
@@ -75,6 +79,14 @@ Rust SDK 4.11.2 从未分组的 `wait_condition` 首次打开时开始计算超�
 使用 4.11.1 或更早版本的 Worker 会拒绝重开超时缩短的历史。在滚动部署
 和回滚期间，请继续使用 4.11.2 或更高版本的 Worker 处理这些运行。参阅
 [4.11.2 标签中的兼容性说明](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112)。
+
+Rust SDK 4.12.0 还可重放条件等待仍打开时记录的重复打开，包括在 PHP
+Server 2.x 上被同一个信号唤醒的 `parallel` 或 `select` 条件组。即使成员
+之间夹有定时器，每个成员也会消费自己的重新打开。若在下一次打开之前已
+记录超时，该逻辑等待仍会结束。旧版 Worker 可能拒绝这些历史。请继续使用
+4.12.0 或更高版本处理受影响的运行，并在回退之前使用计划采用的旧版 Worker
+测试重放。参阅
+[4.12.0 标签中的兼容性说明](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120)。
 
 ## 工作流列表与完整运行历史 {#workflow-lists-and-history}
 
@@ -325,7 +337,7 @@ Server 记录终态结果以供冷重放。Worker 丢失后，未提交的本地
 
 ## 准备已发布的仓库示例 {#prepare-the-released-repository-example}
 
-仓库的 [`hello_world` 示例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs) 注册 Rust Worker、启动工作流、发送信号、运行活动、报告活动心跳，并等待完成结果。由于示例在一个进程中运行应用客户端和 Worker，下方无需账号的路径将其连接到自托管 Server。已配置 Cloud 命名空间是可选的第二运行时，使用独立的角色限定凭据。
+仓库的 [`hello_world` 示例](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs) 注册 Rust Worker、启动工作流、发送信号、运行活动、报告活动心跳，并等待完成结果。由于示例在一个进程中运行应用客户端和 Worker，下方无需账号的路径将其连接到自托管 Server。已配置 Cloud 命名空间是可选的第二运行时，使用独立的角色限定凭据。
 
 为获得可重复的源码练习，请获取已验证组合记录的精确 crate 源码。下方值由该机器可读权威数据生成。示例目录是绝对路径，因此任一连接路径都能直接进入：
 
