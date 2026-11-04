@@ -43,6 +43,7 @@ https://github.com/durable-workflow/sample-app
 | 由 Webhook 启动并等待信号的工作流 | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | 运行详情显示来自 webhook 入口的 `WorkflowStarted` 和 `ready` 的 `SignalReceived` 事件 |
 | 带持久重试/验证的 AI 活动循环 | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | 运行详情显示重复活动尝试，以及满足验证器的 `ActivityCompleted` |
 | 带 saga 补偿的信号驱动 AI 代理 | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | 运行详情显示消息流引用、更新历史，以及 saga 失败后记录的补偿活动 |
+| 带人工审批和继续为新运行的长期对话 | `App\Workflows\Conversation\ConversationWorkflow` | `php artisan app:conversation` | 运行列表中每个代次显示一个运行；运行详情显示 `message` 和 `decision` 的 `SignalReceived` 事件、模型活动和回复活动，以及继续后的运行 |
 
 Waterline 页面列说明健康运行中预期出现的事件；若本地运行缺少某个事件，该缺口是定位 Worker 侧或环境问题的最快线索。
 
@@ -55,6 +56,8 @@ Waterline 页面列说明健康运行中预期出现的事件；若本地运行�
 | [Saga](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow`（`php artisan app:ai`） |
 | [信号](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow`（`php artisan app:webhook`） |
 | [消息流](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow`（`php artisan app:ai`） |
+| [继续为新运行](/docs/features/continue-as-new) | `App\Workflows\Conversation\ConversationWorkflow`（`php artisan app:conversation`） |
+| [对话式工作流参考](/docs/conversational-workflows) | `App\Workflows\Conversation\ConversationWorkflow`（`php artisan app:conversation`） |
 | [子工作流](/docs/features/child-workflows) | 尚无专门示例集条目。请使用子工作流指南。 |
 | [副作用](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow`（`php artisan app:elapsed`） |
 | [Webhook](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow`（`php artisan app:webhook`） |

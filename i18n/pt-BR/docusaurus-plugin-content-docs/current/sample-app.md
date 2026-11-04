@@ -57,6 +57,7 @@ o README e esta galeria são atualizados em conjunto.
 | Workflow iniciado por webhook com espera por sinal | `App\Workflows\Webhooks\WebhookWorkflow` | `php artisan app:webhook` | Detalhes com `WorkflowStarted` da entrada por webhook e um evento `SignalReceived` para `ready` |
 | Laço de atividade de IA com novas tentativas/validação duráveis | `App\Workflows\Prism\PrismWorkflow` | `php artisan app:prism` | Detalhes com tentativas repetidas de atividade e o `ActivityCompleted` que satisfaz o validador |
 | Agente de IA orientado por sinais com compensação de saga | `App\Workflows\Ai\AiWorkflow` | `php artisan app:ai` | Detalhes com referência a fluxo de mensagens, histórico de atualizações e atividades de compensação registradas após falha da saga |
+| Conversa de longa duração com aprovação humana e continue-as-new | `App\Workflows\Conversation\ConversationWorkflow` | `php artisan app:conversation` | Lista de execuções com uma execução por geração; detalhes com eventos `SignalReceived` para `message` e `decision`, as atividades do modelo e da resposta, e uma execução continuada |
 
 A coluna de telas do Waterline identifica os eventos esperados em uma
 execução saudável; se algum estiver ausente na execução local, essa lacuna
@@ -73,6 +74,8 @@ padrão ao workflow executável correspondente.
 | [Sagas](/docs/features/sagas) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
 | [Sinais](/docs/features/signals) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
 | [Fluxos de mensagens](/docs/features/message-streams) | `App\Workflows\Ai\AiWorkflow` (`php artisan app:ai`) |
+| [Continuar como novo](/docs/features/continue-as-new) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
+| [Referência de workflow conversacional](/docs/conversational-workflows) | `App\Workflows\Conversation\ConversationWorkflow` (`php artisan app:conversation`) |
 | [Workflows filhos](/docs/features/child-workflows) | Ainda não há uma entrada específica na galeria. Use o guia de workflows filhos. |
 | [Efeitos colaterais](/docs/features/side-effects) | `App\Workflows\Elapsed\ElapsedTimeWorkflow` (`php artisan app:elapsed`) |
 | [Webhooks](/docs/features/webhooks) | `App\Workflows\Webhooks\WebhookWorkflow` (`php artisan app:webhook`) |
