@@ -252,13 +252,16 @@ enregistrent donc le même historique. Les chaînes sont converties exactement c
 le font `timer()` et `await()` en mode embarqué. Le SDK refuse les chaînes
 ISO 8601 comme `'PT30M'` (passez plutôt `new DateInterval('PT30M')`), les valeurs
 négatives, les fractions de mois ou d’une unité calendaire plus longue, les parties
-de plus de 15 chiffres et le texte impossible à analyser. Une chaîne numérique comme
+de plus de 15 chiffres entiers et le texte impossible à analyser. Une chaîne numérique comme
 `'30'` conserve sa signification antérieure : les temporisateurs et les délais
 d’attente conditionnelle l’arrondissent à la seconde entière supérieure, et les
 options des activités et des workflows enfants la transmettent telle quelle. Une
-durée nulle est valide pour les temporisateurs et les attentes conditionnelles ;
-les délais des activités et des workflows enfants exigent au moins une seconde. Les
-versions antérieures du SDK acceptent uniquement des secondes. La
+durée nulle est valide pour les temporisateurs, les attentes conditionnelles et
+`wait_timeout_seconds` ; les délais des activités et des workflows enfants exigent
+au moins une seconde. Les versions antérieures du SDK acceptent uniquement des
+secondes. Le SDK PHP 3.9.0 ajoute `nesbot/carbon` (`^2.72.6|^3.8.4`) comme
+dépendance obligatoire, afin que les durées soient converties avec le même
+analyseur que le paquet embarqué. La
 [référence des durées du SDK PHP](https://php.durable-workflow.com/build/workflows-activities/)
 répertorie toutes les unités.
 
