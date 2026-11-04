@@ -28,6 +28,15 @@ keywords:
 
 不要从应用工作流代码直接写入 `workflow_messages` 行或游标行。门面才是稳定契约；底层消息服务用于包／运行时集成。
 
+:::warning 在 Workflow 2.20.0 及更早版本中，工作流代码内的调用不可安全重放
+
+工作流代码会在之后的每个工作流任务和每次查询时重放。在 Workflow 2.20.0 及更早的版本中，下列消息流调用没有考虑重放（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）：
+
+- `outbox()->sendReference()` 每次代码重放都会写入新的出站消息和入站消息，因此消费者可能多次收到同一条消息。请为每次逻辑发送提供稳定的 `idempotencyKey`，例如 `reply:{turn}`，并在消费时按 `idempotency_key` 去重。只有当每次逻辑发送使用不同的引用时，才按 `payload_reference` 去重。
+- `inbox()->receive()` 和 `receiveOne()` 在代码重放时可能返回不同的消息或不返回消息，并可能跳过待处理消息。在某个版本修复此问题之前，不要在会运行多个工作流任务的工作流代码中调用它们，例如运行活动或等待信号或计时器的代码。请在工作流代码之外接收消息，或通过[信号](./signals.md)传递载荷。
+
+:::
+
 ## 接收消息 {#receiving-messages}
 
 工作流只需检查待处理入站消息，不推进持久游标时，使用 `peek()`。准备消费消息并在历史中记录游标推进时，使用 `receive()` 或 `receiveOne()`。

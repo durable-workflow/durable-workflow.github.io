@@ -38,6 +38,30 @@ N’écrivez pas directement les lignes `workflow_messages` ou de curseur depuis
 le code applicatif du workflow. La façade est le contrat stable. Les services
 de messages de bas niveau servent à l’intégration du package et du runtime.
 
+:::warning Non sûr à la relecture dans le code de workflow jusqu’à Workflow 2.20.0
+
+Le code de workflow est relu à chaque tâche de workflow ultérieure et à chaque
+requête de lecture. Dans les versions de Workflow jusqu’à 2.20.0 incluse, les
+appels de flux de messages ci-dessous ne tiennent pas compte de la relecture
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)) :
+
+- `outbox()->sendReference()` écrit un nouveau message sortant et un nouveau
+  message entrant à chaque relecture du code ; un consommateur peut donc recevoir
+  plusieurs fois le même message. Donnez à chaque envoi logique un
+  `idempotencyKey` stable, comme `reply:{turn}`, et dédupliquez par
+  `idempotency_key` lors de la consommation. Ne dédupliquez par
+  `payload_reference` que si chaque envoi logique utilise une référence
+  différente.
+- `inbox()->receive()` et `receiveOne()` peuvent renvoyer un autre message, ou
+  aucun, lors de la relecture du code, et peuvent sauter des messages en
+  attente. Tant qu’aucune version ne corrige ce problème, ne les appelez pas
+  depuis du code de workflow qui s’exécute sur plus d’une tâche de workflow,
+  comme du code qui exécute une activité ou attend un signal ou un temporisateur. Recevez les messages
+  hors du code de workflow, ou transmettez la charge utile par un
+  [signal](./signals.md).
+
+:::
+
 ## Recevoir des messages {#receiving-messages}
 
 Utilisez `peek()` pour inspecter les messages entrants en attente sans avancer

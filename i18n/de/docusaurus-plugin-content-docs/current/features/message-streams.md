@@ -38,6 +38,30 @@ Schreiben Sie aus Workflow-Code der Anwendung keine `workflow_messages`- oder
 Cursor-Zeilen direkt. Die Fassade ist der stabile Vertrag. Niedrigere
 Nachrichtendienste existieren für die Paket-/Laufzeitintegration.
 
+:::warning In Workflow-Code bis Workflow 2.20.0 nicht replay-sicher
+
+Workflow-Code wird bei jeder späteren Workflow-Aufgabe und bei jeder Abfrage
+erneut abgespielt (Replay). In Workflow-Releases bis einschließlich 2.20.0
+berücksichtigen die folgenden Nachrichtenstrom-Aufrufe das Replay nicht
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+
+- `outbox()->sendReference()` schreibt bei jedem Replay des Codes eine neue
+  ausgehende und eingehende Nachricht. Ein Verbraucher kann dieselbe Nachricht
+  daher mehr als einmal erhalten. Geben Sie jedem logischen Sendevorgang einen
+  stabilen `idempotencyKey`, etwa `reply:{turn}`, und entfernen Sie Duplikate
+  beim Verarbeiten anhand von `idempotency_key`. Entfernen Sie Duplikate nur
+  dann anhand von `payload_reference`, wenn jeder logische Sendevorgang eine
+  eigene Referenz verwendet.
+- `inbox()->receive()` und `receiveOne()` können beim Replay des Codes eine
+  andere Nachricht oder gar keine zurückgeben und ausstehende Nachrichten
+  überspringen. Rufen Sie sie nicht aus Workflow-Code auf, der mehr als eine
+  Workflow-Aufgabe umfasst, etwa Code, der eine Aktivität ausführt oder auf ein Signal oder einen
+  Timer wartet, bis ein Release dies behebt. Empfangen Sie die Nachrichten außerhalb
+  des Workflow-Codes, oder stellen Sie die Nutzdaten mit einem
+  [Signal](./signals.md) zu.
+
+:::
+
 ## Nachrichten empfangen {#receiving-messages}
 
 Verwenden Sie `peek()`, wenn ein Workflow ausstehende eingehende Nachrichten

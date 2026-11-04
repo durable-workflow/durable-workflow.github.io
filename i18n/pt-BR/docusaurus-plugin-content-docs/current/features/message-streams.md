@@ -37,6 +37,28 @@ Não grave linhas de `workflow_messages` ou de cursor diretamente pelo código
 de workflow da aplicação. A fachada é o contrato estável. Os serviços de
 mensagens de nível inferior existem para integração do pacote com o runtime.
 
+:::warning Não é seguro para replay no código do workflow até o Workflow 2.20.0
+
+O código do workflow passa por replay em cada tarefa de workflow posterior e em
+cada consulta. Nas versões do Workflow até a 2.20.0, as chamadas de fluxo de
+mensagens abaixo não levam o replay em conta
+([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)):
+
+- `outbox()->sendReference()` grava uma nova mensagem de saída e uma nova
+  mensagem de entrada a cada replay do código, então um consumidor pode receber
+  a mesma mensagem mais de uma vez. Dê a cada envio lógico um `idempotencyKey`
+  estável, como `reply:{turn}`, e elimine duplicatas por `idempotency_key` ao
+  consumir. Elimine duplicatas por `payload_reference` somente quando cada envio
+  lógico usar uma referência diferente.
+- `inbox()->receive()` e `receiveOne()` podem retornar uma mensagem diferente,
+  ou nenhuma, quando o código passa por replay, e podem pular mensagens
+  pendentes. Até que uma versão corrija isso, não as chame a partir de código de
+  workflow que execute mais de uma tarefa de workflow, como código que executa uma atividade ou
+  aguarda um sinal ou um timer. Receba as mensagens fora do código do workflow ou
+  entregue o payload com um [sinal](./signals.md).
+
+:::
+
 ## Recebimento de mensagens {#receiving-messages}
 
 Use `peek()` quando um workflow precisar inspecionar mensagens de entrada
