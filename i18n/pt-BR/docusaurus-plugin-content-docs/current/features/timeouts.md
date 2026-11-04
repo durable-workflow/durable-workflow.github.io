@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+No modo serviço, o SDK PHP 3.9.0 e posteriores aceitam, além de segundos, uma string como `'5 minutes'` ou um `DateInterval` ou `CarbonInterval` para os tempos limite de atividades e para os tempos limite da execução completa e de cada execução de workflows filhos. Esses tempos limite devem ser de pelo menos um segundo. Consulte [durações do SDK PHP](../polyglot/php.md#durations).
+
 No modo serviço, encerrar uma tentativa de atividade não para à força o código da aplicação do SDK. O Python SDK 2.9.0 comunica a recusa no próximo heartbeat; código sem heartbeats pode executar até retornar, e o slot físico da thread permanece ocupado até sua saída. Consulte [recusas de heartbeat e saída do callback em Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
 
 ### Tempo limite entre agendamento e início {#schedule-to-start-timeout}

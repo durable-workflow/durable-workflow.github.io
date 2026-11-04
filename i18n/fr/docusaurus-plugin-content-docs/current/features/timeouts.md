@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+En mode service, le SDK PHP 3.9.0 et ultérieur accepte, en plus des secondes, une chaîne comme `'5 minutes'`, un `DateInterval` ou un `CarbonInterval` pour les délais des activités ainsi que pour les délais d’exécution global et d’une exécution des workflows enfants. Ces délais doivent être d’au moins une seconde. Consultez les [durées du SDK PHP](../polyglot/php.md#durations).
+
 En mode service, fermer une tentative d’activité n’arrête pas de force le code applicatif du SDK. Le SDK Python 2.9.0 signale le refus au prochain heartbeat ; le code sans heartbeat peut s’exécuter jusqu’à son retour et le créneau physique du thread reste occupé jusqu’à sa sortie. Consultez les [refus de heartbeat et la sortie du callback en Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
 
 ### Délai entre planification et démarrage {#schedule-to-start-timeout}

@@ -8,6 +8,8 @@ sidebar_position: 5
 
 Використовуйте це, коли workflow має продовжитися одразу після того, як умова над стійким відтвореним станом стане істинною, але також має розблокуватися після крайнього строку, якщо стан не зміниться.
 
+PHP workflow у сервісному режимі використовують `timeout` у `WorkflowContext::waitCondition()` і `deferCondition()`. Починаючи з PHP SDK 3.9.0, він приймає ті самі рядки тривалості та інтервали, що й вбудований `await()`; див. [тривалості PHP SDK](../polyglot/php.md#durations).
+
 ```php
 use Workflow\UpdateMethod;
 use function Workflow\V2\await;

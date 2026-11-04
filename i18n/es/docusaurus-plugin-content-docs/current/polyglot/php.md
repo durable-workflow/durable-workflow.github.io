@@ -214,6 +214,45 @@ demuestra que ganó la cancelación; la reproducción avanza más allá de una
 solicitud sin marca y, si la operación terminó primero, `await()` sigue devolviendo
 ese resultado.
 
+### Duraciones {#durations}
+
+Desde PHP SDK 3.9.0, los temporizadores y tiempos de espera de los workflows
+admiten las mismas formas de duración que el paquete Laravel integrado. `sleep()`,
+`deferTimer()`, el `timeout` de `waitCondition()` y `deferCondition()`, las
+opciones de tiempo de espera de actividades, las opciones
+`execution_timeout_seconds` y `run_timeout_seconds` de los workflows hijos y la
+opción `wait_timeout_seconds` de las operaciones de servicio aceptan segundos
+como int o float, una cadena como `'30 minutes'`, o un `DateInterval` o
+`CarbonInterval`:
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+Cada valor se convierte una sola vez a segundos enteros, redondeando hacia
+arriba, exactamente como hacen `timer()` y `await()` integrados, de modo que
+`'30 minutes'`, `1800` y `CarbonInterval::minutes(30)` registran el mismo
+historial. El SDK rechaza las cadenas ISO 8601 como `'PT30M'` (pasa
+`new DateInterval('PT30M')` en su lugar), los valores negativos y el texto que
+no se puede interpretar. Una duración cero es válida para temporizadores y
+esperas por condición; los tiempos de espera de actividades y workflows hijos
+requieren al menos un segundo. Las versiones anteriores del SDK solo aceptan
+segundos. Consulta la
+[referencia de duraciones del PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations).
+
 ## Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 
 **Soporte publicado.** El SDK PHP 2.5.4 incorporó la protección de entrada descrita a continuación, con enrutamiento y recuperación en Server 2.9.9. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.

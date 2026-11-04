@@ -44,6 +44,10 @@ Durable timer delays resolve to whole seconds. Pass integer seconds such as
 fractional duration is rounded up to the next second. A 100 ms interval therefore
 becomes one second. `timer(0)` still fires inline.
 
+Service-mode PHP workflows use `WorkflowContext::sleep()` and `deferTimer()`.
+From PHP SDK 3.9.0 they accept the same strings and intervals with the same
+rounding; see [PHP SDK durations](../polyglot/php.md#durations).
+
 Becoming due makes a timer eligible to fire. Queue latency and worker load can
 delay its actual processing, so this resolution is not an exact wake-up guarantee.
 It does not reduce the precision of recorded timestamps. See

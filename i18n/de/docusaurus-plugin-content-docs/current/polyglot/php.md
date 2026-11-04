@@ -216,6 +216,43 @@ Historie `SelectionOperationCancelled` belegt, dass Abbruch gewonnen hat.
 Replay geht über eine unmarkierte Abbruchanfrage hinweg. Wurde die Operation
 zuerst abgeschlossen, liefert `await()` weiterhin dieses Ergebnis.
 
+### Dauerangaben {#durations}
+
+Ab PHP SDK 3.9.0 akzeptieren Workflow-Timer und -Zeitlimits dieselben Dauerformen
+wie das eingebettete Laravel-Paket. `sleep()`, `deferTimer()`, der `timeout` von
+`waitCondition()` und `deferCondition()`, die Optionen für Aktivitätszeitlimits,
+die Kind-Workflow-Optionen `execution_timeout_seconds` und `run_timeout_seconds`
+sowie die Service-Operation-Option `wait_timeout_seconds` akzeptieren Sekunden
+als int oder float, einen String wie `'30 minutes'` oder ein `DateInterval` bzw.
+`CarbonInterval`:
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+Jeder Wert wird einmalig in ganze Sekunden umgerechnet und dabei aufgerundet,
+genau wie beim eingebetteten `timer()` und `await()`. Daher zeichnen
+`'30 minutes'`, `1800` und `CarbonInterval::minutes(30)` dieselbe Historie auf.
+Das SDK lehnt ISO-8601-Strings wie `'PT30M'` (übergeben Sie stattdessen
+`new DateInterval('PT30M')`), negative Werte und nicht parsebaren Text ab. Eine
+Dauer von null ist für Timer und Bedingungswarteoperationen gültig; Zeitlimits
+von Aktivitäten und Kind-Workflows benötigen mindestens eine Sekunde. Frühere
+SDK-Releases akzeptieren nur Sekunden. Siehe die
+[Dauerreferenz des PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations).
+
 ## Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 
 **Veröffentlichte Unterstützung.** PHP SDK 2.5.4 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.

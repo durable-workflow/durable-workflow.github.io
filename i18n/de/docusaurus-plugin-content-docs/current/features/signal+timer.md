@@ -13,6 +13,11 @@ Verwenden Sie dies, wenn der Workflow fortfahren soll, sobald ein dauerhafter
 erneut abgespielter Zustand wahr wird, aber auch nach einer Frist weiterlaufen
 soll, falls dieser Zustand sich nie ändert.
 
+PHP-Workflows im Service-Modus verwenden den `timeout` von
+`WorkflowContext::waitCondition()` und `deferCondition()`. Ab PHP SDK 3.9.0
+akzeptiert er dieselben Dauerstrings und Intervalle wie eingebettetes `await()`;
+siehe [Dauerangaben im PHP SDK](../polyglot/php.md#durations).
+
 ```php
 use Workflow\UpdateMethod;
 use function Workflow\V2\await;

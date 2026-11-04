@@ -219,6 +219,44 @@ Seul l’historique `SelectionOperationCancelled` prouve que l’annulation a
 gagné. La relecture dépasse une demande d’annulation sans marqueur et, si
 l’opération s’est terminée avant, `await()` retourne toujours ce résultat.
 
+### Durées {#durations}
+
+À partir du SDK PHP 3.9.0, les temporisateurs et délais des workflows acceptent les
+mêmes formes de durée que le paquet Laravel embarqué. `sleep()`, `deferTimer()`, le
+`timeout` de `waitCondition()` et `deferCondition()`, les options de délai des
+activités, les options `execution_timeout_seconds` et `run_timeout_seconds` des
+workflows enfants et l’option `wait_timeout_seconds` des opérations de service
+acceptent des secondes sous forme d’entier ou de flottant, une chaîne comme
+`'30 minutes'`, ou un `DateInterval` ou `CarbonInterval` :
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+Chaque valeur est convertie une seule fois en secondes entières, arrondie à la
+seconde supérieure, exactement comme le font `timer()` et `await()` en mode
+embarqué : `'30 minutes'`, `1800` et `CarbonInterval::minutes(30)` enregistrent
+donc le même historique. Le SDK refuse les chaînes ISO 8601 comme `'PT30M'`
+(passez plutôt `new DateInterval('PT30M')`), les valeurs négatives et le texte
+impossible à analyser. Une durée nulle est valide pour les temporisateurs et les
+attentes conditionnelles ; les délais des activités et des workflows enfants
+exigent au moins une seconde. Les versions antérieures du SDK acceptent uniquement
+des secondes. Consultez la
+[référence des durées du SDK PHP](https://php.durable-workflow.com/build/workflows-activities/#durations).
+
 ## Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
 
 **Prise en charge publiée.** Le SDK PHP 2.5.4 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.

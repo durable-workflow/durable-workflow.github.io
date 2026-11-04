@@ -47,6 +47,10 @@ ganze Sekunden, etwa `timer(1)`. Bei einem PHP-Intervallstring oder `CarbonInter
 wird eine positive Dauer mit Sekundenbruchteilen auf die nächste volle Sekunde
 aufgerundet. Aus 100 ms wird daher eine Sekunde. `timer(0)` wird weiterhin inline ausgelöst.
 
+PHP-Workflows im Service-Modus verwenden `WorkflowContext::sleep()` und `deferTimer()`.
+Ab PHP SDK 3.9.0 akzeptieren sie dieselben Strings und Intervalle mit derselben
+Rundung; siehe [Dauerangaben im PHP SDK](../polyglot/php.md#durations).
+
 Ein fälliger Timer darf ausgeführt werden. Queue-Latenz und Worker-Auslastung können
 die Verarbeitung verzögern. Die Auflösung garantiert daher keinen exakten Aufwachzeitpunkt
 und verringert nicht die Genauigkeit gespeicherter Zeitstempel. Unter

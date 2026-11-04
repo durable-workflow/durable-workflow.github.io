@@ -512,6 +512,14 @@ $workflows->assertResultRequested('order-1001');
 Для тестів команд обробників workflow/activity використовуйте worker test harness
 SDK. Fake клієнта не виконує код віддаленого worker.
 
+Тривалості переносяться з embedded workflow. Починаючи з PHP SDK 3.9.0, timers
+у service mode, тайм-аути очікування умов і тайм-аути activity та дочірніх workflow
+приймають ті самі рядки `'30 minutes'` і значення `CarbonInterval`, що й embedded
+`timer()` та `await()`, з тим самим округленням до цілих секунд. Переписуйте
+рядки ISO 8601 як `new DateInterval(...)` і задавайте тайм-аути activity та дочірніх
+workflow щонайменше в одну секунду. Див.
+[тривалості PHP SDK](/docs/polyglot/php/#durations).
+
 ## Завершення поточних запусків, перемикання та відкат {#drain-cut-over-and-roll-back}
 
 Зміна Composer-вимоги не переміщує активний workflow, його історію,

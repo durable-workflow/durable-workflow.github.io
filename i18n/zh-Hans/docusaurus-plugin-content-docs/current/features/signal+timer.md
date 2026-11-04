@@ -8,6 +8,8 @@ sidebar_position: 5
 
 当工作流应在某个持久重放状态变为真后立即继续，但即使状态一直不变也应在截止时间后解除阻塞时，使用此功能。
 
+服务模式下的 PHP 工作流使用 `WorkflowContext::waitCondition()` 和 `deferCondition()` 的 `timeout`。从 PHP SDK 3.9.0 起，它接受与嵌入式 `await()` 相同的时长字符串和间隔；参见 [PHP SDK 时长](../polyglot/php.md#durations)。
+
 ```php
 use Workflow\UpdateMethod;
 use function Workflow\V2\await;

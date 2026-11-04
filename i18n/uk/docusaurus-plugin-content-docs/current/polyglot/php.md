@@ -216,6 +216,42 @@ if ($selected->key === 'deadline') {
 Replay проходить запит cancel без такого запису. Якщо операція завершилася
 раніше, `await()` усе одно повертає її результат.
 
+### Тривалості {#durations}
+
+Починаючи з PHP SDK 3.9.0, timers і тайм-аути workflow приймають ті самі форми
+тривалості, що й вбудований пакет Laravel. `sleep()`, `deferTimer()`, `timeout`
+у `waitCondition()` і `deferCondition()`, параметри тайм-аутів activity,
+параметри дочірнього workflow `execution_timeout_seconds` і `run_timeout_seconds`
+та параметр сервісної операції `wait_timeout_seconds` приймають int або float
+секунд, рядок на кшталт `'30 minutes'` або `DateInterval` чи
+`CarbonInterval`:
+
+```php
+use Carbon\CarbonInterval;
+
+$verified = $ctx->waitCondition(
+    static fn (): bool => $ctx->signals('verify') !== [],
+    key: 'email-verified',
+    timeout: '30 minutes',
+);
+
+$ctx->sleep(CarbonInterval::hours(2));
+
+$receipt = $ctx->activity('payments.capture', [$orderId], [
+    'start_to_close_timeout' => '30 seconds',
+    'schedule_to_close_timeout' => '10 minutes',
+]);
+```
+
+Кожне значення один раз перетворюється на цілі секунди з округленням угору, так само
+як у вбудованих `timer()` і `await()`, тож `'30 minutes'`, `1800` і
+`CarbonInterval::minutes(30)` записують однакову історію. SDK відхиляє рядки ISO 8601
+на кшталт `'PT30M'` (натомість передавайте `new DateInterval('PT30M')`), від'ємні
+значення та текст, який не вдається розібрати. Нульова тривалість допустима для timers
+та очікувань умов; тайм-аути activity і дочірніх workflow потребують щонайменше однієї секунди.
+Попередні випуски SDK приймають лише секунди. Див.
+[довідник тривалостей PHP SDK](https://php.durable-workflow.com/build/workflows-activities/#durations).
+
 ## Сумісність входу та відновлення {#entry-compatibility-and-recovery}
 
 **Підтримка в опублікованих випусках.** SDK PHP 2.5.4 запровадив наведений нижче захист входу, а Server 2.9.9 додав маршрутизацію та відновлення. Це мінімальні версії для цих можливостей. Установлюйте поточні стабільні випуски, щоб отримувати виправлення безпеки.

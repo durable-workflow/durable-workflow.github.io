@@ -188,6 +188,8 @@ $result = activity(
 );
 ```
 
+Im Service-Modus akzeptieren PHP SDK 3.9.0 und neuer für Zeitlimits von Aktivitäten sowie für Ausführungs- und Lauf-Zeitlimits von Kind-Workflows neben Sekunden auch einen String wie `'5 minutes'` oder ein `DateInterval` bzw. `CarbonInterval`. Diese Zeitlimits müssen mindestens eine Sekunde betragen. Siehe [Dauerangaben im PHP SDK](../polyglot/php.md#durations).
+
 Im Service-Modus hält das Schließen eines Activity-Versuchs den SDK-Anwendungscode nicht zwangsweise an. Python SDK 2.9.0 meldet die Ablehnung beim nächsten Heartbeat; Code ohne Heartbeats kann bis zur Rückkehr weiterlaufen, und der physische Thread-Slot bleibt bis zum Ende belegt. Siehe [Heartbeat-Ablehnungen und Callback-Ende in Python](../polyglot/python.md#heartbeat-refusals-and-callback-exit).
 
 ### Zeitlimit von Planung bis Start {#schedule-to-start-timeout}
