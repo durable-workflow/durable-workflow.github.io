@@ -37,6 +37,7 @@ ENV = "/usr/bin/env"
 DOCKER = "/usr/bin/docker"
 BUSCTL = "/usr/bin/busctl"
 SYSTEMD_RUN = "/usr/bin/systemd-run"
+BUS_JSON = "--json=short"
 RUNTIME_LIMIT = 600
 VERIFIED_SOURCE_SHA256 = None
 OWNERSHIP_FILE = "ownership.json"
@@ -275,14 +276,14 @@ def stop_property(argv):
 
 
 def bus_value(runner, path, interface, property_name):
-    raw = runner.run([BUSCTL, "--user", "--json=short", "get-property", SERVICE, path, interface, property_name])
+    raw = runner.run([BUSCTL, "--user", BUS_JSON, "get-property", SERVICE, path, interface, property_name])
     value = core.strict_json(raw)
     core.require(set(value) == {"type", "data"}, "bus-property-shape")
     return value["data"]
 
 
 def service_path(runner):
-    raw = runner.run([BUSCTL, "--user", "--json=short", "call", SERVICE, "/org/freedesktop/systemd1",
+    raw = runner.run([BUSCTL, "--user", BUS_JSON, "call", SERVICE, "/org/freedesktop/systemd1",
                       SERVICE + ".Manager", "GetUnit", "s", UNIT])
     value = core.strict_json(raw)
     core.require(value["type"] == "o" and len(value["data"]) == 1, "unit-identity")
@@ -291,7 +292,7 @@ def service_path(runner):
 
 def check_manager_identity(runner):
     authority = require_installed_authority()
-    raw = runner.run([BUSCTL, "--user", "--json=short", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
+    raw = runner.run([BUSCTL, "--user", BUS_JSON, "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
                       "org.freedesktop.DBus", "GetConnectionUnixProcessID", "s", SERVICE])
     observed = core.strict_json(raw)
     core.require(observed["type"] == "u" and observed["data"] == [authority.record["processes"]["manager"]["pid"]], "manager-interface-causality")
@@ -817,6 +818,8 @@ def entrypoint(argv, modules, admitted_hash):
         directory = effects.require_transport()
         operations = directory.results()
         context = core.strict_json(directory.read(CONTEXT_FILE, 65536))
+        core.require(context["worker_pid"] == worker_pid and context["invocation_id"] == stage["invocation_id"],
+                     "terminal-context-generation")
         pending = effects.uncertain_daemon_operation()
         for role in core.ROLES:
             survivors += effects.discover(effects.ownership, role)

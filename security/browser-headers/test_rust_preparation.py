@@ -676,8 +676,9 @@ class AuthorityControls(unittest.TestCase):
         raw = authority.canonical_bytes(self.record())
         with self.assertRaises(prep.Refusal):
             authority.HostAuthority(raw, None)
+        observer = authority.NativeObserver()
         with self.assertRaises(prep.Refusal):
-            authority.NativeObserver().socket_identity("/run/docker.sock")
+            observer.socket_identity("/run/docker.sock")
 
     def test_complete_catalog_rejects_extra_library_tool_process_and_socket_drift(self):
         record = self.record()
