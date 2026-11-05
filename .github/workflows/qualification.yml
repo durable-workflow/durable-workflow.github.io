@@ -63,6 +63,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Set up Python for inert preparation controls
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.13"
+      - name: Run inert preparation controller controls
+        run: >-
+          python -I -S -B -m unittest discover
+          -s security/browser-headers -p test_rust_preparation.py -v
       - name: Set up Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:

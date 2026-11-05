@@ -119,6 +119,8 @@ only its inert source controls. The optional browser entrypoint requires its
 own exact run admission; it makes no provider or production request.
 `rust-preparation-proposal.md` supplies the next separately reviewed acquisition
 and immutable-image custody design. No acquisition, seal or prepared image exists.
+The separately gated [controller source](rust-preparation-controller.md) has
+inert fault controls; its operational admission remains unset.
 
 ## Rust-only staged acceptance and rollback
 
