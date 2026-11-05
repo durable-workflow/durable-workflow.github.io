@@ -29,7 +29,7 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "test:browser-security-headers": "node --test scripts/browser-security-headers.test.js"
+    "test:browser-security-headers": "node --test --test-concurrency=2 scripts/browser-security-headers.test.js security/browser-headers/rust-browser-source.test.cjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",

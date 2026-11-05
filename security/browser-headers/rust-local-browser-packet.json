@@ -1,0 +1,36 @@
+{
+  "schema": "durable-workflow.local-browser-review-packet/v1",
+  "run_status": "not-run",
+  "input_artifact": {
+    "repository": "durable-workflow/sdk-rust",
+    "run_id": 41939116087,
+    "artifact_id": 13375154247,
+    "tooling_revision": "1ea3bfc3965423534b5bbbed700371f126835fc3",
+    "zip_bytes": 4071555,
+    "zip_sha256": "ff902191bdb90f7f1d047ecc5d27e9b8c5215a0239e4f11fcbf574f7ddab83d1"
+  },
+  "playwright_version": "1.64.0",
+  "expected_chromium_version": "156.0.8078.4",
+  "container": {
+    "image": "mcr.microsoft.com/playwright@sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462",
+    "config_sha256": "847f71bbb3f17fc1032d50d75bf6fb3fdcf188b16dff81f24667fe9ae9409e01",
+    "platform": "linux/amd64",
+    "cpus": 2,
+    "memory_bytes": 2147483648,
+    "pids": 256,
+    "network": "none",
+    "deadline_seconds": 300,
+    "kill_grace_seconds": 10,
+    "max_active_browsers": 1
+  },
+  "files": {
+    "rust-browser.test.cjs": "0b2f731db13e4f095230673bfda3d97a36f71c5ef62b8f3702a7978740d17d61",
+    "rust-browser-inputs.cjs": "43bb050185f05187e7d94a40d73b4fae965276696fe7356e6609b319c6b120ee",
+    "rust-browser-source.test.cjs": "deafc5ce08806c148b189a48f11012cc0c03600122dd8fe34eb01e223f381952",
+    "rust-policy.json": "a357bcc5ea8ad96db5e601e4e1c1cb3c8c7eb3441caa9b331d0c2a906ffe84d8",
+    "rust-inventory.json": "8c4bc2eb1ef3ffeeb9788a9d0b44d7b718a2a56caff55b3d4531716a25b270d7",
+    "rust-rule.candidate.json": "bce0c66db4454bc16941a8f5dadb04706315e673d5e2c33f677e7728bafd0135",
+    "runtime/package.json": "a2cd697a8ed17ab196e4eac1bcb15ceec6da243a600a8f2584c8aabdadfc3c9d",
+    "runtime/package-lock.json": "959580e91aae43c61d0bbfcf11c21eb52ecafcfadb088f166b322fd3988a47ae"
+  }
+}
