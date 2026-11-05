@@ -345,8 +345,10 @@ def allocate(effects, ownership, role, image):
     record = discover_owned(effects, ownership, role)
     require(re.fullmatch(HEX_64, returned) is not None, "returned-id")
     require(record is not None and record["Id"] == returned, "returned-discovered-mismatch")
+    cid = inspect_allocation(record, ownership, role, image)
+    effects.complete_operation("create-" + role, {"container_id": cid})
     effects.supervisor_ready()
-    return inspect_allocation(record, ownership, role, image)
+    return cid
 
 
 def cleanup(effects, ownership):
@@ -388,11 +390,15 @@ def assemble(effects, ownership, raw, expected, base_layers):
         effects.require_safe_prefixes(cid)
         effects.supervisor_ready()
         effects.copy_sealed(cid, sealed)
+        require(effects.readback(cid) == expected, "copy-readback")
+        effects.complete_operation("copy", {"container_id": cid, "input_tar_sha256": digest(raw)})
         effects.supervisor_ready()
         returned = effects.commit(cid)
         require(re.fullmatch(IMAGE_ID, returned) is not None, "returned-image-id")
         image = effects.image_inspect(returned)
         require(verify_image(image, base_layers) == returned, "image-id-mismatch")
+        effects.complete_operation("commit", {"image_id": returned, "config_sha256": returned[7:],
+                                               "rootfs_layers": image["RootFS"]["Layers"]})
         owned_identity(effects.inspect(cid), ownership, "assemble")
         effects.remove(cid)
         require(not effects.discover(ownership, "assemble"), "owned-survivor")

@@ -13,12 +13,14 @@ import hashlib
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import stat
 import tarfile
 import tempfile
 import unittest
 import zipfile
+import time
 from unittest import mock
 
 import rust_preparation as prep
@@ -62,6 +64,8 @@ class FakeEffects:
         self.bad_seal = False
         self.next_id = 1
         self.last_seal = None
+        self.pending_operation = None
+        self.bound_operations = []
 
     def edge(self, name):
         self.calls.append(name)
@@ -94,6 +98,7 @@ class FakeEffects:
 
     def create(self, owner, role, image):
         self.supervisor_ready()
+        self.pending_operation = "create-" + role
         self.edge("create-" + role + "-before")
         cid = f"{self.next_id:064x}"
         self.next_id += 1
@@ -117,10 +122,12 @@ class FakeEffects:
         prep.require(not self.bad_prefix, "base-prefix-symlink")
 
     def copy_sealed(self, _cid, _sealed):
+        self.pending_operation = "copy"
         self.edge("copy-before")
         self.edge("copy-after")
 
     def commit(self, _cid):
+        self.pending_operation = "commit"
         self.edge("commit-before")
         image_id = "sha256:" + "c" * 64
         record = {"Id": image_id, "RootFS": {"Layers": ["base", "public"]},
@@ -141,7 +148,14 @@ class FakeEffects:
         return () if self.bad_readback else self.expected
 
     def uncertain_daemon_operation(self):
-        return self.uncertain
+        return self.uncertain or self.pending_operation is not None
+
+    def complete_operation(self, operation, identity):
+        prep.require(self.pending_operation == operation, "operation-binding")
+        self.edge("bind-" + operation + "-before")
+        self.bound_operations.append({"operation": operation, **identity})
+        self.edge("bind-" + operation + "-recorded")
+        self.pending_operation = None
 
 
 def allocation(cid, owner, role, image=prep.BASE_ID):
@@ -168,6 +182,22 @@ def archive(members):
                 info.linkname = "/outside"
             value.addfile(info, io.BytesIO(data) if info.size else None)
     return output.getvalue()
+
+
+def transport_fixture(parent):
+    root = Path(parent) / "transport"
+    root.mkdir(mode=0o700)
+    (root / "home").mkdir(mode=0o700)
+    (root / "docker").mkdir(mode=0o700)
+    (root / "docker/config.json").write_bytes(b"{}")
+    (root / "docker/config.json").chmod(0o600)
+    observed = root.stat()
+    nonce = "a" * 64
+    (root / native.OWNERSHIP_FILE).write_text(json.dumps({"nonce": nonce, "device": observed.st_dev, "inode": observed.st_ino}))
+    (root / native.OWNERSHIP_FILE).chmod(0o600)
+    return ({"staging_path": str(root), "uid": os.getuid(), "gid": os.getgid()},
+            {"nonce": nonce, "deadline": time.monotonic() + 30,
+             "started_at": dt.datetime.now(dt.timezone.utc).isoformat()})
 
 
 class InputControls(unittest.TestCase):
@@ -545,9 +575,8 @@ class PlatformControls(unittest.TestCase):
 
     def test_daemon_operation_journal_precedes_request_and_survives_timeout(self):
         with tempfile.TemporaryDirectory(prefix="dw-journal-fixture-") as directory:
-            spec = {"staging_path": directory}
-            runtime = {"nonce": "a" * 64, "deadline": __import__("time").monotonic() + 30}
-            pending = Path(directory) / "pending-operation.json"
+            spec, runtime = transport_fixture(directory)
+            pending = Path(spec["staging_path"]) / native.PENDING_FILE
             class Runner:
                 def run(self, *_args, **_kwargs):
                     if not pending.is_file():
@@ -555,11 +584,83 @@ class PlatformControls(unittest.TestCase):
                     raise prep.Refusal("command-timeout")
             with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64):
                 effects = native.LiveEffects(spec, runtime, {}, Runner())
-                with mock.patch.object(effects, "supervisor_ready"):
-                    with self.assertRaises(prep.Refusal):
-                        effects.command(["create"], mutation="create-assemble")
-                self.assertTrue(effects.uncertain_daemon_operation())
-                self.assertEqual(json.loads(pending.read_bytes())["operation"], "create-assemble")
+                try:
+                    with mock.patch.object(effects, "supervisor_ready"):
+                        with self.assertRaises(prep.Refusal):
+                            effects.command(["create"], mutation="create-assemble")
+                    self.assertTrue(effects.uncertain_daemon_operation())
+                    self.assertEqual(json.loads(pending.read_bytes())["operation"], "create-assemble")
+                finally:
+                    effects.transport.close()
+
+    def test_successful_malformed_commit_and_post_exit_loss_remain_unresolved(self):
+        for response in (b"not-an-image-id\n", b"sha256:" + b"c" * 64 + b"\n"):
+            with self.subTest(response=response), tempfile.TemporaryDirectory(prefix="dw-commit-fixture-") as directory:
+                spec, runtime = transport_fixture(directory)
+                class Runner:
+                    def run(self, *_args, **_kwargs):
+                        return response
+                with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64):
+                    effects = native.LiveEffects(spec, runtime, {}, Runner())
+                    try:
+                        with mock.patch.object(effects, "supervisor_ready"):
+                            returned = effects.commit("f" * 64)
+                        self.assertTrue(effects.uncertain_daemon_operation())
+                        self.assertEqual(effects.require_transport().results(), [])
+                        if response.startswith(b"not-"):
+                            self.assertIsNone(__import__("re").fullmatch(prep.IMAGE_ID, returned))
+                        else:
+                            # Process exit has happened; loss before binding must
+                            # leave the same unresolved journal and no acceptance.
+                            with self.assertRaises(HardStop):
+                                raise HardStop("after-exit-before-binding")
+                            self.assertTrue(effects.uncertain_daemon_operation())
+                    finally:
+                        effects.transport.close()
+
+    def test_transport_swap_at_each_cleanup_edge_preserves_replacement(self):
+        for edge in ("root-open", "list-root", "child-open", "unlink", "rmdir-child", "rmdir-root"):
+            with self.subTest(edge=edge), tempfile.TemporaryDirectory(prefix="dw-transport-swap-fixture-") as directory:
+                spec, runtime = transport_fixture(directory)
+                root = Path(spec["staging_path"])
+                template = Path(directory) / "replacement-template"
+                shutil.copytree(root, template)
+                (template / "docker/config.json").write_bytes(b"foreign replacement bytes")
+                original_stat = root.stat()
+                real_open, real_list, real_unlink, real_rmdir = os.open, os.listdir, os.unlink, os.rmdir
+                state = {"root_fd": None, "swapped": False}
+                def swap():
+                    if not state["swapped"]:
+                        root.rename(root.with_name("bound-original"))
+                        shutil.copytree(template, root)
+                        state["swapped"] = True
+                def opened(name, *args, **kwargs):
+                    fd = real_open(name, *args, **kwargs)
+                    if name == root.name:
+                        state["root_fd"] = fd
+                        if edge == "root-open": swap()
+                    if name == "home" and edge == "child-open": swap()
+                    return fd
+                def listed(value):
+                    answer = real_list(value)
+                    if value == state["root_fd"] and edge == "list-root": swap()
+                    return answer
+                def unlinked(name, *args, **kwargs):
+                    if edge == "unlink": swap()
+                    return real_unlink(name, *args, **kwargs)
+                def removed(name, *args, **kwargs):
+                    if (edge == "rmdir-child" and name == "home") or (edge == "rmdir-root" and name == root.name): swap()
+                    return real_rmdir(name, *args, **kwargs)
+                with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64), \
+                        mock.patch("os.open", side_effect=opened), mock.patch("os.listdir", side_effect=listed), \
+                        mock.patch("os.unlink", side_effect=unlinked), mock.patch("os.rmdir", side_effect=removed):
+                    with self.assertRaises((prep.Refusal, OSError)):
+                        native.cleanup_transport(spec, runtime)
+                self.assertTrue(state["swapped"])
+                self.assertEqual((root / "docker/config.json").read_bytes(), b"foreign replacement bytes")
+                self.assertTrue((root / native.OWNERSHIP_FILE).is_file())
+                moved = root.with_name("bound-original").stat()
+                self.assertEqual((moved.st_dev, moved.st_ino), (original_stat.st_dev, original_stat.st_ino))
 
     def test_clean_environment_has_no_ambient_credentials_or_proxy(self):
         with mock.patch.dict(os.environ, {"GH_TOKEN": "synthetic", "HTTPS_PROXY": "synthetic",

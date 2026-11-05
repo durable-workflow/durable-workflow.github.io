@@ -13,7 +13,10 @@ before any acquisition, memory seal, service, Docker/image, Node/browser or
 provider effect. There is no command-line or environment bypass. The source
 does not accept a real handoff, prepare an image or qualify the host runtime.
 No controller invocation or filesystem path is approved by these source files.
-The current suite has 29 test methods, including the per-edge fault subcases.
+The current suite has 31 test methods, including the per-edge fault subcases.
+Security's source/executable HOLD remains in force. Durable mutation identity
+binding and descriptor-relative cleanup have new regression controls; installed
+authority and the joined terminal collector are still being completed.
 
 Run the source controls with Python 3.11 or later on Linux:
 
@@ -89,7 +92,7 @@ def capture(name, limit):
         os.close(fd)
 try:
     raw = capture('rust-preparation-source.json', 16384)
-    expected_manifest = 'd6fbbe09a9ed1e61dbf152ba44a7f921abf4c7659821c45286916fa1b7d5c764'
+    expected_manifest = 'b088dde1c3595e377a782fd34c130cf2e1b63fe1c53f0d02973a374e603dd026'
     if hashlib.sha256(raw).hexdigest() != expected_manifest:
         raise RuntimeError('source-manifest-hash')
     manifest = json.loads(raw)
@@ -144,6 +147,15 @@ only independently discovered nonce-owned containers, but reports daemon
 terminal state unknown and retains bounded evidence. It does not claim a
 successful cleanup or allow another phase merely because a client stopped.
 Unknown native work requires General's decision and independent reconciliation.
+CLI exit zero does not clear a mutation journal. Typed returned identity and
+independent readback must be durably appended and synced before pending state
+can clear. Copy readback is verified before commit as well as after the image
+snapshot. Malformed output or loss between exit and persistence stays unresolved.
+
+Transport cleanup opens and binds one directory descriptor, including its
+ownership record, and uses held descriptors for enumeration and deletion.
+A namespace swap preserves the replacement tree and returns unresolved evidence.
+The original directory's device/inode remains the bound identity throughout.
 
 The worker's image receipt explicitly leaves cleanup pending. Independent stop
 cleanup must complete before preparation acceptance. Derived images remain

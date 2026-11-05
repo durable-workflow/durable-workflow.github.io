@@ -39,6 +39,8 @@ SYSTEMD_RUN = "/usr/bin/systemd-run"
 RUNTIME_LIMIT = 600
 VERIFIED_SOURCE_SHA256 = None
 OWNERSHIP_FILE = "ownership.json"
+PENDING_FILE = "pending-operation.json"
+RESULTS_FILE = "operation-results.jsonl"
 
 
 def admitted():
@@ -91,11 +93,17 @@ class CommandRunner:
 
     def __init__(self, environment):
         self.environment = dict(environment)
+        self.pass_fds = ()
+
+    def bind_transport(self, descriptor):
+        self.environment = clean_environment(Path("/proc/self/fd/" + str(descriptor)))
+        self.pass_fds = (descriptor,)
 
     def run(self, args, timeout=15, limit=core.MIB, stdin=None):
         admitted()
         process = subprocess.Popen(args, stdin=stdin if stdin is not None else subprocess.DEVNULL,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.environment)
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.environment,
+                                   pass_fds=self.pass_fds)
         output = bytearray()
         errors = 0
         deadline = time.monotonic() + timeout
@@ -290,13 +298,142 @@ class DockerConnection(http.client.HTTPConnection):
         self.sock.connect("/var/run/docker.sock")
 
 
+def parent_descriptor(path):
+    target = Path(path)
+    core.require(target.is_absolute() and target.resolve() == target, "transport-canonical-path")
+    descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in target.parts[1:-1]:
+            following = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = following
+        return descriptor, target.name
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+class TransportDirectory:
+    """All child operations use the same held root, including after a rename."""
+
+    def __init__(self, spec, runtime):
+        self.parent, self.name = parent_descriptor(spec["staging_path"])
+        self.fd = None
+        try:
+            self.fd = os.open(self.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.parent)
+            self.identity = os.fstat(self.fd)
+            core.require(stat.S_IMODE(self.identity.st_mode) == 0o700
+                         and self.identity.st_uid == spec["uid"] and self.identity.st_gid == spec["gid"], "transport-owner")
+            record = core.strict_json(self.read(OWNERSHIP_FILE, 4096))
+            expected = {"nonce": runtime["nonce"], "device": self.identity.st_dev, "inode": self.identity.st_ino}
+            core.require(record == expected, "transport-record-binding")
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self):
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+        if self.parent is not None:
+            os.close(self.parent)
+            self.parent = None
+
+    def namespace_matches(self):
+        current = os.stat(self.name, dir_fd=self.parent, follow_symlinks=False)
+        return (current.st_dev, current.st_ino) == (self.identity.st_dev, self.identity.st_ino)
+
+    def exists(self, name):
+        try:
+            os.stat(name, dir_fd=self.fd, follow_symlinks=False)
+            return True
+        except FileNotFoundError:
+            return False
+
+    def read(self, name, limit):
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.fd)
+        try:
+            info = os.fstat(descriptor)
+            core.require(stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                         and info.st_uid == self.identity.st_uid and stat.S_IMODE(info.st_mode) == 0o600,
+                         "transport-record")
+            with os.fdopen(os.dup(descriptor), "rb") as stream:
+                raw = stream.read(limit + 1)
+            core.require(len(raw) <= limit, "transport-record-limit")
+            return raw
+        finally:
+            os.close(descriptor)
+
+    def write_pending(self, value):
+        descriptor = os.open(PENDING_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                             0o600, dir_fd=self.fd)
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(json.dumps(value, sort_keys=True).encode())
+            file.flush()
+            os.fsync(file.fileno())
+        os.fsync(self.fd)
+
+    def bind_operation(self, operation, identity, nonce):
+        pending = core.strict_json(self.read(PENDING_FILE, 4096))
+        core.require(pending == {"operation": operation, "nonce": nonce}, "pending-operation-identity")
+        descriptor = os.open(RESULTS_FILE, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW,
+                             0o600, dir_fd=self.fd)
+        with os.fdopen(descriptor, "wb") as file:
+            observed = os.fstat(file.fileno())
+            core.require(stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1
+                         and observed.st_uid == self.identity.st_uid and stat.S_IMODE(observed.st_mode) == 0o600,
+                         "operation-result-type")
+            file.write((json.dumps({"operation": operation, "nonce": nonce, "identity": identity}, sort_keys=True) + "\n").encode())
+            file.flush()
+            os.fsync(file.fileno())
+        os.fsync(self.fd)
+        # Only typed, durably recorded caller validation makes this terminal.
+        os.unlink(PENDING_FILE, dir_fd=self.fd)
+        os.fsync(self.fd)
+
+    def results(self):
+        if not self.exists(RESULTS_FILE):
+            return []
+        raw = self.read(RESULTS_FILE, 65536)
+        rows = [core.strict_json(line) for line in raw.splitlines()]
+        core.require(len(rows) <= 16, "operation-result-count")
+        return rows
+
+    def remove_contents(self):
+        core.require(self.namespace_matches(), "transport-namespace-changed")
+        expected = {"home", "docker", OWNERSHIP_FILE}
+        if self.exists(RESULTS_FILE):
+            expected.add(RESULTS_FILE)
+        core.require(set(os.listdir(self.fd)) == expected, "transport-extra-or-pending")
+        children = {}
+        try:
+            for name in ("home", "docker"):
+                child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.fd)
+                children[name] = child
+                core.require(os.fstat(child).st_uid == self.identity.st_uid, "transport-child-owner")
+            core.require(os.listdir(children["home"]) == [], "transport-home-extra")
+            core.require(os.listdir(children["docker"]) == ["config.json"], "transport-config-extra")
+            os.unlink("config.json", dir_fd=children["docker"])
+            for name in (OWNERSHIP_FILE, RESULTS_FILE):
+                if self.exists(name):
+                    os.unlink(name, dir_fd=self.fd)
+            for name in ("home", "docker"):
+                os.rmdir(name, dir_fd=self.fd)
+            core.require(self.namespace_matches(), "transport-namespace-changed")
+            os.rmdir(self.name, dir_fd=self.parent)
+            core.require(os.fstat(self.fd).st_nlink == 0, "bound-transport-survivor")
+        finally:
+            for child in children.values():
+                os.close(child)
+
+
 class LiveEffects:
     def __init__(self, spec, runtime, modules, runner=None):
         admitted()
         self.spec, self.runtime, self.modules = spec, runtime, modules
         self.root = Path(spec["staging_path"])
         self.runner = runner or CommandRunner(clean_environment(self.root))
-        self.pending = self.root / "pending-operation.json"
+        self.transport = None
         self.ownership = core.Ownership(runtime["nonce"])
 
     def supervisor_ready(self):
@@ -308,16 +445,27 @@ class LiveEffects:
         admitted()
         if mutation is not None:
             self.supervisor_ready()
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-            with os.fdopen(os.open(self.pending, flags, 0o600), "wb") as journal:
-                journal.write(json.dumps({"operation": mutation, "nonce": self.ownership.nonce}).encode())
-                journal.flush()
-                os.fsync(journal.fileno())
+            self.require_transport().write_pending({"operation": mutation, "nonce": self.ownership.nonce})
         remaining = max(0.01, self.runtime["deadline"] - time.monotonic())
         result = self.runner.run([DOCKER, *args], min(timeout, remaining), limit, stdin)
-        if mutation is not None:
-            self.pending.unlink()
         return result
+
+    def require_transport(self):
+        if self.transport is None:
+            self.transport = TransportDirectory(self.spec, self.runtime)
+            if isinstance(self.runner, CommandRunner):
+                self.runner.bind_transport(self.transport.fd)
+        return self.transport
+
+    def complete_operation(self, operation, identity):
+        if operation == "commit":
+            core.require(set(identity) == {"image_id", "config_sha256", "rootfs_layers"}, "commit-binding-fields")
+            core.require(re.fullmatch(core.IMAGE_ID, identity["image_id"]) is not None
+                         and identity["config_sha256"] == identity["image_id"][7:], "commit-binding-id")
+            record = self.image_inspect(identity["image_id"])
+            core.require(record["Id"] == identity["image_id"]
+                         and record["RootFS"]["Layers"] == identity["rootfs_layers"], "commit-binding-readback")
+        self.require_transport().bind_operation(operation, identity, self.ownership.nonce)
 
     def discover(self, owner, role):
         args = ["container", "ls", "--all", "--no-trunc", "--filter", "name=^/" + owner.name(role) + "$"]
@@ -359,7 +507,9 @@ class LiveEffects:
         self.runner.run([DOCKER, "rm", "--force", cid], timeout=5)
 
     def uncertain_daemon_operation(self):
-        return self.pending.exists() or self.pending.is_symlink()
+        if self.transport is None and not self.root.exists():
+            return False
+        return self.require_transport().exists(PENDING_FILE)
 
     def seal(self, raw):
         return Seal(raw)
@@ -410,6 +560,7 @@ class LiveEffects:
         core.require(core.BASE_IMAGE in record["RepoDigests"] and record["Architecture"] == "amd64"
                      and record["Os"] == "linux" and record["Size"] <= 8 * 1024 * core.MIB, "base-image")
         core.require(not record["Config"].get("Volumes") and not record["Config"].get("OnBuild"), "base-hooks")
+        self.complete_operation("pull", {"base_image_id": core.BASE_ID, "rootfs_layers": record["RootFS"]["Layers"]})
         return record["RootFS"]["Layers"]
 
 
@@ -481,29 +632,11 @@ def create_transport(spec, nonce):
 
 def cleanup_transport(spec, runtime):
     admitted()
-    root = Path(spec["staging_path"])
-    observed = root.lstat()
-    core.require(stat.S_ISDIR(observed.st_mode) and not root.is_symlink(), "transport-identity")
-    core.require(stat.S_IMODE(observed.st_mode) == 0o700 and observed.st_uid == spec["uid"], "transport-owner")
-    descriptor = os.open(root / OWNERSHIP_FILE, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    directory = TransportDirectory(spec, runtime)
     try:
-        record_stat = os.fstat(descriptor)
-        core.require(stat.S_ISREG(record_stat.st_mode) and record_stat.st_nlink == 1
-                     and stat.S_IMODE(record_stat.st_mode) == 0o600 and record_stat.st_uid == spec["uid"], "transport-record")
-        owner_record = core.strict_json(os.read(descriptor, 4096))
+        directory.remove_contents()
     finally:
-        os.close(descriptor)
-    core.require(owner_record == {"nonce": runtime["nonce"], "device": observed.st_dev,
-                                  "inode": observed.st_ino}, "transport-record-binding")
-    expected = {"home", "docker", OWNERSHIP_FILE}
-    core.require({p.name for p in root.iterdir()} == expected, "transport-extra-or-pending")
-    for directory in (root / "home", root / "docker"):
-        core.require(directory.is_dir() and not directory.is_symlink(), "transport-link")
-    (root / "docker/config.json").unlink()
-    (root / OWNERSHIP_FILE).unlink()
-    (root / "docker").rmdir()
-    (root / "home").rmdir()
-    root.rmdir()
+        directory.close()
 
 
 def launch(spec, modules):
