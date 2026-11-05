@@ -30,13 +30,13 @@ export default function SdkSwitcherNavbarItem({items, mobile, label = 'SDKs', on
     }
   };
   const content = (
-    <div ref={root} className={`dw-sdk-switcher ${mobile ? 'dw-sdk-switcher-mobile' : 'navbar__item'}`} onKeyDown={handleKey}>
+    <div ref={root} className={`dw-sdk-switcher ${mobile ? 'dw-sdk-switcher-mobile' : 'navbar__item'}`}>
       <button ref={trigger} type="button" className={mobile ? 'menu__link' : 'navbar__link'}
-        aria-expanded={open} onClick={() => setOpen(!open)}>
+        aria-expanded={open} onKeyDown={handleKey} onClick={() => setOpen(!open)}>
         {label}<span aria-hidden="true"> ▾</span>
       </button>
       <ul className="dw-sdk-links" hidden={!open}>
-        {items.map(item => <li key={item.label}><Link to={item.href} onClick={onClick}>{item.label}<span aria-hidden="true"> ↗</span></Link></li>)}
+        {items.map(item => <li key={item.label}><Link to={item.href} onKeyDown={handleKey} onClick={onClick}>{item.label}<span aria-hidden="true"> ↗</span></Link></li>)}
       </ul>
     </div>
   );

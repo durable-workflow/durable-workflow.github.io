@@ -88,3 +88,22 @@ test('network failure publishes unknown and unmount aborts pending work', async 
   stopPending(); await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(pending, []);
 });
+test('a successful result expires while a later request is still pending', async t => {
+  t.mock.timers.enable({apis: ['setTimeout', 'Date'], now});
+  const values = []; let requests = 0;
+  const s = snapshot(); s.freshness.stale_after_seconds = 90;
+  const stop = watchPublicStatus(value => values.push(value), {fetchImpl: async (_, options) => {
+    requests++;
+    if (requests === 1) return {ok:true, text:async()=>JSON.stringify(s)};
+    return new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(new Error('timeout'))));
+  }});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(values, ['operational']);
+  t.mock.timers.tick(60000);
+  assert.equal(values.at(-1), 'stale');
+  assert.equal(requests, 2);
+  t.mock.timers.tick(5000);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(values.at(-1), 'unknown');
+  stop();
+});

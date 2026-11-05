@@ -3,10 +3,10 @@ export const STATUS_API = 'https://status.durable-workflow.com/api/current.json'
 const statuses = new Set(['ok', 'warning', 'failed', 'unknown']);
 const levels = new Set(['ok', 'warning', 'critical', 'unknown']);
 const unknown = () => ({state: 'unknown', validUntil: 0});
-const timestamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.+(?:Z|[+-]\d\d:\d\d)$/.test(value) ? Date.parse(value) : NaN;
+const timestamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.+(?:Z|[+-]\d\d:\d\d)$/.test(value) ? Date.parse(value) : Number.NaN;
 
 function evidenceWindow(snapshot, now) {
-  if (!snapshot || snapshot.schema !== 'durable_workflow.status_page_snapshot.v1'
+  if (snapshot?.schema !== 'durable_workflow.status_page_snapshot.v1'
     || snapshot.product !== 'cloud' || snapshot.environment !== 'prod' || !Number.isFinite(now)) return unknown();
   const checked = timestamp(snapshot.checked_at);
   const generated = timestamp(snapshot.generated_at);
@@ -31,15 +31,15 @@ function aggregateState(snapshot, validUntil) {
   if (reason === 'monitor_stale' || reason === 'probe_unverified') return {state: 'unverified', validUntil};
   if (reason === 'publisher_stale') return {state: 'stale', validUntil: 0};
   if (reason !== undefined && reason !== null && reason !== '') return unknown();
-  const stateTokens = [snapshot.status, impact.status];
-  const levelTokens = [snapshot.alert_level, impact.alert_level];
-  if (stateTokens.includes('failed') || levelTokens.includes('critical')) return {state: 'incident', validUntil};
-  if (stateTokens.includes('warning') || levelTokens.includes('warning')) {
+  const stateTokens = new Set([snapshot.status, impact.status]);
+  const levelTokens = new Set([snapshot.alert_level, impact.alert_level]);
+  if (stateTokens.has('failed') || levelTokens.has('critical')) return {state: 'incident', validUntil};
+  if (stateTokens.has('warning') || levelTokens.has('warning')) {
     const families = impact.affected_families;
     const maintenanceOnly = Array.isArray(families) && families.length === 1 && families[0] === 'maintenance';
     return {state: maintenanceOnly ? 'maintenance' : 'degraded', validUntil};
   }
-  if (stateTokens.includes('unknown') || levelTokens.includes('unknown')) return {state: 'unknown', validUntil};
+  if (stateTokens.has('unknown') || levelTokens.has('unknown')) return {state: 'unknown', validUntil};
   return {state: 'operational', validUntil};
 }
 
@@ -87,7 +87,7 @@ export function watchPublicStatus(onChange, {fetchImpl = globalThis.fetch, now =
       if (!stopped) timer = setTimeout(refresh, 60000);
     }
   };
-  refresh();
+  void refresh();
   return () => {
     stopped = true;
     controller?.abort();

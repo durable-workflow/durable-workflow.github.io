@@ -4,6 +4,7 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
+    id: 'languages',
     title: <Translate id="homepage.features.languages.title">Build in PHP, Python, or Rust</Translate>,
     description: (
       <Translate id="homepage.features.languages.description">
@@ -13,6 +14,7 @@ const FeatureList = [
     ),
   },
   {
+    id: 'runtime',
     title: <Translate id="homepage.features.runtime.title">Choose who operates the runtime</Translate>,
     description: (
       <Translate id="homepage.features.runtime.description">
@@ -22,6 +24,7 @@ const FeatureList = [
     ),
   },
   {
+    id: 'recovery',
     title: <Translate id="homepage.features.recovery.title">Recover through failures</Translate>,
     description: (
       <Translate id="homepage.features.recovery.description">
@@ -50,7 +53,7 @@ export default function HomepageFeatures() {
       <div className="container">
         <div className={styles.grid}>
           {FeatureList.map((props, idx) => (
-            <Feature key={idx} index={idx} {...props} />
+            <Feature key={props.id} index={idx} {...props} />
           ))}
         </div>
       </div>

@@ -21,17 +21,17 @@ export default function NavbarContent() {
         <div className="navbar__items">
           {!mobileSidebar.disabled && <NavbarMobileSidebarToggle />}
           <NavbarLogo />
-          {global.filter(item => item.position !== 'right').map((item, i) => <NavbarItem key={i} {...item} />)}
+          {global.filter(item => item.position !== 'right').map(item => <NavbarItem key={item.type || item.href || item.to} {...item} />)}
         </div>
         <div className="navbar__items navbar__items--right">
-          {global.filter(item => item.position === 'right').map((item, i) => <NavbarItem key={i} {...item} />)}
+          {global.filter(item => item.position === 'right').map(item => <NavbarItem key={item.type || item.href || item.to} {...item} />)}
           <NavbarColorModeToggle />
         </div>
       </div>
       <div className="dw-docs-toolbar">
         <span className="dw-docs-toolbar-label"><Translate id="identity.documentation">Documentation</Translate></span>
         <div className="dw-docs-controls">
-          {items.filter(contextual).map((item, i) => <NavbarItem key={i} {...item} />)}
+          {items.filter(contextual).map(item => <NavbarItem key={item.type || item.href || item.to} {...item} />)}
         </div>
         <div className="dw-docs-search"><SearchBar /></div>
       </div>
