@@ -11,36 +11,38 @@ production operation is proposed here.
 ## Inputs and provenance
 
 `rust-local-browser-packet.json` binds the executable/data closure and exact
-runtime. Its artifact tuple is the accepted SDK #212 input already recorded in
-`rust-policy.json`: artifact 13382143373, ZIP SHA-256
-`15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95`,
+runtime. Its artifact tuple is the accepted SDK #211 input already recorded in
+`rust-policy.json`: artifact 13384761426, ZIP SHA-256
+`ea80b0d3191da525152b8f02ff2e3253a29ed93a723dfeae4c344eefb392cada`,
 484 files / 372 HTML pages / 49 inline-script hashes. Public Rust 4.12.0 crate
-and source identities are preserved; tooling matches the accepted SDK #212
-build. The parsed rule, policy sources, approval flags and unrun status remain
-unchanged. Input provenance fields now bind this artifact.
+and source identities are preserved; tooling matches the accepted SDK #211
+build. Only build identity and two utility-page metadata attributes change from
+#212; all 372 page records and executable hashes stay equal. The parsed rule,
+policy sources, approval flags and unrun status remain unchanged. Input
+provenance fields now bind this artifact.
 
 The proposed runtime is the existing Playwright 1.64.0 generation, pinned to the
 official **linux/amd64** platform manifest in the packet. Registry metadata was
 read without pulling or running that browser image. `runtime/package-lock.json`
-records the two exact npm archives and integrity values. Only package-lock resolution, advisory metadata and inert source checks were
-performed during this preparation. No
-Playwright package, browser image or browser was executed for the source packet.
+records the two exact npm archives and integrity values. Earlier source review
+resolved the lock, read advisory/registry metadata and ran inert source checks.
+This retarget performed only data/source and raw HTTPS checks. No Playwright
+package, browser image or browser was executed for this source packet.
 
-After separate admission, prepare a dedicated public dependency directory with
-`runtime/package.json` and its lock. Use `npm ci --ignore-scripts --no-audit
---no-fund` with `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Do not run lifecycle hooks,
-`playwright install`, `npx` downloads or an image build. Verify the approved image
-manifest/config, library version and lock integrity. Mount only its prepared
-`node_modules` directory into the browser cell. No home directory, credentials,
-Docker socket or unrelated repository is an input. An unavailable dependency,
-different platform or runtime mismatch stops the attempt for review.
+The next preparation decision requires separate review of
+[`rust-preparation-proposal.md`](rust-preparation-proposal.md): fixed public
+archive acquisition, no npm or package execution, and verified data-only
+construction of an image containing all three public input trees. It replaces
+the earlier suggested npm-ci path. No image or dependency has been acquired,
+prepared or sealed. A separately reviewed controller and cleanup implementation
+is required before any acquisition/preparation admission.
 
 Before execution, independently verify the ZIP digest and safe regular-file
 membership, recheck the accepted protected-run/deployment identity and compare
 live `__build.json` with the exact artifact. Those are finite read-only checks.
 Stop if the live input has changed, the artifact has expired, or a required input
 is unavailable. Do not dispatch a replacement build or silently retarget the
-packet. The input API expires this ZIP on November 6, 2026 at 02:19:51 UTC.
+packet. The input API expires this ZIP on November 6, 2026 at 03:10:05 UTC.
 
 ## What the proposed check exercises
 
@@ -79,7 +81,7 @@ Playwright, launches a browser or runs the optional browser entrypoint.
 requires verification outside Node before any packet code is loaded. The
 in-process check cannot authenticate code that is already executing. The exact
 current packet SHA-256 is
-`2060309bf48d3e179abf55c0f2e1ffbc4908fcd7227b0cc4eb11089afde71f2a`.
+`c6c735624906c4680d162ba989ebd55f00a8124e6d8ca72f781f8fee646ae281`.
 
 Before any separate preparation/run admission, General and Security must bind
 an approved write-preventing mechanism and exclusive owner for all three public
@@ -111,7 +113,7 @@ assert not root.is_relative_to(Path.home())
 manifest_path = root / 'rust-local-browser-packet.json'
 assert stat.S_ISREG(manifest_path.lstat().st_mode)
 manifest_bytes = manifest_path.read_bytes()
-expected = '2060309bf48d3e179abf55c0f2e1ffbc4908fcd7227b0cc4eb11089afde71f2a'
+expected = 'c6c735624906c4680d162ba989ebd55f00a8124e6d8ca72f781f8fee646ae281'
 assert hashlib.sha256(manifest_bytes).hexdigest() == expected
 manifest = json.loads(manifest_bytes)
 assert manifest['run_status'] == 'not-run' and len(manifest['files']) == 8
@@ -143,17 +145,13 @@ This check is an integrity prerequisite. It does not create a seal or approve an
 attempt. Record the separate write-prevention/custody proof and recheck the
 mounts and cached image immediately before creating the admitted cell.
 
-Dependency preparation is separately held. Its future admitted environment
-must have a container-only empty home, distinct empty user/global npm config
-files, a task-private cache, a public registry and an explicit environment
-allowlist. No host home/profile, `.npmrc`, token, credential directory or secret
-proxy setting may be inherited. Set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and
-`--ignore-scripts`; use the exact lock and verify both archive integrity values
-and library version. Do not import Playwright during preparation. Enumerate and
-hash the resulting dependency tree, reject external links, then establish its
-approved immutable/exclusive custody before any browser code resolves it.
-No such environment, dependency tree or seal has been created by this source
-retarget. Missing preparation/image/custody proof leaves execution held.
+Dependency/image acquisition and custody are separately held. The new preparation
+proposal specifies explicit credential-free transport, exact archive integrity,
+safe dependency closure, a sealed memory descriptor for transfer, never-started
+assembler/readback containers and a content-addressed derived image. Those
+mechanisms do not exist yet and require review/admission. Preparation alone
+would load no Node/Playwright code. The external hash check above remains a
+prerequisite and does not itself create immutable custody.
 
 ## Proposed execution and cleanup
 
@@ -166,9 +164,16 @@ There is no automatic retry, host IPC, privileged mode, extra capability or
 published port. The writable tmpfs and private shared memory count within the
 container's memory cap. This is a proposed budget, not a reservation.
 
-The following is the exact proposed launch shape after admission, the external
-pre-load hash check and accepted custody proof above. Assign the
-three absolute input paths from the reviewed public-input preparation; reject
+The following retains the earlier mount-based launch shape as historical design
+only. It is **not eligible for a next browser attempt**: the new preparation
+proposal replaces all three host input mounts with a verified immutable image.
+After separately accepted preparation, a source successor must bind the actual
+derived image ID and zero-input-mount launch shape before browser admission.
+No derived image ID exists, so this document cannot authorize that launch.
+
+The earlier shape required the external pre-load hash check and accepted custody
+proof above. It assigned three absolute input paths from reviewed public-input
+preparation and rejected
 commas/newlines in those paths. `packet_directory` contains only this public
 packet. `runtime_modules` is the prepared public dependency tree. Do not point
 either at a home or credential directory. The pinned image must already exist;

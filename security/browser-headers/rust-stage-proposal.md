@@ -15,7 +15,7 @@ credentials or API were used. A source merge does not clear those gates.
 
 ## Exact input
 
-The [Rust owner receipt](https://github.com/durable-workflow/sdk-rust/pull/212#issuecomment-6648011712)
+The [Rust owner receipt](https://github.com/durable-workflow/sdk-rust/pull/211#issuecomment-6648721461)
 binds the following accepted automatic protected build:
 
 | Input | Value |
@@ -23,24 +23,24 @@ binds the following accepted automatic protected build:
 | Package | Published `durable-workflow` 4.12.0 |
 | Public source | `4b2440a5618ccc1c98960ea2e1e62127042c3590` |
 | Crate SHA-256 | `620a8287af73c363dac61f0a91f20971a39f3b8cdc9513fbea85cdbd95a74ba4` |
-| Tooling | `2b45fd7b12a6e9460666045a3c7f644860caea3b` |
-| Protected run | [41954374074](https://github.com/durable-workflow/sdk-rust/actions/runs/41954374074), push, attempt 1 |
-| Successful deployment | `7563384998` |
-| Pages artifact | `13382143373`, 4,071,521-byte ZIP |
-| ZIP SHA-256 | `15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95` |
+| Tooling | `46cf36514f7a39e819213771abf9efc82321c062` |
+| Protected run | [41959739724](https://github.com/durable-workflow/sdk-rust/actions/runs/41959739724), push, attempt 1 |
+| Successful deployment | `7564108107` |
+| Pages artifact | `13384761426`, 4,067,287-byte ZIP |
+| ZIP SHA-256 | `ea80b0d3191da525152b8f02ff2e3253a29ed93a723dfeae4c344eefb392cada` |
 | Extracted inventory | 484 regular files, 372 HTML pages, 49 executable inline-script hashes |
-| Inventory file SHA-256 | `01e0872a2d03726d52092362f7654285a81635f92f2f5bd30ecace505d14c71d` |
-| Policy file SHA-256 | `c2441f7b0bf7aebc0c4ee491cda0470170231bc8baf14b4c2163552b8d2fd79c` |
-| Candidate file SHA-256 | `90b37562aabf6ed8619fbb488ad764137731bec976d8e2ff5e7bfa382fba5634` |
+| Inventory file SHA-256 | `ad4b2134cf4bdb42b7dfabd58ba145567c8b4facd9d9652f9af5c61604beb60a` |
+| Policy file SHA-256 | `49eeb47bcb9e437f9830a2f93c89ced80cb2dfe84306ebfcc122fdf3975d0231` |
+| Candidate file SHA-256 | `a20518e8341d94445cad433acb99e7e6e9ca42c837092248b83e10cf07540e08` |
 
-The downloaded ZIP matched its GitHub API digest. Extraction rejected absolute
-paths, parent traversal and non-regular members. Compared with #472's immutable
-SDK #207 subject, only `__build.json`, `help.html` and `settings.html` differ.
-The two HTML changes replace `data-current-crate="activity_options"` with
-`data-current-crate="workflow_testing"`. All other files and every inventoried
-script/style/handler/origin record are identical. Public package/source identity
-is preserved. SDK #212 retains every SDK #209 page and asset byte. Only its
-`__build.json` changes from the accepted #476/#477 subject. The historical browser
+The downloaded ZIP matched its GitHub API digest. Membership inspection rejected
+absolute paths, parent traversal and non-regular members. Compared with the
+accepted SDK #212 / Docs #478 subject, exactly `__build.json`, `help.html` and
+`settings.html` differ. The two utility pages only replace
+`data-current-crate="workflow_testing"` with `data-current-crate="worker_latency"`.
+All other files and every inventoried script/style/handler/origin record are
+identical. Public package/source identity is preserved. The old #212 tuple and
+its accepted source reviews remain historical in #478. The historical browser
 pass remains in `history/rust-sdk207-browser-validation.json`; it does not qualify
 this artifact.
 
@@ -50,14 +50,14 @@ absent. This is a finite identity sample, not a live site-wide compatibility run
 
 | Path at `https://rust.durable-workflow.com/` | SHA-256 |
 | --- | --- |
-| `__build.json` | `6338f8427799ac2cf9b0c2a1c08fcf1889b8887761f42c2d748dc0e0cfad8a8a` |
+| `__build.json` | `3e8d1827d1df8bf3c47ee8f0efcbd2f3692cb1bd8741f40c1271ef5c74f4a183` |
 | `index.html` | `b2e918903002c3d863aab6eb77c44a01af5ece95d26bb433120d396cae055fae` |
 | `durable_workflow/index.html` | `8747b578d0749a534ae67416aeb79bca02b7e50c9c8194f85aae883cc99f0e20` |
 | `durable_workflow/struct.Client.html` | `1c4a15c7383e28a3af199e55ee217a157165f45e131dd6e708ef5788661606b1` |
 | `durable_workflow/struct.WorkflowHandle.html` | `4eceaae93e24c0b31a83d7cb95737ddc9e51fae025e271a025fd5185e49ac31c` |
 | `navigation.js` | `718db7a749882b290853d988ba0681b44f97fe651e4ebff078b186ff021a3a37` |
-| `help.html` | `a42b770a5c7d5743fb8c3d58cab134336aa9f81bffbc4b442f4ae259b2a678ae` |
-| `settings.html` | `3fc76ea7eba9ad08821dca786bf35a746a12c619af2020f1a45f452f1dee6a91` |
+| `help.html` | `6169059db0e7b8c17267d47d59780af8ba387556a49ddc19d4841a0b296177de` |
+| `settings.html` | `977ba0a22dbb3352c07d82c18569203bd5b4636c2f2aa20fc55d5e7bc302cfb0` |
 
 ## Exact candidate
 
