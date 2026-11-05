@@ -47,7 +47,7 @@ function HomepageHeader() {
 export default function Home() {
   const description = translate({id: 'homepage.description', message: 'A language-neutral durable execution platform for PHP, Python, and Rust, available as managed Cloud, self-hosted Server, or an embedded Laravel runtime.'});
   return (
-    <Layout title="Durable Workflow" description={description}>
+    <Layout title={translate({id: 'identity.heroTitle', message: 'Work that keeps going.'})} description={description}>
       <Head><meta property="og:title" content="Durable Workflow" /><meta name="twitter:title" content="Durable Workflow" /></Head>
       <main>
         <HomepageHeader />

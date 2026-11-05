@@ -722,7 +722,7 @@ a[class^='skipToContent']:focus {
 }
 
 /* One Identity: bridge shared role tokens into the existing Docusaurus shell. */
-:root, [data-theme='light'], [data-theme='dark'] {
+:root, html[data-theme='light'], html[data-theme='dark'] {
   --ifm-color-primary: var(--dw-action);
   --ifm-color-primary-dark: var(--dw-action);
   --ifm-color-primary-darker: var(--dw-action);
@@ -776,7 +776,7 @@ div[class*='codeBlockTitle'] { border-color: #2e3934; color: var(--dw-code-muted
 div[class*='codeBlockContainer'] button { color: #e8edea; background: #172019; border-color: #5e6964; }
 .button { min-height: 44px; display: inline-flex; justify-content: center; align-items: center; gap: .4rem; font-size: .875rem; font-weight: 600; padding: .65rem 1.1rem; }
 .button--primary, .button--primary:hover { color: var(--dw-on-action); background: var(--dw-action); border-color: var(--dw-action); }
-.button--secondary, .button--secondary:hover { color: var(--dw-ink); background: var(--dw-surface); border-color: var(--dw-line); }
+.button.button--secondary, .button.button--secondary:hover { color: var(--dw-ink); background: var(--dw-surface); border-color: var(--dw-line); }
 .button:hover { filter: brightness(.94); }
 :where(a, button, input, select, summary):focus-visible { outline: 2px solid var(--dw-action); outline-offset: 4px; }
 .dw-eyebrow { font: 500 .75rem/1.5 var(--dw-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dw-action); margin: 0; }
