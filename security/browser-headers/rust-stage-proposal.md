@@ -15,7 +15,7 @@ credentials or API were used. A source merge does not clear those gates.
 
 ## Exact input
 
-The [Rust owner receipt](https://github.com/durable-workflow/sdk-rust/pull/209#issuecomment-6645951490)
+The [Rust owner receipt](https://github.com/durable-workflow/sdk-rust/pull/212#issuecomment-6648011712)
 binds the following accepted automatic protected build:
 
 | Input | Value |
@@ -23,15 +23,15 @@ binds the following accepted automatic protected build:
 | Package | Published `durable-workflow` 4.12.0 |
 | Public source | `4b2440a5618ccc1c98960ea2e1e62127042c3590` |
 | Crate SHA-256 | `620a8287af73c363dac61f0a91f20971a39f3b8cdc9513fbea85cdbd95a74ba4` |
-| Tooling | `1ea3bfc3965423534b5bbbed700371f126835fc3` |
-| Protected run | [41939116087](https://github.com/durable-workflow/sdk-rust/actions/runs/41939116087), push, attempt 1 |
-| Successful deployment | `7561374287` |
-| Pages artifact | `13375154247`, 4,071,555-byte ZIP |
-| ZIP SHA-256 | `ff902191bdb90f7f1d047ecc5d27e9b8c5215a0239e4f11fcbf574f7ddab83d1` |
+| Tooling | `2b45fd7b12a6e9460666045a3c7f644860caea3b` |
+| Protected run | [41954374074](https://github.com/durable-workflow/sdk-rust/actions/runs/41954374074), push, attempt 1 |
+| Successful deployment | `7563384998` |
+| Pages artifact | `13382143373`, 4,071,521-byte ZIP |
+| ZIP SHA-256 | `15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95` |
 | Extracted inventory | 484 regular files, 372 HTML pages, 49 executable inline-script hashes |
-| Inventory file SHA-256 | `8c4bc2eb1ef3ffeeb9788a9d0b44d7b718a2a56caff55b3d4531716a25b270d7` |
-| Policy file SHA-256 | `a357bcc5ea8ad96db5e601e4e1c1cb3c8c7eb3441caa9b331d0c2a906ffe84d8` |
-| Candidate file SHA-256 | `bce0c66db4454bc16941a8f5dadb04706315e673d5e2c33f677e7728bafd0135` |
+| Inventory file SHA-256 | `01e0872a2d03726d52092362f7654285a81635f92f2f5bd30ecace505d14c71d` |
+| Policy file SHA-256 | `c2441f7b0bf7aebc0c4ee491cda0470170231bc8baf14b4c2163552b8d2fd79c` |
+| Candidate file SHA-256 | `90b37562aabf6ed8619fbb488ad764137731bec976d8e2ff5e7bfa382fba5634` |
 
 The downloaded ZIP matched its GitHub API digest. Extraction rejected absolute
 paths, parent traversal and non-regular members. Compared with #472's immutable
@@ -39,16 +39,18 @@ SDK #207 subject, only `__build.json`, `help.html` and `settings.html` differ.
 The two HTML changes replace `data-current-crate="activity_options"` with
 `data-current-crate="workflow_testing"`. All other files and every inventoried
 script/style/handler/origin record are identical. Public package/source identity
-is preserved. The historical browser pass remains in
-`history/rust-sdk207-browser-validation.json`; it does not qualify this artifact.
+is preserved. SDK #212 retains every SDK #209 page and asset byte. Only its
+`__build.json` changes from the accepted #476/#477 subject. The historical browser
+pass remains in `history/rust-sdk207-browser-validation.json`; it does not qualify
+this artifact.
 
-At 01:02 UTC on November 5, 2026, these actual HTTPS responses returned 200 and
+On November 5, 2026, these actual HTTPS responses returned 200 and
 matched the artifact byte for byte. All six proposed security headers were
 absent. This is a finite identity sample, not a live site-wide compatibility run.
 
 | Path at `https://rust.durable-workflow.com/` | SHA-256 |
 | --- | --- |
-| `__build.json` | `622b90e304c9ea1c2e89efeb4fb9145d64f86ca50f3bcedaf2f5f94fa773ce0d` |
+| `__build.json` | `6338f8427799ac2cf9b0c2a1c08fcf1889b8887761f42c2d748dc0e0cfad8a8a` |
 | `index.html` | `b2e918903002c3d863aab6eb77c44a01af5ece95d26bb433120d396cae055fae` |
 | `durable_workflow/index.html` | `8747b578d0749a534ae67416aeb79bca02b7e50c9c8194f85aae883cc99f0e20` |
 | `durable_workflow/struct.Client.html` | `1c4a15c7383e28a3af199e55ee217a157165f45e131dd6e708ef5788661606b1` |

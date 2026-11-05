@@ -3,11 +3,11 @@
   "origin": "https://rust.durable-workflow.com",
   "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "run_id": 41939116087,
-    "artifact_id": 13375154247,
-    "tooling_revision": "1ea3bfc3965423534b5bbbed700371f126835fc3",
-    "zip_bytes": 4071555,
-    "zip_sha256": "ff902191bdb90f7f1d047ecc5d27e9b8c5215a0239e4f11fcbf574f7ddab83d1"
+    "run_id": 41954374074,
+    "artifact_id": 13382143373,
+    "tooling_revision": "2b45fd7b12a6e9460666045a3c7f644860caea3b",
+    "zip_bytes": 4071521,
+    "zip_sha256": "15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95"
   },
   "source_preparation": null,
   "build_identity": {
@@ -16,7 +16,7 @@
     "version": "4.12.0",
     "crate_sha256": "620a8287af73c363dac61f0a91f20971a39f3b8cdc9513fbea85cdbd95a74ba4",
     "source_revision": "4b2440a5618ccc1c98960ea2e1e62127042c3590",
-    "tooling_revision": "1ea3bfc3965423534b5bbbed700371f126835fc3"
+    "tooling_revision": "2b45fd7b12a6e9460666045a3c7f644860caea3b"
   },
   "files": [
     {
@@ -27,7 +27,7 @@
     {
       "path": "__build.json",
       "bytes": 332,
-      "sha256": "622b90e304c9ea1c2e89efeb4fb9145d64f86ca50f3bcedaf2f5f94fa773ce0d"
+      "sha256": "6338f8427799ac2cf9b0c2a1c08fcf1889b8887761f42c2d748dc0e0cfad8a8a"
     },
     {
       "path": "activity_options/all.html",
