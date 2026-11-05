@@ -193,6 +193,8 @@ const config = {
       },
       announcementBar: {
         id: 'server-3-0-launch',
+        backgroundColor: 'var(--dw-surface)',
+        textColor: 'var(--dw-ink)',
         content:
           'Durable Workflow Server 3.0 runs as one native process plus a database. <a href="/blog/durable-workflow-server-3-0/">Read the launch post</a>.',
         isCloseable: true,
