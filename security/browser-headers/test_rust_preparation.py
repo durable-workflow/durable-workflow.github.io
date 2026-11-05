@@ -286,8 +286,9 @@ class InputControls(unittest.TestCase):
             bad["files"][0]["sha256"] = "f" * 64
             with self.assertRaises(prep.Refusal):
                 prep.artifact_from_zip(raw, bad, now)
+            expired = now + dt.timedelta(days=2)
             with self.assertRaises(prep.Refusal):
-                prep.artifact_from_zip(raw, inventory, now + dt.timedelta(days=2))
+                prep.artifact_from_zip(raw, inventory, expired)
             with self.assertRaises(prep.Refusal):
                 prep.artifact_from_zip(raw + b"x", inventory, now)
 
@@ -615,8 +616,9 @@ class PlatformControls(unittest.TestCase):
                 info.uid = owner
                 info.mode = mode
                 value.addfile(info, io.BytesIO(b"x"))
+            changed_raw = changed.getvalue()
             with self.assertRaises(prep.Refusal):
-                native.validate_readback_metadata(changed.getvalue())
+                native.validate_readback_metadata(changed_raw)
 
     def test_capture_and_transport_happen_only_after_supervisor_readback(self):
         events = []

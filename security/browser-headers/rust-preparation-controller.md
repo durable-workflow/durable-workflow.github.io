@@ -89,7 +89,7 @@ def capture(name, limit):
         os.close(fd)
 try:
     raw = capture('rust-preparation-source.json', 16384)
-    expected_manifest = 'd2457201f143547a9e4c7d212d5da1257ec3039764ef2fc3e7abbc45d4c6f975'
+    expected_manifest = 'd6fbbe09a9ed1e61dbf152ba44a7f921abf4c7659821c45286916fa1b7d5c764'
     if hashlib.sha256(raw).hexdigest() != expected_manifest:
         raise RuntimeError('source-manifest-hash')
     manifest = json.loads(raw)
