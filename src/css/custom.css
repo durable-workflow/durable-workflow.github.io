@@ -827,7 +827,7 @@ div[class*='codeBlockContainer'] button { color: #e8edea; background: #172019; b
   .navbar__link { padding: .5rem; }
 }
 @media (max-width: 996px) {
-  :root, [data-theme='dark'], [data-theme='light'] { --ifm-navbar-height: 7.25rem; }
+  :root, html[data-theme='dark'], html[data-theme='light'] { --ifm-navbar-height: 7.25rem; }
   .dw-global-navigation { height: 64px; padding: 0 1rem; }
   .dw-global-navigation .navbar__items--right { flex: 0 0 auto; }
   .dw-docs-toolbar { height: 52px; padding: 0 1rem; gap: .5rem; }
