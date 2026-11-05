@@ -1,0 +1,23 @@
+{
+  "changed_files": {
+    "help.html": {
+      "original_sha256": "43d6721da6c387fd5b79d6878bed08837ad89ac2df2ab50bf5d63977846955e9",
+      "prototype_sha256": "54d622855c00e1448187b04b6108aa1f84e18a846300dad03f7e6214e9f7aa6f"
+    },
+    "navigation.js": {
+      "original_sha256": "393fd36cafb1b51f454bd4e26cebcca6936d2a7979137f648ae9dd4fd6e6fe5f",
+      "prototype_sha256": "718db7a749882b290853d988ba0681b44f97fe651e4ebff078b186ff021a3a37"
+    },
+    "settings.html": {
+      "original_sha256": "8e557a2a000b97313c8598947f1818aafeed3069990db13b56d98a0a3ef6bf43",
+      "prototype_sha256": "ae41903d30a3a5ec7435ea3caa306ef1b92e70f83ec1ac45d0fbcc2d494e28eb"
+    }
+  },
+  "unchanged_build_identity_sha256": "b06bd47b756f03a9f2c3012c18f9195544c31f60196fa4fb17c201ffdd42a3f9",
+  "input_artifact_id": 13358175469,
+  "input_artifact_zip_sha256": "7bc71ba7545fe0c94060402ef3e101e76496a07f32d248c5757d968aa129fa82",
+  "prototype_source_repository": "durable-workflow/sdk-rust",
+  "prototype_source_commit": "9ed50b7633a56ca09d1a17ddb46251d8ed2d8a60",
+  "prototype_source_tree": "cf2529434d01cc5796b3f87c7e0d7a3f955ad06c",
+  "qualification_scope": "local source prototype only; not a published artifact or live acceptance"
+}
