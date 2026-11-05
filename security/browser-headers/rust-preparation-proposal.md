@@ -88,11 +88,17 @@ and config to the reviewed digest and config
 `847f71bbb3f17fc1032d50d75bf6fb3fdcf188b16dff81f24667fe9ae9409e01`.
 Record the base image ID, architecture, OS, layer list and size. Reject unexpected
 volumes, on-build actions, platform, configuration or symlinked input prefixes.
+Separately verify that the daemon's existing transport uses no credential-bearing
+proxy for this public path. Clean client environment/configuration does not
+establish that fact. An unknown or credential-dependent daemon path stops for
+General's decision; do not inspect or print credential values or reconfigure it.
 
 The official image acquisition is a daemon operation: the service CPU/memory
-limits do not cap the Docker daemon. Before pulling, compare the public manifest
-layer sizes with an eight-GiB maximum unpacked-base budget, confirm at least
-20 GiB free disk and sample daemon/host use during acquisition. Bound this phase
+limits do not cap the Docker daemon. Before pulling, record the public manifest's
+compressed layer sizes separately from the eventual unpacked image size, confirm
+at least 20 GiB free disk and sample daemon/host use during acquisition. Stop
+qualification if the resulting unpacked base exceeds eight GiB; this is an
+acceptance budget, not an enforced daemon storage quota. Bound this phase
 to 240 seconds. A client timeout is not proof that daemon transfer stopped;
 independently reconcile the pull, partial cache and disk afterward. If that
 completion cannot be established, hold later steps and name the retained cache
