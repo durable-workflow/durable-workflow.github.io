@@ -111,6 +111,11 @@ a browser compatibility check. No current-artifact browser run or provider stage
 is authorized by this source proposal. Follow `rust-stage-proposal.md` for the
 exact input bindings, ownership, proposed checks and rollback decision.
 
+`rust-local-browser-plan.md` and `rust-local-browser-packet.json` define the
+separately reviewable, unrun local browser/telemetry packet. Normal CI exercises
+only its inert source controls. The optional browser entrypoint requires its
+own exact run admission; it makes no provider or production request.
+
 ## Rust-only staged acceptance and rollback
 
 1. Bind the accepted package, source/tooling revisions, protected artifact ZIP
