@@ -18,5 +18,14 @@
   "item.label.Star on GitHub": {
     "message": "Підтримати зіркою на GitHub",
     "description": "Navbar item with label Star on GitHub"
+  },
+  "item.label.Pricing": {
+    "message": "Ціни"
+  },
+  "item.label.Status": {
+    "message": "Стан"
+  },
+  "item.label.Get started": {
+    "message": "Почати"
   }
 }

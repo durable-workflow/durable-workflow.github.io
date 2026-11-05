@@ -1,7 +1,15 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const { themes: prismThemes } = require('prism-react-renderer');
+const identityLinks = require('./static/identity/links.json');
+const codeTheme = {
+  plain: {color: '#E8EDEA', backgroundColor: '#0F1513'},
+  styles: [
+    {types: ['comment', 'prolog', 'doctype', 'cdata'], style: {color: '#9AA6A1'}},
+    {types: ['keyword', 'selector', 'string', 'attr-value'], style: {color: '#5FE0A6'}},
+    {types: ['function', 'class-name', 'number', 'boolean'], style: {color: '#B7C2BD'}},
+  ],
+};
 const { artifactVersionRemarkPlugin } = require('./scripts/public-artifact-versions');
 
 const cloudflareWebAnalytics = Object.freeze({
@@ -179,12 +187,14 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       colorMode: {
-        defaultMode: 'dark',
+        defaultMode: 'light',
         disableSwitch: false,
         respectPrefersColorScheme: false,
       },
       announcementBar: {
         id: 'server-3-0-launch',
+        backgroundColor: 'var(--dw-surface)',
+        textColor: 'var(--dw-ink)',
         content:
           'Durable Workflow Server 3.0 runs as one native process plus a database. <a href="/blog/durable-workflow-server-3-0/">Read the launch post</a>.',
         isCloseable: true,
@@ -196,27 +206,29 @@ const config = {
           src: 'img/logo.svg',
         },
         items: [
+          {type: 'doc', docId: 'introduction', position: 'left', label: 'Docs'},
           {
-            type: 'doc',
-            docId: 'introduction',
-            position: 'left',
-            label: 'Docs',
+            type: 'custom-sdkSwitcher', position: 'left', label: 'SDKs',
+            items: [
+              {label: 'Python', href: identityLinks.python},
+              {label: 'Rust', href: identityLinks.rust},
+              {label: 'PHP', href: identityLinks.php},
+            ],
+          },
+          {href: identityLinks.cloud, label: 'Cloud', position: 'left'},
+          {href: identityLinks.pricing, label: 'Pricing', position: 'left'},
+          {href: identityLinks.status, label: 'Status', position: 'left'},
+          {href: identityLinks.github, label: 'GitHub', position: 'right'},
+          {
+            to: '/docs/introduction/', label: 'Get started', position: 'right',
+            className: 'button button--primary dw-nav-cta',
           },
           {
-            type: 'docsVersionDropdown',
-            position: 'left',
-            dropdownActiveClassDisabled: true,
+            type: 'docsVersionDropdown', position: 'left',
+            dropdownActiveClassDisabled: true, className: 'dw-context-item',
           },
-          {to: '/blog', label: 'Blog', position: 'left'},
-          {type: 'localeDropdown', position: 'right'},
-          {
-            type: 'custom-githubStar',
-            href: 'https://github.com/durable-workflow/workflow',
-            repo: 'durable-workflow/workflow',
-            label: 'Star on GitHub',
-            position: 'right',
-            'aria-label': 'Star Durable Workflow on GitHub',
-          },
+          {to: '/blog', label: 'Blog', position: 'left', className: 'dw-context-item'},
+          {type: 'localeDropdown', position: 'right', className: 'dw-context-item'},
         ],
       },
       footer: {
@@ -265,8 +277,8 @@ const config = {
         copyright: `Copyright © ${new Date().getFullYear()} <a href="https://durable-workflow.com">Durable Workflow</a>.`,
       },
       prism: {
-        theme: prismThemes.github,
-        darkTheme: prismThemes.dracula,
+        theme: codeTheme,
+        darkTheme: codeTheme,
       },
       image: 'img/durable-workflow-2.0.png',
     }),

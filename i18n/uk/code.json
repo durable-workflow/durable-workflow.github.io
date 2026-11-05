@@ -630,5 +630,80 @@
   },
   "workerAuthority.manifest": {
     "message": "маніфесті відповідності"
+  },
+  "identity.documentation": {
+    "message": "Документація"
+  },
+  "identity.durableExecution": {
+    "message": "Надійне виконання"
+  },
+  "identity.heroTitle": {
+    "message": "Робота, що триває."
+  },
+  "identity.startEyebrow": {
+    "message": "Ваш наступний крок"
+  },
+  "identity.startTitle": {
+    "message": "Починайте там, де розробляєте."
+  },
+  "identity.embedded": {
+    "message": "Вбудовано у ваш застосунок"
+  },
+  "identity.sdkGuide": {
+    "message": "Посібник SDK та довідник API"
+  },
+  "identity.runtimeNote": {
+    "message": "Запускайте власний Server або підключайтеся до керованого Cloud."
+  },
+  "identity.footerDescription": {
+    "message": "Розгортайте власний Server або використовуйте Cloud."
+  },
+  "identity.run": {
+    "message": "Запуск"
+  },
+  "identity.selfHosted": {
+    "message": "Власний Server"
+  },
+  "identity.pricing": {
+    "message": "Ціни"
+  },
+  "identity.status": {
+    "message": "Стан"
+  },
+  "identity.project": {
+    "message": "Проєкт"
+  },
+  "identity.compatibility": {
+    "message": "Сумісність версій"
+  },
+  "identity.terms": {
+    "message": "Умови використання"
+  },
+  "identity.privacy": {
+    "message": "Політика конфіденційності"
+  },
+  "identity.statusUnknown": {
+    "message": "Стан невідомий"
+  },
+  "identity.statusOperational": {
+    "message": "Усі системи працюють"
+  },
+  "identity.statusDegraded": {
+    "message": "Сервіс працює з обмеженнями"
+  },
+  "identity.statusIncident": {
+    "message": "Інцидент сервісу"
+  },
+  "identity.statusMaintenance": {
+    "message": "Технічне обслуговування"
+  },
+  "identity.statusStale": {
+    "message": "Дані про стан застаріли"
+  },
+  "identity.statusUnverified": {
+    "message": "Стан не підтверджено"
+  },
+  "identity.statusUnavailable": {
+    "message": "Стан недоступний"
   }
 }

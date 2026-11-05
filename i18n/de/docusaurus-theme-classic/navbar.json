@@ -10,5 +10,14 @@
   },
   "item.label.Star on GitHub": {
     "message": "Stern auf GitHub geben"
+  },
+  "item.label.Pricing": {
+    "message": "Preise"
+  },
+  "item.label.Status": {
+    "message": "Status"
+  },
+  "item.label.Get started": {
+    "message": "Erste Schritte"
   }
 }

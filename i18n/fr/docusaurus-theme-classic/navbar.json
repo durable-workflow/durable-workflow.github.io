@@ -10,5 +10,14 @@
   },
   "item.label.Star on GitHub": {
     "message": "Ajouter une étoile sur GitHub"
+  },
+  "item.label.Pricing": {
+    "message": "Tarifs"
+  },
+  "item.label.Status": {
+    "message": "État"
+  },
+  "item.label.Get started": {
+    "message": "Commencer"
   }
 }

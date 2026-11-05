@@ -1,0 +1,36 @@
+{
+  "checks": [
+    "light/1440: home fits viewport and uses selected theme",
+    "light/1440: action text meets 4.5:1 contrast",
+    "light/1440: global nav labels are plain and destinations preserved",
+    "light/1440: docs remain contained after scoped nav correction",
+    "light/390: home fits viewport and uses selected theme",
+    "light/390: action text meets 4.5:1 contrast",
+    "light/390: global nav labels are plain and destinations preserved",
+    "light/390: docs remain contained after scoped nav correction",
+    "dark/1440: home fits viewport and uses selected theme",
+    "dark/1440: action text meets 4.5:1 contrast",
+    "dark/1440: global nav labels are plain and destinations preserved",
+    "dark/1440: docs remain contained after scoped nav correction",
+    "dark/390: home fits viewport and uses selected theme",
+    "dark/390: action text meets 4.5:1 contrast",
+    "dark/390: global nav labels are plain and destinations preserved",
+    "dark/390: docs remain contained after scoped nav correction"
+  ],
+  "screenshots": [
+    "home-light-1440.png",
+    "docs-light-1440.png",
+    "home-light-390.png",
+    "docs-light-390.png",
+    "home-dark-1440.png",
+    "docs-dark-1440.png",
+    "home-dark-390.png",
+    "docs-dark-390.png"
+  ],
+  "browser": "156.0.8078.80",
+  "syntheticStatus": true,
+  "sourceRevision": "a274429e2c70594dfda10a979ddb6e455c4ef473",
+  "clientVersion": "1.62.1",
+  "mode": "chrome",
+  "buildIndexSha256": "46c0aa4f342ed9350772875f0aab21204f436239e69ff159e5cefac926e5e9ee"
+}
