@@ -8,25 +8,30 @@ The candidate is disabled and both approval flags remain false.
 
 ## Reviewed input and source prerequisite
 
-`rust-policy.json` binds the accepted Rust 4.12.0 public crate and the original
-[protected documentation run](https://github.com/durable-workflow/sdk-rust/actions/runs/41920159597),
-artifact 13365888605. Its ZIP SHA-256 is recorded with its tooling revision.
+`rust-policy.json` binds the accepted Rust 4.12.0 public crate and the
+[protected documentation run](https://github.com/durable-workflow/sdk-rust/actions/runs/41939116087),
+artifact 13375154247. Its ZIP SHA-256 is recorded with its tooling revision.
 The full input contains 484 regular files and 372 HTML pages.
 
 The earlier artifact's `help.html` and `settings.html` contained executable
 links and inline history-back handlers. The generator refuses them. The merged
 [SDK source correction](https://github.com/durable-workflow/sdk-rust/pull/207)
 provides a safe crate-index fallback and an external history listener. The sole
-automatic protected build and deployment are successful at tooling revision
-`ab18a6714eefe2d5e790e8e97e72660a15f6f92e`. Public package/source identities remain
-unchanged. Live build identity, navigation, help/settings and API pages match
-the new artifact byte-for-byte.
+automatic protected build and deployment for the current proposal are successful
+at tooling revision `1ea3bfc3965423534b5bbbed700371f126835fc3`. Public package/source
+identities remain unchanged. Eight live identity, navigation, help/settings and
+API files matched this artifact on November 5, 2026. The
+[current staging proposal](rust-stage-proposal.md) records their hashes and the
+separate acceptance that remains pending.
 
 The current inventory describes that accepted published artifact.
 `source_preparation` is null. `history/` retains the earlier local derivative and
-its browser result as historical evidence only. That derivative was not a public
-artifact. The new build also changes rustdoc's current-crate attribute on the
-help/settings pages, so the new artifact receives its own compatibility check.
+the accepted SDK #207 artifact's browser result as historical evidence only.
+The derivative was not a public artifact. The current artifact changes the build
+identity and rustdoc's current-crate attribute on help/settings. Its executable
+script hashes and generated rule are unchanged. That static comparison does not
+carry forward the earlier browser pass. Current compatibility is unrun and the
+rule remains disabled.
 
 ## Policy and inventory
 
@@ -93,13 +98,18 @@ test dependencies into the container, set an absolute deadline, and remove the
 container afterward. It serves on container loopback and intercepts external
 requests locally. It does not need credentials, published ports or a Docker socket.
 
-`rust-browser-validation.json` records the accepted-artifact check: Chromium
+`history/rust-sdk207-browser-validation.json` records the earlier accepted-artifact check: Chromium
 156.0.8078.4, 54 pages covering all 49 script hashes, search, history back,
 direct-entry fallback, compact navigation, rejection of an unapproved inline
 script, and response framing rejection. The earlier prototype's first attempt failed a test-harness
 assumption about a new page's history length. The successful attempt explicitly
 resets navigation history for the direct-entry control. It does not establish
 TLS, HSTS, public telemetry delivery or public rollout acceptance.
+
+`rust-browser-validation.json` records that the current artifact has not received
+a browser compatibility check. No current-artifact browser run or provider stage
+is authorized by this source proposal. Follow `rust-stage-proposal.md` for the
+exact input bindings, ownership, proposed checks and rollback decision.
 
 ## Rust-only staged acceptance and rollback
 

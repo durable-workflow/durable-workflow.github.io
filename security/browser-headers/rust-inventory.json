@@ -3,11 +3,11 @@
   "origin": "https://rust.durable-workflow.com",
   "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "run_id": 41920159597,
-    "artifact_id": 13365888605,
-    "tooling_revision": "ab18a6714eefe2d5e790e8e97e72660a15f6f92e",
-    "zip_bytes": 4071486,
-    "zip_sha256": "107ab5c37510c69669a87198be9789288a74312bd1023d03099c41e28b703bc3"
+    "run_id": 41939116087,
+    "artifact_id": 13375154247,
+    "tooling_revision": "1ea3bfc3965423534b5bbbed700371f126835fc3",
+    "zip_bytes": 4071555,
+    "zip_sha256": "ff902191bdb90f7f1d047ecc5d27e9b8c5215a0239e4f11fcbf574f7ddab83d1"
   },
   "source_preparation": null,
   "build_identity": {
@@ -16,7 +16,7 @@
     "version": "4.12.0",
     "crate_sha256": "620a8287af73c363dac61f0a91f20971a39f3b8cdc9513fbea85cdbd95a74ba4",
     "source_revision": "4b2440a5618ccc1c98960ea2e1e62127042c3590",
-    "tooling_revision": "ab18a6714eefe2d5e790e8e97e72660a15f6f92e"
+    "tooling_revision": "1ea3bfc3965423534b5bbbed700371f126835fc3"
   },
   "files": [
     {
@@ -27,7 +27,7 @@
     {
       "path": "__build.json",
       "bytes": 332,
-      "sha256": "14870e6811be8cab73b015f48ad4df164447fe8f81bd19a8ae9e7a176b7e1165"
+      "sha256": "622b90e304c9ea1c2e89efeb4fb9145d64f86ca50f3bcedaf2f5f94fa773ce0d"
     },
     {
       "path": "activity_options/all.html",
@@ -1602,7 +1602,7 @@
     {
       "path": "help.html",
       "bytes": 3059,
-      "sha256": "3a1e99f812ca0dd8a44c2ca6e5feed1f7eacb02e7ef87c6162d526c87183a816"
+      "sha256": "a42b770a5c7d5743fb8c3d58cab134336aa9f81bffbc4b442f4ae259b2a678ae"
     },
     {
       "path": "index.html",
@@ -1792,7 +1792,7 @@
     {
       "path": "settings.html",
       "bytes": 3007,
-      "sha256": "2c1b8aa730f2555a2d16c9f000887e406d87809e033c0e19f29141514bbc7d33"
+      "sha256": "3fc76ea7eba9ad08821dca786bf35a746a12c619af2020f1a45f452f1dee6a91"
     },
     {
       "path": "src/activity_options/activity_options.rs.html",
