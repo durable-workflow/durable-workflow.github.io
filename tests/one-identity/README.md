@@ -38,3 +38,10 @@ published site. Do not turn these fixtures into production data.
 The report records the source revision, built index SHA256, browser/client
 versions, checks and screenshot names. The screenshot inventory binds the
 reviewed PNG bytes. Evidence-only changes do not alter the site implementation.
+
+The retained `baseline-report.json`/`baseline-inventory.json` bind the50-check
+functional matrix and its original PNGs at the recorded immutable evidence
+commit. The current `report.json`/`inventory.json` bind the16-check scoped header
+follow-up and current PNGs. A later equivalent arithmetic extraction has the
+same14 status-control results and changes no layout or labels; its carry is
+explicit in the inventory. This does not claim the older matrix was rerun.

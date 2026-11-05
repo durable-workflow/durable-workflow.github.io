@@ -1,21 +1,23 @@
 {
-  "sourceRevision": "aee4a1fd1645fc94f60e42cc442ae496576c481f",
+  "sourceRevision": "a274429e2c70594dfda10a979ddb6e455c4ef473",
   "syntheticStatus": true,
+  "mode": "chrome",
+  "baselineReport": "baseline-report.json",
   "screenshots": [
     {
       "file": "docs-dark-1440.png",
-      "bytes": 198409,
-      "sha256": "85f180598470280fa4b54da43667b3f0b43174a7e7f578c2e6d9706d8ebbaa29"
+      "bytes": 198286,
+      "sha256": "2a9b80e9a01c515f64bbc51a313d2663f47d5df9f8b1f5852ba829e5f537427d"
     },
     {
       "file": "docs-dark-390.png",
-      "bytes": 88736,
-      "sha256": "71d92976d0a9760af543f763b63b70b98ca5382c1e12cb4e7dbd98847adb308f"
+      "bytes": 88741,
+      "sha256": "8d607549036ebca8615730032905b0347092146d656869a2d2cdc8c54426ce7e"
     },
     {
       "file": "docs-light-1440.png",
-      "bytes": 198626,
-      "sha256": "fbe6dc76cf174bb17578c61909a5857a6a695323819f227c9f667e8329d6eb22"
+      "bytes": 198456,
+      "sha256": "4bd71386fb02e8bd5892afce0643cdc6c319b82fe0051004cf985e98db40015d"
     },
     {
       "file": "docs-light-390.png",
@@ -24,8 +26,8 @@
     },
     {
       "file": "home-dark-1440.png",
-      "bytes": 228042,
-      "sha256": "6caa0032e7a49f7880d26dc7f46da70e9c8ef7e110339845971694dc05a9704b"
+      "bytes": 227927,
+      "sha256": "3dcf73635dce42f5548167705e250830be918a83334d3ca6b711c5e2f37b3753"
     },
     {
       "file": "home-dark-390.png",
@@ -34,13 +36,17 @@
     },
     {
       "file": "home-light-1440.png",
-      "bytes": 224335,
-      "sha256": "ffe95d74297a9a3d6f9785ec6ce0defbcd130ce39ac96865ca1bb6003e0c4e10"
+      "bytes": 224129,
+      "sha256": "a52144dbec1ed23f453a91c14fe459d8e2ef20a14df7cff001371ecd4fe3d19f"
     },
     {
       "file": "home-light-390.png",
       "bytes": 205496,
       "sha256": "4974b701030172105af5ffd4178be47dc0ed59337a626e2717dabfed46278530"
     }
-  ]
+  ],
+  "laterSourceDelta": {
+    "revision": "f8198fa25998eac2aeb537f3b1655bfe59c841a1",
+    "scope": "Equivalent offset arithmetic extracted to independent statements; 14 status controls pass; no layout or label change."
+  }
 }
