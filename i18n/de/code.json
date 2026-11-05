@@ -301,5 +301,80 @@
   },
   "simulator.signalWaitReceived": {
     "message": "await(): Signal empfangen"
+  },
+  "identity.documentation": {
+    "message": "Dokumentation"
+  },
+  "identity.durableExecution": {
+    "message": "Dauerhafte Ausführung"
+  },
+  "identity.heroTitle": {
+    "message": "Arbeit, die weiterläuft."
+  },
+  "identity.startEyebrow": {
+    "message": "Ihr nächster Schritt"
+  },
+  "identity.startTitle": {
+    "message": "Starten Sie dort, wo Sie entwickeln."
+  },
+  "identity.embedded": {
+    "message": "In Ihre Anwendung eingebettet"
+  },
+  "identity.sdkGuide": {
+    "message": "SDK-Anleitung und API-Referenz"
+  },
+  "identity.runtimeNote": {
+    "message": "Betreiben Sie den Server selbst oder nutzen Sie die verwaltete Cloud."
+  },
+  "identity.footerDescription": {
+    "message": "Betreiben Sie den Server selbst oder nutzen Sie die Cloud."
+  },
+  "identity.run": {
+    "message": "Betrieb"
+  },
+  "identity.selfHosted": {
+    "message": "Selbst gehosteter Server"
+  },
+  "identity.pricing": {
+    "message": "Preise"
+  },
+  "identity.status": {
+    "message": "Status"
+  },
+  "identity.project": {
+    "message": "Projekt"
+  },
+  "identity.compatibility": {
+    "message": "Versionskompatibilität"
+  },
+  "identity.terms": {
+    "message": "Nutzungsbedingungen"
+  },
+  "identity.privacy": {
+    "message": "Datenschutzerklärung"
+  },
+  "identity.statusUnknown": {
+    "message": "Status unbekannt"
+  },
+  "identity.statusOperational": {
+    "message": "Alle Systeme betriebsbereit"
+  },
+  "identity.statusDegraded": {
+    "message": "Dienst beeinträchtigt"
+  },
+  "identity.statusIncident": {
+    "message": "Dienststörung"
+  },
+  "identity.statusMaintenance": {
+    "message": "Wartung"
+  },
+  "identity.statusStale": {
+    "message": "Status veraltet"
+  },
+  "identity.statusUnverified": {
+    "message": "Status nicht verifiziert"
+  },
+  "identity.statusUnavailable": {
+    "message": "Status nicht verfügbar"
   }
 }

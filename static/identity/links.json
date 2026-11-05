@@ -10,5 +10,8 @@
   "status": "https://status.durable-workflow.com/",
   "github": "https://github.com/durable-workflow",
   "compatibility": "https://durable-workflow.com/docs/compatibility/",
-  "catalog": "https://cloud.durable-workflow.com/early-access"
+  "catalog": "https://cloud.durable-workflow.com/early-access",
+  "terms": "https://cloud.durable-workflow.com/terms",
+  "privacy": "https://cloud.durable-workflow.com/privacy",
+  "statusApi": "https://status.durable-workflow.com/api/current.json"
 }

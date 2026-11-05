@@ -62,9 +62,34 @@ bound to their owning site's real routes.
 
 The footer status pill links to the public status site. Without accepted current
 health data, display **Status unknown** in neutral colors. A linked static green
-"all systems operational" is not evidence. If an owner supplies a current health
-feed, preserve its freshness cutoff and fall back to unknown/stale on failure.
-Do not introduce a cross-site API, credentials or polling just for this redesign.
+"all systems operational" is not evidence. Use the existing anonymous public snapshot at `statusApi` in the link map.
+The [shared consumer](status.mjs) reads only the aggregate and sanitized public
+customer impact. Require schema `durable_workflow.status_page_snapshot.v1`,
+Cloud/prod identity, valid nonfuture checked/generated timestamps, a fresh state,
+and a recomputed evidence age below the producer cutoff (at most 900 seconds).
+`customer_visible=false` and empty component rows alone do not imply unknown.
+
+Top-level status vocabulary is `ok|warning|failed|unknown`; alert levels are
+`ok|warning|critical|unknown`. A fresh `failed` or `critical` aggregate/impact
+shows **Service incident**; warning shows **Service degraded** (or **Maintenance**
+when maintenance is the sole public affected family). Unknown or unrecognized
+values cannot show green. Only fresh `ok/ok` with no contradictory impact/reason
+shows **All systems operational**.
+
+Public reasons override presentation: `cloud_unreachable` → **Status unavailable**;
+`monitor_stale|probe_unverified` → **Status unverified**; `publisher_stale` or expired
+freshness → **Status stale**. Malformed/future evidence and network/HTTP/JSON failures
+show **Status unknown**. Never render internal components, operator alerts, or
+artifact-version rows from the snapshot.
+
+Use anonymous GET, credentials omitted, no referrer, no cache and no redirects;
+a five-second request deadline, at most one request at a time and a sixty-second
+refresh after completion. Invalidate a previous result at its evidence deadline
+while refreshing. Cleanup aborts the request and clears timers on navigation.
+Cloud owns the existing public-GET CORS allowlist; each consumer owns its CSP
+`connect-src https://status.durable-workflow.com`. This adds no status service,
+account or SDK-runtime telemetry. Keep an accessible linked unknown fallback if
+the feed cannot be read.
 
 Versions, commands, support floors, prices, SLA and health values come from the
 existing published package/catalog/status contracts. The design's sample values

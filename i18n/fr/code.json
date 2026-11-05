@@ -301,5 +301,80 @@
   },
   "simulator.signalWaitReceived": {
     "message": "await() a reçu le signal"
+  },
+  "identity.documentation": {
+    "message": "Documentation"
+  },
+  "identity.durableExecution": {
+    "message": "Exécution durable"
+  },
+  "identity.heroTitle": {
+    "message": "Un travail qui continue."
+  },
+  "identity.startEyebrow": {
+    "message": "Votre prochaine étape"
+  },
+  "identity.startTitle": {
+    "message": "Commencez là où vous développez."
+  },
+  "identity.embedded": {
+    "message": "Intégré à votre application"
+  },
+  "identity.sdkGuide": {
+    "message": "Guide du SDK et référence API"
+  },
+  "identity.runtimeNote": {
+    "message": "Hébergez Server vous-même ou connectez-vous à Cloud géré."
+  },
+  "identity.footerDescription": {
+    "message": "Hébergez Server ou utilisez Cloud."
+  },
+  "identity.run": {
+    "message": "Exécution"
+  },
+  "identity.selfHosted": {
+    "message": "Server auto-hébergé"
+  },
+  "identity.pricing": {
+    "message": "Tarifs"
+  },
+  "identity.status": {
+    "message": "État"
+  },
+  "identity.project": {
+    "message": "Projet"
+  },
+  "identity.compatibility": {
+    "message": "Compatibilité des versions"
+  },
+  "identity.terms": {
+    "message": "Conditions d’utilisation"
+  },
+  "identity.privacy": {
+    "message": "Politique de confidentialité"
+  },
+  "identity.statusUnknown": {
+    "message": "État inconnu"
+  },
+  "identity.statusOperational": {
+    "message": "Tous les systèmes sont opérationnels"
+  },
+  "identity.statusDegraded": {
+    "message": "Service dégradé"
+  },
+  "identity.statusIncident": {
+    "message": "Incident de service"
+  },
+  "identity.statusMaintenance": {
+    "message": "Maintenance"
+  },
+  "identity.statusStale": {
+    "message": "État obsolète"
+  },
+  "identity.statusUnverified": {
+    "message": "État non vérifié"
+  },
+  "identity.statusUnavailable": {
+    "message": "État indisponible"
   }
 }

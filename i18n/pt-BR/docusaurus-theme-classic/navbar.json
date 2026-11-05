@@ -2,5 +2,8 @@
   "logo.alt": {"message": "Logotipo do Durable Workflow"},
   "item.label.Docs": {"message": "Documentação"},
   "item.label.Blog": {"message": "Blog (em inglês)"},
-  "item.label.Star on GitHub": {"message": "Apoie o projeto no GitHub"}
+  "item.label.Star on GitHub": {"message": "Apoie o projeto no GitHub"},
+  "item.label.Pricing": {"message": "Preços"},
+  "item.label.Status": {"message": "Status"},
+  "item.label.Get started": {"message": "Comece aqui"}
 }

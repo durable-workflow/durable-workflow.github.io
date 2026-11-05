@@ -1,12 +1,10 @@
 import React from 'react';
-import clsx from 'clsx';
 import Translate from '@docusaurus/Translate';
 import styles from './styles.module.css';
 
 const FeatureList = [
   {
     title: <Translate id="homepage.features.languages.title">Build in PHP, Python, or Rust</Translate>,
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <Translate id="homepage.features.languages.description">
         Author clients, workflows, and activities with first-party SDKs that
@@ -16,7 +14,6 @@ const FeatureList = [
   },
   {
     title: <Translate id="homepage.features.runtime.title">Choose who operates the runtime</Translate>,
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <Translate id="homepage.features.runtime.description">
         Use Durable Workflow Cloud, run the standalone Server, or keep the
@@ -26,7 +23,6 @@ const FeatureList = [
   },
   {
     title: <Translate id="homepage.features.recovery.title">Recover through failures</Translate>,
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <Translate id="homepage.features.recovery.description">
         Durable history, deterministic replay, timers, retries, signals,
@@ -36,17 +32,13 @@ const FeatureList = [
   },
 ];
 
-function Feature({Svg, title, description}) {
+function Feature({title, description, index}) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <h3>{title}</h3>
-        <p>{description}</p>
-      </div>
-    </div>
+    <article className={styles.feature}>
+      <p className="dw-eyebrow">0{index + 1}</p>
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </article>
   );
 }
 
@@ -56,9 +48,9 @@ export default function HomepageFeatures() {
       className={styles.features}
       data-homepage-release="stable-2.0">
       <div className="container">
-        <div className="row">
+        <div className={styles.grid}>
           {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
+            <Feature key={idx} index={idx} {...props} />
           ))}
         </div>
       </div>
