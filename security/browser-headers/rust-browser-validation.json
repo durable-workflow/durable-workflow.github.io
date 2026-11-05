@@ -1,28 +1,18 @@
 {
-  "outcome": "pass",
-  "scope": "Local artifact CSP compatibility only; no TLS/HSTS or public-rollout acceptance",
-  "browser": "156.0.8078.4",
-  "pages_checked": 54,
-  "inline_hash_representatives": 49,
-  "source_preparation": null,
+  "outcome": "not-run",
+  "scope": "Current artifact source proposal only; browser, telemetry, TLS/HSTS and provider acceptance pending",
   "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "run_id": 41920159597,
-    "artifact_id": 13365888605,
-    "tooling_revision": "ab18a6714eefe2d5e790e8e97e72660a15f6f92e",
-    "zip_bytes": 4071486,
-    "zip_sha256": "107ab5c37510c69669a87198be9789288a74312bd1023d03099c41e28b703bc3"
+    "run_id": 41939116087,
+    "artifact_id": 13375154247,
+    "tooling_revision": "1ea3bfc3965423534b5bbbed700371f126835fc3",
+    "zip_bytes": 4071555,
+    "zip_sha256": "ff902191bdb90f7f1d047ecc5d27e9b8c5215a0239e4f11fcbf574f7ddab83d1"
   },
-  "inventory_sha256": "abfcc07de3f87e1c7c25be520d6378f116b28b68a568cb9d960021de64170667",
-  "csp_sha256": "b002ffc9f95abc8145319d8a045aef9f0184d323d81ff9aec5a9de54d2f2d710",
-  "checks": [
-    "all inventoried inline-script hash representatives",
-    "search",
-    "history back",
-    "direct-entry fallback",
-    "compact navigation",
-    "unapproved inline script refused",
-    "response framing refused"
-  ],
-  "external_requests": "intercepted locally; none sent to production"
+  "source_preparation": null,
+  "compatibility_accepted": false,
+  "historical_result": "history/rust-sdk207-browser-validation.json",
+  "next_action": "Security reviews the exact current-artifact proposal; General separately admits bounded compatibility and any later provider stage.",
+  "inventory_sha256": "8c4bc2eb1ef3ffeeb9788a9d0b44d7b718a2a56caff55b3d4531716a25b270d7",
+  "csp_sha256": "b002ffc9f95abc8145319d8a045aef9f0184d323d81ff9aec5a9de54d2f2d710"
 }
