@@ -69,12 +69,12 @@ Cloud/prod identity, valid nonfuture checked/generated timestamps, a fresh state
 and a recomputed evidence age below the producer cutoff (at most 900 seconds).
 `customer_visible=false` and empty component rows alone do not imply unknown.
 Calendar dates must round-trip without normalization (for example, February30
-and24:00 cannot establish evidence). This consumer intentionally requires a known
-local offset, refusing literal `-00:00` while admitting `Z`, `+00:00` and valid
-nonzero offsets. [RFC3339 section4.3](https://www.rfc-editor.org/rfc/rfc3339#section-4.3)
-distinguishes an unknown local offset from an unknown UTC instant; the restriction
-here is a conservative consumer policy, consistent with the producer's `+00:00`
-output.
+and24:00 cannot establish evidence). Freshness requires a known UTC instant,
+rather than a known producer-local offset. Equivalent `Z`, `+00:00` and `-00:00`
+forms use the same absolute-time calculation and evidence cutoff; valid nonzero
+offsets remain supported. [RFC3339 section4.3](https://www.rfc-editor.org/rfc/rfc3339#section-4.3)
+permits a known UTC instant with an unknown local offset (`-00:00`).
+
 
 Top-level status vocabulary is `ok|warning|failed|unknown`; alert levels are
 `ok|warning|critical|unknown`. A fresh `failed` or `critical` aggregate/impact
