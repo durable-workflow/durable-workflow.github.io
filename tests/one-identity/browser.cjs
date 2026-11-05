@@ -11,6 +11,8 @@ const output = path.resolve(process.argv[3]);
 const types = {'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.woff2':'font/woff2','.png':'image/png','.ico':'image/x-icon','.txt':'text/plain'};
 const report = {checks: [], screenshots: [], browser: null, syntheticStatus: true, sourceRevision: process.env.DW_SOURCE_REVISION || null, clientVersion: require('playwright/package.json').version};
 let page;
+const chromeOnly = process.env.DW_PREVIEW_MODE === 'chrome';
+report.mode = chromeOnly ? 'chrome' : 'full';
 function fixture(state = 'operational') {
   const now = Date.now();
   const result = {
@@ -56,7 +58,7 @@ async function run() {
     browser = await chromium.launch({headless:true,executablePath:process.env.DW_BROWSER_EXECUTABLE,args:['--renderer-process-limit=2','--disable-background-networking']});
     report.browser = browser.version();
     for (const theme of ['light','dark']) {
-      for (const width of [1440,390,320]) {
+      for (const width of (chromeOnly ? [1440,390] : [1440,390,320])) {
         const context = await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
         await context.grantPermissions(['clipboard-read','clipboard-write']);
         await context.addInitScript(theme => localStorage.setItem('theme',theme),theme);
@@ -86,6 +88,19 @@ async function run() {
           assert.ok(ratios.every(item=>item.ratio>=4.5),JSON.stringify(ratios));
         });
         if (width !== 320) await screenshot(`home-${theme}-${width}`,true);
+        if (chromeOnly) {
+          await check(`${theme}/${width}: global nav labels are plain and destinations preserved`,async()=>{
+            const links = await page.locator('.dw-global-navigation a[href^="https://"]').evaluateAll(nodes=>nodes.filter(node=>['Cloud','Pricing','Status','GitHub'].includes(node.textContent.trim())).map(node=>({label:node.textContent.trim(),href:node.href,icons:[...node.querySelectorAll('svg')].map(icon=>getComputedStyle(icon).display)})));
+            assert.deepEqual(links.map(item=>[item.label,item.href]),[['Cloud','https://cloud.durable-workflow.com/'],['Pricing','https://cloud.durable-workflow.com/pricing'],['Status','https://status.durable-workflow.com/'],['GitHub','https://github.com/durable-workflow']]);
+            assert.ok(links.every(item=>item.icons.every(display=>display==='none')));
+          });
+          await page.goto(base+'/docs/installation/',{waitUntil:'networkidle'});
+          await check(`${theme}/${width}: docs remain contained after scoped nav correction`,noOverflow);
+          await screenshot(`docs-${theme}-${width}`);
+          assert.deepEqual(errors,[]);
+          await context.close();
+          continue;
+        }
         await check(`${theme}/${width}: SDK disclosure opens and closes with keyboard`,async()=>{
           if (width < 997) await page.getByRole('button',{name:'Toggle navigation bar'}).click();
           const selector = width < 997 ? '.navbar-sidebar .dw-sdk-switcher' : '.dw-global-navigation .dw-sdk-switcher';
@@ -129,6 +144,7 @@ async function run() {
         await context.close();
       }
     }
+    if (chromeOnly) return;
     const context = await browser.newContext({viewport:{width:768,height:1024},colorScheme:'dark'});
     let status = 'operational';
     await context.route('https://status.durable-workflow.com/api/current.json',route=>status==='offline'?route.abort('failed'):route.fulfill({contentType:'application/json',body:JSON.stringify(fixture(status))}));

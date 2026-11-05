@@ -11,6 +11,11 @@ DW_SOURCE_REVISION=<built-source-commit> \
 node tests/one-identity/browser.cjs <build-directory> <owned-output-directory>
 ```
 
+Set `DW_PREVIEW_MODE=chrome` for the bounded follow-up after a global-header
+styling correction: retain the four desktop/mobile theme views, check the real
+nav destinations and absence of added header glyphs, and capture updated home
+and docs screenshots. It does not repeat the full functional matrix.
+
 The runner starts an ephemeral loopback HTTP server, uses one browser with at
 most two renderer processes, runs checks sequentially, and closes the browser
 and server. An absolute guard bounds the run. No signed-in browser profile or
