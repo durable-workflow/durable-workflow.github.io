@@ -26,6 +26,12 @@ LOADER_CONFIGS = frozenset(("/etc/ld.so.cache", "/etc/ld.so.conf", "/etc/nsswitc
 MAX_AUTHORITY_BYTES = 8 * 1024 * core.MIB
 
 
+def file_fingerprint(info):
+    # Reading may update atime. Content/security metadata must stay stable.
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns,
+            info.st_mode, info.st_uid, info.st_gid, info.st_nlink)
+
+
 def native_admitted():
     core.require(isinstance(core.OPERATION_ADMISSION, str) and isinstance(AUTHORITY_ADMISSION, str), "installed-authority-unadmitted")
 
@@ -144,12 +150,11 @@ class NativeObserver:
         # Reviewed files and every ancestor are root-owned/non-writable by the
         # executor. Cache only bytes for an unchanged kernel stat identity;
         # still re-open and recheck membership/metadata on every observation.
-        key = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns,
-               info.st_mode, info.st_uid, info.st_gid, info.st_nlink)
+        key = file_fingerprint(info)
         sha256 = self.hash_cache.get(key)
         if sha256 is None:
             sha256 = self._hash(descriptor)
-            core.require(os.fstat(descriptor) == info, "authority-file-changed-during-read")
+            core.require(file_fingerprint(os.fstat(descriptor)) == key, "authority-file-changed-during-read")
             self.hash_cache[key] = sha256
         return {"path": path, "uid": info.st_uid, "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode),
                 "device": info.st_dev, "inode": info.st_ino, "bytes": info.st_size, "sha256": sha256}

@@ -21,6 +21,7 @@ import tempfile
 import unittest
 import zipfile
 import time
+from types import SimpleNamespace
 from unittest import mock
 
 import rust_preparation as prep
@@ -661,6 +662,23 @@ class TerminalControls(unittest.TestCase):
 
 
 class AuthorityControls(unittest.TestCase):
+    def test_runtime_hash_allows_read_atime_but_rejects_content_metadata_race(self):
+        before = SimpleNamespace(st_mode=stat.S_IFREG | 0o644, st_uid=0, st_gid=0, st_dev=1,
+                                 st_ino=1, st_size=4, st_mtime_ns=1, st_ctime_ns=1, st_nlink=1, st_atime_ns=1)
+        after = copy.copy(before)
+        after.st_atime_ns = 2
+        observer = authority.NativeObserver()
+        with mock.patch("os.fstat", side_effect=[before, after]), mock.patch("os.read", side_effect=[b"ELF!", b""]), \
+                mock.patch("os.lseek"):
+            observed = observer._metadata("/synthetic/root-owned-runtime", 999)
+        self.assertEqual(observed["sha256"], prep.digest(b"ELF!"))
+        after.st_mtime_ns = 2
+        observer = authority.NativeObserver()
+        with mock.patch("os.fstat", side_effect=[before, after]), mock.patch("os.read", side_effect=[b"ELF!", b""]), \
+                mock.patch("os.lseek"):
+            with self.assertRaises(prep.Refusal):
+                observer._metadata("/synthetic/root-owned-runtime", 999)
+
     def record(self):
         def binding(path):
             return {"path": path, "uid": 0, "gid": 0, "mode": 0o755, "device": 1,
@@ -982,7 +1000,9 @@ class PlatformControls(unittest.TestCase):
                 self.assertEqual(list(target.iterdir()), [target / "foreign"])
                 self.assertEqual((target / "foreign").read_bytes(), b"foreign creation marker")
                 moved = target.with_name("bound-original").stat()
-                self.assertEqual((moved.st_dev, moved.st_ino), state["bound"])
+                actual_identity = (moved.st_dev, moved.st_ino)
+                expected_identity = state["bound"]
+                self.assertEqual(actual_identity, expected_identity)
 
     def test_descriptor_creation_binds_both_children_and_empty_credential_transport(self):
         with tempfile.TemporaryDirectory(prefix="dw-created-transport-fixture-") as directory:
@@ -998,7 +1018,8 @@ class PlatformControls(unittest.TestCase):
                 self.assertEqual(runner.environment["DOCKER_CONFIG"], "/proc/self/fd/-1")
                 runner.bind_transport(transport)
                 self.assertEqual(runner.environment["DOCKER_CONFIG"], "/proc/self/fd/" + str(transport.children["docker"]))
-                self.assertEqual(set(runner.pass_fds), {transport.fd, *transport.children.values()})
+                expected_fds = {transport.fd, *transport.children.values()}
+                self.assertEqual(set(runner.pass_fds), expected_fds)
             finally:
                 transport.close()
 

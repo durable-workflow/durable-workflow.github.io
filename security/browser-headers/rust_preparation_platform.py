@@ -38,6 +38,8 @@ DOCKER = "/usr/bin/docker"
 BUSCTL = "/usr/bin/busctl"
 SYSTEMD_RUN = "/usr/bin/systemd-run"
 BUS_JSON = "--json=short"
+FD_PREFIX = "/proc/self/fd/"
+CONFIG_FILE = "config.json"
 RUNTIME_LIMIT = 600
 VERIFIED_SOURCE_SHA256 = None
 OWNERSHIP_FILE = "ownership.json"
@@ -106,8 +108,8 @@ def admission(spec, now):
                  and retention["owner"] == core.OWNER, "retention-owner")
     due = dt.datetime.fromisoformat(retention["custody_due"])
     core.require(now + dt.timedelta(seconds=RUNTIME_LIMIT + 15) < due <= now + dt.timedelta(hours=24), "retention-window")
-    core.require(re.fullmatch(r"https://github\.com/durable-workflow/(?:durable-workflow\.github\.io/pull/480|\.github/issues/268)#issuecomment-[0-9]+",
-                              retention["reconciliation_ref"]) is not None, "retention-reconciliation")
+    core.require(re.fullmatch(r"https://github\.com/durable-workflow/(?:durable-workflow\.github\.io/pull/480|\.github/issues/268)#issuecomment-\d+",
+                              retention["reconciliation_ref"], flags=re.ASCII) is not None, "retention-reconciliation")
     for path in (spec["staging_path"], spec["docker_root"]):
         core.require(re.fullmatch(r"/[A-Za-z0-9_./-]+", path) is not None, "native-path")
         core.require(str(Path(path)) == path and ".." not in Path(path).parts, "native-path")
@@ -129,9 +131,9 @@ class CommandRunner:
         self.pass_fds = ()
 
     def bind_transport(self, transport):
-        self.environment = clean_environment(Path("/proc/self/fd/" + str(transport.fd)))
-        self.environment["HOME"] = "/proc/self/fd/" + str(transport.children["home"])
-        self.environment["DOCKER_CONFIG"] = "/proc/self/fd/" + str(transport.children["docker"])
+        self.environment = clean_environment(Path(FD_PREFIX + str(transport.fd)))
+        self.environment["HOME"] = FD_PREFIX + str(transport.children["home"])
+        self.environment["DOCKER_CONFIG"] = FD_PREFIX + str(transport.children["docker"])
         self.pass_fds = (transport.fd, *transport.children.values())
 
     def run(self, args, timeout=15, limit=core.MIB, stdin=None):
@@ -139,7 +141,7 @@ class CommandRunner:
         authority = require_installed_authority()
         binary = authority.open_command(args[0])
         try:
-            process = subprocess.Popen(args, executable="/proc/self/fd/" + str(binary),
+            process = subprocess.Popen(args, executable=FD_PREFIX + str(binary),
                                        stdin=stdin if stdin is not None else subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.environment,
                                        pass_fds=tuple(set(self.pass_fds + (binary,))))
@@ -521,11 +523,11 @@ class TransportDirectory:
         self.verify_namespace()
         try:
             core.require(os.listdir(children["home"]) == [], "transport-home-extra")
-            core.require(os.listdir(children["docker"]) == ["config.json"], "transport-config-extra")
-            core.require(self.read("config.json", 4096, children["docker"]) == ANONYMOUS_CONFIG, "transport-config-changed")
+            core.require(os.listdir(children["docker"]) == [CONFIG_FILE], "transport-config-extra")
+            core.require(self.read(CONFIG_FILE, 4096, children["docker"]) == ANONYMOUS_CONFIG, "transport-config-changed")
             rows = [self.retained_file(self.fd, name, limit, name) for name, limit in
                     ((OWNERSHIP_FILE, 4096), (RESULTS_FILE, 65536), (CONTEXT_FILE, 65536), (PENDING_FILE, 16384))]
-            rows.append(self.retained_file(children["docker"], "config.json", 4096, "docker/config.json"))
+            rows.append(self.retained_file(children["docker"], CONFIG_FILE, 4096, "docker/config.json"))
             for name, descriptor in children.items():
                 observed = os.stat(name, dir_fd=self.fd, follow_symlinks=False)
                 opened = os.fstat(descriptor)
@@ -824,7 +826,7 @@ def create_transport(spec, nonce):
                          and stat.S_IMODE(observed.st_mode) == 0o700, "created-child-identity")
             bindings[name] = {"device": observed.st_dev, "inode": observed.st_ino}
         owner_record = {"nonce": nonce, "device": info.st_dev, "inode": info.st_ino, "children": bindings}
-        for directory, name, raw in ((children["docker"], "config.json", ANONYMOUS_CONFIG),
+        for directory, name, raw in ((children["docker"], CONFIG_FILE, ANONYMOUS_CONFIG),
                                      (descriptor, OWNERSHIP_FILE, json.dumps(owner_record).encode())):
             verify()
             for child_name, binding in bindings.items():

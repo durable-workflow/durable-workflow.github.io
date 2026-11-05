@@ -15,7 +15,7 @@ before any acquisition, memory seal, service, Docker/image, Node/browser or
 provider effect. There is no command-line or environment bypass. The source
 does not accept a real handoff, prepare an image or qualify the host runtime.
 No controller invocation or filesystem path is approved by these source files.
-The current suite has 46 test methods, including the per-edge fault subcases.
+The current suite has 47 test methods, including the per-edge fault subcases.
 Security's source/executable HOLD remains in force pending review of these
 corrections: durable mutation binding, descriptor-first transport creation,
 bounded evidence retention, installed authority and the joined terminal collector.
@@ -100,7 +100,7 @@ def capture(name, limit):
         os.close(fd)
 try:
     raw = capture('rust-preparation-source.json', 16384)
-    expected_manifest = '8d5139447450d6b81b0e1287e987b981c89c6b13a54e9bb6354036ceae65e727'
+    expected_manifest = 'bc15b52893ad2b82128846643c7a5d0ff3baad242059ecca21bb816b55eb74cf'
     if hashlib.sha256(raw).hexdigest() != expected_manifest:
         raise RuntimeError('source-manifest-hash')
     manifest = json.loads(raw)
