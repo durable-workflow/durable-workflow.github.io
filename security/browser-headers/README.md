@@ -9,8 +9,8 @@ The candidate is disabled and both approval flags remain false.
 ## Reviewed input and source prerequisite
 
 `rust-policy.json` binds the accepted Rust 4.12.0 public crate and the
-[protected documentation run](https://github.com/durable-workflow/sdk-rust/actions/runs/41954374074),
-artifact 13382143373. Its ZIP SHA-256 is recorded with its tooling revision.
+[protected documentation run](https://github.com/durable-workflow/sdk-rust/actions/runs/41959739724),
+artifact 13384761426. Its ZIP SHA-256 is recorded with its tooling revision.
 The full input contains 484 regular files and 372 HTML pages.
 
 The earlier artifact's `help.html` and `settings.html` contained executable
@@ -18,7 +18,7 @@ links and inline history-back handlers. The generator refuses them. The merged
 [SDK source correction](https://github.com/durable-workflow/sdk-rust/pull/207)
 provides a safe crate-index fallback and an external history listener. The sole
 automatic protected build and deployment for the current proposal are successful
-at tooling revision `2b45fd7b12a6e9460666045a3c7f644860caea3b`. Public package/source
+at tooling revision `46cf36514f7a39e819213771abf9efc82321c062`. Public package/source
 identities remain unchanged. Eight live identity, navigation, help/settings and
 API files matched this artifact on November 5, 2026. The
 [current staging proposal](rust-stage-proposal.md) records their hashes and the
@@ -27,11 +27,13 @@ separate acceptance that remains pending.
 The current inventory describes that accepted published artifact.
 `source_preparation` is null. `history/` retains the earlier local derivative and
 the accepted SDK #207 artifact's browser result as historical evidence only.
-The derivative was not a public artifact. SDK #212 retains every page and asset
-byte from the prior SDK #209 artifact.
-Only the build identity changes. The executable script hashes and generated
-rule are unchanged. That static comparison does not carry forward the earlier
-browser pass. Current compatibility is unrun and the rule remains disabled.
+The derivative was not a public artifact. Compared with accepted SDK #212,
+SDK #211 changes exactly `__build.json`, `help.html` and `settings.html`. The two
+utility pages only replace `workflow_testing` with `worker_latency` in generated
+`data-current-crate` metadata. All 372 page-resource records, executable script
+hashes and the parsed rule are unchanged. That static comparison does not carry
+forward the earlier browser pass. Current compatibility is unrun and the rule
+remains disabled.
 
 ## Policy and inventory
 
@@ -115,6 +117,8 @@ exact input bindings, ownership, proposed checks and rollback decision.
 separately reviewable, unrun local browser/telemetry packet. Normal CI exercises
 only its inert source controls. The optional browser entrypoint requires its
 own exact run admission; it makes no provider or production request.
+`rust-preparation-proposal.md` supplies the next separately reviewed acquisition
+and immutable-image custody design. No acquisition, seal or prepared image exists.
 
 ## Rust-only staged acceptance and rollback
 

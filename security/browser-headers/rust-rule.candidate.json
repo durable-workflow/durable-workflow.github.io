@@ -2,15 +2,15 @@
   "schema": "durable-workflow.browser-security-rule-candidate/v1",
   "rollout_approved": false,
   "phase": "http_response_headers_transform",
-  "inventory_sha256": "01e0872a2d03726d52092362f7654285a81635f92f2f5bd30ecace505d14c71d",
+  "inventory_sha256": "ad4b2134cf4bdb42b7dfabd58ba145567c8b4facd9d9652f9af5c61604beb60a",
   "compatibility_accepted": false,
   "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "run_id": 41954374074,
-    "artifact_id": 13382143373,
-    "tooling_revision": "2b45fd7b12a6e9460666045a3c7f644860caea3b",
-    "zip_bytes": 4071521,
-    "zip_sha256": "15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95"
+    "run_id": 41959739724,
+    "artifact_id": 13384761426,
+    "tooling_revision": "46cf36514f7a39e819213771abf9efc82321c062",
+    "zip_bytes": 4067287,
+    "zip_sha256": "ea80b0d3191da525152b8f02ff2e3253a29ed93a723dfeae4c344eefb392cada"
   },
   "source_preparation": null,
   "rule": {

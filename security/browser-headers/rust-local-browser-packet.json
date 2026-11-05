@@ -3,11 +3,11 @@
   "run_status": "not-run",
   "input_artifact": {
     "repository": "durable-workflow/sdk-rust",
-    "run_id": 41954374074,
-    "artifact_id": 13382143373,
-    "tooling_revision": "2b45fd7b12a6e9460666045a3c7f644860caea3b",
-    "zip_bytes": 4071521,
-    "zip_sha256": "15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95"
+    "run_id": 41959739724,
+    "artifact_id": 13384761426,
+    "tooling_revision": "46cf36514f7a39e819213771abf9efc82321c062",
+    "zip_bytes": 4067287,
+    "zip_sha256": "ea80b0d3191da525152b8f02ff2e3253a29ed93a723dfeae4c344eefb392cada"
   },
   "playwright_version": "1.64.0",
   "expected_chromium_version": "156.0.8078.4",
@@ -27,9 +27,9 @@
     "rust-browser.test.cjs": "0b2f731db13e4f095230673bfda3d97a36f71c5ef62b8f3702a7978740d17d61",
     "rust-browser-inputs.cjs": "43bb050185f05187e7d94a40d73b4fae965276696fe7356e6609b319c6b120ee",
     "rust-browser-source.test.cjs": "deafc5ce08806c148b189a48f11012cc0c03600122dd8fe34eb01e223f381952",
-    "rust-policy.json": "c2441f7b0bf7aebc0c4ee491cda0470170231bc8baf14b4c2163552b8d2fd79c",
-    "rust-inventory.json": "01e0872a2d03726d52092362f7654285a81635f92f2f5bd30ecace505d14c71d",
-    "rust-rule.candidate.json": "90b37562aabf6ed8619fbb488ad764137731bec976d8e2ff5e7bfa382fba5634",
+    "rust-policy.json": "49eeb47bcb9e437f9830a2f93c89ced80cb2dfe84306ebfcc122fdf3975d0231",
+    "rust-inventory.json": "ad4b2134cf4bdb42b7dfabd58ba145567c8b4facd9d9652f9af5c61604beb60a",
+    "rust-rule.candidate.json": "a20518e8341d94445cad433acb99e7e6e9ca42c837092248b83e10cf07540e08",
     "runtime/package.json": "a2cd697a8ed17ab196e4eac1bcb15ceec6da243a600a8f2584c8aabdadfc3c9d",
     "runtime/package-lock.json": "959580e91aae43c61d0bbfcf11c21eb52ecafcfadb088f166b322fd3988a47ae"
   }
