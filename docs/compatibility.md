@@ -135,6 +135,31 @@ These documents add per-package detail under the rules on this page:
   `durable-workflow/sdk-rust`. Authoritative for the `durable-workflow` crate
   public API and its package compatibility declaration.
 
+## Embedded PHP and Laravel support {#embedded-php-and-laravel-support}
+
+The embedded package's platform requirements come from its published Composer
+and upgrade manifests. A source merge is not published support or installed
+qualification.
+
+| Workflow line | PHP constraint | Laravel constraint | Authority |
+| --- | --- | --- | --- |
+| Published 2.20.4 | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [Published 2.20.4 manifest](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21, unreleased | `^8.2` | `^12.69.0\|^13.30.0` | [Intended source](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json); actual publication and Release Verification are still required |
+
+Laravel 10 permits PHP 8.1, Laravel 11/12 require PHP 8.2, and Laravel 13
+requires PHP 8.3. A declared Composer range does not qualify every interpreter
+or database combination. Prepare the application platform using the
+[2.21 upgrade guidance](/docs/installation/#preparing-for-workflow-2-21).
+Laravel 9 applications remain on their compatible 2.16.x line until the
+framework is upgraded. The historical 1.x contract is unchanged.
+
+The framework-neutral PHP SDK retains its independent PHP `^8.1` requirement.
+Its [Laravel service bridge](https://php.durable-workflow.com/frameworks/laravel/)
+follows the SDK's own published contract. Workflow's planned platform change
+does not narrow that bridge early or change standalone Server, Python or Rust
+requirements. No worker-protocol or durable-history version is changed by this
+platform support boundary.
+
 ## Release Rules
 
 These rules apply to every public surface family above. They are reproduced in

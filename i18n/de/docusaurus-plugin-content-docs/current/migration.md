@@ -17,6 +17,25 @@ keywords:
 
 Dieser Leitfaden beschreibt die wichtigsten Änderungen beim Upgrade einer bestehenden Laravel-v1-Anwendung auf v2. Entscheiden Sie zuerst im [Leitfaden zur Laravel-Einführung und zum Laufzeitwechsel](/docs/laravel-adoption/), ob Laravel die Laufzeit weiter verwaltet oder über das PHP-SDK Cloud oder einen selbst gehosteten Server anspricht. Diese Seite beschreibt anschließend das detaillierte Verfahren für das eingebettete Paket von v1 zu v2.
 
+## Zielplattform prüfen {#check-the-target-platform}
+
+Prüfen Sie vor dem Ändern der Composer-Vorgaben die
+[PHP- und Laravel-Anforderungen](/docs/installation/#requirements) des
+veröffentlichten Zielpakets. Der stabile v1-Support bedeutet nicht, dass derselbe
+Host im aktuellen eingebetteten v2 unterstützt wird. Insbesondere benötigen
+Laravel-9-Anwendungen vor der veröffentlichten Reihe 2.20.x ein Framework-Upgrade.
+
+Die [Vorbereitung auf 2.21](/docs/installation/#preparing-for-workflow-2-21)
+beschreibt das geplante Supportende für PHP 8.1 und Laravel 10/11. Diese Reihe
+ist noch nicht veröffentlicht oder durch Release Verification geprüft.
+Bewahren Sie bei der Plattformvorbereitung die bestehende 2.20.x-Lockdatei auf;
+ältere Versionen verlängern keine vorgelagerte Sicherheitsunterstützung.
+Das PHP-SDK allein und seine Laravel-Bridge haben eigene veröffentlichte Anforderungen.
+
+Diese Plattformänderung führt keine Schema-, Verlaufs- oder Protokollmigration
+ein. Bestehender v1-Verlauf bleibt bei v1. Die folgenden Regeln zu Drain,
+Koexistenz und Rollback gelten weiter; eine Composer-Änderung migriert nie einen Lauf.
+
 ## Upgrade-Verfahren {#upgrade-procedure}
 
 ### Vor dem Upgrade {#before-upgrading}

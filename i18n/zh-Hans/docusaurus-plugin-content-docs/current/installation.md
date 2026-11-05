@@ -12,8 +12,34 @@ sidebar_position: 3
 
 ## 环境要求 {#requirements}
 
-- PHP 8.1 或更高版本
-- Laravel 9 或更高版本
+已发布的 Workflow 2.20.x 系列要求：
+
+- PHP `^8.1`
+- Laravel 10–13，且满足[软件包清单](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json)
+  中声明的最低版本
+
+Laravel 11 和 12 要求 PHP 8.2 或更高版本，Laravel 13 要求 PHP 8.3 或更高版本。
+确切约束及 PHP SDK 的独立边界请参阅
+[版本兼容性](/docs/compatibility/#embedded-php-and-laravel-support)。
+
+### 为 Workflow 2.21 做准备 {#preparing-for-workflow-2-21}
+
+:::info 尚未发布的支持范围变更
+
+Workflow 2.21 的源代码要求 PHP `^8.2` 和 Laravel `^12.69.0|^13.30.0`。
+该版本尚未发布，也尚未通过 Release Verification。下方安装命令仍选择已发布的产物；
+合并源代码不会改变这一权威依据。
+
+:::
+
+采用 2.21 之前，请将使用 PHP 8.1 或 Laravel 10/11 的应用升级到受支持的平台。
+Laravel 13 仍要求 PHP 8.3 或更高版本。准备和测试期间应保留应用现有的 2.20.x 锁文件，
+并更新 Web、CLI 和 Worker 进程所用的环境。显式要求 2.21 时应拒绝不受支持的平台；
+请保持 Composer 的平台检查和安全公告阻断机制启用。保留 2.20.x 并不会延长旧版
+PHP 或 Laravel 的上游安全支持。
+
+此次支持范围变更不引入模式、历史或协议迁移。现有 v1 运行仍由 v1 管理；
+排空或共存仍须遵循[迁移流程](/docs/migration/)。
 
 参阅[数据库兼容性](./polyglot/database-support.md)，了解嵌入式与 Server 声明、确切测试配置及验证边界。
 

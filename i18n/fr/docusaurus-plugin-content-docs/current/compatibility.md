@@ -131,6 +131,31 @@ Ces documents précisent les règles de cette page pour chaque paquet :
   `durable-workflow/sdk-rust`. Référence pour l'API publique de la crate
   `durable-workflow` et sa déclaration de compatibilité.
 
+## Prise en charge PHP et Laravel embarqués {#embedded-php-and-laravel-support}
+
+Les exigences de plateforme du paquet embarqué viennent de ses manifestes
+publiés Composer et de mise à niveau. Une intégration de code source ne prouve
+ni un support publié ni la qualification d'une installation.
+
+| Branche Workflow | Contrainte PHP | Contrainte Laravel | Autorité |
+| --- | --- | --- | --- |
+| 2.20.4 publiée | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [Manifeste publié 2.20.4](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21, non publiée | `^8.2` | `^12.69.0\|^13.30.0` | [Source prévue](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json) ; publication réelle et Release Verification encore requises |
+
+Laravel 10 permet PHP 8.1, Laravel 11/12 nécessitent PHP 8.2 et Laravel 13
+nécessite PHP 8.3. Une plage Composer déclarée ne qualifie pas chaque couple
+interpréteur/base de données. Préparez la plateforme avec le
+[guide de mise à niveau 2.21](/docs/installation/#preparing-for-workflow-2-21).
+Les applications Laravel 9 restent sur leur branche compatible 2.16.x jusqu'à
+la mise à niveau du framework. Le contrat historique 1.x reste inchangé.
+
+Le SDK PHP indépendant du framework conserve son exigence PHP `^8.1`.
+Son [pont Laravel en mode service](https://php.durable-workflow.com/frameworks/laravel/)
+suit son propre contrat publié. Le changement prévu de Workflow ne réduit pas
+prématurément ce support et ne change pas les exigences de Server autonome,
+Python ou Rust. Cette limite de plateforme ne change aucune version du
+protocole worker ou de l'historique durable.
+
 ## Règles de publication {#release-rules}
 
 Ces règles s'appliquent à toutes les familles publiques ci-dessus. Elles sont

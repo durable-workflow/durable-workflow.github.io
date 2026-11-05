@@ -12,8 +12,38 @@ Si vous hésitez entre l’intégration du package et un Server indépendant, co
 
 ## Prérequis {#requirements}
 
-- PHP 8.1 ou ultérieur
-- Laravel 9 ou ultérieur
+La branche publiée Workflow 2.20.x nécessite :
+
+- PHP `^8.1`
+- Laravel 10–13 aux versions minimales déclarées dans le
+  [manifeste du paquet](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json)
+
+Laravel 11 et 12 nécessitent PHP 8.2 ou ultérieur ; Laravel 13 nécessite PHP 8.3
+ou ultérieur. Consultez la [compatibilité des versions](/docs/compatibility/#embedded-php-and-laravel-support)
+pour les contraintes exactes et la limite distincte du SDK PHP.
+
+### Préparer Workflow 2.21 {#preparing-for-workflow-2-21}
+
+:::info Changement de prise en charge non publié
+
+Le code source de Workflow 2.21 nécessite PHP `^8.2` et Laravel `^12.69.0|^13.30.0`.
+Il n'est pas encore publié et n'a pas passé Release Verification. La commande
+ci-dessous sélectionne toujours un artefact publié ; l'intégration du code
+source ne change pas cette autorité.
+
+:::
+
+Mettez les applications PHP 8.1 ou Laravel 10/11 à niveau vers une plateforme
+prise en charge avant d'adopter 2.21. Laravel 13 nécessite toujours PHP 8.3 ou
+ultérieur. Mettez à jour les processus web, CLI et workers, en conservant le
+fichier de verrouillage 2.20.x pendant la préparation et les tests. Une demande
+explicite de 2.21 doit refuser une plateforme non prise en charge ; gardez les
+contrôles de plateforme et le blocage des avis de sécurité Composer actifs.
+Conserver 2.20.x ne prolonge pas le support de sécurité amont de PHP ou Laravel.
+
+Ce changement n'introduit aucune migration de schéma, d'historique ou de
+protocole. Les exécutions v1 restent la propriété de v1 ; la
+[procédure de migration](/docs/migration/) régit toujours leur vidage ou coexistence.
 
 Consultez la [compatibilité des bases de données](./polyglot/database-support.md) pour les déclarations embarquées et Server, configurations exactes testées et limites de qualification.
 

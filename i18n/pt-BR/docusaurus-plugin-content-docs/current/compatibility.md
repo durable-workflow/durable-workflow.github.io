@@ -136,6 +136,31 @@ Estes documentos acrescentam detalhes de cada pacote sob as regras desta página
   `durable-workflow/sdk-rust`. Normativos para a API pública da crate
   `durable-workflow` e sua declaração de compatibilidade de pacote.
 
+## Suporte a PHP e Laravel no modo integrado {#embedded-php-and-laravel-support}
+
+Os requisitos de plataforma do pacote integrado vêm dos manifestos publicados
+de Composer e atualização. Integrar código-fonte não comprova suporte publicado
+nem a qualificação de uma instalação.
+
+| Linha Workflow | Restrição PHP | Restrição Laravel | Autoridade |
+| --- | --- | --- | --- |
+| 2.20.4 publicada | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [Manifesto publicado 2.20.4](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21, não publicada | `^8.2` | `^12.69.0\|^13.30.0` | [Código previsto](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json); publicação real e Release Verification ainda necessárias |
+
+Laravel 10 permite PHP 8.1, Laravel 11/12 exigem PHP 8.2 e Laravel 13 exige
+PHP 8.3. Uma faixa declarada no Composer não qualifica todas as combinações de
+interpretador e banco de dados. Prepare a plataforma com o
+[guia de atualização para 2.21](/docs/installation/#preparing-for-workflow-2-21).
+Aplicações Laravel 9 permanecem na linha compatível 2.16.x até atualizar o
+framework. O contrato histórico 1.x permanece inalterado.
+
+O SDK PHP independente de framework mantém seu próprio requisito PHP `^8.1`.
+Sua [ponte Laravel em modo de serviço](https://php.durable-workflow.com/frameworks/laravel/)
+segue o contrato publicado do SDK. A mudança planejada de Workflow não reduz
+antecipadamente esse suporte nem altera os requisitos do Server independente,
+Python ou Rust. Esse limite de plataforma não altera versões do protocolo de
+workers nem do histórico durável.
+
 ## Regras de release {#release-rules}
 
 Estas regras valem para todas as famílias públicas acima. São reproduzidas

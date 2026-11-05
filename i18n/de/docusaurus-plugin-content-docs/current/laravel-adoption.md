@@ -34,7 +34,14 @@ Für ein unmittelbares v1-Upgrade auf Paketebene halten Sie den ausführlichen [
 | Stabiles v1-Laravel | PHP-SDK-Dienstmodus | Laravel soll Dependency Injection, Konfiguration, Artisan, Logging, Ereignisse und Test-Fakes behalten, Cloud oder Server aber den dauerhaften Zustand verwalten. | `durable-workflow/sdk` als separate Dienstclient-/Worker-Grenze installieren. v1-Historie und dauerhafte Laravel-Warteschlangenjobs bleiben bis zum terminalen Zustand auf der v1-Laufzeit. |
 | Eingebettetes 2.0-Laravel | PHP-SDK-Dienstmodus | Die Anwendung soll die Orchestrierungslaufzeit nicht mehr verwalten oder benötigt eine gemeinsame/mehrsprachige Laufzeitgrenze. | Neue Starts nach Bereitschaft der Worker an die Dienstlaufzeit leiten. Eingebettete Läufe an ihrem Ursprungsort abschließen lassen oder für selbst gehosteten Server das explizite Importverfahren für geeignete eingebettete v2-Läufe verwenden. |
 
-Die PHP-SDK-Bridge und das eingebettete Paket unterstützen Laravel 9 bis 13 mit ihren kompatiblen PHP-Versionen. Eine unterstützte v1-Anwendung kann daher beide Ziele ohne sachfremdes Laravel-Upgrade wählen.
+Prüfen Sie vor der Auswahl die Plattformanforderungen jedes Ziels. Die
+[Installationsanleitung für den eingebetteten Modus](/docs/installation/#requirements)
+beschreibt die veröffentlichten 2.20.x-Anforderungen und die Upgrade-Grenze
+für das noch unveröffentlichte 2.21. Der
+[Laravel-Leitfaden des PHP-SDK](https://php.durable-workflow.com/frameworks/laravel/)
+ist für den getrennten Dienstvertrag maßgeblich; die PHP-Untergrenze `^8.1`
+des SDK allein belegt nicht jede Framework-Kombination. Auch ein unterstützter
+v1-Host kann vor dem Wechsel ein PHP- oder Laravel-Upgrade benötigen.
 
 ## Verantwortungsgrenzen vergleichen {#compare-the-ownership-boundary}
 
@@ -294,7 +301,8 @@ Installieren Sie das unabhängig veröffentlichte SDK-Paket. Dieser Befehl wird 
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 bis 13 erkennt den Provider automatisch. Veröffentlichen Sie die Paketkonfiguration und listen Sie die mit Attributen versehenen Handlerklassen auf:
+Unterstützte Laravel-Versionen erkennen den SDK-Provider automatisch.
+Veröffentlichen Sie die Paketkonfiguration und listen Sie die mit Attributen versehenen Handlerklassen auf:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

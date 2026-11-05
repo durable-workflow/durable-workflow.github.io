@@ -135,6 +135,31 @@ Estos documentos añaden detalles de cada paquete siguiendo las reglas de esta p
   `durable-workflow/sdk-rust`. Referencia de la API pública del crate
   `durable-workflow` y de su declaración de compatibilidad del paquete.
 
+## Soporte de PHP y Laravel en modo integrado {#embedded-php-and-laravel-support}
+
+Los requisitos de plataforma del paquete integrado proceden de sus manifiestos
+publicados de Composer y actualización. Integrar código fuente no demuestra
+soporte publicado ni cualificación de una instalación.
+
+| Serie Workflow | Restricción de PHP | Restricción de Laravel | Autoridad |
+| --- | --- | --- | --- |
+| 2.20.4 publicada | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [Manifiesto publicado de 2.20.4](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21, no publicada | `^8.2` | `^12.69.0\|^13.30.0` | [Código previsto](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json); aún se requieren la publicación real y Release Verification |
+
+Laravel 10 admite PHP 8.1, Laravel 11/12 requieren PHP 8.2 y Laravel 13 requiere
+PHP 8.3. Un rango de Composer declarado no cualifica todas las combinaciones
+de intérprete y base de datos. Prepara la plataforma con la
+[guía de actualización a 2.21](/docs/installation/#preparing-for-workflow-2-21).
+Las aplicaciones Laravel 9 permanecen en su serie compatible 2.16.x hasta
+actualizar el framework. El contrato histórico 1.x no cambia.
+
+El SDK PHP independiente del framework conserva su requisito PHP `^8.1`.
+Su [puente Laravel en modo servicio](https://php.durable-workflow.com/frameworks/laravel/)
+sigue su propio contrato publicado. El cambio previsto de Workflow no reduce
+antes de tiempo ese soporte ni cambia los requisitos de Server independiente,
+Python o Rust. Este límite de plataforma no cambia ninguna versión del
+protocolo de workers ni del historial duradero.
+
 ## Reglas de publicación {#release-rules}
 
 Estas reglas se aplican a todas las familias públicas anteriores. Se reproducen
