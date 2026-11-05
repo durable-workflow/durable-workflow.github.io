@@ -38,9 +38,10 @@ SUBJECT = {
     "zip_bytes": ZIP_BYTES,
     "zip_sha256": ZIP_SHA,
 }
+INVENTORY_NAME = "rust-inventory.json"
 PACKET_MEMBERS = (
     "rust-browser.test.cjs", "rust-browser-inputs.cjs",
-    "rust-browser-source.test.cjs", "rust-policy.json", "rust-inventory.json",
+    "rust-browser-source.test.cjs", "rust-policy.json", INVENTORY_NAME,
     "rust-rule.candidate.json", "runtime/package.json", "runtime/package-lock.json",
 )
 LABEL_OWNER = "com.durable-workflow.agent"
@@ -51,6 +52,8 @@ MIB = 1024 * 1024
 FILE_LIMIT = 10000
 TREE_LIMIT = 64 * MIB
 TAR_LIMIT = 128 * MIB
+HEX_64 = r"[0-9a-f]{64}"
+IMAGE_ID = r"sha256:[0-9a-f]{64}"
 
 
 class Refusal(RuntimeError):
@@ -116,6 +119,10 @@ def index(entries):
     return result
 
 
+def normalized_mode(mode):
+    return 0o555 if mode & 0o111 else 0o444
+
+
 def tar_entries(data, prefix=""):
     require(type(data) is bytes and len(data) <= TAR_LIMIT, "tar-limit")
     result = []
@@ -143,7 +150,7 @@ def tar_entries(data, prefix=""):
             raw = archive.extractfile(member).read(member.size + 1)
             require(len(raw) == member.size, "short-member")
             relative = name[len(prefix) + 1:] if prefix else name
-            result.append(Entry(relative, raw, 0o555 if member.mode & 0o111 else 0o444))
+            result.append(Entry(relative, raw, normalized_mode(member.mode)))
     index(result)
     return tuple(result)
 
@@ -158,7 +165,7 @@ def packet_from_entries(entries):
     require(packet["run_status"] == "not-run" and set(packet["files"]) == set(PACKET_MEMBERS), "packet-status")
     for name, expected in packet["files"].items():
         require(digest(files[name].data) == expected, "packet-member-hash")
-    inventory = strict_json(files["rust-inventory.json"].data)
+    inventory = strict_json(files[INVENTORY_NAME].data)
     candidate = strict_json(files["rust-rule.candidate.json"].data)
     policy = strict_json(files["rust-policy.json"].data)
     for value in (packet, inventory, candidate, policy):
@@ -166,7 +173,7 @@ def packet_from_entries(entries):
     require(candidate["rule"]["enabled"] is False, "enabled-rule")
     require(candidate["rollout_approved"] is False and candidate["compatibility_accepted"] is False, "approval-drift")
     require(candidate["source_preparation"] is None and inventory["source_preparation"] is None, "prepared-subject")
-    require(candidate["inventory_sha256"] == digest(files["rust-inventory.json"].data), "inventory-hash")
+    require(candidate["inventory_sha256"] == digest(files[INVENTORY_NAME].data), "inventory-hash")
     return inventory, strict_json(files["runtime/package-lock.json"].data)
 
 
@@ -281,7 +288,7 @@ class Ownership:
     nonce: str
 
     def __post_init__(self):
-        require(re.fullmatch(r"[0-9a-f]{64}", self.nonce) is not None, "attempt-nonce")
+        require(re.fullmatch(HEX_64, self.nonce) is not None, "attempt-nonce")
 
     def name(self, role):
         require(role in ROLES, "container-role")
@@ -293,7 +300,7 @@ class Ownership:
 
 
 def owned_identity(record, ownership, role):
-    require(re.fullmatch(r"[0-9a-f]{64}", record["Id"]) is not None, "container-id")
+    require(re.fullmatch(HEX_64, record["Id"]) is not None, "container-id")
     require(record["Name"] == "/" + ownership.name(role), "container-name")
     labels = record["Config"]["Labels"]
     require(all(labels.get(k) == v for k, v in ownership.labels(role).items()), "container-labels")
@@ -303,12 +310,15 @@ def owned_identity(record, ownership, role):
 def inspect_allocation(record, ownership, role, image):
     cid = owned_identity(record, ownership, role)
     require(record["Image"] == image, "container-image")
-    require(record["State"]["Status"] == "created" and not record["State"]["Running"], "container-started")
+    require(record["State"]["Status"] == "created" and record["State"]["Running"] is False, "container-started")
+    require(record.get("WithinPreparationWindow") is True, "allocation-window")
     require(not record["Mounts"] and not record["Config"].get("Volumes"), "container-mounts")
     host = record["HostConfig"]
     require(host["NetworkMode"] == "none" and host["ReadonlyRootfs"] is (role == "verify"), "container-isolation")
     require(host["NanoCpus"] == 1000000000 and host["Memory"] == 512 * MIB and host["PidsLimit"] == 64, "container-limits")
-    require(host["Init"] is True and not host["Privileged"] and host["CapDrop"] == ["ALL"], "container-privilege")
+    require(host["Init"] is True and host["Privileged"] is False and host["CapDrop"] == ["ALL"], "container-privilege")
+    require(host["PidMode"] == "" and host["IpcMode"] == "private" and host["UTSMode"] == "", "container-namespace")
+    require(host["PublishAllPorts"] is False and not host.get("DeviceRequests") and not host.get("Tmpfs"), "container-extra-isolation")
     require(not host.get("CapAdd") and not host.get("Devices") and not host.get("Binds") and not host.get("PortBindings"), "container-extra-access")
     require(host["SecurityOpt"] == ["no-new-privileges:true"], "container-security")
     require(record["Config"]["Cmd"] == ["/bin/false"] and not record["Config"].get("Entrypoint"), "container-command")
@@ -321,7 +331,7 @@ def discover_owned(effects, ownership, role):
     if not candidates:
         return None
     cid = candidates[0]
-    require(re.fullmatch(r"[0-9a-f]{64}", cid) is not None, "discovered-id")
+    require(re.fullmatch(HEX_64, cid) is not None, "discovered-id")
     record = effects.inspect(cid)
     owned_identity(record, ownership, role)
     return record
@@ -333,7 +343,7 @@ def allocate(effects, ownership, role, image):
     require(not effects.discover(ownership, role), "existing-attempt-allocation")
     returned = effects.create(ownership, role, image)
     record = discover_owned(effects, ownership, role)
-    require(re.fullmatch(r"[0-9a-f]{64}", returned) is not None, "returned-id")
+    require(re.fullmatch(HEX_64, returned) is not None, "returned-id")
     require(record is not None and record["Id"] == returned, "returned-discovered-mismatch")
     effects.supervisor_ready()
     return inspect_allocation(record, ownership, role, image)
@@ -346,10 +356,13 @@ def cleanup(effects, ownership):
         try:
             record = discover_owned(effects, ownership, role)
             if record is not None:
-                cid = owned_identity(effects.inspect(record["Id"]), ownership, role)
+                final_record = effects.inspect(record["Id"])
+                cid = owned_identity(final_record, ownership, role)
                 effects.remove(cid)
+                if final_record.get("WithinPreparationWindow") is not True:
+                    problems.append("allocation-window")
             require(not effects.discover(ownership, role), "owned-survivor")
-        except (Refusal, OSError, RuntimeError):
+        except Exception:
             problems.append("cleanup-identity-or-survivor")
     if effects.uncertain_daemon_operation():
         problems.append("daemon-terminal-unknown")
@@ -357,7 +370,7 @@ def cleanup(effects, ownership):
 
 
 def verify_image(record, base_layers):
-    require(re.fullmatch(r"sha256:[0-9a-f]{64}", record["Id"]) is not None, "image-id")
+    require(re.fullmatch(IMAGE_ID, record["Id"]) is not None, "image-id")
     layers = record["RootFS"]["Layers"]
     require(layers[:-1] == base_layers and len(layers) == len(base_layers) + 1, "image-layer-chain")
     require(not record["Config"].get("Volumes") and not record["Config"].get("OnBuild"), "image-hooks")
@@ -377,7 +390,7 @@ def assemble(effects, ownership, raw, expected, base_layers):
         effects.copy_sealed(cid, sealed)
         effects.supervisor_ready()
         returned = effects.commit(cid)
-        require(re.fullmatch(r"sha256:[0-9a-f]{64}", returned) is not None, "returned-image-id")
+        require(re.fullmatch(IMAGE_ID, returned) is not None, "returned-image-id")
         image = effects.image_inspect(returned)
         require(verify_image(image, base_layers) == returned, "image-id-mismatch")
         owned_identity(effects.inspect(cid), ownership, "assemble")

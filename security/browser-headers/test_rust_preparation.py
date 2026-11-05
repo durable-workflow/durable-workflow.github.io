@@ -5,7 +5,10 @@ No seal, socket, network, service, image or container is created by this suite.
 """
 
 import copy
+import base64
 import dataclasses
+import datetime as dt
+import gzip
 import hashlib
 import io
 import json
@@ -15,6 +18,7 @@ import stat
 import tarfile
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
 import rust_preparation as prep
@@ -142,9 +146,11 @@ class FakeEffects:
 
 def allocation(cid, owner, role, image=prep.BASE_ID):
     return {"Id": cid, "Name": "/" + owner.name(role), "Image": image,
+            "WithinPreparationWindow": True,
             "Config": {"Labels": owner.labels(role), "Cmd": ["/bin/false"], "Entrypoint": None},
             "State": {"Status": "created", "Running": False}, "Mounts": [],
             "HostConfig": {"NetworkMode": "none", "ReadonlyRootfs": role == "verify",
+                           "PidMode": "", "IpcMode": "private", "UTSMode": "", "PublishAllPorts": False,
                            "NanoCpus": 1000000000, "Memory": 512 * prep.MIB,
                            "PidsLimit": 64, "Init": True, "Privileged": False,
                            "CapDrop": ["ALL"], "SecurityOpt": ["no-new-privileges:true"]}}
@@ -174,10 +180,12 @@ class InputControls(unittest.TestCase):
         self.assertEqual(len(lock["packages"]), 3)
         mutated = list(entries)
         mutated[0] = dataclasses.replace(mutated[0], data=b"changed")
+        changed_entries = tuple(mutated)
         with self.assertRaises(prep.Refusal):
-            prep.packet_from_entries(tuple(mutated))
+            prep.packet_from_entries(changed_entries)
+        shadow_entries = entries + (prep.Entry("node_modules/shadow", b"x"),)
         with self.assertRaises(prep.Refusal):
-            prep.packet_from_entries(entries + (prep.Entry("node_modules/shadow", b"x"),))
+            prep.packet_from_entries(shadow_entries)
 
     def test_archive_refuses_traversal_links_devices_duplicates_and_limits(self):
         good = archive([("package/file", b"ok", tarfile.REGTYPE)])
@@ -192,8 +200,9 @@ class InputControls(unittest.TestCase):
             [("package/f", b"a", tarfile.REGTYPE), ("package/f/child", b"b", tarfile.REGTYPE)],
         ]
         for members in bad:
+            raw = archive(members)
             with self.subTest(members=members), self.assertRaises(prep.Refusal):
-                prep.tar_entries(archive(members), "package")
+                prep.tar_entries(raw, "package")
         with mock.patch.object(prep, "TREE_LIMIT", 1), self.assertRaises(prep.Refusal):
             prep.tar_entries(good, "package")
 
@@ -238,6 +247,111 @@ class InputControls(unittest.TestCase):
             self.assertEqual(prep.main(), 78)
         output.assert_called_once()
         self.assertIsNone(prep.OPERATION_ADMISSION)
+
+    def test_dependency_archives_authenticate_the_complete_two_package_graph(self):
+        name = "playwright"
+        package = {"name": name, "version": "1.64.0", "dependencies": {"playwright-core": "1.64.0"}}
+        def compressed(value):
+            return gzip.compress(archive([("package/package.json", json.dumps(value).encode(), tarfile.REGTYPE)]))
+        raw = compressed(package)
+        record = {"resolved": "https://registry.npmjs.org/playwright/-/playwright-1.64.0.tgz", "version": "1.64.0",
+                  "integrity": "sha512-" + base64.b64encode(hashlib.sha512(raw).digest()).decode()}
+        lock = {"packages": {"node_modules/playwright": record}}
+        self.assertEqual(len(prep.dependency_entries(raw, name, lock)), 1)
+        with self.assertRaises(prep.Refusal):
+            prep.dependency_entries(raw + b"tampered", name, lock)
+        bad = compressed({**package, "optionalDependencies": {"unexpected": "1.0.0"}})
+        changed = {"packages": {"node_modules/playwright": {**record,
+                   "integrity": "sha512-" + base64.b64encode(hashlib.sha512(bad).digest()).decode()}}}
+        with self.assertRaises(prep.Refusal):
+            prep.dependency_entries(bad, name, changed)
+        with mock.patch.object(prep, "TAR_LIMIT", 2), self.assertRaises(prep.Refusal):
+            prep.dependency_entries(raw, name, lock)
+
+    def test_synthetic_zip_digest_inventory_build_and_expiry(self):
+        build = {"version": "synthetic"}
+        members = [("__build.json", json.dumps(build).encode(), tarfile.REGTYPE)]
+        members += [(f"file-{i}", b"synthetic", tarfile.REGTYPE) for i in range(483)]
+        tar = archive(members)
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as value:
+            value.writestr("artifact.tar", tar)
+        raw = output.getvalue()
+        inventory = {"build_identity": build, "files": [{"path": n, "bytes": len(b), "sha256": prep.digest(b)}
+                                                       for n, b, _kind in members]}
+        now = dt.datetime(2026, 11, 5, tzinfo=dt.timezone.utc)
+        with mock.patch.object(prep, "ZIP_BYTES", len(raw)), mock.patch.object(prep, "ZIP_SHA", prep.digest(raw)):
+            self.assertEqual(len(prep.artifact_from_zip(raw, inventory, now)), 484)
+            bad = copy.deepcopy(inventory)
+            bad["files"][0]["sha256"] = "f" * 64
+            with self.assertRaises(prep.Refusal):
+                prep.artifact_from_zip(raw, bad, now)
+            with self.assertRaises(prep.Refusal):
+                prep.artifact_from_zip(raw, inventory, now + dt.timedelta(days=2))
+            with self.assertRaises(prep.Refusal):
+                prep.artifact_from_zip(raw + b"x", inventory, now)
+
+    def test_handoff_path_swap_cannot_change_the_captured_descriptor(self):
+        with tempfile.TemporaryDirectory(prefix="dw-fd-fixture-") as directory:
+            path = Path(directory) / "synthetic.zip"
+            raw = b"authenticated fixture"
+            path.write_bytes(raw)
+            info = path.stat()
+            binding = {"uid": info.st_uid, "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode),
+                       "parent_mode": stat.S_IMODE(path.parent.stat().st_mode), "device": info.st_dev,
+                       "inode": info.st_ino, "bytes": len(raw), "sha256": prep.digest(raw)}
+            original_open = os.open
+            def swapping_open(name, *args, **kwargs):
+                fd = original_open(name, *args, **kwargs)
+                if name == "synthetic.zip":
+                    path.rename(path.with_name("old.zip"))
+                    path.write_bytes(b"replacement pathname content")
+                return fd
+            with mock.patch("os.open", side_effect=swapping_open):
+                self.assertEqual(prep.held_regular(str(path), binding), raw)
+            self.assertNotEqual(path.read_bytes(), raw)
+
+    def test_external_preloader_refuses_code_manifest_extra_and_link_before_load(self):
+        source = Path(__file__).parent
+        plan = (source / "rust-preparation-controller.md").read_text()
+        code = plan.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+        import shutil
+        import sys
+        with tempfile.TemporaryDirectory(prefix="dw-preloader-fixture-") as directory:
+            root = Path(directory)
+            names = ["rust-preparation-source.json", "rust_preparation.py", "rust_preparation_platform.py", "test_rust_preparation.py"]
+            for name in names:
+                shutil.copyfile(source / name, root / name)
+            def check(error=None):
+                with mock.patch.dict("sys.modules"), mock.patch.object(sys, "argv", ["preloader", directory]), \
+                        mock.patch("builtins.print"), mock.patch("subprocess.Popen", side_effect=AssertionError("process")), \
+                        mock.patch("os.memfd_create", side_effect=AssertionError("seal")):
+                    if error:
+                        with self.assertRaisesRegex(RuntimeError, error):
+                            exec(code, {})
+                    else:
+                        with self.assertRaises(SystemExit) as result:
+                            exec(code, {})
+                        self.assertEqual(result.exception.code, 78)
+            check()
+            target = root / "rust_preparation.py"
+            original = target.read_bytes()
+            target.write_bytes(b"raise AssertionError('unverified code loaded')\n")
+            check("source-member-hash")
+            target.write_bytes(original)
+            target.unlink()
+            target.symlink_to(source / "rust_preparation.py")
+            with self.assertRaises(OSError):
+                check()
+            target.unlink()
+            target.write_bytes(original)
+            extra = root / "json.py"
+            extra.write_bytes(b"raise AssertionError('shadow imported')")
+            check("source-closure")
+            extra.unlink()
+            target = root / "rust-preparation-source.json"
+            target.write_bytes(target.read_bytes() + b"\n")
+            check("source-manifest-hash")
 
 
 class LifecycleControls(unittest.TestCase):
@@ -340,6 +454,17 @@ class LifecycleControls(unittest.TestCase):
                 prep.allocate(effects, self.owner, "assemble", prep.BASE_ID)
             self.assertEqual(effects.containers, {})
 
+    def test_late_owned_allocation_is_refused_for_use_but_cleanup_still_removes_it(self):
+        effects = FakeEffects()
+        effects.register()
+        record = allocation("f" * 64, self.owner, "assemble")
+        record["WithinPreparationWindow"] = False
+        effects.containers[record["Id"]] = record
+        with self.assertRaises(prep.Refusal):
+            prep.inspect_allocation(record, self.owner, "assemble", prep.BASE_ID)
+        self.assertEqual(prep.cleanup(effects, self.owner), ("allocation-window",))
+        self.assertEqual(effects.containers, {})
+
 
 class MemoryKernel:
     def __init__(self):
@@ -391,11 +516,12 @@ class PlatformControls(unittest.TestCase):
         directory = Path(__file__).parent
         modules = {name: (directory / (name + ".py")).read_bytes()
                    for name in ("rust_preparation", "rust_preparation_platform")}
+        stub = native.unit_stub(modules)
         with mock.patch.dict("sys.modules"), mock.patch("builtins.print"), \
                 mock.patch("subprocess.Popen", side_effect=AssertionError("unexpected process")), \
                 mock.patch("os.memfd_create", side_effect=AssertionError("unexpected seal")):
             with self.assertRaises(SystemExit) as result:
-                exec(native.unit_stub(modules), {})
+                exec(stub, {})
             self.assertEqual(result.exception.code, 78)
 
     def test_real_seal_logic_uses_fake_kernel_and_refuses_mutation_missing_flags(self):
@@ -447,9 +573,9 @@ class PlatformControls(unittest.TestCase):
         values = {"ActiveState": "active", "RuntimeMaxUSec": 600000000,
                   "TimeoutStopUSec": 15000000, "KillMode": "control-group", "Restart": "no",
                   "MemoryMax": 1024 * prep.MIB, "TasksMax": 64, "UMask": 0o77,
-                  "CPUQuotaPerSecUSec": 1000000}
+                  "CPUQuotaPerSecUSec": 1000000, "MainPID": os.getpid()}
         for key, mode in (("ExecStart", "worker"), ("ExecStopPost", "cleanup")):
-            values[key] = [[native.PYTHON, native.unit_argv(mode, {}, runtime, modules)]]
+            values[key] = [[native.ENV, native.unit_argv(mode, {}, runtime, modules)]]
         def value(_runner, _path, _interface, name):
             return values[name]
         with mock.patch.object(native, "service_path", return_value="/synthetic-unit"), \
@@ -462,6 +588,98 @@ class PlatformControls(unittest.TestCase):
                 with self.subTest(name=name), self.assertRaises(prep.Refusal):
                     native.check_supervisor(None, {}, runtime, modules)
                 values[name] = original
+
+    def test_unit_environment_is_cleared_before_both_interpreters(self):
+        runtime = {"nonce": "a" * 64, "deadline": 1}
+        modules = {"rust_preparation": b"source", "rust_preparation_platform": b"platform"}
+        for mode in ("worker", "cleanup"):
+            argv = native.unit_argv(mode, {"staging_path": "/synthetic"}, runtime, modules)
+            self.assertEqual(argv[:2], [native.ENV, "-i"])
+            self.assertLess(argv.index("-i"), argv.index(native.PYTHON))
+            self.assertIn("HOME=/synthetic/home", argv)
+            self.assertIn("-S", argv)
+
+    def test_readback_refuses_owner_and_permission_drift_not_just_file_bytes(self):
+        output = io.BytesIO()
+        with tarfile.open(fileobj=output, mode="w") as value:
+            info = tarfile.TarInfo("packet/file")
+            info.uid = info.gid = 1000
+            info.mode = 0o444
+            info.size = 1
+            value.addfile(info, io.BytesIO(b"x"))
+        raw = output.getvalue()
+        native.validate_readback_metadata(raw)
+        for owner, mode in ((0, 0o444), (1000, 0o644)):
+            changed = io.BytesIO()
+            with tarfile.open(fileobj=changed, mode="w") as value:
+                info.uid = owner
+                info.mode = mode
+                value.addfile(info, io.BytesIO(b"x"))
+            with self.assertRaises(prep.Refusal):
+                native.validate_readback_metadata(changed.getvalue())
+
+    def test_capture_and_transport_happen_only_after_supervisor_readback(self):
+        events = []
+        class Effects:
+            def __init__(self, *_args):
+                pass
+            def supervisor_ready(self):
+                events.append("supervised")
+        def transport(*_args):
+            events.append("transport")
+            raise prep.Refusal("fixture-stop")
+        with mock.patch.object(native, "runtime_identity"), mock.patch.object(native, "LiveEffects", Effects), \
+                mock.patch.object(native, "create_transport", side_effect=transport):
+            with self.assertRaises(prep.Refusal):
+                native.run_worker({}, {"nonce": "a" * 64}, {})
+        self.assertEqual(events, ["supervised", "transport"])
+
+    def test_cleanup_entrypoint_requires_actual_stop_pid_and_exact_captured_command(self):
+        runtime = {"nonce": "a" * 64, "deadline": 1}
+        modules = {"rust_preparation": b"source", "rust_preparation_platform": b"platform"}
+        values = {"ControlPID": os.getpid(), "ActiveState": "deactivating",
+                  "ExecStopPost": [[native.ENV, native.unit_argv("cleanup", {}, runtime, modules)]]}
+        def value(_runner, _path, _interface, name):
+            return values[name]
+        with mock.patch.object(native, "service_path", return_value="/synthetic-unit"), \
+                mock.patch.object(native, "bus_value", side_effect=value):
+            native.check_stop_authority(None, {}, runtime, modules)
+            for field, wrong in (("ControlPID", -1), ("ActiveState", "active"), ("ExecStopPost", [])):
+                original = values[field]
+                values[field] = wrong
+                with self.subTest(field=field), self.assertRaises(prep.Refusal):
+                    native.check_stop_authority(None, {}, runtime, modules)
+                values[field] = original
+
+    def test_admission_binds_fresh_metadata_modes_subject_and_executor(self):
+        now = dt.datetime(2026, 11, 5, tzinfo=dt.timezone.utc)
+        binding = {"path": "/synthetic/zip", "uid": os.getuid(), "gid": os.getgid(), "mode": 0o600,
+                   "parent_mode": 0o700, "bytes": prep.ZIP_BYTES, "sha256": prep.ZIP_SHA}
+        metadata = {**prep.SUBJECT, "deployment_id": 7564108107, "event": "push", "branch": "main",
+                    "attempt": 1, "run_conclusion": "success", "deployment_state": "success"}
+        spec = {"artifact_handoff": binding, "packet_bindings": {name: dict(binding) for name in
+                (*prep.PACKET_MEMBERS, "rust-local-browser-packet.json")}, "staging_path": "/synthetic/staging",
+                "uid": os.getuid(), "gid": os.getgid(), "docker_root": "/synthetic/docker",
+                "metadata_at": now.isoformat(), "metadata_expires": prep.SUBJECT_EXPIRY, "metadata_subject": metadata,
+                "live_build_sha256": "3e8d1827d1df8bf3c47ee8f0efcbd2f3692cb1bd8741f40c1271ef5c74f4a183",
+                "python_sha256": "f" * 64, "env_sha256": "e" * 64}
+        native.admission(spec, now)
+        invalid = []
+        bad = copy.deepcopy(spec)
+        bad["metadata_at"] = (now - dt.timedelta(minutes=10)).isoformat()
+        invalid.append(bad)
+        bad = copy.deepcopy(spec)
+        bad["metadata_subject"]["artifact_id"] = 1
+        invalid.append(bad)
+        bad = copy.deepcopy(spec)
+        bad["artifact_handoff"]["mode"] = 0o666
+        invalid.append(bad)
+        bad = copy.deepcopy(spec)
+        bad["uid"] += 1
+        invalid.append(bad)
+        for candidate in invalid:
+            with self.assertRaises(prep.Refusal):
+                native.admission(candidate, now)
 
 
 if __name__ == "__main__":
