@@ -857,3 +857,7 @@ div[class*='codeBlockContainer'] button { color: #e8edea; background: #172019; b
 [data-theme='dark'] .dw-status-pill[data-status='degraded'] { color: #f5c575; background: #352b19; }
 [data-theme='dark'] .dw-status-pill[data-status='incident'], [data-theme='dark'] .dw-status-pill[data-status='unavailable'] { color: #ffb4ab; background: #3b2423; }
 [data-theme='dark'] .dw-status-pill[data-status='maintenance'] { color: #becbfa; background: #232c43; }
+@media (max-width: 360px) {
+  .dw-global-navigation, .dw-docs-toolbar { padding-left: .75rem; padding-right: .75rem; }
+  .dw-docs-search .navbar__search-input { width: 7rem; }
+}
