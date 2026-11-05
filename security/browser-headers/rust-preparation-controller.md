@@ -5,18 +5,20 @@ This implements the source-only commission after
 The [reviewed design](rust-preparation-proposal.md) remains authoritative.
 `rust_preparation.py` contains input authentication and allocation/cleanup
 rules. `rust_preparation_platform.py` contains the guarded Linux adapter.
+`rust_preparation_authority.py` verifies a separately reviewed installed-tool,
+runtime, manager and daemon catalog; no real catalog is supplied or admitted.
 `test_rust_preparation.py` exercises them with synthetic files/archives,
 in-memory seal operations, a fake daemon and a fake service manager.
 
-**Operational admission remains `None`.** CLI and native entrypoints refuse
+**Operational and installed-authority admissions remain `None`.** CLI and native entrypoints refuse
 before any acquisition, memory seal, service, Docker/image, Node/browser or
 provider effect. There is no command-line or environment bypass. The source
 does not accept a real handoff, prepare an image or qualify the host runtime.
 No controller invocation or filesystem path is approved by these source files.
-The current suite has 31 test methods, including the per-edge fault subcases.
-Security's source/executable HOLD remains in force. Durable mutation identity
-binding and descriptor-relative cleanup have new regression controls; installed
-authority and the joined terminal collector are still being completed.
+The current suite has 39 test methods, including the per-edge fault subcases.
+Security's source/executable HOLD remains in force pending review of these
+corrections: durable mutation binding, descriptor cleanup, installed authority
+and the joined terminal collector.
 
 Run the source controls with Python 3.11 or later on Linux:
 
@@ -50,8 +52,8 @@ reopen a verified code path, or add modules to the execution closure.
 
 The following literal preloader is source-only and is **not an operation
 invocation**. Copy it from the reviewed GitHub record, never an unverified task
-file. Its directory argument must contain only the manifest and its three
-members. It authenticates all members before compiling either controller module
+file. Its directory argument must contain only the manifest and its four
+members. It authenticates all members before compiling the three controller modules
 and refuses an operational admission value. No such staging directory is
 created here. The current trusted manifest SHA is pinned in the code below.
 
@@ -65,7 +67,7 @@ if not (root.is_absolute() and root.resolve() == root and root.is_dir()):
     raise RuntimeError('source-root')
 if root.is_relative_to(Path(pwd.getpwuid(os.getuid()).pw_dir)):
     raise RuntimeError('source-home')
-names = {'rust_preparation.py', 'rust_preparation_platform.py', 'test_rust_preparation.py'}
+names = {'rust_preparation.py', 'rust_preparation_platform.py', 'rust_preparation_authority.py', 'test_rust_preparation.py'}
 root_fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY)
 try:
     for part in root.parts[1:]:
@@ -92,11 +94,11 @@ def capture(name, limit):
         os.close(fd)
 try:
     raw = capture('rust-preparation-source.json', 16384)
-    expected_manifest = 'b088dde1c3595e377a782fd34c130cf2e1b63fe1c53f0d02973a374e603dd026'
+    expected_manifest = '1c0ff6e5e956dba6286debb8eea5cda2ce981518ab55d10d7bd2b3a7be856157'
     if hashlib.sha256(raw).hexdigest() != expected_manifest:
         raise RuntimeError('source-manifest-hash')
     manifest = json.loads(raw)
-    if manifest['status'] != 'source-only' or manifest['operation_admission'] is not None or set(manifest['files']) != names:
+    if manifest['status'] != 'source-only' or manifest['operation_admission'] is not None or manifest['installed_authority_admission'] is not None or set(manifest['files']) != names:
         raise RuntimeError('source-status')
     captured = {name: capture(name, 262144) for name in names}
     if any(hashlib.sha256(captured[n]).hexdigest() != manifest['files'][n] for n in names):
@@ -104,15 +106,16 @@ try:
 finally:
     os.close(root_fd)
 modules = {}
-for name in ('rust_preparation', 'rust_preparation_platform'):
+for name in ('rust_preparation', 'rust_preparation_authority', 'rust_preparation_platform'):
     module = types.ModuleType(name)
     sys.modules[name] = module
     exec(compile(captured[name + '.py'], '<verified-preparation-source>', 'exec'), module.__dict__)
     modules[name] = module
 controller = modules['rust_preparation']
 controller._VERIFIED_MODULES = {n: captured[n + '.py'] for n in modules}
+modules['rust_preparation_authority'].VERIFIED_SOURCE_SHA256 = hashlib.sha256(captured['rust_preparation_authority.py']).hexdigest()
 modules['rust_preparation_platform'].VERIFIED_SOURCE_SHA256 = hashlib.sha256(captured['rust_preparation_platform.py']).hexdigest()
-if controller.OPERATION_ADMISSION is not None:
+if controller.OPERATION_ADMISSION is not None or modules['rust_preparation_authority'].AUTHORITY_ADMISSION is not None:
     raise RuntimeError('operation-remains-held')
 sys.argv = ['<verified-controller>']
 raise SystemExit(controller.cli())
@@ -121,12 +124,14 @@ PY
 
 Only a separately reviewed source/invocation change can bind
 `OPERATION_ADMISSION` to the canonical admitted-spec SHA-256. No such hash is
-set. The external preloader supplies the two authenticated module byte buffers
-as `_VERIFIED_MODULES` and installs the platform module from those buffers,
+set. Installed authority requires its own independently reviewed manifest hash
+in `AUTHORITY_ADMISSION`; no such manifest or hash is supplied. The external
+preloader supplies the three authenticated module byte buffers
+as `_VERIFIED_MODULES` and installs the authority/platform modules from those buffers,
 binding `VERIFIED_SOURCE_SHA256` before `cli()`. Normal source tests do not do
 this with operational admission enabled.
 
-The future unit command captures both verified module buffers in its argument
+The future unit command captures all three verified module buffers in its argument
 payload. Worker and independent stop command compile those captured bytes,
 with isolated Python, site startup disabled and no bytecode writes. They do not
 read controller code from mutable host paths after registration. Effective unit
@@ -157,7 +162,37 @@ ownership record, and uses held descriptors for enumeration and deletion.
 A namespace swap preserves the replacement tree and returns unresolved evidence.
 The original directory's device/inode remains the bound identity throughout.
 
-The worker's image receipt explicitly leaves cleanup pending. Independent stop
-cleanup must complete before preparation acceptance. Derived images remain
-local and reviewed by full content ID; no browser execution or publication
-follows. All public policy flags remain false and browser outcome not-run.
+The installed-authority manifest must come from an independent complete-loader
+and package review. It binds a boot generation, exact entry aliases and resolved
+ELF bytes for Python, env, Docker, busctl and systemd-run; full catalog membership
+and bytes for their reviewed library/runtime roots; loader configuration and
+package receipts; and the complete effective isolated Python search path.
+Every tool must use the whole pinned catalog. Additional members, changed bytes,
+an unbound search root or an incomplete outer receipt refuse use. Root-owned
+non-writable files and ancestors are required. Repeated reads cache hashes only
+under unchanged kernel metadata, while reopening files and checking membership.
+The initial isolated interpreter and this observer still require the outer
+trusted runtime review before they may consume that manifest.
+
+Both worker and stop repeat this installed identity check. Manager/daemon PIDs,
+start ticks, user IDs, executable and loaded-file paths bind the processes;
+the manager's actual D-Bus owner PID and the Docker socket's kernel peer PID
+must match. Command execution uses a checked open ELF descriptor. Socket,
+catalog or process replacement refuses further native requests. This is an
+implementation for later exact host review, not acceptance of any installed
+host/runtime, package catalog, service-manager or daemon instance.
+
+The worker's image receipt explicitly leaves cleanup pending. The independent
+launcher waits for the unit and captures both worker and stop output through
+finite pipes, then joins exactly two terminal records. It binds invocation,
+attempt/source/authority/command hashes and distinct main/control PIDs; actual
+worker exit and cleanup status; exact base/dependency identities; seal proof,
+image/config/layer identities and readback; durably bound operations; no pending
+work or owned survivors; foreign-container preservation; and transport removal.
+Lost/duplicate/spliced output, nonzero wait, malformed identities or unresolved
+cleanup cannot yield a preparation receipt. Collector loss leaves no acceptance;
+independent stop cleanup remains the service manager's responsibility.
+
+Only that combined receipt can report prepared inputs. Derived images remain
+local and bound by full content ID. No browser execution or publication follows.
+All public policy flags remain false and browser outcome not-run.

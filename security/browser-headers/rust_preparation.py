@@ -54,6 +54,10 @@ TREE_LIMIT = 64 * MIB
 TAR_LIMIT = 128 * MIB
 HEX_64 = r"[0-9a-f]{64}"
 IMAGE_ID = r"sha256:[0-9a-f]{64}"
+DEPENDENCY_INTEGRITY = {
+    "playwright": "sha512-kVzTnYFYEyQ9RGzBjNCd2+yEqWmVbxl3AHPynv3qQ6JTjv4a+kwRcnqQwIpuP3NnrnIrE/Q6wWAIAvMfIE2/Yg==",
+    "playwright-core": "sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==",
+}
 
 
 class Refusal(RuntimeError):
@@ -409,6 +413,82 @@ def assemble(effects, ownership, raw, expected, base_layers):
         sealed.close()
 
 
+def terminal_process_binding(records, expected):
+    for record in records:
+        require(record["schema"] == "durable-workflow.preparation-stage/v1", "terminal-stage-schema")
+        for key in ("unit", "attempt_sha256", "source_bundle_sha256", "authority_sha256"):
+            require(record[key] == expected[key], "terminal-binding-drift")
+        require(re.fullmatch(r"[0-9a-f]{32}", record["invocation_id"]) is not None, "terminal-invocation")
+        require(type(record["pid"]) is int and record["pid"] > 1, "terminal-pid")
+    worker = next(r for r in records if r["role"] == "worker")
+    stop = next(r for r in records if r["role"] == "stop")
+    require(worker["invocation_id"] == stop["invocation_id"], "terminal-unit-generation")
+    require(worker["command_sha256"] == expected["worker_command_sha256"]
+            and stop["command_sha256"] == expected["stop_command_sha256"], "terminal-command")
+    require(stop["worker_pid"] == worker["pid"] and stop["pid"] != worker["pid"], "terminal-worker-stop-pid")
+    statuses = [stop[k] for k in ("worker_exit_code", "worker_exit_status", "cleanup_exit_status")]
+    require(all(type(v) is int for v in statuses) and statuses == [1, 0, 0], "terminal-worker-stop-status")
+    require(worker["outcome"] == "prepared-cleanup-pending" and stop["outcome"] == "complete", "terminal-stage-outcome")
+    return worker, stop
+
+
+def terminal_input_binding(worker, expected):
+    require(worker["subject"] == SUBJECT and worker["node_packet_sha256"] == PACKET_SHA, "terminal-subject")
+    require(worker["base_image_id"] == BASE_ID, "terminal-base")
+    require(re.fullmatch(HEX_64, worker["input_tar_sha256"]) is not None, "terminal-input-tar")
+    require(worker["seal"]["sha256"] == worker["input_tar_sha256"]
+            and worker["seal"]["flags"] == expected["seal_flags"], "terminal-seal")
+    require(re.fullmatch(IMAGE_ID, worker["image"]["id"]) is not None
+            and worker["image"]["config_sha256"] == worker["image"]["id"][7:], "terminal-image")
+    require(worker["image"]["layers"][:-1] == worker["base_layers"]
+            and len(worker["image"]["layers"]) == len(worker["base_layers"]) + 1, "terminal-image-layers")
+    require(worker["base_layers"] and all(re.fullmatch(IMAGE_ID, layer) is not None
+            for layer in worker["image"]["layers"]), "terminal-layer-identities")
+    require(worker["readback_verified"] is True and re.fullmatch(HEX_64, worker["readback_sha256"]) is not None, "terminal-readback")
+    require(set(worker["dependencies"]) == {"playwright", "playwright-core"}, "terminal-dependencies")
+    for name, dependency in worker["dependencies"].items():
+        require(dependency["version"] == "1.64.0" and dependency["integrity"] == DEPENDENCY_INTEGRITY[name]
+                and re.fullmatch(HEX_64, dependency["sha256"]) is not None, "terminal-dependency-identity")
+
+
+def terminal_cleanup_binding(worker, stop, expected):
+    require(stop["pending"] is False and stop["owned_survivors"] == [] and stop["problems"] == [], "terminal-unresolved-work")
+    require(stop["transport_removed"] is True and stop["foreign_preserved"] is True, "terminal-cleanup")
+    require(worker["foreign_before_sha256"] == stop["foreign_before_sha256"], "terminal-foreign-baseline")
+    require(re.fullmatch(HEX_64, worker["foreign_before_sha256"]) is not None, "terminal-foreign-baseline-hash")
+    operations = stop["operation_results"]
+    require([r["operation"] for r in operations] == ["pull", "create-assemble", "copy", "commit", "create-verify"], "terminal-operation-closure")
+    require(all(r["attempt_sha256"] == expected["attempt_sha256"] for r in operations), "terminal-operation-attempt")
+    commit = operations[3]["identity"]
+    require(commit == {"image_id": worker["image"]["id"], "config_sha256": worker["image"]["config_sha256"],
+                       "rootfs_layers": worker["image"]["layers"]}, "terminal-commit-binding")
+    require(operations[0]["identity"] == {"base_image_id": BASE_ID, "rootfs_layers": worker["base_layers"]}, "terminal-pull-binding")
+    require(operations[2]["identity"]["input_tar_sha256"] == worker["input_tar_sha256"], "terminal-copy-binding")
+    assembler, verifier = (operations[i]["identity"]["container_id"] for i in (1, 4))
+    require(re.fullmatch(HEX_64, assembler) is not None and re.fullmatch(HEX_64, verifier) is not None
+            and assembler != verifier and operations[2]["identity"]["container_id"] == assembler, "terminal-container-binding")
+
+
+def collect_terminal(raw, expected, wait_exit_code):
+    """Independent join; neither a worker line nor launch success is acceptance."""
+    require(type(wait_exit_code) is int and wait_exit_code == 0, "unit-wait-failed")
+    require(type(raw) is bytes and len(raw) <= MIB, "terminal-receipt-limit")
+    records = [strict_json(line) for line in raw.splitlines() if line.strip()]
+    require(len(records) == 2 and all(type(r) is dict for r in records)
+            and {r.get("role") for r in records} == {"worker", "stop"}, "terminal-record-pair")
+    worker, stop = terminal_process_binding(records, expected)
+    terminal_input_binding(worker, expected)
+    terminal_cleanup_binding(worker, stop, expected)
+    return {"schema": "durable-workflow.preparation-terminal/v1", "outcome": "prepared-inputs-only",
+            "unit": expected["unit"], "invocation_id": worker["invocation_id"], "attempt_sha256": expected["attempt_sha256"],
+            "source_bundle_sha256": expected["source_bundle_sha256"], "authority_sha256": expected["authority_sha256"],
+            "worker_pid": worker["pid"], "stop_pid": stop["pid"], "unit_wait_exit": 0,
+            "subject": SUBJECT, "base_image_id": BASE_ID, "dependencies": worker["dependencies"],
+            "seal": worker["seal"], "image": worker["image"], "readback_sha256": worker["readback_sha256"],
+            "pending": False, "owned_survivors": [], "foreign_preserved": True, "transport_removed": True,
+            "browser": "not-run", "provider": "not-run", "compatibility_accepted": False, "rollout_approved": False}
+
+
 def main():
     # Enabling this requires a separately reviewed exact source/invocation change.
     # There is deliberately no command-line/environment override for admission.
@@ -416,12 +496,15 @@ def main():
         print("Preparation admission is unset; source controls only.")
         return 78
     modules = globals().get("_VERIFIED_MODULES")
-    require(type(modules) is dict and set(modules) == {"rust_preparation", "rust_preparation_platform"}, "external-source-verification-required")
+    require(type(modules) is dict and set(modules) == {"rust_preparation", "rust_preparation_authority", "rust_preparation_platform"}, "external-source-verification-required")
     # The external preloader installs the authenticated platform module from its
     # captured bytes, before calling main. Never resolve it from a worktree.
     platform = sys.modules.get("rust_preparation_platform")
     require(platform is not None and getattr(platform, "VERIFIED_SOURCE_SHA256", None)
             == digest(modules["rust_preparation_platform"]), "platform-source-binding")
+    authority = sys.modules.get("rust_preparation_authority")
+    require(authority is not None and getattr(authority, "VERIFIED_SOURCE_SHA256", None)
+            == digest(modules["rust_preparation_authority"]), "authority-source-binding")
     return platform.entrypoint(sys.argv[1:], modules, OPERATION_ADMISSION)
 
 

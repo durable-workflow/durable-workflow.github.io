@@ -25,6 +25,7 @@ import time
 import zlib
 
 import rust_preparation as core
+import rust_preparation_authority as installed
 
 
 UNIT = core.OWNER + "-rust-preparation.service"
@@ -41,11 +42,31 @@ VERIFIED_SOURCE_SHA256 = None
 OWNERSHIP_FILE = "ownership.json"
 PENDING_FILE = "pending-operation.json"
 RESULTS_FILE = "operation-results.jsonl"
+CONTEXT_FILE = "worker-context.json"
+_HOST_AUTHORITY = None
 
 
 def admitted():
     core.require(isinstance(core.OPERATION_ADMISSION, str)
                  and re.fullmatch(core.HEX_64, core.OPERATION_ADMISSION) is not None, "preparation-unadmitted")
+
+
+def require_installed_authority():
+    admitted()
+    core.require(isinstance(_HOST_AUTHORITY, installed.HostAuthority)
+                 and _HOST_AUTHORITY.digest == installed.AUTHORITY_ADMISSION, "installed-authority-unadmitted")
+    _HOST_AUTHORITY.verify()
+    return _HOST_AUTHORITY
+
+
+def install_authority(spec):
+    admitted()
+    core.require(isinstance(installed.AUTHORITY_ADMISSION, str), "installed-authority-unadmitted")
+    binding = spec["authority_binding"]
+    raw = core.held_regular(binding["path"], binding)
+    authority = installed.HostAuthority(raw, installed.NativeObserver())
+    global _HOST_AUTHORITY
+    _HOST_AUTHORITY = authority
 
 
 def encoded(value):
@@ -60,7 +81,7 @@ def decoded(value):
 def admission(spec, now):
     required = {"artifact_handoff", "packet_bindings", "staging_path", "uid", "gid",
                 "docker_root", "metadata_at", "metadata_expires", "metadata_subject",
-                "live_build_sha256", "python_sha256", "env_sha256"}
+                "live_build_sha256", "python_sha256", "env_sha256", "authority_binding"}
     core.require(set(spec) == required, "admission-fields")
     core.require(type(spec["uid"]) is int and type(spec["gid"]) is int, "admission-owner")
     core.require((spec["uid"], spec["gid"]) == (os.getuid(), os.getgid()), "executor-owner")
@@ -101,9 +122,16 @@ class CommandRunner:
 
     def run(self, args, timeout=15, limit=core.MIB, stdin=None):
         admitted()
-        process = subprocess.Popen(args, stdin=stdin if stdin is not None else subprocess.DEVNULL,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.environment,
-                                   pass_fds=self.pass_fds)
+        authority = require_installed_authority()
+        binary = authority.open_command(args[0])
+        try:
+            process = subprocess.Popen(args, executable="/proc/self/fd/" + str(binary),
+                                       stdin=stdin if stdin is not None else subprocess.DEVNULL,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.environment,
+                                       pass_fds=tuple(set(self.pass_fds + (binary,))))
+        except BaseException:
+            os.close(binary)
+            raise
         output = bytearray()
         errors = 0
         deadline = time.monotonic() + timeout
@@ -133,11 +161,13 @@ class CommandRunner:
             process.wait()
             process.stdout.close()
             process.stderr.close()
+            os.close(binary)
 
 
 class SealKernel:
     def create(self):
         admitted()
+        require_installed_authority()
         return os.memfd_create("public-browser-input", os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING)
 
     def write(self, fd, raw):
@@ -224,15 +254,18 @@ def unit_stub(modules):
     return ("import base64,json,sys,types,zlib; "
             "s={k:base64.b64decode(v) for k,v in json.loads(zlib.decompress(base64.b64decode('" + packed + "'))).items()}; "
             "c=types.ModuleType('rust_preparation');sys.modules[c.__name__]=c;exec(compile(s[c.__name__],'<reviewed-controller>','exec'),c.__dict__); "
+            "a=types.ModuleType('rust_preparation_authority');sys.modules[a.__name__]=a;exec(compile(s[a.__name__],'<reviewed-authority>','exec'),a.__dict__); "
             "p=types.ModuleType('rust_preparation_platform');sys.modules[p.__name__]=p;exec(compile(s[p.__name__],'<reviewed-platform>','exec'),p.__dict__); "
-            "c._VERIFIED_MODULES=s;p.VERIFIED_SOURCE_SHA256=c.digest(s[p.__name__]);sys.exit(c.main())")
+            "c._VERIFIED_MODULES=s;a.VERIFIED_SOURCE_SHA256=c.digest(s[a.__name__]);p.VERIFIED_SOURCE_SHA256=c.digest(s[p.__name__]);sys.exit(c.cli())")
 
 
 def unit_argv(mode, spec, runtime, modules):
     core.require(mode in ("worker", "cleanup"), "unit-mode")
     environment = clean_environment(Path(spec.get("staging_path", "/unbound-source-fixture")))
     assignments = [name + "=" + value for name, value in sorted(environment.items())]
-    return [ENV, "-i", *assignments, PYTHON, "-I", "-S", "-B", "-c", unit_stub(modules), mode, encoded(spec), encoded(runtime)]
+    env_path = _HOST_AUTHORITY.command_path("env") if _HOST_AUTHORITY else ENV
+    python_path = _HOST_AUTHORITY.command_path("python") if _HOST_AUTHORITY else PYTHON
+    return [env_path, "-i", *assignments, python_path, "-I", "-S", "-B", "-c", unit_stub(modules), mode, encoded(spec), encoded(runtime)]
 
 
 def stop_property(argv):
@@ -256,6 +289,14 @@ def service_path(runner):
     return value["data"][0]
 
 
+def check_manager_identity(runner):
+    authority = require_installed_authority()
+    raw = runner.run([BUSCTL, "--user", "--json=short", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                      "org.freedesktop.DBus", "GetConnectionUnixProcessID", "s", SERVICE])
+    observed = core.strict_json(raw)
+    core.require(observed["type"] == "u" and observed["data"] == [authority.record["processes"]["manager"]["pid"]], "manager-interface-causality")
+
+
 def check_supervisor(runner, spec, runtime, modules):
     path = service_path(runner)
     core.require(bus_value(runner, path, UNIT_INTERFACE, "ActiveState") == "active", "unit-inactive")
@@ -266,8 +307,9 @@ def check_supervisor(runner, spec, runtime, modules):
         core.require(bus_value(runner, path, INTERFACE, name) == value, "unit-limit-drift")
     for property_name, mode in (("ExecStart", "worker"), ("ExecStopPost", "cleanup")):
         observed = bus_value(runner, path, INTERFACE, property_name)
-        core.require(len(observed) == 1 and observed[0][0] == ENV
-                     and observed[0][1] == unit_argv(mode, spec, runtime, modules), "unit-source-drift")
+        expected_argv = unit_argv(mode, spec, runtime, modules)
+        core.require(len(observed) == 1 and observed[0][0] == expected_argv[0]
+                     and observed[0][1] == expected_argv, "unit-source-drift")
     core.require(time.monotonic() < runtime["deadline"], "whole-attempt-timeout")
 
 
@@ -276,8 +318,9 @@ def check_stop_authority(runner, spec, runtime, modules):
     core.require(bus_value(runner, path, INTERFACE, "ControlPID") == os.getpid(), "cleanup-control-pid")
     core.require(bus_value(runner, path, UNIT_INTERFACE, "ActiveState") == "deactivating", "cleanup-unit-state")
     observed = bus_value(runner, path, INTERFACE, "ExecStopPost")
-    core.require(len(observed) == 1 and observed[0][0] == ENV
-                 and observed[0][1] == unit_argv("cleanup", spec, runtime, modules), "cleanup-source-authority")
+    expected_argv = unit_argv("cleanup", spec, runtime, modules)
+    core.require(len(observed) == 1 and observed[0][0] == expected_argv[0]
+                 and observed[0][1] == expected_argv, "cleanup-source-authority")
 
 
 def capacity(spec):
@@ -293,6 +336,7 @@ def capacity(spec):
 class DockerConnection(http.client.HTTPConnection):
     def connect(self):
         admitted()
+        require_installed_authority()
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(self.timeout)
         self.sock.connect("/var/run/docker.sock")
@@ -391,6 +435,14 @@ class TransportDirectory:
         os.unlink(PENDING_FILE, dir_fd=self.fd)
         os.fsync(self.fd)
 
+    def write_context(self, value):
+        descriptor = os.open(CONTEXT_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=self.fd)
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(json.dumps(value, sort_keys=True).encode())
+            file.flush()
+            os.fsync(file.fileno())
+        os.fsync(self.fd)
+
     def results(self):
         if not self.exists(RESULTS_FILE):
             return []
@@ -404,6 +456,8 @@ class TransportDirectory:
         expected = {"home", "docker", OWNERSHIP_FILE}
         if self.exists(RESULTS_FILE):
             expected.add(RESULTS_FILE)
+        if self.exists(CONTEXT_FILE):
+            expected.add(CONTEXT_FILE)
         core.require(set(os.listdir(self.fd)) == expected, "transport-extra-or-pending")
         children = {}
         try:
@@ -414,7 +468,7 @@ class TransportDirectory:
             core.require(os.listdir(children["home"]) == [], "transport-home-extra")
             core.require(os.listdir(children["docker"]) == ["config.json"], "transport-config-extra")
             os.unlink("config.json", dir_fd=children["docker"])
-            for name in (OWNERSHIP_FILE, RESULTS_FILE):
+            for name in (OWNERSHIP_FILE, RESULTS_FILE, CONTEXT_FILE):
                 if self.exists(name):
                     os.unlink(name, dir_fd=self.fd)
             for name in ("home", "docker"):
@@ -437,6 +491,7 @@ class LiveEffects:
         self.ownership = core.Ownership(runtime["nonce"])
 
     def supervisor_ready(self):
+        check_manager_identity(self.runner)
         check_supervisor(self.runner, self.spec, self.runtime, self.modules)
         capacity(self.spec)
         core.require(not self.uncertain_daemon_operation(), "daemon-terminal-unknown")
@@ -512,7 +567,22 @@ class LiveEffects:
         return self.require_transport().exists(PENDING_FILE)
 
     def seal(self, raw):
-        return Seal(raw)
+        sealed = Seal(raw)
+        try:
+            self.seal_proof = {"sha256": sealed.verified_hash(), "flags": sealed.flags}
+            return sealed
+        except BaseException:
+            sealed.close()
+            raise
+
+    def foreign_snapshot(self):
+        raw = self.command(["container", "ls", "--all", "--no-trunc", "--format", "{{.ID}}\t{{.Names}}"])
+        result = {}
+        for line in raw.decode("utf-8").splitlines():
+            cid, name = line.split("\t")
+            core.require(re.fullmatch(core.HEX_64, cid) is not None and cid not in result, "foreign-snapshot")
+            result[cid] = name
+        return result
 
     def require_safe_prefixes(self, cid):
         for path in ("/packet", "/site", "/runtime"):
@@ -585,8 +655,38 @@ def packet_capture(spec):
 
 
 def runtime_identity(spec):
+    require_installed_authority()
     core.require((os.getuid(), os.getgid()) == (spec["uid"], spec["gid"]), "effective-executor")
     core.require(core.digest(Path("/proc/self/exe").read_bytes()) == spec["python_sha256"], "effective-interpreter")
+
+
+def expected_receipt(spec, runtime, modules):
+    authority = require_installed_authority()
+    source_hashes = {name: core.digest(raw) for name, raw in modules.items()}
+    return {"unit": UNIT, "attempt_sha256": core.digest(runtime["nonce"].encode()),
+            "source_bundle_sha256": core.digest(installed.canonical_bytes(source_hashes)),
+            "authority_sha256": authority.digest,
+            "worker_command_sha256": core.digest(installed.canonical_bytes(unit_argv("worker", spec, runtime, modules))),
+            "stop_command_sha256": core.digest(installed.canonical_bytes(unit_argv("cleanup", spec, runtime, modules))),
+            "seal_flags": fcntl.F_SEAL_WRITE | fcntl.F_SEAL_GROW | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_SEAL}
+
+
+def stage_receipt(role, runner, spec, runtime, modules):
+    expected = expected_receipt(spec, runtime, modules)
+    path = service_path(runner)
+    invocation = bus_value(runner, path, UNIT_INTERFACE, "InvocationID")
+    core.require(isinstance(invocation, list) and len(invocation) == 16 and any(invocation), "unit-invocation-id")
+    return {"schema": "durable-workflow.preparation-stage/v1", "role": role,
+            "unit": UNIT, "attempt_sha256": expected["attempt_sha256"],
+            "source_bundle_sha256": expected["source_bundle_sha256"], "authority_sha256": expected["authority_sha256"],
+            "pid": os.getpid(), "invocation_id": bytes(invocation).hex(),
+            "command_sha256": expected["worker_command_sha256" if role == "worker" else "stop_command_sha256"]}
+
+
+def entry_inventory_sha256(entries):
+    rows = [{"path": e.path, "bytes": len(e.data), "sha256": core.digest(e.data), "mode": e.mode}
+            for e in sorted(entries, key=lambda entry: entry.path)]
+    return core.digest(installed.canonical_bytes(rows))
 
 
 def run_worker(spec, runtime, modules):
@@ -594,6 +694,11 @@ def run_worker(spec, runtime, modules):
     effects = LiveEffects(spec, runtime, modules)
     effects.supervisor_ready()
     create_transport(spec, runtime["nonce"])
+    effects.require_transport()
+    stage = stage_receipt("worker", effects.runner, spec, runtime, modules)
+    foreign_before = effects.foreign_snapshot()
+    effects.require_transport().write_context({"foreign_before": foreign_before, "worker_pid": os.getpid(),
+                                               "invocation_id": stage["invocation_id"]})
     packet = packet_capture(spec)
     inventory, lock = core.packet_from_entries(packet)
     binding = spec["artifact_handoff"]
@@ -601,15 +706,26 @@ def run_worker(spec, runtime, modules):
                                       dt.datetime.now(dt.timezone.utc))
     core.require(set(lock["packages"]) == {"", "node_modules/playwright", "node_modules/playwright-core"}, "lock-closure")
     dependencies = ()
+    dependency_receipts = {}
     for name in ("playwright", "playwright-core"):
         effects.supervisor_ready()
-        dependencies += core.dependency_entries(fetch_dependency(name, effects.runner), name, lock)
+        package_raw = fetch_dependency(name, effects.runner)
+        dependencies += core.dependency_entries(package_raw, name, lock)
+        dependency_receipts[name] = {"version": "1.64.0", "integrity": lock["packages"]["node_modules/" + name]["integrity"],
+                                     "sha256": core.digest(package_raw)}
     raw, expected = core.public_tar(packet, artifact, dependencies)
     layers = effects.acquire_base()
     image = core.assemble(effects, effects.ownership, raw, expected, layers)
-    print(json.dumps({"scope": "prepared-public-input-image-only", "image_id": image,
-                      "input_tar_sha256": core.digest(raw), "files": len(expected),
-                      "cleanup": "pending-independent-stop-path", "browser": "not-run"}))
+    image_record = effects.image_inspect(image)
+    core.require(core.verify_image(image_record, layers) == image, "final-image-readback")
+    stage.update({"outcome": "prepared-cleanup-pending", "subject": core.SUBJECT,
+                  "node_packet_sha256": core.PACKET_SHA, "base_image_id": core.BASE_ID,
+                  "base_layers": layers, "dependencies": dependency_receipts, "seal": effects.seal_proof,
+                  "image": {"id": image, "config_sha256": image[7:], "layers": image_record["RootFS"]["Layers"]},
+                  "readback_sha256": entry_inventory_sha256(expected), "readback_verified": True,
+                  "input_tar_sha256": core.digest(raw), "files": len(expected),
+                  "foreign_before_sha256": core.digest(installed.canonical_bytes(foreign_before))})
+    print(json.dumps(stage, sort_keys=True))
     return 0
 
 
@@ -645,20 +761,25 @@ def launch(spec, modules):
     runtime = {"nonce": nonce, "deadline": time.monotonic() + RUNTIME_LIMIT,
                "started_at": dt.datetime.now(dt.timezone.utc).isoformat()}
     runner = CommandRunner(clean_environment(Path(spec["staging_path"])))
+    check_manager_identity(runner)
     source = Path(PYTHON).read_bytes()
     core.require(core.digest(source) == spec["python_sha256"], "interpreter-identity")
     core.require(core.digest(Path(ENV).read_bytes()) == spec["env_sha256"], "environment-launcher-identity")
     core.require(not Path(spec["staging_path"]).exists() and not Path(spec["staging_path"]).is_symlink(), "transport-preexisting")
     worker = unit_argv("worker", spec, runtime, modules)
     stop = unit_argv("cleanup", spec, runtime, modules)
-    args = [SYSTEMD_RUN, "--user", "--unit=" + UNIT, "--expand-environment=no", "--description=bounded-public-input-preparation",
+    args = [SYSTEMD_RUN, "--user", "--wait", "--pipe", "--quiet", "--unit=" + UNIT, "--expand-environment=no", "--description=bounded-public-input-preparation",
             "--property=Type=exec", "--property=RuntimeMaxSec=600", "--property=TimeoutStopSec=15",
             "--property=KillMode=control-group", "--property=Restart=no", "--property=CPUQuota=100%",
             "--property=MemoryMax=1G", "--property=TasksMax=64", "--property=UMask=0077",
             "--property=" + stop_property(stop), *worker]
     # No pull/create occurs in this launcher. The worker reads back the installed
     # independent stop command and effective bounds before its first operation.
-    runner.run(args, timeout=15)
+    # This observer is outside worker/stop. Missing/failed wait or collector loss
+    # produces no acceptance; systemd still owns independent bounded cleanup.
+    raw = runner.run(args, timeout=RUNTIME_LIMIT + 15, limit=core.MIB)
+    receipt = core.collect_terminal(raw, expected_receipt(spec, runtime, modules), 0)
+    print(json.dumps(receipt, sort_keys=True))
     return 0
 
 
@@ -667,6 +788,7 @@ def entrypoint(argv, modules, admitted_hash):
     core.require(len(argv) == (2 if argv[0] == "launch" else 3), "controller-arguments")
     spec = decoded(argv[1])
     core.require(core.digest(json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()) == admitted_hash, "unadmitted-invocation")
+    install_authority(spec)
     if argv[0] != "cleanup":
         admission(spec, dt.datetime.now(dt.timezone.utc))
     if argv[0] == "launch":
@@ -676,12 +798,45 @@ def entrypoint(argv, modules, admitted_hash):
     if argv[0] == "worker":
         return run_worker(spec, runtime, modules)
     runner = CommandRunner(clean_environment(Path(spec["staging_path"])))
+    runtime_identity(spec)
+    check_manager_identity(runner)
     check_stop_authority(runner, spec, runtime, modules)
+    original_runtime = runtime
     runtime = {**runtime, "deadline": time.monotonic() + 12}
     effects = LiveEffects(spec, runtime, modules)
+    stage = stage_receipt("stop", runner, spec, original_runtime, modules)
+    path = service_path(runner)
+    worker_pid = bus_value(runner, path, INTERFACE, "ExecMainPID")
+    worker_code = bus_value(runner, path, INTERFACE, "ExecMainCode")
+    worker_status = bus_value(runner, path, INTERFACE, "ExecMainStatus")
     problems = core.cleanup(effects, effects.ownership)
-    if not problems:
-        cleanup_transport(spec, runtime)
-    print(json.dumps({"cleanup": "complete" if not problems else "unresolved", "problems": problems,
-                      "images": "retained-for-review-only", "browser": "not-run"}))
-    return 0 if not problems else 1
+    problems = list(problems)
+    operations, context, survivors = [], {}, []
+    pending, foreign_preserved, transport_removed = True, False, False
+    try:
+        directory = effects.require_transport()
+        operations = directory.results()
+        context = core.strict_json(directory.read(CONTEXT_FILE, 65536))
+        pending = effects.uncertain_daemon_operation()
+        for role in core.ROLES:
+            survivors += effects.discover(effects.ownership, role)
+        foreign_after = effects.foreign_snapshot()
+        foreign_preserved = all(foreign_after.get(cid) == name for cid, name in context["foreign_before"].items())
+        if not problems and not pending and not survivors and foreign_preserved:
+            cleanup_transport(spec, runtime)
+            transport_removed = True
+    except Exception:
+        problems.append("terminal-cleanup-evidence-incomplete")
+    clean = not problems and not pending and not survivors and foreign_preserved and transport_removed
+    attempt = stage["attempt_sha256"]
+    sanitized = [{"operation": row["operation"], "attempt_sha256": core.digest(row["nonce"].encode()),
+                  "identity": row["identity"]} for row in operations]
+    core.require(all(row["attempt_sha256"] == attempt for row in sanitized), "terminal-operation-nonce")
+    stage.update({"outcome": "complete" if clean else "unresolved", "worker_pid": worker_pid,
+                  "worker_exit_code": worker_code, "worker_exit_status": worker_status, "cleanup_exit_status": 0 if clean else 1,
+                  "operation_results": sanitized, "pending": pending, "owned_survivors": survivors,
+                  "foreign_preserved": foreign_preserved,
+                  "foreign_before_sha256": core.digest(installed.canonical_bytes(context.get("foreign_before", {}))),
+                  "transport_removed": transport_removed, "problems": problems})
+    print(json.dumps(stage, sort_keys=True))
+    return 0 if clean else 1

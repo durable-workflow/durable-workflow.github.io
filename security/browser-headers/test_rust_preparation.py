@@ -25,6 +25,7 @@ from unittest import mock
 
 import rust_preparation as prep
 import rust_preparation_platform as native
+import rust_preparation_authority as authority
 
 
 class HardStop(BaseException):
@@ -350,7 +351,7 @@ class InputControls(unittest.TestCase):
         import sys
         with tempfile.TemporaryDirectory(prefix="dw-preloader-fixture-") as directory:
             root = Path(directory)
-            names = ["rust-preparation-source.json", "rust_preparation.py", "rust_preparation_platform.py", "test_rust_preparation.py"]
+            names = ["rust-preparation-source.json", "rust_preparation.py", "rust_preparation_platform.py", "rust_preparation_authority.py", "test_rust_preparation.py"]
             for name in names:
                 shutil.copyfile(source / name, root / name)
             def check(error=None):
@@ -529,6 +530,196 @@ class MemoryKernel:
         self.closed = True
 
 
+class TerminalControls(unittest.TestCase):
+    def pair(self):
+        expected = {"unit": "synthetic.service", "attempt_sha256": "a" * 64,
+                    "source_bundle_sha256": "b" * 64, "authority_sha256": "c" * 64,
+                    "worker_command_sha256": "d" * 64, "stop_command_sha256": "e" * 64, "seal_flags": 15}
+        common = {"schema": "durable-workflow.preparation-stage/v1", "invocation_id": "f" * 32,
+                  **{k: expected[k] for k in ("unit", "attempt_sha256", "source_bundle_sha256", "authority_sha256")}}
+        image = {"id": "sha256:" + "1" * 64, "config_sha256": "1" * 64,
+                 "layers": ["sha256:" + "2" * 64, "sha256:" + "3" * 64]}
+        worker = {**common, "role": "worker", "pid": 100, "command_sha256": expected["worker_command_sha256"],
+                  "outcome": "prepared-cleanup-pending", "subject": prep.SUBJECT, "node_packet_sha256": prep.PACKET_SHA,
+                  "base_image_id": prep.BASE_ID, "base_layers": image["layers"][:1], "image": image,
+                  "seal": {"sha256": "4" * 64, "flags": 15}, "input_tar_sha256": "4" * 64,
+                  "readback_verified": True, "readback_sha256": "5" * 64, "foreign_before_sha256": "6" * 64,
+                  "dependencies": {n: {"version": "1.64.0", "integrity": value, "sha256": "7" * 64}
+                                   for n, value in prep.DEPENDENCY_INTEGRITY.items()}}
+        operations = [
+            ("pull", {"base_image_id": prep.BASE_ID, "rootfs_layers": worker["base_layers"]}),
+            ("create-assemble", {"container_id": "8" * 64}),
+            ("copy", {"container_id": "8" * 64, "input_tar_sha256": worker["input_tar_sha256"]}),
+            ("commit", {"image_id": image["id"], "config_sha256": image["config_sha256"], "rootfs_layers": image["layers"]}),
+            ("create-verify", {"container_id": "9" * 64}),
+        ]
+        stop = {**common, "role": "stop", "pid": 101, "worker_pid": worker["pid"],
+                "command_sha256": expected["stop_command_sha256"], "outcome": "complete", "worker_exit_code": 1,
+                "worker_exit_status": 0, "cleanup_exit_status": 0, "pending": False, "owned_survivors": [],
+                "problems": [], "transport_removed": True, "foreign_preserved": True,
+                "foreign_before_sha256": worker["foreign_before_sha256"],
+                "operation_results": [{"operation": name, "identity": identity, "attempt_sha256": expected["attempt_sha256"]}
+                                      for name, identity in operations]}
+        return expected, worker, stop
+
+    def capture(self, records):
+        return b"\n".join(json.dumps(r).encode() for r in records)
+
+    def test_acceptance_joins_both_terminal_stages_and_successful_unit_wait(self):
+        expected, worker, stop = self.pair()
+        raw = self.capture([worker, stop])
+        result = prep.collect_terminal(raw, expected, 0)
+        self.assertEqual(result["outcome"], "prepared-inputs-only")
+        self.assertEqual((result["worker_pid"], result["stop_pid"]), (100, 101))
+        self.assertFalse(result["compatibility_accepted"])
+        self.assertFalse(result["rollout_approved"])
+        self.assertEqual(result["browser"], "not-run")
+        for code in (1, -9, None, False):
+            with self.subTest(code=code), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, code)
+
+    def test_worker_only_stop_only_duplicate_or_lost_output_cannot_pass(self):
+        expected, worker, stop = self.pair()
+        for records in ([], [worker], [stop], [worker, worker], [worker, stop, stop], [None, stop]):
+            raw = self.capture(records)
+            with self.subTest(records=len(records)), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, 0)
+
+    def test_cross_attempt_pid_command_source_and_authority_splices_refuse(self):
+        expected, worker, stop = self.pair()
+        for field, wrong in (("unit", "other.service"), ("attempt_sha256", "0" * 64),
+                             ("source_bundle_sha256", "0" * 64), ("authority_sha256", "0" * 64),
+                             ("invocation_id", "0" * 32), ("worker_pid", 999), ("pid", worker["pid"]),
+                             ("command_sha256", "0" * 64), ("worker_exit_status", 1), ("cleanup_exit_status", 1)):
+            changed = copy.deepcopy(stop)
+            changed[field] = wrong
+            raw = self.capture([worker, changed])
+            with self.subTest(field=field), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, 0)
+
+    def test_pending_survivor_foreign_transport_or_operation_drift_cannot_pass(self):
+        expected, worker, stop = self.pair()
+        for field, wrong in (("pending", True), ("owned_survivors", ["8" * 64]), ("problems", ["unresolved"]),
+                             ("foreign_preserved", False), ("transport_removed", False), ("foreign_before_sha256", "0" * 64)):
+            changed = copy.deepcopy(stop)
+            changed[field] = wrong
+            raw = self.capture([worker, changed])
+            with self.subTest(field=field), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, 0)
+        mutations = ((0, "base_image_id", "sha256:" + "0" * 64), (1, "container_id", "malformed"),
+                     (2, "container_id", "0" * 64), (3, "image_id", "sha256:" + "0" * 64),
+                     (4, "container_id", "8" * 64))
+        for index, field, wrong in mutations:
+            changed = copy.deepcopy(stop)
+            changed["operation_results"][index]["identity"][field] = wrong
+            raw = self.capture([worker, changed])
+            with self.subTest(index=index), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, 0)
+
+    def test_wrong_dependency_seal_layer_or_readback_refuses_despite_cleanup_success(self):
+        expected, worker, stop = self.pair()
+        for field, wrong in (("readback_verified", False), ("node_packet_sha256", "0" * 64),
+                             ("seal", {"sha256": "0" * 64, "flags": 15}), ("base_layers", ["sha256:" + "0" * 64])):
+            changed = copy.deepcopy(worker)
+            changed[field] = wrong
+            raw = self.capture([changed, stop])
+            with self.subTest(field=field), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, 0)
+        changed = copy.deepcopy(worker)
+        changed["dependencies"]["playwright"]["integrity"] = "sha512-unreviewed"
+        raw = self.capture([changed, stop])
+        with self.assertRaises(prep.Refusal):
+            prep.collect_terminal(raw, expected, 0)
+
+
+class AuthorityControls(unittest.TestCase):
+    def record(self):
+        def binding(path):
+            return {"path": path, "uid": 0, "gid": 0, "mode": 0o755, "device": 1,
+                    "inode": 2, "bytes": 4, "sha256": "f" * 64}
+        roots = {"/usr/lib/fixture": {"kind": "directory", "members": {"lib.so": {"kind": "file"}}}}
+        tools = {name: {"entry_path": path, "binding": binding(path), "runtime_roots": list(roots)}
+                 for name, path in authority.ENTRY_PATHS.items()}
+        processes = {name: {"pid": n + 10, "start_ticks": "1", "uids": [0, 0, 0, 0],
+                            "exe": binding("/usr/bin/" + name), "mapped_files": ["/usr/lib/fixture/lib.so"]}
+                     for n, name in enumerate(sorted(authority.PROCESSES))}
+        packages = {"/var/lib/dpkg/status": binding("/var/lib/dpkg/status")}
+        return {"schema": "durable-workflow.installed-authority/v1", "boot_id": "synthetic-boot", "tools": tools, "processes": processes,
+                "catalogs": roots, "python_search": ["/usr/lib/fixture"],
+                "loader_configs": {p: binding(p) for p in authority.LOADER_CONFIGS}, "package_receipts": packages,
+                "socket": {"path": "/run/docker.sock", "peer_pid": processes["daemon"]["pid"]},
+                "closure_receipt": {"independent_review": "synthetic-source-control",
+                                    "package_catalog_sha256": prep.digest(authority.canonical_bytes(packages)),
+                                    "complete_loader_closure": True}}
+
+    def observer(self, actual):
+        class Observer:
+            def boot_id(self):
+                return actual["boot_id"]
+            def python_search(self):
+                return actual["python_search"]
+            def catalog(self, root):
+                return actual["catalogs"][root]
+            def file(self, path):
+                values = [t["binding"] for t in actual["tools"].values()]
+                values += list(actual["loader_configs"].values()) + list(actual["package_receipts"].values())
+                return next(v for v in values if v["path"] == path)
+            def resolve(self, path):
+                return path
+            def process(self, pid):
+                return next(p for p in actual["processes"].values() if p["pid"] == pid)
+            def socket_identity(self, _path):
+                return actual["socket"]
+        return Observer()
+
+    def test_unbound_installed_authority_refuses_before_observation(self):
+        raw = authority.canonical_bytes(self.record())
+        with self.assertRaises(prep.Refusal):
+            authority.HostAuthority(raw, None)
+        with self.assertRaises(prep.Refusal):
+            authority.NativeObserver().socket_identity("/run/docker.sock")
+
+    def test_complete_catalog_rejects_extra_library_tool_process_and_socket_drift(self):
+        record = self.record()
+        raw = authority.canonical_bytes(record)
+        expected = prep.digest(raw)
+        authority.HostAuthority(raw, self.observer(copy.deepcopy(record)), expected)
+        cases = []
+        for field, key, wrong in (("catalogs", "/usr/lib/fixture", {"kind": "directory", "members": {"extra.so": {}}}),
+                                  ("python_search", None, ["/unbound"]), ("boot_id", None, "other-boot")):
+            changed = copy.deepcopy(record)
+            if key is None:
+                changed[field] = wrong
+            else:
+                changed[field][key] = wrong
+            cases.append(changed)
+        for tool in authority.TOOLS:
+            changed = copy.deepcopy(record)
+            changed["tools"][tool]["binding"]["sha256"] = "a" * 64
+            cases.append(changed)
+        for process in authority.PROCESSES:
+            changed = copy.deepcopy(record)
+            changed["processes"][process]["start_ticks"] = "2"
+            cases.append(changed)
+        changed = copy.deepcopy(record)
+        changed["socket"]["peer_pid"] = 999
+        cases.append(changed)
+        for actual in cases:
+            observer = self.observer(actual)
+            with self.assertRaises(prep.Refusal):
+                authority.HostAuthority(raw, observer, expected)
+
+    def test_invocation_cannot_narrow_the_pinned_tool_and_library_closure(self):
+        for field in ("tools", "catalogs"):
+            record = self.record()
+            record[field].pop(next(iter(record[field])))
+            raw = authority.canonical_bytes(record)
+            observer = self.observer(record)
+            expected = prep.digest(raw)
+            with self.assertRaises(prep.Refusal):
+                authority.HostAuthority(raw, observer, expected)
+
+
 class PlatformControls(unittest.TestCase):
     def test_unbound_native_entrypoints_refuse_before_any_effect(self):
         with mock.patch("subprocess.Popen", side_effect=AssertionError("unexpected process")), \
@@ -546,7 +737,7 @@ class PlatformControls(unittest.TestCase):
     def test_captured_source_unit_refuses_without_resolving_worktree_modules(self):
         directory = Path(__file__).parent
         modules = {name: (directory / (name + ".py")).read_bytes()
-                   for name in ("rust_preparation", "rust_preparation_platform")}
+                   for name in ("rust_preparation", "rust_preparation_authority", "rust_preparation_platform")}
         stub = native.unit_stub(modules)
         with mock.patch.dict("sys.modules"), mock.patch("builtins.print"), \
                 mock.patch("subprocess.Popen", side_effect=AssertionError("unexpected process")), \
@@ -671,7 +862,7 @@ class PlatformControls(unittest.TestCase):
 
     def test_effective_unit_source_limits_and_readiness_are_required(self):
         runtime = {"deadline": __import__("time").monotonic() + 30}
-        modules = {"rust_preparation": b"core", "rust_preparation_platform": b"platform"}
+        modules = {"rust_preparation": b"core", "rust_preparation_platform": b"platform", "rust_preparation_authority": b"authority"}
         values = {"ActiveState": "active", "RuntimeMaxUSec": 600000000,
                   "TimeoutStopUSec": 15000000, "KillMode": "control-group", "Restart": "no",
                   "MemoryMax": 1024 * prep.MIB, "TasksMax": 64, "UMask": 0o77,
@@ -693,7 +884,7 @@ class PlatformControls(unittest.TestCase):
 
     def test_unit_environment_is_cleared_before_both_interpreters(self):
         runtime = {"nonce": "a" * 64, "deadline": 1}
-        modules = {"rust_preparation": b"source", "rust_preparation_platform": b"platform"}
+        modules = {"rust_preparation": b"source", "rust_preparation_platform": b"platform", "rust_preparation_authority": b"authority"}
         for mode in ("worker", "cleanup"):
             argv = native.unit_argv(mode, {"staging_path": "/synthetic"}, runtime, modules)
             self.assertEqual(argv[:2], [native.ENV, "-i"])
@@ -739,7 +930,7 @@ class PlatformControls(unittest.TestCase):
 
     def test_cleanup_entrypoint_requires_actual_stop_pid_and_exact_captured_command(self):
         runtime = {"nonce": "a" * 64, "deadline": 1}
-        modules = {"rust_preparation": b"source", "rust_preparation_platform": b"platform"}
+        modules = {"rust_preparation": b"source", "rust_preparation_platform": b"platform", "rust_preparation_authority": b"authority"}
         values = {"ControlPID": os.getpid(), "ActiveState": "deactivating",
                   "ExecStopPost": [[native.ENV, native.unit_argv("cleanup", {}, runtime, modules)]]}
         def value(_runner, _path, _interface, name):
@@ -765,7 +956,7 @@ class PlatformControls(unittest.TestCase):
                 "uid": os.getuid(), "gid": os.getgid(), "docker_root": "/synthetic/docker",
                 "metadata_at": now.isoformat(), "metadata_expires": prep.SUBJECT_EXPIRY, "metadata_subject": metadata,
                 "live_build_sha256": "3e8d1827d1df8bf3c47ee8f0efcbd2f3692cb1bd8741f40c1271ef5c74f4a183",
-                "python_sha256": "f" * 64, "env_sha256": "e" * 64}
+                "python_sha256": "f" * 64, "env_sha256": "e" * 64, "authority_binding": dict(binding)}
         native.admission(spec, now)
         invalid = []
         bad = copy.deepcopy(spec)
