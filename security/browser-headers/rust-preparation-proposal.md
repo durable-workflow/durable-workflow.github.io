@@ -35,6 +35,10 @@ capabilities and fresh machine/daemon capacity before admission/use. Record
 machine-specific placement facts in the existing operational channel rather
 than this public source. No image was pulled, descriptor sealed or unit created.
 Changing host requires fresh evidence. No vault or Cloud credential is needed.
+The GitHub Actions ZIP endpoint requires GitHub authentication despite its
+public contents. The selected route below accepts a separately downloaded,
+explicitly reviewed ZIP. The preparation controller receives no GitHub
+credential and has no authenticated artifact-fetch fallback.
 
 ## Admission boundary and independent lifetime
 
@@ -52,7 +56,8 @@ all subprocesses and a fixed allowlist of container names and recorded IDs.
 Register independently supervised cleanup before the first pull/create. The
 service's stop cleanup must remove owned containers even if the controller or
 agent dies between create and ID recording. It must verify exact name, creation
-window and ownership label before removal; a pre-existing name is a refusal.
+window and the full owner/role/nonce identity below before removal; a pre-existing
+name is a refusal. Creation time alone never grants deletion authority.
 Do not rely on the agent's shell trap or a guardian started after creation.
 
 Read back the actual service limits, cleanup registration and first fresh
@@ -63,6 +68,48 @@ new helper, sudo, daemon configuration or system service is included. If the
 existing user-manager mechanism cannot be qualified, return the exact gap to
 General before doing acquisition. Later browser lifetime/cleanup needs its own
 reviewed controller and separate admission.
+
+## Authenticated artifact handoff, without credential delegation
+
+Select the predownloaded-ZIP route only. Documentation's existing trusted
+source-review transport already fetched the exact SDK artifact with its normal
+GitHub authorization. That read-only QA download is not a prepared input or
+immutable seal. The preparation controller must not call `gh`, read its token,
+use an implicit cache or attempt an anonymous/API/redirect fallback.
+
+Before any preparation admission, bind one exact regular ZIP in the private
+operational handoff: canonical absolute path outside home/credential trees,
+owner UID/GID, file and parent-directory modes, device/inode, exact 4,067,287
+bytes, the full API ZIP digest above, protected run/artifact/deployment/expiry,
+and the independent 484-file inventory/owner receipt. The handoff must be
+acknowledged by General and the independent reviewer. No path/owner/mode field
+may remain unbound at admission. A different path or owner is a new handoff,
+not permission to search caches or download another copy. Host-specific paths
+and account details stay in that existing private operational record.
+
+The admitted controller walks the named path through held directory descriptors
+using no-follow directory/file opens, verifies every component and rejects
+symlinks. It compares `fstat` owner, mode, device/inode and size with the reviewed
+handoff, then reads at most the exact byte count plus one from that same held
+descriptor. Hash and inspect those captured bytes; never re-open the path for
+subsequent parsing/copy. A concurrent edit either reproduces the exact accepted
+buffer or fails its fixed digest. Owner-write permission or a prior hash does
+not establish immutable custody.
+
+Verify the ZIP digest, single safe `artifact.tar`, all safe unique regular-file
+and directory members, exact 484 path/size/hash rows, build identity and expiry
+before declassifying the captured bytes as public input. The public-input tar
+below is constructed from those same authenticated buffers and later sealed.
+No credential, API response header, download URL or QA cache metadata enters it.
+A trusted source owner must independently refresh the run/deployment/artifact
+metadata and live build receipt before admission; that normal credentialed
+metadata read stays outside the credential-free preparation controller.
+
+Missing, changed or expired handoff, failed no-follow/owner/mode checks, digest
+or inventory drift, or unavailable fresh metadata stops before acquisition or
+Docker allocation. Do not silently choose another source or dispatch a new
+build. No handoff is declared accepted, file permission changed or seal made
+by this source proposal.
 
 ## Credential-isolated public acquisition
 
@@ -154,6 +201,41 @@ descriptor, tar or dependency tree has been made by this proposal.
 
 ## Content-addressed custody and independent readback
 
+Before allocation, the controller generates `secrets.token_hex(32)` in trusted
+host Python: exactly 32 random bytes / 64 lowercase hexadecimal characters per
+attempt. Persist the full nonce with the role/name allowlist in a task-private
+0700 directory / 0600 regular record, and make it available to the independent
+cleanup service before any create. Do not derive it from time, PID, branch,
+returned ID or fixed name. Do not publish it while allocation/cleanup is active.
+No nonce or ownership record has been generated for this proposal.
+
+Both container creates must use these literal label keys and values:
+
+| Label | Value |
+| --- | --- |
+| `com.durable-workflow.agent` | `durable-workflow-github-io` |
+| `com.durable-workflow.attempt` | The privately retained 64-hex attempt nonce |
+| `com.durable-workflow.purpose` | `rust-custody-assemble` or `rust-custody-verify`, matching the fixed role name |
+
+Preflight exact-name absence and absence of an existing owner/nonce allocation
+before every create. A foreign name collision refuses without inspecting or
+removing that foreign container. Validate returned IDs against `^[0-9a-f]{64}$`
+before assigning a trusted ID. Independently rediscover exactly one allocation
+by exact name plus all three labels. Inspect only that discovered owned ID and
+require returned/discovered equality, effective image/config/labels, no mounts
+and never-started state before copy or readback. Malformed/missing/mismatched
+create output records failure and prohibits copy/commit; it must not prevent
+cleanup of a separately discovered and fully verified owned allocation.
+
+Cleanup may remove only a recorded or independently rediscovered ID whose
+exact role name and all three owner/nonce/role labels match the private record.
+It repeats those checks immediately before removal. A missing ID record or
+controller death still uses that bounded exact-label/name discovery. No broad
+name/prefix/label deletion, time-based ownership or foreign-candidate inspection
+is permitted. Unexpected multiplicity or identity drift is a failure, never
+authority to delete an unverified object. Independently record exact owned
+survivors and foreign-object preservation at terminal cleanup.
+
 Create `durable-workflow-github-io-rust-custody-assemble` from the exact cached
 base using `--pull=never`, network none, no ports/mounts/volumes, one CPU,
 512 MiB, 64 PIDs, `--init`, no added capabilities, no-new-privileges and command
@@ -168,7 +250,8 @@ must have none. Record the returned full `sha256:` image ID, config digest and
 rootfs diff IDs; the original base chain must be an exact prefix with only the
 new public-input layer added. Keep the image's default command `/bin/false`,
 with no executable preparation hook. Remove the assembler normally by its
-recorded ID and verify absence before creating the readback container.
+verified ID using the identity procedure above, and verify absence before
+creating the readback container.
 
 Create `durable-workflow-github-io-rust-custody-verify` from that full derived
 image ID with `--pull=never --read-only`, the same restrictions and no input
@@ -179,6 +262,11 @@ host. Independently require exact path/mode/content equality to the sealed
 public-input inventory, the external nine-file packet check and all artifact
 and dependency hashes. Reject extra modules, symlinks, mounts or shadowing.
 Remove the readback container and verify absence.
+
+Bind any derived-image cleanup to its full returned and independently read-back
+content ID and the creation receipt, never a tag or broad label query. A missing
+or mismatched image ID stops image deletion; it does not widen container cleanup
+authority. The shared/base image and layers remain outside deletion authority.
 
 The resulting receipt names the base manifest/config, derived image ID/layer
 chain, sealed tar hash, three tree inventories, external-verifier identity,
@@ -207,6 +295,16 @@ custody boundary. General then decides whether to commission the exact
 controller/fault controls and admit one named preparation attempt. Preparation
 acceptance requires the complete independent readback and cleanup receipt; it
 cannot be inferred from a successful pull, package hash or image commit.
+
+The required controller's data-only predecessor-fail/successor-pass controls must
+cover the exact artifact handoff and buffer boundary; path/owner/mode/symlink,
+ZIP/tar traversal/link/special/duplicate/limit and sealed-descriptor mutation;
+base-prefix symlinks; create-output corruption or loss; foreign-name/nonce
+collision; every allocation/ID-recording/controller/supervisor-death edge;
+continuing daemon work after copy/commit timeout; image/config/layer mismatch;
+readback mismatch; and exact survivor/cleanup accounting. The controller source,
+passing controls and independent review are required before a preparation
+decision. They are not implemented or claimed by this documentation change.
 
 Retain at most the reviewed base and one derived image under Documentation's
 named cache ownership pending that decision. Record exact IDs and sizes;
