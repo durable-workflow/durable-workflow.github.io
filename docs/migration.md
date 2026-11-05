@@ -21,6 +21,24 @@ a self-hosted Server through the PHP SDK in the
 [Laravel adoption and runtime transition guide](/docs/laravel-adoption/).
 This page then provides the detailed v1-to-v2 embedded package procedure.
 
+## Check the target platform {#check-the-target-platform}
+
+Match the published target package's [PHP and Laravel requirements](/docs/installation/#requirements)
+before changing Composer constraints. Stable v1 support does not imply support
+for the same host in current embedded v2. In particular, Laravel 9 applications
+need a framework upgrade before taking the published 2.20.x line.
+
+The [2.21 preparation guidance](/docs/installation/#preparing-for-workflow-2-21)
+describes the planned removal of PHP 8.1 and Laravel 10/11 support. That line
+is not published or Release-Verified yet. Keep the existing 2.20.x application
+lock while preparing the platform upgrade. Older releases do not extend
+upstream security support. The bare PHP SDK and its Laravel bridge have their
+own published requirements.
+
+This platform change introduces no schema, history or protocol migration.
+Existing v1 history remains owned by v1. The drain, coexistence and rollback
+rules below still apply. A Composer change never migrates a run.
+
 ## Upgrade procedure
 
 ### Before upgrading

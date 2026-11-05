@@ -132,6 +132,30 @@ OpenAPI, AsyncAPI чи JSON Schema. Schema
 - Python SDK — `README.md` у `durable-workflow/sdk-python`. Джерело контракту публічного API пакета `durable_workflow`.
 - Rust SDK — `README.md` і `[package.metadata.durable-workflow]` у `durable-workflow/sdk-rust`. Джерело контракту публічного API crate `durable-workflow` та його оголошення сумісності.
 
+## Підтримка PHP і Laravel у вбудованому режимі {#embedded-php-and-laravel-support}
+
+Вимоги вбудованого пакета до платформи визначають його опубліковані маніфести
+Composer та оновлення. Інтеграція коду не підтверджує опубліковану підтримку
+або кваліфікацію встановленого пакета.
+
+| Лінійка Workflow | Обмеження PHP | Обмеження Laravel | Джерело повноважень |
+| --- | --- | --- | --- |
+| Опублікована 2.20.4 | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [Опублікований маніфест 2.20.4](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21, не опублікована | `^8.2` | `^12.69.0\|^13.30.0` | [Запланований вихідний код](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json); потрібні фактична публікація та Release Verification |
+
+Laravel 10 допускає PHP 8.1, Laravel 11/12 потребують PHP 8.2, а Laravel 13 —
+PHP 8.3. Задекларований діапазон Composer не підтверджує кожне поєднання
+інтерпретатора та бази даних. Підготуйте платформу за
+[настановою з оновлення до 2.21](/docs/installation/#preparing-for-workflow-2-21).
+Застосунки Laravel 9 залишаються на сумісній лінійці 2.16.x до оновлення
+фреймворку. Історичний контракт 1.x не змінюється.
+
+Незалежний від фреймворку PHP SDK зберігає власну вимогу PHP `^8.1`.
+Його [Laravel bridge у service mode](https://php.durable-workflow.com/frameworks/laravel/)
+має окремий опублікований контракт. Запланована зміна Workflow не звужує
+підтримку bridge завчасно й не змінює вимог окремого Server, Python або Rust.
+Ця межа платформи не змінює версій worker protocol чи довготривалої історії.
+
 ## Правила випусків {#release-rules}
 
 Ці правила діють для кожного сімейства публічних поверхонь вище.

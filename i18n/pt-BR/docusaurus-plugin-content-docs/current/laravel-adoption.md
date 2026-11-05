@@ -41,9 +41,13 @@ depois de escolher a política de transição aqui.
 | Laravel v1 estável | SDK PHP em modo de serviço | O Laravel deve manter injeção de dependências, configuração, Artisan, logs, eventos e fakes de teste, mas o Cloud ou Server deve ser responsável pelo estado durável. | Instale `durable-workflow/sdk` como uma fronteira separada de cliente/worker de serviço. O histórico v1 e os jobs duráveis das filas Laravel permanecem no runtime v1 até atingirem estado terminal. |
 | Laravel 2.0 integrado | SDK PHP em modo de serviço | A aplicação deve deixar de ser responsável pelo runtime de orquestração ou precisa de uma fronteira de runtime compartilhada/entre linguagens. | Direcione novos inícios ao runtime de serviço depois que seus workers estiverem prontos. Deixe as execuções integradas terminarem onde começaram, ou use o procedimento explícito de importação de execuções elegíveis da v2 integrada para Server sob sua administração. |
 
-A ponte Laravel do SDK PHP e o pacote integrado suportam Laravel 9 a 13 nas
-versões compatíveis de PHP. Assim, uma aplicação v1 suportada pode escolher
-qualquer um dos destinos sem uma atualização não relacionada do Laravel.
+Verifique os requisitos de cada destino antes de escolhê-lo. O
+[guia de instalação integrada](/docs/installation/#requirements) descreve os
+requisitos publicados de 2.20.x e o limite de atualização de 2.21 ainda não
+publicada. O [guia Laravel do SDK PHP](https://php.durable-workflow.com/frameworks/laravel/)
+é a autoridade independente da ponte de serviço; o mínimo PHP `^8.1` do SDK
+básico não comprova todas as combinações de framework. Mesmo um host v1
+suportado pode precisar atualizar PHP ou Laravel antes de mudar de destino.
 
 ## Compare a fronteira de responsabilidade {#compare-the-ownership-boundary}
 
@@ -331,8 +335,8 @@ copiado de uma release específica:
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-O Laravel 9 a 13 descobre o provider automaticamente. Publique a configuração
-do pacote e liste as classes de handlers com atributos:
+As versões suportadas de Laravel descobrem automaticamente o provider do SDK.
+Publique a configuração do pacote e liste as classes de handlers com atributos:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

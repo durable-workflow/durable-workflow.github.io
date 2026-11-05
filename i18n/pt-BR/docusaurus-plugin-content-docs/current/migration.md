@@ -21,6 +21,25 @@ conectará ao Cloud ou a um Server sob sua administração pelo SDK PHP no
 [guia de adoção no Laravel e transição de runtime](/docs/laravel-adoption/).
 Esta página apresenta então o procedimento detalhado do pacote integrado da v1 para v2.
 
+## Verifique a plataforma de destino {#check-the-target-platform}
+
+Antes de alterar as restrições do Composer, confira os
+[requisitos de PHP e Laravel](/docs/installation/#requirements) do pacote
+publicado de destino. O suporte estável v1 não implica suporte ao mesmo host
+na v2 integrada atual. Em particular, aplicações Laravel 9 precisam atualizar
+o framework antes de adotar a linha publicada 2.20.x.
+
+A [preparação de 2.21](/docs/installation/#preparing-for-workflow-2-21)
+descreve a retirada planejada do suporte a PHP 8.1 e Laravel 10/11. Essa linha
+ainda não foi publicada nem passou por Release Verification. Mantenha o arquivo
+de lock 2.20.x enquanto prepara a plataforma; versões anteriores não estendem
+o suporte de segurança dos projetos de origem. O SDK PHP básico e sua ponte
+Laravel têm seus próprios requisitos publicados.
+
+Essa mudança não introduz migração de esquema, histórico ou protocolo. A v1
+continua sendo dona do histórico v1. As regras de esvaziamento, coexistência e
+rollback abaixo permanecem necessárias; alterar o Composer nunca migra uma execução.
+
 ## Procedimento de atualização {#upgrade-procedure}
 
 ### Antes de atualizar {#before-upgrading}

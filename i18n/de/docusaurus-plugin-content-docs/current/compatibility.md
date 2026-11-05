@@ -96,6 +96,31 @@ Diese Dokumente ergänzen paketbezogene Details unter den Regeln dieser Seite:
 - Python-SDK: `README.md` in `durable-workflow/sdk-python`. Maßgeblich für die öffentliche API des Pakets `durable_workflow`.
 - Rust-SDK: `README.md` und `[package.metadata.durable-workflow]` in `durable-workflow/sdk-rust`. Maßgeblich für die öffentliche API der Crate `durable-workflow` und ihre Paketkompatibilitätserklärung.
 
+## PHP- und Laravel-Unterstützung im eingebetteten Modus {#embedded-php-and-laravel-support}
+
+Die Plattformanforderungen des eingebetteten Pakets stammen aus seinen
+veröffentlichten Composer- und Upgrade-Manifesten. Ein Quellcode-Merge belegt
+weder veröffentlichten Support noch die Qualifikation einer Installation.
+
+| Workflow-Reihe | PHP-Vorgabe | Laravel-Vorgabe | Autorität |
+| --- | --- | --- | --- |
+| 2.20.4 veröffentlicht | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [Veröffentlichtes 2.20.4-Manifest](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21, unveröffentlicht | `^8.2` | `^12.69.0\|^13.30.0` | [Geplanter Quellstand](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json); tatsächliche Veröffentlichung und Release Verification stehen aus |
+
+Laravel 10 erlaubt PHP 8.1, Laravel 11/12 benötigen PHP 8.2 und Laravel 13
+benötigt PHP 8.3. Ein deklarierter Composer-Bereich qualifiziert nicht jede
+Interpreter-/Datenbankkombination. Bereiten Sie die Plattform anhand der
+[Upgrade-Anleitung für 2.21](/docs/installation/#preparing-for-workflow-2-21) vor.
+Laravel-9-Anwendungen bleiben bis zum Framework-Upgrade auf ihrer kompatiblen
+Reihe 2.16.x. Der historische 1.x-Vertrag bleibt unverändert.
+
+Das frameworkunabhängige PHP-SDK behält seine eigene PHP-Vorgabe `^8.1`.
+Seine [Laravel-Bridge im Dienstmodus](https://php.durable-workflow.com/frameworks/laravel/)
+folgt dem veröffentlichten SDK-Vertrag. Der geplante Plattformwechsel von Workflow
+schränkt diese Bridge nicht vorzeitig ein und ändert keine Anforderungen von
+Standalone-Server, Python oder Rust. Diese Plattformgrenze ändert keine
+Version des Worker-Protokolls oder des dauerhaften Verlaufs.
+
 ## Veröffentlichungsregeln {#release-rules}
 
 Diese Regeln gelten für jede obige öffentliche Schnittstellenfamilie. Sie sind im JSON-Spiegel unter `release_rules` wiedergegeben.

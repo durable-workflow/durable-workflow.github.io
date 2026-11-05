@@ -41,9 +41,13 @@ choisi ici votre politique de transition.
 | Laravel v1 stable | SDK PHP en mode service | Laravel doit conserver injection de dépendances, configuration, Artisan, journaux, événements et simulations de test, mais Cloud ou Server doit posséder l'état durable. | Installez `durable-workflow/sdk` comme frontière distincte de client/worker de service. L'historique v1 et les jobs Laravel durables restent sur le runtime v1 jusqu'à leur état terminal. |
 | Laravel 2.0 embarqué | SDK PHP en mode service | L'application doit cesser de posséder le runtime d'orchestration ou nécessite un runtime partagé ou polyglotte. | Dirigez les nouveaux démarrages vers le service une fois ses workers prêts. Terminez les exécutions embarquées là où elles ont démarré, ou utilisez la procédure explicite d'import embarqué-v2 éligible pour Server auto-hébergé. |
 
-Le pont du SDK PHP et le paquet embarqué prennent en charge Laravel 9 à 13 sur
-leurs versions PHP compatibles. Une application v1 prise en charge peut donc
-choisir l'une ou l'autre sans mise à niveau Laravel sans rapport avec la transition.
+Vérifiez les exigences de chaque destination avant de la choisir. Le
+[guide d'installation embarquée](/docs/installation/#requirements) décrit les
+exigences publiées 2.20.x et la limite de mise à niveau de 2.21 non publiée.
+Le [guide Laravel du SDK PHP](https://php.durable-workflow.com/frameworks/laravel/)
+fait autorité pour le pont de service distinct ; le minimum PHP `^8.1` du SDK
+seul ne qualifie pas toutes les combinaisons de framework. Un hôte v1 pris en
+charge peut devoir mettre à niveau PHP ou Laravel avant de changer de destination.
 
 ## Comparer les responsabilités {#compare-the-ownership-boundary}
 
@@ -330,8 +334,8 @@ partir de la référence d'artefacts SDK PHP publiée, sans recopier une version
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 à 13 découvrent automatiquement le fournisseur. Publiez la
-configuration et listez les classes de gestionnaire munies d'attributs :
+Les versions Laravel prises en charge découvrent automatiquement le fournisseur du SDK.
+Publiez la configuration du paquet et listez les classes de gestionnaire munies d'attributs :
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

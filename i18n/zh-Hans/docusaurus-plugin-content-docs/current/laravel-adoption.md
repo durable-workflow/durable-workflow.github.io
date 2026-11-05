@@ -34,7 +34,11 @@ Laravel 应用有两个第一方 Durable Workflow 2.0 目标。嵌入模式让�
 | 稳定 v1 Laravel | PHP SDK 服务模式 | Laravel 应保留依赖注入、配置、Artisan、日志、事件和测试 fake，但由 Cloud 或 Server 拥有持久状态。 | 安装 `durable-workflow/sdk` 作为独立服务客户端/Worker 边界。v1 历史和持久 Laravel 队列 job 留在 v1 运行时，直到进入终态。 |
 | 2.0 嵌入式 Laravel | PHP SDK 服务模式 | 应用应不再拥有编排运行时，或需要共享/多语言运行时边界。 | 服务 Worker 就绪后，将新启动路由到服务运行时。嵌入运行实例在原处排空，或对自托管 Server 使用明确的符合条件的嵌入 v2 导入流程。 |
 
-PHP SDK 桥接和嵌入软件包在各自兼容的 PHP 版本上支持 Laravel 9 至 13。因此，受支持的 v1 应用无需进行无关的 Laravel 升级即可选择任一目标。
+选择迁移目标之前，请分别检查其平台要求。
+[嵌入式安装指南](/docs/installation/#requirements)说明已发布的 2.20.x 要求以及尚未发布的 2.21 升级边界。
+[PHP SDK 的 Laravel 指南](https://php.durable-workflow.com/frameworks/laravel/)负责独立的服务桥接契约；
+SDK 本身的 PHP `^8.1` 最低要求并不保证所有框架组合都受支持。
+即使 v1 主机受支持，迁移到所选目标之前仍可能需要升级 PHP 或 Laravel。
 
 ## 比较归属边界 {#compare-the-ownership-boundary}
 
@@ -294,7 +298,8 @@ WorkflowStub::assertDispatched(
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 至 13 自动发现 provider。发布软件包配置，并列出带属性标记的处理器类：
+受支持的 Laravel 版本会自动发现 SDK 服务提供者。
+请发布软件包配置，并列出带有属性的处理器类：
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

@@ -41,9 +41,13 @@ choosing the transition policy here.
 | Stable v1 Laravel | PHP SDK service mode | Laravel should keep dependency injection, configuration, Artisan, logging, events, and test fakes, but Cloud or Server should own durable state. | Install `durable-workflow/sdk` as a separate service client/worker boundary. v1 history and durable Laravel queue jobs stay on the v1 runtime until terminal. |
 | 2.0 embedded Laravel | PHP SDK service mode | The application should stop owning the orchestration runtime or needs a shared/polyglot runtime boundary. | Route new starts to the service runtime after its workers are ready. Drain embedded runs where they started, or use the explicit eligible embedded-v2 import procedure for self-hosted Server. |
 
-The PHP SDK bridge and the embedded package support Laravel 9 through 13 on
-their compatible PHP versions. A supported v1 application can therefore choose
-either destination without an unrelated Laravel upgrade.
+Check each destination's platform requirements before choosing it. The
+[embedded installation guide](/docs/installation/#requirements) covers the
+published 2.20.x requirements and the unreleased 2.21 upgrade boundary. The
+[PHP SDK Laravel guide](https://php.durable-workflow.com/frameworks/laravel/)
+owns the separate service bridge contract. The bare SDK's PHP `^8.1` floor
+does not establish every framework combination. A supported v1 host can still
+need a PHP or Laravel upgrade before moving to its chosen destination.
 
 ## Compare the ownership boundary
 
@@ -328,7 +332,7 @@ the published PHP SDK artifact authority, not copied from a point release:
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 through 13 auto-discover the provider. Publish the package
+Supported Laravel releases auto-discover the SDK provider. Publish the package
 configuration and list the attributed handler classes:
 
 <!-- docs-example id="laravel.adoption.service.config" -->

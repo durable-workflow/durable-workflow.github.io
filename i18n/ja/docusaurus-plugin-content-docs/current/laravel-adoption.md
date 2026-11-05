@@ -34,7 +34,12 @@ Laravel アプリケーションには、Durable Workflow 2.0 のファースト
 | 安定版 v1 Laravel | PHP SDK サービスモード | Laravel の依存注入、設定、Artisan、ログ、イベント、テスト fake を維持し、永続状態は Cloud・Server が所有する。 | `durable-workflow/sdk` を別のサービスクライアント・Worker 境界として追加。v1 履歴と永続 Laravel キュージョブは終端まで v1 に残す。 |
 | 2.0 組み込み Laravel | PHP SDK サービスモード | アプリによるオーケストレーションランタイム所有をやめる、または共有・多言語ランタイムが必要。 | Worker 準備後、新規開始をサービスへ振り向ける。組み込み実行は開始元でドレインするか、セルフホスト Server 向けの適格な組み込み v2 の明示的インポートを使う。 |
 
-PHP SDK ブリッジと組み込みパッケージは、互換 PHP バージョン上の Laravel 9～13 をサポートします。サポート対象 v1 アプリは、無関係な Laravel 更新なしでどちらも選べます。
+移行先を選ぶ前に、それぞれの環境要件を確認してください。
+[組み込みインストールガイド](/docs/installation/#requirements)は、公開済み 2.20.x の要件と、
+未公開の 2.21 へのアップグレード境界を説明します。
+[PHP SDK の Laravel ガイド](https://php.durable-workflow.com/frameworks/laravel/)は、別個のサービスブリッジ契約を
+定義します。SDK 単体の PHP `^8.1` 要件は、すべてのフレームワーク構成を保証しません。
+対応している v1 環境でも、選んだ移行先へ進む前に PHP や Laravel の更新が必要になることがあります。
 
 ## 所有境界を比較する {#compare-the-ownership-boundary}
 
@@ -294,7 +299,8 @@ WorkflowStub::assertDispatched(
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9～13 は provider を自動検出します。設定を公開し、属性付きハンドラークラスを列挙します。
+対応する Laravel リリースでは SDK のプロバイダーが自動検出されます。
+パッケージ設定を公開し、属性付きのハンドラークラスを登録してください。
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

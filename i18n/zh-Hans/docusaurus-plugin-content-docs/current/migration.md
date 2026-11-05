@@ -17,6 +17,19 @@ keywords:
 
 本指南介绍现有 Laravel v1 应用升级至 v2 时的主要变化。首先在 [Laravel 采用与运行时迁移指南](/docs/laravel-adoption/)中选择：继续由 Laravel 拥有运行时，还是通过 PHP SDK 连接 Cloud 或自托管 Server。本页随后提供详细的 v1 到 v2 嵌入式软件包操作流程。
 
+## 检查目标平台 {#check-the-target-platform}
+
+修改 Composer 约束之前，请核对目标已发布软件包的
+[PHP 与 Laravel 要求](/docs/installation/#requirements)。稳定版 v1 支持某台主机，并不表示当前嵌入式 v2
+也支持同一环境。尤其是 Laravel 9 应用，必须先升级框架，才能采用已发布的 2.20.x 系列。
+
+[2.21 准备指引](/docs/installation/#preparing-for-workflow-2-21)说明了计划移除 PHP 8.1 和 Laravel 10/11
+支持的边界。该系列尚未发布，也尚未通过 Release Verification。准备平台升级时，请保留现有的
+2.20.x 应用锁文件；旧版本不会延长上游安全支持。PHP SDK 本身及其 Laravel 桥接具有各自的已发布要求。
+
+此平台变更不引入模式、历史或协议迁移。v1 历史仍由 v1 管理。下述排空、共存和回滚规则继续适用；
+修改 Composer 从来不会迁移运行实例。
+
 ## 升级流程 {#upgrade-procedure}
 
 ### 升级之前 {#before-upgrading}

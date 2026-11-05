@@ -96,6 +96,28 @@ Durable Workflow の各公開インターフェースは、次の安定性レベ
 - Python SDK: `durable-workflow/sdk-python` の `README.md`。`durable_workflow` パッケージ公開 API の規範です。
 - Rust SDK: `durable-workflow/sdk-rust` の `README.md` と `[package.metadata.durable-workflow]`。`durable-workflow` crate 公開 API とパッケージ互換性宣言の規範です。
 
+## 組み込み PHP と Laravel のサポート {#embedded-php-and-laravel-support}
+
+組み込みパッケージの環境要件は、公開済みの Composer マニフェストとアップグレードマニフェストで
+定義されます。ソースのマージは、公開済みサポートやインストール済み成果物の検証を意味しません。
+
+| Workflow 系列 | PHP 制約 | Laravel 制約 | 根拠 |
+| --- | --- | --- | --- |
+| 公開済み 2.20.4 | `^8.1` | `^10.50.4\|^11.56.1\|^12.69.0\|^13.30.0` | [公開済み 2.20.4 マニフェスト](https://github.com/durable-workflow/workflow/blob/2.20.4/composer.json) |
+| 2.21、未公開 | `^8.2` | `^12.69.0\|^13.30.0` | [予定されたソース](https://github.com/durable-workflow/workflow/blob/3d7d0a193d8fffe591f8286d1c4d5499120a297a/resources/laravel-embedded-upgrade-contract.json)。実際の公開と Release Verification は未完了 |
+
+Laravel 10 は PHP 8.1 を許可し、Laravel 11/12 は PHP 8.2、Laravel 13 は PHP 8.3 を要求します。
+Composer の宣言範囲は、すべてのインタープリターとデータベースの組み合わせを検証するものではありません。
+[2.21 アップグレード案内](/docs/installation/#preparing-for-workflow-2-21)に従って環境を準備してください。
+Laravel 9 のアプリケーションは、フレームワークを更新するまで対応する 2.16.x 系列を使用します。
+過去の 1.x 契約は変わりません。
+
+フレームワーク非依存の PHP SDK は、独立した PHP `^8.1` 要件を維持します。
+[Laravel サービスモードのブリッジ](https://php.durable-workflow.com/frameworks/laravel/)は、SDK 自身の
+公開済み契約に従います。予定された Workflow の変更によって、このブリッジのサポートを先に
+縮小したり、独立した Server、Python、Rust の要件を変えたりすることはありません。
+この環境要件の変更は、Worker プロトコルや永続履歴のバージョンを変更しません。
+
 ## リリースルール {#release-rules}
 
 以下は上記の全公開分類に適用します。JSON ミラーの `release_rules` にも記載しています。

@@ -21,6 +21,26 @@ runtime ou se connecte à Cloud ou Server auto-hébergé via le SDK PHP dans le
 [guide d'adoption Laravel et de transition du runtime](/docs/laravel-adoption/).
 Cette page détaille ensuite la migration du paquet embarqué v1 vers v2.
 
+## Vérifier la plateforme cible {#check-the-target-platform}
+
+Vérifiez les [exigences PHP et Laravel](/docs/installation/#requirements) du
+paquet cible publié avant de changer les contraintes Composer. Le support
+stable v1 n'implique pas que le même hôte soit pris en charge en v2 embarquée
+actuelle. Une application Laravel 9 doit notamment mettre le framework à niveau
+avant d'adopter la branche publiée 2.20.x.
+
+La [préparation de 2.21](/docs/installation/#preparing-for-workflow-2-21)
+décrit le retrait prévu de PHP 8.1 et Laravel 10/11. Cette branche n'est pas
+encore publiée et n'a pas passé Release Verification. Conservez le fichier de
+verrouillage 2.20.x pendant la préparation ; les versions antérieures ne
+prolongent pas le support de sécurité amont. Le SDK PHP seul et son pont
+Laravel ont leurs propres exigences publiées.
+
+Ce changement n'introduit aucune migration de schéma, d'historique ou de
+protocole. L'historique v1 reste la propriété de v1. Les règles de vidage,
+coexistence et retour arrière ci-dessous restent applicables ; un changement
+Composer ne migre jamais une exécution.
+
 ## Procédure de mise à niveau {#upgrade-procedure}
 
 ### Avant la mise à niveau {#before-upgrading}
