@@ -11,12 +11,13 @@ production operation is proposed here.
 ## Inputs and provenance
 
 `rust-local-browser-packet.json` binds the executable/data closure and exact
-runtime. Its artifact tuple is the accepted SDK #209 input already recorded in
-`rust-policy.json`: artifact 13375154247, ZIP SHA-256
-`ff902191bdb90f7f1d047ecc5d27e9b8c5215a0239e4f11fcbf574f7ddab83d1`,
-484 files / 372 HTML pages / 49 inline-script hashes. Public Rust 4.12.0, crate
-source and tooling identities are preserved. `rust-rule.candidate.json` and all
-policy/approval/browser-result files remain unchanged and disabled/unrun.
+runtime. Its artifact tuple is the accepted SDK #212 input already recorded in
+`rust-policy.json`: artifact 13382143373, ZIP SHA-256
+`15f1e2745a0b268e1093820b3486c4910e8d1bf7b63062e562200586d3beef95`,
+484 files / 372 HTML pages / 49 inline-script hashes. Public Rust 4.12.0 crate
+and source identities are preserved; tooling matches the accepted SDK #212
+build. The parsed rule, policy sources, approval flags and unrun status remain
+unchanged. Input provenance fields now bind this artifact.
 
 The proposed runtime is the existing Playwright 1.64.0 generation, pinned to the
 official **linux/amd64** platform manifest in the packet. Registry metadata was
@@ -39,7 +40,7 @@ membership, recheck the accepted protected-run/deployment identity and compare
 live `__build.json` with the exact artifact. Those are finite read-only checks.
 Stop if the live input has changed, the artifact has expired, or a required input
 is unavailable. Do not dispatch a replacement build or silently retarget the
-packet. The input API expires this ZIP on November 6, 2026 at 00:09:56 UTC.
+packet. The input API expires this ZIP on November 6, 2026 at 02:19:51 UTC.
 
 ## What the proposed check exercises
 
@@ -72,6 +73,88 @@ Normal CI runs only `rust-browser-source.test.cjs` with fake routes and temporar
 input files, plus the existing header-policy controls. It never imports
 Playwright, launches a browser or runs the optional browser entrypoint.
 
+## Required custody before execution
+
+[Security's source review](https://github.com/durable-workflow/durable-workflow.github.io/pull/477#issuecomment-6647872853)
+requires verification outside Node before any packet code is loaded. The
+in-process check cannot authenticate code that is already executing. The exact
+current packet SHA-256 is
+`2060309bf48d3e179abf55c0f2e1ffbc4908fcd7227b0cc4eb11089afde71f2a`.
+
+Before any separate preparation/run admission, General and Security must bind
+an approved write-preventing mechanism and exclusive owner for all three public
+staging trees. They must remain unchanged through the attempt. Host writers can
+still change a read-only bind mount's source; bind flags and a prior hash alone
+do not establish that custody. Ordinary mutable worktrees and downloaded caches
+are not execution seals. An unavailable seal is a blocker, not authority to add
+privileges, a helper, a writable mount or a new storage service.
+
+After that separate admission, use the following literal reviewed command with
+the host's trusted isolated Python interpreter. Copy it from the reviewed
+record, not from an unverified packet file. Do not load any packet Python/Node
+module to perform this check. Bind the interpreter identity in the execution
+record. The packet and runtime staging paths must be outside home/credential
+trees, absolute, regular, free of symlink components and exclusively owned.
+Copy only the eight manifest members and the manifest into the packet tree.
+Exclude repository metadata, extra modules/configuration and `node_modules`
+from this tree so they cannot shadow the separately sealed runtime dependency.
+
+```sh
+/usr/bin/python3 -I - "$packet_directory" <<'PY'
+import hashlib, json, stat, sys
+from pathlib import Path, PurePosixPath
+
+root = Path(sys.argv[1])
+assert root.is_absolute() and root.resolve() == root
+assert root.is_dir() and not root.is_symlink()
+assert not root.is_relative_to(Path.home())
+manifest_path = root / 'rust-local-browser-packet.json'
+assert stat.S_ISREG(manifest_path.lstat().st_mode)
+manifest_bytes = manifest_path.read_bytes()
+expected = '2060309bf48d3e179abf55c0f2e1ffbc4908fcd7227b0cc4eb11089afde71f2a'
+assert hashlib.sha256(manifest_bytes).hexdigest() == expected
+manifest = json.loads(manifest_bytes)
+assert manifest['run_status'] == 'not-run' and len(manifest['files']) == 8
+expected_files = set(manifest['files']) | {'rust-local-browser-packet.json'}
+actual_files = set()
+for member in root.rglob('*'):
+    mode = member.lstat().st_mode
+    assert stat.S_ISREG(mode) or stat.S_ISDIR(mode)
+    relative = member.relative_to(root).as_posix()
+    if stat.S_ISDIR(mode):
+        assert relative == 'runtime'
+    else:
+        actual_files.add(relative)
+assert actual_files == expected_files
+for name, expected_hash in manifest['files'].items():
+    relative = PurePosixPath(name)
+    assert not relative.is_absolute() and '..' not in relative.parts
+    member = root
+    for part in relative.parts:
+        member = member / part
+        assert not member.is_symlink()
+    assert stat.S_ISREG(member.lstat().st_mode)
+    assert hashlib.sha256(member.read_bytes()).hexdigest() == expected_hash
+print('External packet and eight-member hash check passed; no packet code loaded.')
+PY
+```
+
+This check is an integrity prerequisite. It does not create a seal or approve an
+attempt. Record the separate write-prevention/custody proof and recheck the
+mounts and cached image immediately before creating the admitted cell.
+
+Dependency preparation is separately held. Its future admitted environment
+must have a container-only empty home, distinct empty user/global npm config
+files, a task-private cache, a public registry and an explicit environment
+allowlist. No host home/profile, `.npmrc`, token, credential directory or secret
+proxy setting may be inherited. Set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and
+`--ignore-scripts`; use the exact lock and verify both archive integrity values
+and library version. Do not import Playwright during preparation. Enumerate and
+hash the resulting dependency tree, reject external links, then establish its
+approved immutable/exclusive custody before any browser code resolves it.
+No such environment, dependency tree or seal has been created by this source
+retarget. Missing preparation/image/custody proof leaves execution held.
+
 ## Proposed execution and cleanup
 
 Documentation owns one attempt and cleanup. General names the admitted executor
@@ -83,7 +166,8 @@ There is no automatic retry, host IPC, privileged mode, extra capability or
 published port. The writable tmpfs and private shared memory count within the
 container's memory cap. This is a proposed budget, not a reservation.
 
-The following is the exact proposed launch shape after admission. Assign the
+The following is the exact proposed launch shape after admission, the external
+pre-load hash check and accepted custody proof above. Assign the
 three absolute input paths from the reviewed public-input preparation; reject
 commas/newlines in those paths. `packet_directory` contains only this public
 packet. `runtime_modules` is the prepared public dependency tree. Do not point
