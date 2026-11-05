@@ -15,10 +15,13 @@ before any acquisition, memory seal, service, Docker/image, Node/browser or
 provider effect. There is no command-line or environment bypass. The source
 does not accept a real handoff, prepare an image or qualify the host runtime.
 No controller invocation or filesystem path is approved by these source files.
-The current suite has 39 test methods, including the per-edge fault subcases.
+The current suite has 46 test methods, including the per-edge fault subcases.
 Security's source/executable HOLD remains in force pending review of these
-corrections: durable mutation binding, descriptor cleanup, installed authority
-and the joined terminal collector.
+corrections: durable mutation binding, descriptor-first transport creation,
+bounded evidence retention, installed authority and the joined terminal collector.
+The [selected retention contract](https://github.com/durable-workflow/durable-workflow.github.io/pull/480#issuecomment-6656594364)
+supersedes the earlier proposal's transport deletion requirement. No transport
+pathname deletion is attempted by this controller.
 
 Run the source controls with Python 3.11 or later on Linux:
 
@@ -42,6 +45,9 @@ and Docker-filesystem locations; competing work and capacity; and one invocation
 Those private fields are deliberately absent here. Missing/expired/unbound
 fields stop the attempt. The current artifact still expires November 6 at
 03:10:05 UTC and may require a fresh source retarget before any decision.
+The exact future invocation must also bind the evidence owner, a custody
+checkpoint within 24 hours, and the owning GitHub reconciliation record. This
+checkpoint schedules reconciliation; it does not grant automatic deletion.
 
 `rust-preparation-source.json` records the exact source closure. A trusted
 external isolated Python preloader must first authenticate that manifest against
@@ -94,7 +100,7 @@ def capture(name, limit):
         os.close(fd)
 try:
     raw = capture('rust-preparation-source.json', 16384)
-    expected_manifest = 'e93ca5757420fd47ce7d6b0cad35b86fab6dbec0943991e4f5d6871ecd0d2c29'
+    expected_manifest = '8d5139447450d6b81b0e1287e987b981c89c6b13a54e9bb6354036ceae65e727'
     if hashlib.sha256(raw).hexdigest() != expected_manifest:
         raise RuntimeError('source-manifest-hash')
     manifest = json.loads(raw)
@@ -152,15 +158,35 @@ only independently discovered nonce-owned containers, but reports daemon
 terminal state unknown and retains bounded evidence. It does not claim a
 successful cleanup or allow another phase merely because a client stopped.
 Unknown native work requires General's decision and independent reconciliation.
-CLI exit zero does not clear a mutation journal. Typed returned identity and
-independent readback must be durably appended and synced before pending state
-can clear. Copy readback is verified before commit as well as after the image
+CLI exit zero does not complete a mutation journal. Typed returned identity and
+independent readback must be durably appended and synced before a completion
+record can append. Pending and completed entries remain in the bounded journal;
+no journal filename is deleted. Copy readback is verified before commit as well as after the image
 snapshot. Malformed output or loss between exit and persistence stays unresolved.
 
-Transport cleanup opens and binds one directory descriptor, including its
-ownership record, and uses held descriptors for enumeration and deletion.
-A namespace swap preserves the replacement tree and returns unresolved evidence.
-The original directory's device/inode remains the bound identity throughout.
+Transport creation uses a held parent descriptor and immediately opens/binds
+the root before any child or record write. Child directories are also held and
+their device/inode identities enter the ownership record. All writes use these
+descriptors. A detected root/child namespace swap refuses use and never adopts
+the replacement for writes. Reopened worker/stop transports must match all three
+directory identities. Docker config and HOME resolve through the verified child
+descriptors, rather than mutable child names; unbound runners use an unavailable
+kernel FD path. The anonymous registry config contains no credentials or helpers
+and disables platform helper-store discovery through its explicit empty registry
+entry ([Docker loader](https://github.com/docker/cli/blob/master/cli/config/config.go),
+[auth-map check](https://github.com/docker/cli/blob/master/cli/config/configfile/file.go)).
+
+Finalization performs no transport unlink or rmdir. The exact private tree is
+retained as bounded attempt evidence: three directories and five regular files
+(ownership, operation results, mutation journal, worker context and anonymous
+Docker config), at most 144 KiB of file contents. Every member, mode, owner,
+root/child identity and namespace binding must match; pending, extra or unknown
+members prevent acceptance. The receipt records root device/inode, member hashes,
+owner, checkpoint and GitHub reconciliation reference. Namespace swaps leave
+both the original bound inode and replacement untouched and remain unresolved.
+Later deletion requires separate reviewed authority; retaining this evidence
+does not select a cleanup command or permit unbounded accumulation. Controls
+include the exact predecessor functions and root/child swap successors.
 
 The installed-authority manifest must come from an independent complete-loader
 and package review. It binds a boot generation, exact entry aliases and resolved
@@ -188,7 +214,8 @@ finite pipes, then joins exactly two terminal records. It binds invocation,
 attempt/source/authority/command hashes and distinct main/control PIDs; actual
 worker exit and cleanup status; exact base/dependency identities; seal proof,
 image/config/layer identities and readback; durably bound operations; no pending
-work or owned survivors; foreign-container preservation; and transport removal.
+work or owned survivors; foreign-container preservation; and bounded transport
+evidence custody with the exact owner and checkpoint.
 Lost/duplicate/spliced output, nonzero wait, malformed identities or unresolved
 cleanup cannot yield a preparation receipt. Collector loss leaves no acceptance;
 independent stop cleanup remains the service manager's responsibility.

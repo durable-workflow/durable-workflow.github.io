@@ -54,6 +54,8 @@ TREE_LIMIT = 64 * MIB
 TAR_LIMIT = 128 * MIB
 HEX_64 = r"[0-9a-f]{64}"
 IMAGE_ID = r"sha256:[0-9a-f]{64}"
+RETAINED_EVIDENCE = "retained-bounded-evidence"
+EVIDENCE_LIMIT = 144 * 1024
 DEPENDENCY_INTEGRITY = {
     "playwright": "sha512-kVzTnYFYEyQ9RGzBjNCd2+yEqWmVbxl3AHPynv3qQ6JTjv4a+kwRcnqQwIpuP3NnrnIrE/Q6wWAIAvMfIE2/Yg==",
     "playwright-core": "sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==",
@@ -453,7 +455,8 @@ def terminal_input_binding(worker, expected):
 
 def terminal_cleanup_binding(worker, stop, expected):
     require(stop["pending"] is False and stop["owned_survivors"] == [] and stop["problems"] == [], "terminal-unresolved-work")
-    require(stop["transport_removed"] is True and stop["foreign_preserved"] is True, "terminal-cleanup")
+    require(stop["foreign_preserved"] is True, "terminal-foreign-preservation")
+    terminal_retained_evidence(stop["transport"], expected)
     require(worker["foreign_before_sha256"] == stop["foreign_before_sha256"], "terminal-foreign-baseline")
     require(re.fullmatch(HEX_64, worker["foreign_before_sha256"]) is not None, "terminal-foreign-baseline-hash")
     operations = stop["operation_results"]
@@ -467,6 +470,26 @@ def terminal_cleanup_binding(worker, stop, expected):
     assembler, verifier = (operations[i]["identity"]["container_id"] for i in (1, 4))
     require(re.fullmatch(HEX_64, assembler) is not None and re.fullmatch(HEX_64, verifier) is not None
             and assembler != verifier and operations[2]["identity"]["container_id"] == assembler, "terminal-container-binding")
+
+
+def terminal_retained_evidence(evidence, expected):
+    require(type(evidence) is dict and evidence["state"] == RETAINED_EVIDENCE and evidence["owner"] == OWNER,
+            "terminal-transport-custody")
+    require(evidence["attempt_sha256"] == expected["attempt_sha256"]
+            and evidence["custody_due"] == expected["custody_due"]
+            and evidence["reconciliation_ref"] == expected["reconciliation_ref"], "terminal-transport-attempt")
+    require(all(type(evidence[k]) is int and evidence[k] >= 0 for k in ("device", "inode", "uid", "gid"))
+            and evidence["inode"] > 0 and evidence["mode"] == 0o700, "terminal-transport-identity")
+    require((evidence["uid"], evidence["gid"]) == (expected["transport_uid"], expected["transport_gid"]), "terminal-transport-owner")
+    rows = evidence["files"]
+    require(len(rows) == 5 and {r["path"] for r in rows}
+            == {"ownership.json", "operation-results.jsonl", "worker-context.json", "pending-operation.json", "docker/config.json"},
+            "terminal-transport-members")
+    require(all(type(r["bytes"]) is int and r["bytes"] >= 0 and re.fullmatch(HEX_64, r["sha256"]) is not None
+            for r in rows), "terminal-transport-member-identity")
+    require(evidence["bytes"] == sum(r["bytes"] for r in rows) <= EVIDENCE_LIMIT, "terminal-transport-size")
+    require(evidence["sha256"] == digest(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()),
+            "terminal-transport-manifest")
 
 
 def collect_terminal(raw, expected, wait_exit_code):
@@ -485,7 +508,7 @@ def collect_terminal(raw, expected, wait_exit_code):
             "worker_pid": worker["pid"], "stop_pid": stop["pid"], "unit_wait_exit": 0,
             "subject": SUBJECT, "base_image_id": BASE_ID, "dependencies": worker["dependencies"],
             "seal": worker["seal"], "image": worker["image"], "readback_sha256": worker["readback_sha256"],
-            "pending": False, "owned_survivors": [], "foreign_preserved": True, "transport_removed": True,
+            "pending": False, "owned_survivors": [], "foreign_preserved": True, "transport": stop["transport"],
             "browser": "not-run", "provider": "not-run", "compatibility_accepted": False, "rollout_approved": False}
 
 

@@ -44,6 +44,9 @@ OWNERSHIP_FILE = "ownership.json"
 PENDING_FILE = "pending-operation.json"
 RESULTS_FILE = "operation-results.jsonl"
 CONTEXT_FILE = "worker-context.json"
+# A nonempty auth map with an empty registry entry prevents Docker CLI's
+# platform default-store detection, while supplying no credential or helper.
+ANONYMOUS_CONFIG = b'{"auths":{"mcr.microsoft.com":{}}}'
 _HOST_AUTHORITY = None
 
 
@@ -82,7 +85,7 @@ def decoded(value):
 def admission(spec, now):
     required = {"artifact_handoff", "packet_bindings", "staging_path", "uid", "gid",
                 "docker_root", "metadata_at", "metadata_expires", "metadata_subject",
-                "live_build_sha256", "python_sha256", "env_sha256", "authority_binding"}
+                "live_build_sha256", "python_sha256", "env_sha256", "authority_binding", "retention"}
     core.require(set(spec) == required, "admission-fields")
     core.require(type(spec["uid"]) is int and type(spec["gid"]) is int, "admission-owner")
     core.require((spec["uid"], spec["gid"]) == (os.getuid(), os.getgid()), "executor-owner")
@@ -98,6 +101,13 @@ def admission(spec, now):
     core.require(0 <= (now - observed).total_seconds() <= 300, "stale-metadata")
     core.require(expiry == dt.datetime.fromisoformat(core.SUBJECT_EXPIRY)
                  and now + dt.timedelta(seconds=RUNTIME_LIMIT + 15) < expiry, "artifact-window")
+    retention = spec["retention"]
+    core.require(set(retention) == {"owner", "custody_due", "reconciliation_ref"}
+                 and retention["owner"] == core.OWNER, "retention-owner")
+    due = dt.datetime.fromisoformat(retention["custody_due"])
+    core.require(now + dt.timedelta(seconds=RUNTIME_LIMIT + 15) < due <= now + dt.timedelta(hours=24), "retention-window")
+    core.require(re.fullmatch(r"https://github\.com/durable-workflow/(?:durable-workflow\.github\.io/pull/480|\.github/issues/268)#issuecomment-[0-9]+",
+                              retention["reconciliation_ref"]) is not None, "retention-reconciliation")
     for path in (spec["staging_path"], spec["docker_root"]):
         core.require(re.fullmatch(r"/[A-Za-z0-9_./-]+", path) is not None, "native-path")
         core.require(str(Path(path)) == path and ".." not in Path(path).parts, "native-path")
@@ -115,11 +125,14 @@ class CommandRunner:
 
     def __init__(self, environment):
         self.environment = dict(environment)
+        self.environment.update({"HOME": "/proc/self/fd/-1", "DOCKER_CONFIG": "/proc/self/fd/-1"})
         self.pass_fds = ()
 
-    def bind_transport(self, descriptor):
-        self.environment = clean_environment(Path("/proc/self/fd/" + str(descriptor)))
-        self.pass_fds = (descriptor,)
+    def bind_transport(self, transport):
+        self.environment = clean_environment(Path("/proc/self/fd/" + str(transport.fd)))
+        self.environment["HOME"] = "/proc/self/fd/" + str(transport.children["home"])
+        self.environment["DOCKER_CONFIG"] = "/proc/self/fd/" + str(transport.children["docker"])
+        self.pass_fds = (transport.fd, *transport.children.values())
 
     def run(self, args, timeout=15, limit=core.MIB, stdin=None):
         admitted()
@@ -362,8 +375,10 @@ class TransportDirectory:
     """All child operations use the same held root, including after a rename."""
 
     def __init__(self, spec, runtime):
+        self.spec = spec
         self.parent, self.name = parent_descriptor(spec["staging_path"])
         self.fd = None
+        self.children = {}
         try:
             self.fd = os.open(self.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.parent)
             self.identity = os.fstat(self.fd)
@@ -371,12 +386,26 @@ class TransportDirectory:
                          and self.identity.st_uid == spec["uid"] and self.identity.st_gid == spec["gid"], "transport-owner")
             record = core.strict_json(self.read(OWNERSHIP_FILE, 4096))
             expected = {"nonce": runtime["nonce"], "device": self.identity.st_dev, "inode": self.identity.st_ino}
-            core.require(record == expected, "transport-record-binding")
+            core.require(set(record) == set(expected) | {"children"} and all(record[k] == v for k, v in expected.items()),
+                         "transport-record-binding")
+            self.child_bindings = record["children"]
+            core.require(set(self.child_bindings) == {"home", "docker"}, "transport-child-closure")
+            for name in ("home", "docker"):
+                child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.fd)
+                self.children[name] = child
+                info = os.fstat(child)
+                core.require({"device": info.st_dev, "inode": info.st_ino} == self.child_bindings[name]
+                             and (info.st_uid, info.st_gid) == (spec["uid"], spec["gid"])
+                             and stat.S_IMODE(info.st_mode) == 0o700, "transport-child-binding")
+            self.verify_namespace()
         except BaseException:
             self.close()
             raise
 
     def close(self):
+        for child in self.children.values():
+            os.close(child)
+        self.children.clear()
         if self.fd is not None:
             os.close(self.fd)
             self.fd = None
@@ -388,6 +417,13 @@ class TransportDirectory:
         current = os.stat(self.name, dir_fd=self.parent, follow_symlinks=False)
         return (current.st_dev, current.st_ino) == (self.identity.st_dev, self.identity.st_ino)
 
+    def verify_namespace(self):
+        core.require(self.namespace_matches(), "transport-namespace-changed")
+        for name, binding in self.child_bindings.items():
+            info = os.stat(name, dir_fd=self.fd, follow_symlinks=False)
+            core.require(stat.S_ISDIR(info.st_mode) and {"device": info.st_dev, "inode": info.st_ino} == binding,
+                         "transport-child-swapped")
+
     def exists(self, name):
         try:
             os.stat(name, dir_fd=self.fd, follow_symlinks=False)
@@ -395,8 +431,8 @@ class TransportDirectory:
         except FileNotFoundError:
             return False
 
-    def read(self, name, limit):
-        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.fd)
+    def read(self, name, limit, parent=None):
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.fd if parent is None else parent)
         try:
             info = os.fstat(descriptor)
             core.require(stat.S_ISREG(info.st_mode) and info.st_nlink == 1
@@ -410,36 +446,54 @@ class TransportDirectory:
             os.close(descriptor)
 
     def write_pending(self, value):
-        descriptor = os.open(PENDING_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                             0o600, dir_fd=self.fd)
-        with os.fdopen(descriptor, "wb") as file:
-            file.write(json.dumps(value, sort_keys=True).encode())
-            file.flush()
-            os.fsync(file.fileno())
-        os.fsync(self.fd)
+        core.require(not self.pending_operation(), "daemon-terminal-unknown")
+        self.append_record(PENDING_FILE, {**value, "state": "pending"}, 16384)
 
-    def bind_operation(self, operation, identity, nonce):
-        pending = core.strict_json(self.read(PENDING_FILE, 4096))
-        core.require(pending == {"operation": operation, "nonce": nonce}, "pending-operation-identity")
-        descriptor = os.open(RESULTS_FILE, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW,
-                             0o600, dir_fd=self.fd)
+    def append_record(self, name, value, limit):
+        descriptor = os.open(name, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=self.fd)
         with os.fdopen(descriptor, "wb") as file:
             observed = os.fstat(file.fileno())
             core.require(stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1
                          and observed.st_uid == self.identity.st_uid and stat.S_IMODE(observed.st_mode) == 0o600,
                          "operation-result-type")
-            file.write((json.dumps({"operation": operation, "nonce": nonce, "identity": identity}, sort_keys=True) + "\n").encode())
+            raw = (json.dumps(value, sort_keys=True) + "\n").encode()
+            core.require(observed.st_size + len(raw) <= limit, "operation-journal-limit")
+            file.write(raw)
             file.flush()
             os.fsync(file.fileno())
         os.fsync(self.fd)
+
+    def pending_operation(self):
+        if not self.exists(PENDING_FILE):
+            return None
+        rows = [core.strict_json(line) for line in self.read(PENDING_FILE, 16384).splitlines()]
+        core.require(0 < len(rows) <= 16, "operation-journal-count")
+        pending = None
+        for row in rows:
+            core.require(set(row) == {"operation", "nonce", "state"}, "operation-journal-fields")
+            if row["state"] == "pending":
+                core.require(pending is None, "operation-journal-overlap")
+                pending = {k: row[k] for k in ("operation", "nonce")}
+            else:
+                core.require(row["state"] == "bound" and pending == {k: row[k] for k in ("operation", "nonce")},
+                             "operation-journal-terminal")
+                pending = None
+        return pending
+
+    def bind_operation(self, operation, identity, nonce):
+        pending = self.pending_operation()
+        core.require(pending == {"operation": operation, "nonce": nonce}, "pending-operation-identity")
+        self.append_record(RESULTS_FILE, {"operation": operation, "nonce": nonce, "identity": identity}, 65536)
         # Only typed, durably recorded caller validation makes this terminal.
-        os.unlink(PENDING_FILE, dir_fd=self.fd)
-        os.fsync(self.fd)
+        # Append completion; do not unlink a mutable filename after validation.
+        self.append_record(PENDING_FILE, {"operation": operation, "nonce": nonce, "state": "bound"}, 16384)
 
     def write_context(self, value):
+        raw = json.dumps(value, sort_keys=True).encode()
+        core.require(len(raw) <= 65536, "transport-context-limit")
         descriptor = os.open(CONTEXT_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=self.fd)
         with os.fdopen(descriptor, "wb") as file:
-            file.write(json.dumps(value, sort_keys=True).encode())
+            file.write(raw)
             file.flush()
             os.fsync(file.fileno())
         os.fsync(self.fd)
@@ -452,34 +506,41 @@ class TransportDirectory:
         core.require(len(rows) <= 16, "operation-result-count")
         return rows
 
-    def remove_contents(self):
+    def retained_file(self, parent, name, limit, path):
+        raw = self.read(name, limit, parent)
+        return {"path": path, "bytes": len(raw), "sha256": core.digest(raw)}
+
+    def retain_evidence(self, runtime):
+        # Read-only finalization. No unlink/rmdir of a mutable namespace entry:
+        # POSIX pathname deletion cannot condition on our held inode identity.
         core.require(self.namespace_matches(), "transport-namespace-changed")
-        expected = {"home", "docker", OWNERSHIP_FILE}
-        if self.exists(RESULTS_FILE):
-            expected.add(RESULTS_FILE)
-        if self.exists(CONTEXT_FILE):
-            expected.add(CONTEXT_FILE)
+        expected = {"home", "docker", OWNERSHIP_FILE, RESULTS_FILE, CONTEXT_FILE, PENDING_FILE}
         core.require(set(os.listdir(self.fd)) == expected, "transport-extra-or-pending")
-        children = {}
+        core.require(self.pending_operation() is None, "daemon-terminal-unknown")
+        children = self.children
+        self.verify_namespace()
         try:
-            for name in ("home", "docker"):
-                child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.fd)
-                children[name] = child
-                core.require(os.fstat(child).st_uid == self.identity.st_uid, "transport-child-owner")
             core.require(os.listdir(children["home"]) == [], "transport-home-extra")
             core.require(os.listdir(children["docker"]) == ["config.json"], "transport-config-extra")
-            os.unlink("config.json", dir_fd=children["docker"])
-            for name in (OWNERSHIP_FILE, RESULTS_FILE, CONTEXT_FILE):
-                if self.exists(name):
-                    os.unlink(name, dir_fd=self.fd)
-            for name in ("home", "docker"):
-                os.rmdir(name, dir_fd=self.fd)
-            core.require(self.namespace_matches(), "transport-namespace-changed")
-            os.rmdir(self.name, dir_fd=self.parent)
-            core.require(os.fstat(self.fd).st_nlink == 0, "bound-transport-survivor")
+            core.require(self.read("config.json", 4096, children["docker"]) == ANONYMOUS_CONFIG, "transport-config-changed")
+            rows = [self.retained_file(self.fd, name, limit, name) for name, limit in
+                    ((OWNERSHIP_FILE, 4096), (RESULTS_FILE, 65536), (CONTEXT_FILE, 65536), (PENDING_FILE, 16384))]
+            rows.append(self.retained_file(children["docker"], "config.json", 4096, "docker/config.json"))
+            for name, descriptor in children.items():
+                observed = os.stat(name, dir_fd=self.fd, follow_symlinks=False)
+                opened = os.fstat(descriptor)
+                core.require((observed.st_dev, observed.st_ino) == (opened.st_dev, opened.st_ino), "transport-child-swapped")
+            core.require(self.namespace_matches() and set(os.listdir(self.fd)) == expected, "transport-namespace-changed")
+            core.require(sum(row["bytes"] for row in rows) <= core.EVIDENCE_LIMIT, "transport-evidence-limit")
+            retention = self.spec["retention"]
+            return {"state": core.RETAINED_EVIDENCE, "owner": core.OWNER, "attempt_sha256": core.digest(runtime["nonce"].encode()),
+                    "device": self.identity.st_dev, "inode": self.identity.st_ino,
+                    "uid": self.identity.st_uid, "gid": self.identity.st_gid, "mode": 0o700,
+                    "files": rows, "bytes": sum(row["bytes"] for row in rows),
+                    "sha256": core.digest(installed.canonical_bytes(rows)), "custody_due": retention["custody_due"],
+                    "reconciliation_ref": retention["reconciliation_ref"]}
         finally:
-            for child in children.values():
-                os.close(child)
+            self.verify_namespace()
 
 
 class LiveEffects:
@@ -492,6 +553,8 @@ class LiveEffects:
         self.ownership = core.Ownership(runtime["nonce"])
 
     def supervisor_ready(self):
+        if self.transport is not None:
+            self.transport.verify_namespace()
         check_manager_identity(self.runner)
         check_supervisor(self.runner, self.spec, self.runtime, self.modules)
         capacity(self.spec)
@@ -510,7 +573,7 @@ class LiveEffects:
         if self.transport is None:
             self.transport = TransportDirectory(self.spec, self.runtime)
             if isinstance(self.runner, CommandRunner):
-                self.runner.bind_transport(self.transport.fd)
+                self.runner.bind_transport(self.transport)
         return self.transport
 
     def complete_operation(self, operation, identity):
@@ -565,7 +628,7 @@ class LiveEffects:
     def uncertain_daemon_operation(self):
         if self.transport is None and not self.root.exists():
             return False
-        return self.require_transport().exists(PENDING_FILE)
+        return self.require_transport().pending_operation() is not None
 
     def seal(self, raw):
         sealed = Seal(raw)
@@ -669,6 +732,8 @@ def expected_receipt(spec, runtime, modules):
             "authority_sha256": authority.digest,
             "worker_command_sha256": core.digest(installed.canonical_bytes(unit_argv("worker", spec, runtime, modules))),
             "stop_command_sha256": core.digest(installed.canonical_bytes(unit_argv("cleanup", spec, runtime, modules))),
+            "custody_due": spec["retention"]["custody_due"], "reconciliation_ref": spec["retention"]["reconciliation_ref"],
+            "transport_uid": spec["uid"], "transport_gid": spec["gid"],
             "seal_flags": fcntl.F_SEAL_WRITE | fcntl.F_SEAL_GROW | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_SEAL}
 
 
@@ -734,24 +799,59 @@ def create_transport(spec, nonce):
     admitted()
     root = Path(spec["staging_path"])
     home = Path(pwd.getpwuid(os.getuid()).pw_dir)
-    core.require(not root.is_relative_to(home) and root.resolve() == root, "transport-location")
+    core.require(not root.is_relative_to(home), "transport-location")
     core.require((os.getuid(), os.getgid()) == (spec["uid"], spec["gid"]), "executor-owner")
-    root.mkdir(mode=0o700)
-    for name in ("home", "docker"):
-        (root / name).mkdir(mode=0o700)
-    observed = root.stat()
-    owner_record = {"nonce": nonce, "device": observed.st_dev, "inode": observed.st_ino}
-    for name, raw in (("docker/config.json", b"{}"), (OWNERSHIP_FILE, json.dumps(owner_record).encode())):
-        with os.fdopen(os.open(root / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), "wb") as file:
-            file.write(raw)
-    return owner_record
+    parent, leaf = parent_descriptor(root)
+    descriptor, children = None, {}
+    try:
+        os.mkdir(leaf, mode=0o700, dir_fd=parent)
+        descriptor = os.open(leaf, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+        info = os.fstat(descriptor)
+        core.require((info.st_uid, info.st_gid) == (spec["uid"], spec["gid"])
+                     and stat.S_IMODE(info.st_mode) == 0o700 and os.listdir(descriptor) == [], "created-transport-identity")
+        def verify():
+            current = os.stat(leaf, dir_fd=parent, follow_symlinks=False)
+            core.require((current.st_dev, current.st_ino) == (info.st_dev, info.st_ino), "transport-namespace-changed")
+        verify()
+        bindings = {}
+        for name in ("home", "docker"):
+            verify()
+            os.mkdir(name, mode=0o700, dir_fd=descriptor)
+            child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            children[name] = child
+            observed = os.fstat(child)
+            core.require(os.listdir(child) == [] and (observed.st_uid, observed.st_gid) == (spec["uid"], spec["gid"])
+                         and stat.S_IMODE(observed.st_mode) == 0o700, "created-child-identity")
+            bindings[name] = {"device": observed.st_dev, "inode": observed.st_ino}
+        owner_record = {"nonce": nonce, "device": info.st_dev, "inode": info.st_ino, "children": bindings}
+        for directory, name, raw in ((children["docker"], "config.json", ANONYMOUS_CONFIG),
+                                     (descriptor, OWNERSHIP_FILE, json.dumps(owner_record).encode())):
+            verify()
+            for child_name, binding in bindings.items():
+                current = os.stat(child_name, dir_fd=descriptor, follow_symlinks=False)
+                core.require({"device": current.st_dev, "inode": current.st_ino} == binding, "transport-child-swapped")
+            file_fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory)
+            with os.fdopen(file_fd, "wb") as file:
+                file.write(raw)
+                file.flush()
+                os.fsync(file.fileno())
+            os.fsync(directory)
+        verify()
+        os.fsync(descriptor)
+        return owner_record
+    finally:
+        for child in children.values():
+            os.close(child)
+        if descriptor is not None:
+            os.close(descriptor)
+        os.close(parent)
 
 
-def cleanup_transport(spec, runtime):
+def retain_transport(spec, runtime):
     admitted()
     directory = TransportDirectory(spec, runtime)
     try:
-        directory.remove_contents()
+        return directory.retain_evidence(runtime)
     finally:
         directory.close()
 
@@ -813,7 +913,7 @@ def entrypoint(argv, modules, admitted_hash):
     problems = core.cleanup(effects, effects.ownership)
     problems = list(problems)
     operations, context, survivors = [], {}, []
-    pending, foreign_preserved, transport_removed = True, False, False
+    pending, foreign_preserved, transport = True, False, None
     try:
         directory = effects.require_transport()
         operations = directory.results()
@@ -826,11 +926,10 @@ def entrypoint(argv, modules, admitted_hash):
         foreign_after = effects.foreign_snapshot()
         foreign_preserved = all(foreign_after.get(cid) == name for cid, name in context["foreign_before"].items())
         if not problems and not pending and not survivors and foreign_preserved:
-            cleanup_transport(spec, runtime)
-            transport_removed = True
+            transport = retain_transport(spec, runtime)
     except Exception:
         problems.append("terminal-cleanup-evidence-incomplete")
-    clean = not problems and not pending and not survivors and foreign_preserved and transport_removed
+    clean = not problems and not pending and not survivors and foreign_preserved and transport is not None
     attempt = stage["attempt_sha256"]
     sanitized = [{"operation": row["operation"], "attempt_sha256": core.digest(row["nonce"].encode()),
                   "identity": row["identity"]} for row in operations]
@@ -840,6 +939,6 @@ def entrypoint(argv, modules, admitted_hash):
                   "operation_results": sanitized, "pending": pending, "owned_survivors": survivors,
                   "foreign_preserved": foreign_preserved,
                   "foreign_before_sha256": core.digest(installed.canonical_bytes(context.get("foreign_before", {}))),
-                  "transport_removed": transport_removed, "problems": problems})
+                  "transport": transport, "problems": problems})
     print(json.dumps(stage, sort_keys=True))
     return 0 if clean else 1

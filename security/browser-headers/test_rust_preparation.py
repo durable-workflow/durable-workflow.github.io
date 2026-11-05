@@ -28,6 +28,14 @@ import rust_preparation_platform as native
 import rust_preparation_authority as authority
 
 
+# Exact effect functions captured from aad23d45, retained only as unsafe
+# predecessor controls. These run solely against disposable synthetic trees.
+PREDECESSOR_CREATE = 'def create_transport(spec, nonce):\n    admitted()\n    root = Path(spec["staging_path"])\n    home = Path(pwd.getpwuid(os.getuid()).pw_dir)\n    core.require(not root.is_relative_to(home) and root.resolve() == root, "transport-location")\n    core.require((os.getuid(), os.getgid()) == (spec["uid"], spec["gid"]), "executor-owner")\n    root.mkdir(mode=0o700)\n    for name in ("home", "docker"):\n        (root / name).mkdir(mode=0o700)\n    observed = root.stat()\n    owner_record = {"nonce": nonce, "device": observed.st_dev, "inode": observed.st_ino}\n    for name, raw in (("docker/config.json", b"{}"), (OWNERSHIP_FILE, json.dumps(owner_record).encode())):\n        with os.fdopen(os.open(root / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), "wb") as file:\n            file.write(raw)\n    return owner_record\n'
+PREDECESSOR_CREATE_SHA256 = '571789f1853a14dd2eafbf98cfbadc682495f41b007b79d70d1d0a3a41acfde3'
+PREDECESSOR_REMOVE = 'def remove_contents(self):\n    core.require(self.namespace_matches(), "transport-namespace-changed")\n    expected = {"home", "docker", OWNERSHIP_FILE}\n    if self.exists(RESULTS_FILE):\n        expected.add(RESULTS_FILE)\n    if self.exists(CONTEXT_FILE):\n        expected.add(CONTEXT_FILE)\n    core.require(set(os.listdir(self.fd)) == expected, "transport-extra-or-pending")\n    children = {}\n    try:\n        for name in ("home", "docker"):\n            child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.fd)\n            children[name] = child\n            core.require(os.fstat(child).st_uid == self.identity.st_uid, "transport-child-owner")\n        core.require(os.listdir(children["home"]) == [], "transport-home-extra")\n        core.require(os.listdir(children["docker"]) == ["config.json"], "transport-config-extra")\n        os.unlink("config.json", dir_fd=children["docker"])\n        for name in (OWNERSHIP_FILE, RESULTS_FILE, CONTEXT_FILE):\n            if self.exists(name):\n                os.unlink(name, dir_fd=self.fd)\n        for name in ("home", "docker"):\n            os.rmdir(name, dir_fd=self.fd)\n        core.require(self.namespace_matches(), "transport-namespace-changed")\n        os.rmdir(self.name, dir_fd=self.parent)\n        core.require(os.fstat(self.fd).st_nlink == 0, "bound-transport-survivor")\n    finally:\n        for child in children.values():\n            os.close(child)\n'
+PREDECESSOR_REMOVE_SHA256 = '6a65cb51d6f2484645465c6d1409eaeefda15b88c72970a647e050360dc1f8c9'
+
+
 class HardStop(BaseException):
     pass
 
@@ -190,13 +198,15 @@ def transport_fixture(parent):
     root.mkdir(mode=0o700)
     (root / "home").mkdir(mode=0o700)
     (root / "docker").mkdir(mode=0o700)
-    (root / "docker/config.json").write_bytes(b"{}")
+    (root / "docker/config.json").write_bytes(native.ANONYMOUS_CONFIG)
     (root / "docker/config.json").chmod(0o600)
     observed = root.stat()
     nonce = "a" * 64
-    (root / native.OWNERSHIP_FILE).write_text(json.dumps({"nonce": nonce, "device": observed.st_dev, "inode": observed.st_ino}))
+    (root / native.OWNERSHIP_FILE).write_text(json.dumps({"nonce": nonce, "device": observed.st_dev, "inode": observed.st_ino, "children": {name: {"device": (root / name).stat().st_dev,
+                    "inode": (root / name).stat().st_ino} for name in ("home", "docker")}}))
     (root / native.OWNERSHIP_FILE).chmod(0o600)
-    return ({"staging_path": str(root), "uid": os.getuid(), "gid": os.getgid()},
+    return ({"staging_path": str(root), "uid": os.getuid(), "gid": os.getgid(),
+             "retention": {"owner": prep.OWNER, "custody_due": "2026-11-06T00:00:00+00:00", "reconciliation_ref": "synthetic"}},
             {"nonce": nonce, "deadline": time.monotonic() + 30,
              "started_at": dt.datetime.now(dt.timezone.utc).isoformat()})
 
@@ -534,7 +544,9 @@ class TerminalControls(unittest.TestCase):
     def pair(self):
         expected = {"unit": "synthetic.service", "attempt_sha256": "a" * 64,
                     "source_bundle_sha256": "b" * 64, "authority_sha256": "c" * 64,
-                    "worker_command_sha256": "d" * 64, "stop_command_sha256": "e" * 64, "seal_flags": 15}
+                    "worker_command_sha256": "d" * 64, "stop_command_sha256": "e" * 64, "seal_flags": 15,
+                    "custody_due": "2026-11-06T12:00:00+00:00", "reconciliation_ref": "synthetic",
+                    "transport_uid": 1000, "transport_gid": 1000}
         common = {"schema": "durable-workflow.preparation-stage/v1", "invocation_id": "f" * 32,
                   **{k: expected[k] for k in ("unit", "attempt_sha256", "source_bundle_sha256", "authority_sha256")}}
         image = {"id": "sha256:" + "1" * 64, "config_sha256": "1" * 64,
@@ -553,10 +565,15 @@ class TerminalControls(unittest.TestCase):
             ("commit", {"image_id": image["id"], "config_sha256": image["config_sha256"], "rootfs_layers": image["layers"]}),
             ("create-verify", {"container_id": "9" * 64}),
         ]
+        rows = [{"path": n, "bytes": 1, "sha256": "a" * 64} for n in
+                (native.OWNERSHIP_FILE, native.RESULTS_FILE, native.CONTEXT_FILE, native.PENDING_FILE, "docker/config.json")]
+        transport = {"state": prep.RETAINED_EVIDENCE, "owner": prep.OWNER, "attempt_sha256": expected["attempt_sha256"],
+                     "device": 1, "inode": 2, "uid": 1000, "gid": 1000, "mode": 0o700, "files": rows,
+                     "bytes": 5, "sha256": prep.digest(authority.canonical_bytes(rows)), "custody_due": expected["custody_due"], "reconciliation_ref": expected["reconciliation_ref"]}
         stop = {**common, "role": "stop", "pid": 101, "worker_pid": worker["pid"],
                 "command_sha256": expected["stop_command_sha256"], "outcome": "complete", "worker_exit_code": 1,
                 "worker_exit_status": 0, "cleanup_exit_status": 0, "pending": False, "owned_survivors": [],
-                "problems": [], "transport_removed": True, "foreign_preserved": True,
+                "problems": [], "transport": transport, "foreign_preserved": True,
                 "foreign_before_sha256": worker["foreign_before_sha256"],
                 "operation_results": [{"operation": name, "identity": identity, "attempt_sha256": expected["attempt_sha256"]}
                                       for name, identity in operations]}
@@ -600,7 +617,7 @@ class TerminalControls(unittest.TestCase):
     def test_pending_survivor_foreign_transport_or_operation_drift_cannot_pass(self):
         expected, worker, stop = self.pair()
         for field, wrong in (("pending", True), ("owned_survivors", ["8" * 64]), ("problems", ["unresolved"]),
-                             ("foreign_preserved", False), ("transport_removed", False), ("foreign_before_sha256", "0" * 64)):
+                             ("foreign_preserved", False), ("transport", None), ("foreign_before_sha256", "0" * 64)):
             changed = copy.deepcopy(stop)
             changed[field] = wrong
             raw = self.capture([worker, changed])
@@ -630,6 +647,17 @@ class TerminalControls(unittest.TestCase):
         raw = self.capture([changed, stop])
         with self.assertRaises(prep.Refusal):
             prep.collect_terminal(raw, expected, 0)
+
+    def test_retained_evidence_requires_closed_bounded_custody_and_attempt(self):
+        expected, worker, stop = self.pair()
+        for field, wrong in (("owner", "foreign"), ("inode", 0), ("mode", 0o777),
+                             ("attempt_sha256", "0" * 64), ("custody_due", "other"),
+                             ("bytes", prep.EVIDENCE_LIMIT + 1), ("sha256", "0" * 64), ("files", [])):
+            changed = copy.deepcopy(stop)
+            changed["transport"][field] = wrong
+            raw = self.capture([worker, changed])
+            with self.subTest(field=field), self.assertRaises(prep.Refusal):
+                prep.collect_terminal(raw, expected, 0)
 
 
 class AuthorityControls(unittest.TestCase):
@@ -810,49 +838,222 @@ class PlatformControls(unittest.TestCase):
                     finally:
                         effects.transport.close()
 
-    def test_transport_swap_at_each_cleanup_edge_preserves_replacement(self):
-        for edge in ("root-open", "list-root", "child-open", "unlink", "rmdir-child", "rmdir-root"):
-            with self.subTest(edge=edge), tempfile.TemporaryDirectory(prefix="dw-transport-swap-fixture-") as directory:
-                spec, runtime = transport_fixture(directory)
-                root = Path(spec["staging_path"])
-                template = Path(directory) / "replacement-template"
-                shutil.copytree(root, template)
-                (template / "docker/config.json").write_bytes(b"foreign replacement bytes")
-                original_stat = root.stat()
-                real_open, real_list, real_unlink, real_rmdir = os.open, os.listdir, os.unlink, os.rmdir
-                state = {"root_fd": None, "swapped": False}
-                def swap():
-                    if not state["swapped"]:
-                        root.rename(root.with_name("bound-original"))
-                        shutil.copytree(template, root)
-                        state["swapped"] = True
+    def retained_fixture(self, directory):
+        spec, runtime = transport_fixture(directory)
+        root = Path(spec["staging_path"])
+        nonce = runtime["nonce"]
+        rows = [{"operation": "pull", "nonce": nonce, "state": state} for state in ("pending", "bound")]
+        for name, raw in ((native.PENDING_FILE, b"\n".join(json.dumps(r).encode() for r in rows)),
+                          (native.RESULTS_FILE, b'{"operation":"pull"}\n'), (native.CONTEXT_FILE, b"{}")):
+            (root / name).write_bytes(raw)
+            (root / name).chmod(0o600)
+        return spec, runtime
+
+    def test_retention_never_deletes_empty_or_nonempty_replacement_at_any_edge(self):
+        edges = ("root-open", "list-root", "child-open", "child-read", "final-namespace")
+        for empty in (True, False):
+            for edge in edges:
+                with self.subTest(empty=empty, edge=edge), tempfile.TemporaryDirectory(prefix="dw-transport-swap-fixture-") as directory:
+                    spec, runtime = self.retained_fixture(directory)
+                    root = Path(spec["staging_path"])
+                    original_stat = root.stat()
+                    real_open, real_list = os.open, os.listdir
+                    real_namespace = native.TransportDirectory.namespace_matches
+                    state = {"root_fd": None, "swapped": False, "namespace_checks": 0}
+                    def swap():
+                        if not state["swapped"]:
+                            root.rename(root.with_name("bound-original"))
+                            root.mkdir(mode=0o700)
+                            if not empty:
+                                (root / "foreign").write_bytes(b"replacement bytes")
+                            state["swapped"] = True
+                    def opened(name, *args, **kwargs):
+                        fd = real_open(name, *args, **kwargs)
+                        if name == root.name:
+                            state["root_fd"] = fd
+                            if edge == "root-open":
+                                swap()
+                        if name == "home" and edge == "child-open":
+                            swap()
+                        if name == "config.json" and edge == "child-read":
+                            swap()
+                        return fd
+                    def listed(value):
+                        answer = real_list(value)
+                        if value == state["root_fd"] and edge == "list-root":
+                            swap()
+                        return answer
+                    def namespace(instance):
+                        state["namespace_checks"] += 1
+                        if edge == "final-namespace" and state["namespace_checks"] == 2:
+                            swap()
+                        return real_namespace(instance)
+                    with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64), \
+                            mock.patch("os.open", side_effect=opened), mock.patch("os.listdir", side_effect=listed), \
+                            mock.patch.object(native.TransportDirectory, "namespace_matches", namespace), \
+                            mock.patch("os.unlink", side_effect=AssertionError("unexpected transport deletion")), \
+                            mock.patch("os.rmdir", side_effect=AssertionError("unexpected transport deletion")):
+                        with self.assertRaises(prep.Refusal):
+                            native.retain_transport(spec, runtime)
+                    self.assertTrue(state["swapped"])
+                    self.assertTrue(root.is_dir())
+                    self.assertEqual(list(root.iterdir()), [] if empty else [root / "foreign"])
+                    if not empty:
+                        self.assertEqual((root / "foreign").read_bytes(), b"replacement bytes")
+                    moved = root.with_name("bound-original").stat()
+                    self.assertEqual((moved.st_dev, moved.st_ino), (original_stat.st_dev, original_stat.st_ino))
+
+    def test_exact_predecessor_adopts_first_stat_swap_and_deletes_final_empty_swap(self):
+        self.assertEqual(prep.digest(PREDECESSOR_CREATE.encode()), PREDECESSOR_CREATE_SHA256)
+        self.assertEqual(prep.digest(PREDECESSOR_REMOVE.encode()), PREDECESSOR_REMOVE_SHA256)
+        namespace = dict(native.__dict__)
+        exec(PREDECESSOR_CREATE, namespace)
+        exec(PREDECESSOR_REMOVE, namespace)
+        with tempfile.TemporaryDirectory(prefix="dw-old-create-fixture-") as directory:
+            root = Path(directory) / "transport"
+            spec = {"staging_path": str(root), "uid": os.getuid(), "gid": os.getgid()}
+            real_stat = Path.stat
+            state = {"swapped": False}
+            def observed(path, *args, **kwargs):
+                if path == root and not state["swapped"]:
+                    state["swapped"] = True
+                    root.rename(root.with_name("bound-original"))
+                    root.mkdir(mode=0o700)
+                    (root / "home").mkdir(mode=0o700)
+                    (root / "docker").mkdir(mode=0o700)
+                    (root / "foreign").write_bytes(b"foreign creation marker")
+                return real_stat(path, *args, **kwargs)
+            # Avoid a recursive Path.exists() inside the intercepted stat.
+            def intercepted(path, *args, **kwargs):
+                if path == root and os.path.isdir(root) and not state["swapped"]:
+                    return observed(path, *args, **kwargs)
+                return real_stat(path, *args, **kwargs)
+            with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64), mock.patch.object(Path, "stat", intercepted):
+                namespace["create_transport"](spec, "a" * 64)
+            self.assertTrue((root / native.OWNERSHIP_FILE).is_file())
+            self.assertTrue((root / "docker/config.json").is_file())
+            self.assertEqual((root / "foreign").read_bytes(), b"foreign creation marker")
+        with tempfile.TemporaryDirectory(prefix="dw-old-remove-fixture-") as directory:
+            spec, runtime = transport_fixture(directory)
+            root = Path(spec["staging_path"])
+            transport = native.TransportDirectory(spec, runtime)
+            real_rmdir = os.rmdir
+            def removed(name, *args, **kwargs):
+                if name == root.name:
+                    root.rename(root.with_name("bound-original"))
+                    root.mkdir(mode=0o700)
+                return real_rmdir(name, *args, **kwargs)
+            try:
+                with mock.patch("os.rmdir", side_effect=removed):
+                    with self.assertRaises(prep.Refusal):
+                        namespace["remove_contents"](transport)
+                self.assertFalse(root.exists())
+                self.assertTrue(root.with_name("bound-original").is_dir())
+            finally:
+                transport.close()
+
+    def test_creation_binds_descriptor_before_first_identity_capture_and_preserves_swap(self):
+        for child_swap in (False, True):
+            with self.subTest(child_swap=child_swap), tempfile.TemporaryDirectory(prefix="dw-create-swap-fixture-") as directory:
+                root = Path(directory) / "transport"
+                spec = {"staging_path": str(root), "uid": os.getuid(), "gid": os.getgid()}
+                real_open, real_fstat = os.open, os.fstat
+                state = {"target_fd": None, "swapped": False, "bound": None}
                 def opened(name, *args, **kwargs):
                     fd = real_open(name, *args, **kwargs)
-                    if name == root.name:
-                        state["root_fd"] = fd
-                        if edge == "root-open": swap()
-                    if name == "home" and edge == "child-open": swap()
+                    if name == ("docker" if child_swap else root.name):
+                        state["target_fd"] = fd
                     return fd
-                def listed(value):
-                    answer = real_list(value)
-                    if value == state["root_fd"] and edge == "list-root": swap()
+                def observed(fd):
+                    answer = real_fstat(fd)
+                    if fd == state["target_fd"] and not state["swapped"]:
+                        target = root / "docker" if child_swap else root
+                        state["bound"] = (answer.st_dev, answer.st_ino)
+                        target.rename(target.with_name("bound-original"))
+                        target.mkdir(mode=0o700)
+                        (target / "foreign").write_bytes(b"foreign creation marker")
+                        state["swapped"] = True
                     return answer
-                def unlinked(name, *args, **kwargs):
-                    if edge == "unlink": swap()
-                    return real_unlink(name, *args, **kwargs)
-                def removed(name, *args, **kwargs):
-                    if (edge == "rmdir-child" and name == "home") or (edge == "rmdir-root" and name == root.name): swap()
-                    return real_rmdir(name, *args, **kwargs)
                 with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64), \
-                        mock.patch("os.open", side_effect=opened), mock.patch("os.listdir", side_effect=listed), \
-                        mock.patch("os.unlink", side_effect=unlinked), mock.patch("os.rmdir", side_effect=removed):
-                    with self.assertRaises((prep.Refusal, OSError)):
-                        native.cleanup_transport(spec, runtime)
-                self.assertTrue(state["swapped"])
-                self.assertEqual((root / "docker/config.json").read_bytes(), b"foreign replacement bytes")
-                self.assertTrue((root / native.OWNERSHIP_FILE).is_file())
-                moved = root.with_name("bound-original").stat()
-                self.assertEqual((moved.st_dev, moved.st_ino), (original_stat.st_dev, original_stat.st_ino))
+                        mock.patch("os.open", side_effect=opened), mock.patch("os.fstat", side_effect=observed):
+                    with self.assertRaises(prep.Refusal):
+                        native.create_transport(spec, "a" * 64)
+                target = root / "docker" if child_swap else root
+                self.assertEqual(list(target.iterdir()), [target / "foreign"])
+                self.assertEqual((target / "foreign").read_bytes(), b"foreign creation marker")
+                moved = target.with_name("bound-original").stat()
+                self.assertEqual((moved.st_dev, moved.st_ino), state["bound"])
+
+    def test_descriptor_creation_binds_both_children_and_empty_credential_transport(self):
+        with tempfile.TemporaryDirectory(prefix="dw-created-transport-fixture-") as directory:
+            root = Path(directory) / "transport"
+            spec = {"staging_path": str(root), "uid": os.getuid(), "gid": os.getgid()}
+            runtime = {"nonce": "a" * 64}
+            with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64):
+                record = native.create_transport(spec, runtime["nonce"])
+            self.assertEqual(set(record["children"]), {"home", "docker"})
+            transport = native.TransportDirectory(spec, runtime)
+            try:
+                runner = native.CommandRunner(native.clean_environment(root))
+                self.assertEqual(runner.environment["DOCKER_CONFIG"], "/proc/self/fd/-1")
+                runner.bind_transport(transport)
+                self.assertEqual(runner.environment["DOCKER_CONFIG"], "/proc/self/fd/" + str(transport.children["docker"]))
+                self.assertEqual(set(runner.pass_fds), {transport.fd, *transport.children.values()})
+            finally:
+                transport.close()
+
+    def test_child_directory_swap_preserves_both_trees_and_refuses_custody(self):
+        for empty in (True, False):
+            with self.subTest(empty=empty), tempfile.TemporaryDirectory(prefix="dw-child-swap-fixture-") as directory:
+                spec, runtime = self.retained_fixture(directory)
+                root = Path(spec["staging_path"])
+                real_open = os.open
+                def opened(name, *args, **kwargs):
+                    fd = real_open(name, *args, **kwargs)
+                    if name == "docker":
+                        (root / "docker").rename(root / "original-docker")
+                        (root / "docker").mkdir(mode=0o700)
+                        if not empty:
+                            (root / "docker/foreign").write_bytes(b"foreign child")
+                    return fd
+                with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64), mock.patch("os.open", side_effect=opened), \
+                        mock.patch("os.unlink", side_effect=AssertionError("unexpected deletion")), \
+                        mock.patch("os.rmdir", side_effect=AssertionError("unexpected deletion")):
+                    with self.assertRaises(prep.Refusal):
+                        native.retain_transport(spec, runtime)
+                self.assertEqual((root / "original-docker/config.json").read_bytes(), native.ANONYMOUS_CONFIG)
+                self.assertTrue((root / "docker").is_dir())
+                if not empty:
+                    self.assertEqual((root / "docker/foreign").read_bytes(), b"foreign child")
+
+    def test_retained_transport_has_finite_closed_manifest_and_no_deletion(self):
+        with tempfile.TemporaryDirectory(prefix="dw-retention-fixture-") as directory:
+            spec, runtime = self.retained_fixture(directory)
+            with mock.patch.object(prep, "OPERATION_ADMISSION", "e" * 64), \
+                    mock.patch("os.unlink", side_effect=AssertionError("unexpected deletion")), \
+                    mock.patch("os.rmdir", side_effect=AssertionError("unexpected deletion")):
+                receipt = native.retain_transport(spec, runtime)
+            self.assertEqual(receipt["state"], prep.RETAINED_EVIDENCE)
+            self.assertEqual(receipt["owner"], prep.OWNER)
+            self.assertLessEqual(receipt["bytes"], 144 * 1024)
+            self.assertEqual(len(receipt["files"]), 5)
+            prep.terminal_retained_evidence(receipt, {"attempt_sha256": receipt["attempt_sha256"], "custody_due": receipt["custody_due"],
+                    "reconciliation_ref": receipt["reconciliation_ref"], "transport_uid": os.getuid(), "transport_gid": os.getgid()})
+
+    def test_bound_mutations_append_terminal_journal_without_unlink(self):
+        with tempfile.TemporaryDirectory(prefix="dw-append-journal-fixture-") as directory:
+            spec, runtime = transport_fixture(directory)
+            with mock.patch("os.unlink", side_effect=AssertionError("unexpected journal deletion")):
+                transport = native.TransportDirectory(spec, runtime)
+                try:
+                    for name in ("pull", "create-assemble"):
+                        transport.write_pending({"operation": name, "nonce": runtime["nonce"]})
+                        self.assertIsNotNone(transport.pending_operation())
+                        transport.bind_operation(name, {"synthetic": True}, runtime["nonce"])
+                        self.assertIsNone(transport.pending_operation())
+                    self.assertEqual([r["operation"] for r in transport.results()], ["pull", "create-assemble"])
+                finally:
+                    transport.close()
 
     def test_clean_environment_has_no_ambient_credentials_or_proxy(self):
         with mock.patch.dict(os.environ, {"GH_TOKEN": "synthetic", "HTTPS_PROXY": "synthetic",
@@ -957,7 +1158,9 @@ class PlatformControls(unittest.TestCase):
                 "uid": os.getuid(), "gid": os.getgid(), "docker_root": "/synthetic/docker",
                 "metadata_at": now.isoformat(), "metadata_expires": prep.SUBJECT_EXPIRY, "metadata_subject": metadata,
                 "live_build_sha256": "3e8d1827d1df8bf3c47ee8f0efcbd2f3692cb1bd8741f40c1271ef5c74f4a183",
-                "python_sha256": "f" * 64, "env_sha256": "e" * 64, "authority_binding": dict(binding)}
+                "python_sha256": "f" * 64, "env_sha256": "e" * 64, "authority_binding": dict(binding),
+                "retention": {"owner": prep.OWNER, "custody_due": (now + dt.timedelta(hours=23)).isoformat(),
+                              "reconciliation_ref": "https://github.com/durable-workflow/durable-workflow.github.io/pull/480#issuecomment-1"}}
         native.admission(spec, now)
         invalid = []
         bad = copy.deepcopy(spec)
