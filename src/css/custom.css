@@ -861,3 +861,5 @@ div[class*='codeBlockContainer'] button { color: #e8edea; background: #172019; b
   .dw-global-navigation, .dw-docs-toolbar { padding-left: .75rem; padding-right: .75rem; }
   .dw-docs-search .navbar__search-input { width: 7rem; }
 }
+/* Global product navigation uses the same plain labels as the SDK shells. */
+.dw-global-navigation .navbar__link svg[class*='iconExternalLink'] { display: none; }
