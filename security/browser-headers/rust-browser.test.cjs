@@ -5,8 +5,8 @@ const path = require('node:path');
 const test = require('node:test');
 const {ORIGIN, PROMOTION, verifyPacketFiles, loadInputs, installLocalRoutes} = require('./rust-browser-inputs.cjs');
 const reviewedPacket = verifyPacketFiles(__dirname);
-assert.equal(require('playwright/package.json').version, reviewedPacket.playwright_version);
 const {chromium} = require('playwright');
+test.before(() => assert.equal(require('playwright/package.json').version, reviewedPacket.playwright_version));
 
 test('Rust artifact CSP and navigation compatibility', {timeout: 150000}, async () => {
   const root = path.resolve(process.argv[2]);

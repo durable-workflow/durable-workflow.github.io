@@ -24,9 +24,9 @@
     "max_active_browsers": 1
   },
   "files": {
-    "rust-browser.test.cjs": "9a9854690a585d5589c17a99b6a92e83b7797289abe3aa3c776268d8612c07ae",
-    "rust-browser-inputs.cjs": "d3ed02b8e6d392b472e3e893a8464cb1ab4255be49abaf5ac262da8b71aee422",
-    "rust-browser-source.test.cjs": "42c86ac5eac34b71388ac4f0943ca55000fafa31243304a7b2f317a7f55be55c",
+    "rust-browser.test.cjs": "0b2f731db13e4f095230673bfda3d97a36f71c5ef62b8f3702a7978740d17d61",
+    "rust-browser-inputs.cjs": "43bb050185f05187e7d94a40d73b4fae965276696fe7356e6609b319c6b120ee",
+    "rust-browser-source.test.cjs": "deafc5ce08806c148b189a48f11012cc0c03600122dd8fe34eb01e223f381952",
     "rust-policy.json": "a357bcc5ea8ad96db5e601e4e1c1cb3c8c7eb3441caa9b331d0c2a906ffe84d8",
     "rust-inventory.json": "8c4bc2eb1ef3ffeeb9788a9d0b44d7b718a2a56caff55b3d4531716a25b270d7",
     "rust-rule.candidate.json": "bce0c66db4454bc16941a8f5dadb04706315e673d5e2c33f677e7728bafd0135",

@@ -68,6 +68,14 @@ test('promotion fixtures require exact method, event shape and credential absenc
   ]) assert.throws(() => localResponse(input, {...valid, ...change}));
 });
 
+test('local-origin selection refuses deceptive hosts and added URL components', (t) => {
+  const value = fixture(t);
+  const input = loadInputs(value.root, value.packet, value.inventory);
+  for (const origin of [ORIGIN + '.invalid', ORIGIN + '@unreviewed.invalid', 'https://unreviewed.invalid/' + ORIGIN, ORIGIN + ':444', ORIGIN + '/path', 'http://rust.durable-workflow.com']) {
+    assert.throws(() => localResponse(input, request(ORIGIN + '/'), origin), /Unexpected local origin/);
+  }
+});
+
 test('fake routing fulfills or aborts without a network continuation', async (t) => {
   const value = fixture(t);
   const input = loadInputs(value.root, value.packet, value.inventory);

@@ -71,26 +71,30 @@ function promotionEvent(request) {
   assert.match(headers['content-type'] || '', /^text\/plain(?:;|$)/);
   assert.ok(typeof request.body === 'string' && request.body.length < 256, 'Promotion body exceeds its bound');
   const event = JSON.parse(request.body);
-  assert.deepEqual(Object.keys(event).sort(), ['event', 'source']);
+  assert.deepEqual(Object.keys(event).toSorted((left, right) => left.localeCompare(right, 'en')), ['event', 'source']);
   assert.equal(event.source, 'sdk-rust-reference');
   assert.ok(['impression', 'click'].includes(event.event), 'Unknown promotion event');
   return event.event;
 }
 
+function artifactResponse(input, url) {
+  const relative = decodeURIComponent(url.pathname).replace(/^\//, '');
+  if (relative === '__frame_probe') return {kind: 'frame-probe', status: 200, headers: {'content-type': 'text/html'}, body: '<!doctype html><title>Framing control</title>'};
+  if (relative === '__telemetry_fixture') return {kind: 'promotion-dom-fixture', status: 200, headers: {...input.headers, 'content-type': 'text/html'}, body: '<!doctype html><title>Synthetic promotion control</title><aside data-promotion-source="sdk-rust-reference"><a data-promotion-action="early-access" href="https://cloud.durable-workflow.com/early-access">Synthetic action</a></aside><script type="module" src="/analytics/analytics.js"></script>'};
+  const file = [relative, relative.replace(/\/$/, '') + '/index.html', relative ? null : 'index.html'].find((name) => name && input.files.has(name));
+  if (!file) return {kind: 'missing', status: 404, body: ''};
+  return {kind: 'artifact', status: 200, headers: {...input.headers, 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store'}, body: input.files.get(file)};
+}
+
 function localResponse(input, request, origin = ORIGIN) {
-  assert.ok([ORIGIN, 'https://example.invalid'].includes(origin), 'Unexpected local origin');
+  if (origin !== ORIGIN && origin !== 'https://example.invalid') throw new Error('Unexpected local origin');
   const requestHeaders = Object.fromEntries(Object.entries(request.headers).map(([name, value]) => [name.toLowerCase(), value]));
   assert.ok(!Object.hasOwn(requestHeaders, 'authorization'), 'Local requests cannot carry authorization');
   assert.ok(!Object.hasOwn(requestHeaders, 'cookie'), 'Local requests cannot carry cookies');
   const url = new URL(request.url);
   if (url.origin === origin) {
     assert.equal(request.method, 'GET', 'Artifact requests must be GET');
-    const relative = decodeURIComponent(url.pathname).replace(/^\//, '');
-    if (relative === '__frame_probe') return {kind: 'frame-probe', status: 200, headers: {'content-type': 'text/html'}, body: '<!doctype html><title>Framing control</title>'};
-    if (relative === '__telemetry_fixture') return {kind: 'promotion-dom-fixture', status: 200, headers: {...input.headers, 'content-type': 'text/html'}, body: '<!doctype html><title>Synthetic promotion control</title><aside data-promotion-source="sdk-rust-reference"><a data-promotion-action="early-access" href="https://cloud.durable-workflow.com/early-access">Synthetic action</a></aside><script type="module" src="/analytics/analytics.js"></script>'};
-    const file = [relative, relative.replace(/\/$/, '') + '/index.html', relative ? null : 'index.html'].find((name) => name && input.files.has(name));
-    if (!file) return {kind: 'missing', status: 404, body: ''};
-    return {kind: 'artifact', status: 200, headers: {...input.headers, 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store'}, body: input.files.get(file)};
+    return artifactResponse(input, url);
   }
   const cors = {'access-control-allow-origin': origin};
   if (request.url === BEACON && request.method === 'GET') {
