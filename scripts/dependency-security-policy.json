@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-11-03",
+  "reviewed_on": "2026-11-07",
   "minimum_versions": {
     "js-yaml": "4.3.1",
     "nanoid": "3.3.17",
     "http-cache-semantics": "4.3.0",
     "minimatch": "11.0.1",
     "open": "11.0.0",
-    "undici": "7.30.1",
+    "undici": "7.30.2",
     "body-parser": "1.20.9",
     "fast-uri": "3.1.9",
     "qs": "6.16.1",

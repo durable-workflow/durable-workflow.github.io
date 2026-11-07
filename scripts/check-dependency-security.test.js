@@ -158,6 +158,20 @@ for (const [name, oldVersion] of [
     assert.throws(() => checkDependencyGraph(fixture), new RegExp(`${name} must be at least`));
   });
 }
+for (const lockedPath of [
+  "node_modules/undici",
+  "node_modules/review-fixture/node_modules/undici",
+]) {
+  test(`undici 7.30.1 is refused at ${lockedPath}`, () => {
+    const fixture = structuredClone(lockfile);
+    fixture.packages[lockedPath] = {version: "7.30.1"};
+    assert.throws(
+      () => checkDependencyGraph(fixture),
+      /undici must be at least 7\.30\.2/,
+    );
+  });
+}
+
 test("every recorded minimum version is enforced", () => {
   for (const [name, minimumVersion] of Object.entries(policy.minimum_versions)) {
     const fixture = structuredClone(lockfile);
