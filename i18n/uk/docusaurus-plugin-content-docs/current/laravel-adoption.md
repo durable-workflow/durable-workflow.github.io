@@ -41,9 +41,12 @@ Laravel-застосунки мають два офіційні режими Dur
 | Стабільний Laravel v1 | PHP SDK service mode | Laravel має зберігати dependency injection, конфігурацію, Artisan, логування, events і test fakes, а Cloud чи Server — відповідати за durable-стан. | Установіть `durable-workflow/sdk` як окрему межу service client/worker. Історія v1 та durable Laravel queue jobs залишаються на runtime v1 до термінального стану. |
 | Laravel embedded 2.0 | PHP SDK service mode | Застосунок має передати orchestration runtime або потребує спільної/polyglot межі runtime. | Спрямовуйте нові запуски до service runtime після готовності його workers. Завершіть embedded runs там, де вони почалися, або використайте явний import допустимих embedded-v2 runs для власного Server. |
 
-PHP SDK bridge та embedded-пакет підтримують Laravel 9–13
-на сумісних версіях PHP. Тому підтримуваний застосунок v1 може
-вибрати будь-який кінцевий режим без окремого оновлення Laravel.
+Перед вибором режиму перевірте [опубліковані лінійки підтримки Laravel](./compatibility.md#laravel-support).
+Поточний вбудований пакет вимагає Laravel 12.69 або 13.30 та сумісного PHP.
+Опублікований PHP SDK 3.9.5 і далі підтримує Laravel 10–13 із мінімальними
+виправленнями; базовий клієнт зберігає PHP 8.1. Старому застосунку v1 може
+знадобитися оновлення фреймворку перед переходом на поточну вбудовану лінійку.
+Збережіть його середовище v1 та незавершені виконання.
 
 ## Порівняння відповідальності {#compare-the-ownership-boundary}
 
@@ -335,7 +338,7 @@ WorkflowStub::assertDispatched(
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9–13 автоматично знаходять provider.
+Підтримувані версії Laravel автоматично знаходять provider.
 Опублікуйте конфігурацію пакета та перелічіть класи обробників з атрибутами:
 
 <!-- docs-example id="laravel.adoption.service.config" -->

@@ -92,6 +92,32 @@ directly to a public OpenAPI, AsyncAPI, or JSON Schema document. The
 schema pins the discovery surface every other catalog entry can be
 reached from.
 
+## Published Laravel support {#laravel-support}
+
+Select the package release before comparing PHP and Laravel requirements.
+The embedded package and the service-mode SDK have separate support contracts.
+
+| Package line | PHP | Laravel |
+| --- | --- | --- |
+| Current embedded Workflow 2.21 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Embedded Workflow 2.20.5 | PHP `^8.1`, subject to Laravel's own minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
+| Published PHP SDK 3.9.5 | Bare SDK PHP `^8.1`; the Laravel bridge also follows Laravel's PHP minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
+
+The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.21.0/resources/laravel-embedded-upgrade-contract.json)
+and each release's `composer.json` are the package authorities. The current
+embedded release was verified on Laravel 12 with PHP 8.2–8.4 and Laravel 13 with
+PHP 8.3–8.4. Its PHP 8.1 and Laravel 10/11 support has been removed. This does
+not change the [historical stable-v1 installation guide](/docs/1.x/installation/)
+or the independently published [PHP SDK requirements](https://php.durable-workflow.com/).
+
+Before upgrading an older embedded application, upgrade PHP and Laravel to a
+supported combination. If that migration is not ready, `~2.20.5` keeps Composer
+on the 2.20 patch line; it does not promise indefinite maintenance. A broad
+`^2.0` constraint can select a later minor once the platform permits it.
+Preserve the original runtime for open v1 runs, and follow the
+[Laravel adoption guide](/docs/laravel-adoption) for drain or coexistence.
+Changing a Composer requirement does not migrate durable history.
+
 ## Stability Levels
 
 Every public surface in Durable Workflow carries exactly one of these

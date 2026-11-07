@@ -94,6 +94,30 @@ AsyncAPI ou JSON Schema. O esquema
 fixa a interface de descoberta a partir da qual todas as outras entradas do
 catálogo podem ser alcançadas.
 
+## Suporte publicado ao Laravel {#laravel-support}
+
+Escolha a versão do pacote antes de comparar os requisitos de PHP e Laravel.
+O pacote embutido e o SDK de modo de serviço têm contratos separados.
+
+| Linha do pacote | PHP | Laravel |
+| --- | --- | --- |
+| Workflow embutido 2.21 atual | PHP 8.2+ da linha 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| Workflow embutido 2.20.5 | PHP `^8.1`, respeitando o mínimo do framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
+| SDK PHP 3.9.5 publicado | SDK básico PHP `^8.1`; a ponte Laravel também segue o mínimo do framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
+
+As autoridades são o [contrato embutido publicado](https://github.com/durable-workflow/workflow/blob/2.21.0/resources/laravel-embedded-upgrade-contract.json)
+e o `composer.json` de cada versão. A versão embutida atual foi verificada com
+Laravel 12/PHP 8.2–8.4 e Laravel 13/PHP 8.3–8.4. Ela remove suporte a PHP 8.1 e
+Laravel 10/11. Isso preserva o [guia histórico do v1 estável](/docs/1.x/installation/)
+e os [requisitos próprios do SDK PHP](https://php.durable-workflow.com/).
+
+Atualize primeiro PHP e Laravel para uma combinação compatível. Enquanto essa
+migração não estiver pronta, `~2.20.5` mantém Composer nos patches 2.20, sem
+prometer manutenção indefinida. `^2.0` pode selecionar um minor posterior quando
+a plataforma permitir. Preserve o runtime original das execuções v1 abertas e
+siga o [guia de adoção](/docs/laravel-adoption) para drenagem ou coexistência.
+Alterar a restrição Composer não migra o histórico durável.
+
 ## Níveis de estabilidade {#stability-levels}
 
 Cada interface pública do Durable Workflow tem exatamente um destes níveis.

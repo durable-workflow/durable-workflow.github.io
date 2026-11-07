@@ -19,8 +19,13 @@ the embedded Laravel path.
 
 ## Requirements
 
-- PHP 8.1 or later
-- Laravel 9 or later
+- PHP 8.2 or later in the supported PHP 8.x line
+- Laravel 12.69 or later in 12.x, or Laravel 13.30 or later in 13.x
+- PHP 8.3 or later for Laravel 13
+
+These requirements apply to the current embedded release. For an older
+application, choose the appropriate [published support line](./compatibility.md#laravel-support)
+before updating Composer. The bare service-mode PHP SDK has its own requirements.
 
 Check [Database Compatibility](./polyglot/database-support.md) for the embedded
 and Server declarations, exact tested configurations and qualification limits.
@@ -44,9 +49,9 @@ Durable Workflow is installable via Composer:
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-Use `durable-workflow/workflow:^2.0` when you want Composer to accept compatible
-2.x updates automatically. See [Version Compatibility](/docs/compatibility)
-for runtime and package compatibility rules.
+Composer pins the published embedded release above. Review the
+[Laravel support and upgrade boundary](./compatibility.md#laravel-support)
+before widening that constraint or upgrading an older Laravel application.
 
 The package auto-loads its migrations, so a normal migrate run is enough after install:
 

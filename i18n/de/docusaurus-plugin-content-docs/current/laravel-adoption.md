@@ -34,7 +34,12 @@ Für ein unmittelbares v1-Upgrade auf Paketebene halten Sie den ausführlichen [
 | Stabiles v1-Laravel | PHP-SDK-Dienstmodus | Laravel soll Dependency Injection, Konfiguration, Artisan, Logging, Ereignisse und Test-Fakes behalten, Cloud oder Server aber den dauerhaften Zustand verwalten. | `durable-workflow/sdk` als separate Dienstclient-/Worker-Grenze installieren. v1-Historie und dauerhafte Laravel-Warteschlangenjobs bleiben bis zum terminalen Zustand auf der v1-Laufzeit. |
 | Eingebettetes 2.0-Laravel | PHP-SDK-Dienstmodus | Die Anwendung soll die Orchestrierungslaufzeit nicht mehr verwalten oder benötigt eine gemeinsame/mehrsprachige Laufzeitgrenze. | Neue Starts nach Bereitschaft der Worker an die Dienstlaufzeit leiten. Eingebettete Läufe an ihrem Ursprungsort abschließen lassen oder für selbst gehosteten Server das explizite Importverfahren für geeignete eingebettete v2-Läufe verwenden. |
 
-Die PHP-SDK-Bridge und das eingebettete Paket unterstützen Laravel 9 bis 13 mit ihren kompatiblen PHP-Versionen. Eine unterstützte v1-Anwendung kann daher beide Ziele ohne sachfremdes Laravel-Upgrade wählen.
+Prüfen Sie vor der Zielwahl die [veröffentlichten Laravel-Supportlinien](./compatibility.md#laravel-support).
+Das aktuelle eingebettete Paket benötigt Laravel 12.69 oder 13.30 und passendes
+PHP. Das veröffentlichte PHP-SDK 3.9.5 unterstützt weiterhin gepatchtes Laravel
+10–13; der reine Client behält PHP 8.1 bei. Eine ältere v1-Anwendung benötigt
+möglicherweise zuerst ein Framework-Upgrade. Bewahren Sie dabei ihre
+v1-Laufzeit und offenen Läufe.
 
 ## Verantwortungsgrenzen vergleichen {#compare-the-ownership-boundary}
 
@@ -294,7 +299,7 @@ Installieren Sie das unabhängig veröffentlichte SDK-Paket. Dieser Befehl wird 
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 bis 13 erkennt den Provider automatisch. Veröffentlichen Sie die Paketkonfiguration und listen Sie die mit Attributen versehenen Handlerklassen auf:
+Unterstützte Laravel-Versionen erkennen den Provider automatisch. Veröffentlichen Sie die Paketkonfiguration und listen Sie die mit Attributen versehenen Handlerklassen auf:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php
