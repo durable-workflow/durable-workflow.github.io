@@ -12,8 +12,12 @@ sidebar_position: 3
 
 ## 环境要求 {#requirements}
 
-- PHP 8.1 或更高版本
-- Laravel 9 或更高版本
+- PHP 8.x 系列中的 8.2 或更高版本
+- Laravel 12.x 中的 12.69 或更高版本，或 13.x 中的 13.30 或更高版本
+- Laravel 13 需要 PHP 8.3 或更高版本
+
+这些要求适用于当前嵌入式版本。更新旧应用的 Composer 依赖前，请先选择
+[已发布的兼容版本线](./compatibility.md#laravel-support)。服务模式的基础 PHP SDK 有独立要求。
 
 参阅[数据库兼容性](./polyglot/database-support.md)，了解嵌入式与 Server 声明、确切测试配置及验证边界。
 
@@ -36,7 +40,8 @@ Durable Workflow 支持 Laravel 的各类队列驱动，**不支持 `sync`**，�
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-如果希望 Composer 自动接受兼容的 2.x 更新，可以使用 `durable-workflow/workflow:^2.0`。[版本兼容性](/docs/compatibility)说明运行时和包的兼容规则。
+上述命令固定已发布的嵌入式版本。放宽约束或升级旧 Laravel 应用之前，
+请查看 [Laravel 支持与升级边界](./compatibility.md#laravel-support)。
 
 包会自动加载数据库迁移，安装后运行常规迁移命令即可：
 

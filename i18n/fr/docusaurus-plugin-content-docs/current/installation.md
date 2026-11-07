@@ -12,8 +12,13 @@ Si vous hésitez entre l’intégration du package et un Server indépendant, co
 
 ## Prérequis {#requirements}
 
-- PHP 8.1 ou ultérieur
-- Laravel 9 ou ultérieur
+- PHP 8.2 ou ultérieur dans la série 8.x
+- Laravel 12.69 ou ultérieur dans la série 12.x, ou Laravel 13.30 ou ultérieur dans la série 13.x
+- PHP 8.3 ou ultérieur pour Laravel 13
+
+Ces exigences concernent la version embarquée actuelle. Avant de mettre à jour
+Composer dans une ancienne application, choisissez la [branche publiée compatible](./compatibility.md#laravel-support).
+Le SDK PHP de base en mode service a ses propres exigences.
 
 Consultez la [compatibilité des bases de données](./polyglot/database-support.md) pour les déclarations embarquées et Server, configurations exactes testées et limites de qualification.
 
@@ -36,7 +41,9 @@ Installez le package avec Composer :
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-Utilisez `durable-workflow/workflow:^2.0` pour que Composer accepte automatiquement les mises à jour 2.x compatibles. La [compatibilité des versions](/docs/compatibility) précise les règles pour les packages et les runtimes.
+La commande ci-dessus fixe la version embarquée publiée. Consultez les
+[limites de compatibilité et de mise à niveau Laravel](./compatibility.md#laravel-support)
+avant d'élargir la contrainte ou de mettre à niveau une ancienne application.
 
 Le package charge automatiquement ses migrations. Après l’installation, exécutez les migrations habituelles :
 

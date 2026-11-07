@@ -12,8 +12,13 @@ Wenn Sie zwischen der Einbettung des Pakets und dem eigenständigen Server wähl
 
 ## Voraussetzungen {#requirements}
 
-- PHP 8.1 oder neuer
-- Laravel 9 oder neuer
+- PHP 8.2 oder neuer innerhalb der 8.x-Linie
+- Laravel 12.69 oder neuer in 12.x oder Laravel 13.30 oder neuer in 13.x
+- PHP 8.3 oder neuer für Laravel 13
+
+Diese Anforderungen gelten für das aktuelle eingebettete Release. Wählen Sie vor
+einem Composer-Update einer älteren Anwendung die [passende veröffentlichte Linie](./compatibility.md#laravel-support).
+Das reine PHP-SDK im Service-Modus hat eigene Anforderungen.
 
 Prüfen Sie die [Datenbankkompatibilität](./polyglot/database-support.md) für eingebettete und Server-Deklarationen, genaue Testkonfigurationen und Qualifikationsgrenzen.
 
@@ -36,7 +41,9 @@ Installieren Sie Durable Workflow mit Composer:
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-Verwenden Sie `durable-workflow/workflow:^2.0`, damit Composer kompatible 2.x-Updates automatisch zulässt. Die [Versionskompatibilität](/docs/compatibility) beschreibt die Regeln für Laufzeitumgebung und Pakete.
+Der obige Befehl bindet das veröffentlichte eingebettete Release. Prüfen Sie
+die [Laravel-Support- und Upgrade-Grenze](./compatibility.md#laravel-support),
+bevor Sie die Einschränkung erweitern oder eine ältere Anwendung aktualisieren.
 
 Das Paket lädt seine Migrationen automatisch. Nach der Installation reicht daher ein normaler Migrationslauf:
 

@@ -59,6 +59,31 @@ Jedes `surface_family` eines Katalogeintrags muss im obigen Vertrag existieren. 
 
 Jeder erforderliche Plattform-Protokollkatalogeintrag ist als `published` markiert. Der Eintrag für den aufrufbaren Träger bleibt `in_progress`. Jeder verfügbare Eintrag verlinkt direkt ein öffentliches OpenAPI-, AsyncAPI- oder JSON-Schema-Dokument. Das Schema [`cluster_info_envelope`](/docs/platform-protocol-specs#cluster-info-envelope-notes) legt die Ermittlungsschnittstelle fest, von der aus alle anderen Katalogeinträge erreichbar sind.
 
+## Veröffentlichter Laravel-Support {#laravel-support}
+
+Wählen Sie das Paketrelease vor dem Vergleich der PHP- und Laravel-Anforderungen.
+Das eingebettete Paket und das Service-Modus-SDK haben eigene Supportverträge.
+
+| Paketlinie | PHP | Laravel |
+| --- | --- | --- |
+| Aktuelles eingebettetes Workflow 2.21 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
+| Eingebettetes Workflow 2.20.5 | PHP `^8.1`, zusätzlich gilt das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
+| Veröffentlichtes PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
+
+Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.21.0/resources/laravel-embedded-upgrade-contract.json)
+und die jeweilige `composer.json`. Das aktuelle eingebettete Release wurde mit
+Laravel 12/PHP 8.2–8.4 und Laravel 13/PHP 8.3–8.4 geprüft. Es entfernt PHP 8.1
+und Laravel 10/11. Die [historische stabile v1-Anleitung](/docs/1.x/installation/)
+und die [eigenen PHP-SDK-Anforderungen](https://php.durable-workflow.com/) bleiben getrennt.
+
+Aktualisieren Sie PHP und Laravel zuerst auf eine unterstützte Kombination.
+Solange das nicht möglich ist, hält `~2.20.5` Composer in der 2.20-Patchlinie,
+ohne unbefristete Wartung zu versprechen. `^2.0` kann eine spätere Minor-Version
+wählen, sobald die Plattform sie zulässt. Bewahren Sie die ursprüngliche
+Laufzeit offener v1-Läufe und folgen Sie der [Adoptionsanleitung](/docs/laravel-adoption)
+für Drain oder Koexistenz. Eine geänderte Composer-Anforderung migriert keinen
+dauerhaften Verlauf.
+
 ## Stabilitätsstufen {#stability-levels}
 
 Jede öffentliche Durable-Workflow-Schnittstelle trägt genau eine dieser Stabilitätsstufen. Die Stufen sind explizit: Eine nicht klassifizierte Schnittstelle ist nicht öffentlich.

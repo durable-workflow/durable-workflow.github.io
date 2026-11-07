@@ -89,6 +89,31 @@ renvoie directement à un document public OpenAPI, AsyncAPI ou JSON Schema. Le
 schéma [`cluster_info_envelope`](/docs/platform-protocol-specs#cluster-info-envelope-notes)
 fixe l'interface de découverte depuis laquelle toutes les autres entrées sont accessibles.
 
+## Compatibilité Laravel publiée {#laravel-support}
+
+Choisissez la version du paquet avant de comparer PHP et Laravel. Le paquet
+embarqué et le SDK en mode service ont des contrats distincts.
+
+| Branche du paquet | PHP | Laravel |
+| --- | --- | --- |
+| Workflow embarqué 2.21 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| Workflow embarqué 2.20.5 | PHP `^8.1`, sous réserve du minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
+| SDK PHP 3.9.5 publié | SDK de base PHP `^8.1` ; le pont Laravel suit aussi le minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
+
+Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.21.0/resources/laravel-embedded-upgrade-contract.json)
+et le `composer.json` de chaque version font autorité. La version embarquée
+actuelle a été vérifiée sur Laravel 12/PHP 8.2–8.4 et Laravel 13/PHP 8.3–8.4.
+Elle retire PHP 8.1 et Laravel 10/11. Le [guide historique v1 stable](/docs/1.x/installation/)
+et les [exigences propres au SDK PHP](https://php.durable-workflow.com/) restent distincts.
+
+Mettez d'abord PHP et Laravel à niveau vers une combinaison compatible. Si cette
+migration n'est pas prête, `~2.20.5` maintient Composer sur les correctifs 2.20,
+sans promettre une maintenance indéfinie. `^2.0` peut sélectionner une version
+mineure ultérieure si la plateforme le permet. Conservez le runtime d'origine
+pour les exécutions v1 ouvertes et suivez le [guide d'adoption](/docs/laravel-adoption)
+pour la vidange ou la coexistence. Modifier une contrainte Composer ne migre
+pas l'historique durable.
+
 ## Niveaux de stabilité {#stability-levels}
 
 Chaque interface publique Durable Workflow porte exactement un de ces niveaux.

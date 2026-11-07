@@ -41,9 +41,12 @@ elegir aquí la política de transición.
 | Laravel v1 estable | SDK PHP en modo servicio | Laravel debe conservar inyección de dependencias, configuración, Artisan, registros, eventos y simulaciones de prueba, pero Cloud o Server deben poseer el estado duradero. | Instala `durable-workflow/sdk` como límite separado de cliente/worker. El historial v1 y los trabajos duraderos de colas Laravel permanecen en v1 hasta terminar. |
 | Laravel 2.0 integrado | SDK PHP en modo servicio | La aplicación debe dejar de operar la orquestación o necesita un entorno compartido/políglota. | Dirige los nuevos inicios al servicio tras preparar sus workers. Drena las ejecuciones integradas en origen o usa la importación explícita de ejecuciones v2 elegibles a Server autogestionado. |
 
-El puente del SDK PHP y el paquete integrado admiten Laravel 9 a 13 con sus
-versiones PHP compatibles. Una aplicación v1 admitida puede elegir cualquiera
-de los destinos sin una actualización de Laravel ajena a esta transición.
+Consulta las [líneas publicadas compatibles con Laravel](./compatibility.md#laravel-support)
+antes de elegir un destino. El paquete integrado actual requiere Laravel 12.69 o
+13.30 y un PHP compatible. El SDK PHP 3.9.5 publicado conserva el soporte para
+Laravel 10–13 con los parches mínimos; el cliente básico mantiene PHP 8.1.
+Una aplicación v1 antigua puede necesitar una actualización del framework antes
+de pasar a la línea integrada actual. Conserva su runtime v1 y sus ejecuciones abiertas.
 
 ## Compara los límites de responsabilidad {#compare-the-ownership-boundary}
 
@@ -327,7 +330,7 @@ autoridad del artefacto SDK PHP publicado, sin copiar una versión puntual:
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 a 13 descubre automáticamente el proveedor. Publica la configuración y
+Las versiones compatibles de Laravel descubren automáticamente el proveedor. Publica la configuración y
 enumera las clases de manejadores con atributos:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
