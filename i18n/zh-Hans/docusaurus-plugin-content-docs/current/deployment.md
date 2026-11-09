@@ -169,6 +169,37 @@ docker compose --env-file durable-workflow.prod.env \
 
 原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
+### 从 Server 3.0.x 升级到 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+从 3.0.x 到 Server 3.3.2 跨越三个次版本，并会变更原生数据库模式。在 MySQL、MariaDB 和 PostgreSQL 上，模式版本从 8（3.0.x 和 3.1.0）经 10（3.2.0）升至 11（3.3.0 至 3.3.2）。在 SQLite 上，模式版本从 8 升至 10。Server 从不在启动时升级其数据库模式：在版本 8 的数据库上启动 3.3.2 会以 `native_schema_upgrade_required` 拒绝启动，因此仅修改 `DW_SERVER_IMAGE` 会使新 Server 无法启动。3.3.2 镜像的 `schema-upgrade` 命令可将版本 8 的数据库直接升级。[3.3.0 升级说明](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade)描述了这一步骤，Helm chart 的 [Chart 1.1.0 / Server 3.3.2 说明](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)列出了各模式升级步骤以及从 3.0.5 到 3.3.2 的运行时变更。
+
+对于单节点 Compose 部署：
+
+1. 停止 Server，保持 MySQL 运行：
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. 备份 MySQL 和 `server_storage`，并记录当前镜像引用。此备份是回到 3.0.x 的唯一途径。
+3. 将 `DW_SERVER_IMAGE` 改为 3.3.2 镜像，拉取该镜像，并运行一次 `schema-upgrade`：
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   该命令会输出后端以及升级前后的模式版本，例如 `"from_schema_version":8,"schema_version":11,"status":"upgraded"`。在模式已是最新的数据库上，它只校验模式。
+4. 使用 `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` 启动 Server，然后确认 `/api/ready`、`/api/cluster/info`（`version` 为 `3.3.2`）和 Worker 注册。
+
+- **PostgreSQL：** 版本 10 和 11 的步骤使用普通 `CREATE INDEX` 构建索引，在构建完成前会阻塞对 `workflow_tasks` 的写入。如果 `workflow_tasks` 表很大，请为此规划停机时间。
+- **MySQL 和 MariaDB：** 在这些数据库上 DDL 会自行提交，因此升级会在完成前将数据库标记为升级中，在此期间每个 Server 都会以 `native_schema_upgrade_incomplete` 拒绝该数据库。如果升级中断，请再次运行 `schema-upgrade` 以继续完成。
+- **回滚需要备份。** 不存在模式降级。3.0.x Server 会以 `native_schema_newer_than_binary` 拒绝已升级的数据库。要回退，请恢复第 2 步中的备份（这会丢弃备份之后写入的所有内容），然后启动 3.0.x 镜像。
+
+Worker 协议保持为 `1.20`，控制平面保持为版本 `2`。
+
 ## 小型集群部署 {#small-clustered-deployments}
 
 :::note PHP Server 2.x 契约
@@ -328,6 +359,8 @@ helm install durable-workflow \
 Chart 1.x 默认运行原生 Server（`runtime: native`）：一个 Server Deployment，没有 Worker、调度器、迁移 Job 或 Redis。values 文件必须指向外部 MySQL、MariaDB 或 PostgreSQL 数据库，通过已有 Kubernetes Secret 提供 `DW_AUTH_TOKEN` 和按角色限定权限的令牌，并为环境配置 ingress/TLS。缺少共享 `DW_AUTH_TOKEN` 时 Chart 会拒绝渲染，也不接受 SQLite。原生安装默认运行一个副本；运行多个副本或启用自动扩缩时，必须通过 `native.storage.existingClaim` 指定一个用于外部负载对象的 ReadWriteMany 卷。Chart 不会创建持久化存储或提供商托管基础设施。为了可复现部署，请按摘要固定 Server 镜像。
 
 现有 PHP 2.x 发布不会在普通升级中迁移到原生 Server：在你显式设置 `runtime` 之前，Chart 会拒绝升级。设置 `runtime: php` 可保留 PHP 2.x 的 Worker、调度器、bootstrap 任务和 Redis。要迁移到 `runtime: native`，请按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)操作，并在接管完成之前保持 `runtime: php`。参见 Chart 的 [UPGRADING 说明](%%artifact.helmChartUpgradeUrl%%)。
+
+Chart 1.1.0 将默认镜像从 Server 3.0.5 改为 3.3.2，后者需要执行从 8 到 11 的[原生数据库模式升级](#native-schema-upgrade-3-0-to-3-3)。从 Chart 1.0.x 执行普通 `helm upgrade` 只会更换镜像，新 Pod 会以 `native_schema_upgrade_required` 拒绝启动。请按照 Chart 的 [Chart 1.1.0 / Server 3.3.2 步骤](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)操作：在关闭自动扩缩的情况下将 Server 缩容至零，备份数据库，然后使用 `native.schemaUpgrade.enabled=true` 升级到 Chart 1.1.0。其 `pre-upgrade` 钩子会在新 Pod 启动前运行一次 `schema-upgrade`，且仅在 Helm 的 `lookup` 显示所有 Server 均已停止时运行。Argo CD、Flux 和 `helm template` 渲染会拒绝该钩子；请改用 Chart README 中的手动 Job。`helm rollback` 回到 Chart 1.0.x 修订版本无法让 Server 恢复运行，因为 3.0.x 会拒绝已升级的数据库：请改为恢复备份。
 
 ### 选择 Chart 版本 {#helm-chart-selection}
 

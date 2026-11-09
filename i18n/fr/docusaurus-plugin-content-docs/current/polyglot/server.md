@@ -377,15 +377,28 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Renvoie l’identité du build, les indicateurs de capacités, les manifestes de protocole, les limites et la découverte pour le namespace désigné par `X-Namespace` (ou le paramètre de requête `namespace`, à défaut `default`). Sortie abrégée de l’image 3.0.5 :
+Renvoie l’identité du build, les indicateurs de capacités, les manifestes de protocole, les limites et la découverte pour le namespace désigné par `X-Namespace` (ou le paramètre de requête `namespace`, à défaut `default`). Sortie abrégée de l’image 3.3.2 :
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -393,6 +406,8 @@ Renvoie l’identité du build, les indicateurs de capacités, les manifestes de
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -430,10 +445,11 @@ Renvoie l’identité du build, les indicateurs de capacités, les manifestes de
 Points clés pour le code client :
 
 - La version du build est `version`, pas `server_version`. `implementation` vaut `"rust"` sur le Server natif.
-- Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.0.5 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
+- Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.3.2 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
 - Les commandes de tâche workflow se trouvent sous `worker_protocol.server_capabilities.supported_workflow_task_commands`.
 - Un indicateur de capacité à `false` désigne une fonctionnalité ou un contrat publié que le natif ne sert pas. `response_compression` est vide, car le natif envoie des réponses non compressées.
-- `native_unqualified` liste chaque membre de la réponse PHP 2.x que le natif omet, avec la raison. On y trouve `topology`, `supported_sdk_versions` et `client_compatibility`.
+- `native_unqualified` liste chaque membre de la réponse PHP 2.x que le natif omet, avec la raison. On y trouve `topology`.
+- Depuis 3.1.0, le natif sert aussi `supported_sdk_versions` et `client_compatibility`, que lisent `server:info` et `doctor` de la CLI. `client_compatibility.authority` vaut `"protocol_manifests"` : vérifiez les manifestes de protocole, et non les plages de SDK, avant d’appeler l’API.
 - Le seul codec de payload est Avro : `capabilities.payload_codecs` vaut exactement `["avro"]`.
 - `qualified_for_php_takeover` vaut toujours `false`. Il décrit le Server en cours d’exécution, qui ne reprend jamais une base au démarrage, et n’indique pas si `upgrade-takeover` acceptera la vôtre.
 - La réponse contient aussi les manifestes `auth_composition_contract`, `principal_attribution_contract`, `service_catalog_read_contract` et `message_streams_contract`.
