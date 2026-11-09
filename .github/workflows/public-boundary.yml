@@ -19,6 +19,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test tracked personal-settings refusal
+        run: python3 -I -B -m unittest discover -s tests -p test_public_boundary.py
+
       - name: Scan files and commit metadata
         shell: bash
         run: |

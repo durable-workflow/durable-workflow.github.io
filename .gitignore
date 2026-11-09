@@ -21,3 +21,7 @@ yarn-error.log*
 
 docker*
 Docker*
+
+# Project-local personal agent settings
+/.claude/settings.local.json
+**/.claude/settings.local.json
