@@ -66,11 +66,12 @@ Das eingebettete Paket und das Service-Modus-SDK haben eigene Supportverträge.
 
 | Paketlinie | PHP | Laravel |
 | --- | --- | --- |
-| Aktuelles eingebettetes Workflow 2.21 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
+| Aktuelles eingebettetes Workflow 2.22 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
 | Eingebettetes Workflow 2.20.5 | PHP `^8.1`, zusätzlich gilt das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
-| Veröffentlichtes PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
+| Veröffentlichtes PHP-SDK 3.11 | Reines SDK PHP `^8.1`; die Laravel-Bridge benötigt PHP `^8.2` und für Laravel 13 PHP 8.3+ | `^12.69.0` oder `^13.30.0` |
+| PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 
-Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.21.0/resources/laravel-embedded-upgrade-contract.json)
+Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
 und die jeweilige `composer.json`. Das aktuelle eingebettete Release wurde mit
 Laravel 12/PHP 8.2–8.4 und Laravel 13/PHP 8.3–8.4 geprüft. Es entfernt PHP 8.1
 und Laravel 10/11. Die [historische stabile v1-Anleitung](/docs/1.x/installation/)
@@ -83,6 +84,26 @@ wählen, sobald die Plattform sie zulässt. Bewahren Sie die ursprüngliche
 Laufzeit offener v1-Läufe und folgen Sie der [Adoptionsanleitung](/docs/laravel-adoption)
 für Drain oder Koexistenz. Eine geänderte Composer-Anforderung migriert keinen
 dauerhaften Verlauf.
+
+PHP-SDK 3.10 hat die Laravel-Bridge für den Service-Modus auf dieselben PHP- und
+Laravel-Mindestversionen wie Workflow 2.21 angehoben und den Support für
+Laravel 10/11 entfernt; 3.11 behält sie bei. Ihr Provider verweigert nicht
+unterstützte oder unbekannte Framework- und PHP-Versionen, bevor er
+Konfiguration, Clients oder Worker registriert. Bestehende Anwendungen mit
+SDK 3.9.x behalten ihren eigenen Vertrag, während die Plattform aktualisiert
+wird. Siehe die [Upgrade-Hinweise zum PHP-SDK](./polyglot/php.md#upgrade-to-3-10-and-3-11).
+
+Workflow 2.22 fügt keine Datenbankmigration hinzu und behält die
+Mindestversionen von 2.21 bei. Sein eingebettetes Worker-Protokoll kündigt `1.22`
+an und akzeptiert weiterhin Anfragen mit `1.20`. `1.22` ergänzt eine optionale
+Frist pro Vorkommen, die externe Aufrufer für Bedingungswartevorgänge anfordern
+können; der eingebettete Runner behält sein bisheriges Warteverhalten bei.
+Sobald ein Workflow diese Richtlinie verwendet hat, ist ein Rollback auf ein
+früheres Workflow-Release nur durch Wiederherstellen einer vor dem Upgrade
+erstellten Sicherung möglich. Ältere Releases können die Richtlinie verwerfen
+und die Wartekette durcheinanderbringen; ein erneutes Upgrade repariert diesen
+Verlauf nicht. Siehe das
+[Changelog zu 2.22.0](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md).
 
 ## Stabilitätsstufen {#stability-levels}
 

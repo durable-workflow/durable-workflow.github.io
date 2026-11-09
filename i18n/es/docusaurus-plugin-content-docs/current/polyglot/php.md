@@ -74,7 +74,10 @@ y ejecuta el trabajo mediante sus colas Laravel. Consulta
 
 ## Requisitos {#requirements}
 
-- PHP 8.1 o posterior
+- PHP 8.1 o posterior para el SDK independiente del framework
+- Para el puente Laravel de modo servicio en el SDK PHP 3.10 y posteriores: PHP
+  8.2 o posterior y Laravel 12.69 o posterior en 12.x, o Laravel 13.30 o
+  posterior en 13.x con PHP 8.3 o posterior
 - Un [Server autohospedado](/docs/polyglot/server/) accesible o un
   [runtime de espacio de nombres de Cloud](/docs/polyglot/cloud-control-plane) aprovisionado
 
@@ -287,6 +290,54 @@ mismo caso representativo en v1, v2 integrado y este puente de modo servicio,
 incluidos drenaje y reversión. Utiliza [Modos de despliegue](/docs/polyglot/deployment-modes/)
 para una comparación más amplia de límites del runtime.
 
+## Actualizar al SDK PHP 3.10 y 3.11 {#upgrade-to-3-10-and-3-11}
+
+Lee la [guía de actualización del SDK PHP](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)
+antes de desplegar. Actualiza a la vez todos los workers que puedan recibir
+trabajo de una cola de tareas, incluidos los grupos en espera y de autoescalado.
+
+- **Puente Laravel.** Desde 3.10, el puente Laravel de modo servicio sigue a
+  Workflow 2.21: PHP `^8.2` y Laravel con parches `^12.69.0|^13.30.0`. Laravel
+  10 y 11 dejan de ser compatibles. El proveedor rechaza versiones del
+  framework y de PHP no compatibles o desconocidas antes de registrar nada. El
+  SDK básico mantiene PHP `^8.1` y la compatibilidad con Symfony 6.4/7/8.
+- **Huellas de condición.** Desde 3.10, las nuevas esperas de condición
+  registran huellas de predicado v2 (`dwphp2:sha256:`). Los workers anteriores
+  las rechazan, por lo que revertir los workers a una versión anterior a 3.10
+  cuando ya existen esperas v2 puede hacer fallar el replay. Detén o drena los
+  workers anteriores antes de que arranquen los de reemplazo, despliega el
+  código PHP de forma atómica y reinicia todos los workers de larga duración,
+  incluidos los que usan OPcache. Los workers que reproducen esperas v2
+  necesitan el tokenizer de PHP. Las esperas v1 existentes siguen exigiendo una
+  coincidencia exacta de la línea de código fuente.
+- **Credenciales estáticas.** Desde 3.10, las credenciales estáticas se validan
+  tal como se proporcionan. El UTF-8 mal formado, los espacios en blanco Unicode
+  en cualquiera de los extremos y los caracteres de control incrustados ahora
+  fallan en lugar de recortarse o ignorarse. Revisa los valores compartidos, de
+  cliente, de worker y de traspaso entre procesos del framework antes de
+  actualizar.
+- **Plazos por ocurrencia.** En 3.11, una nueva espera de condición de nivel
+  superior conserva su primer plazo tras los despertares falsos cuando el
+  Server anuncia `condition_wait_occurrence_deadline` (Server nativo 3.3.0 o
+  posterior). Sin esa capacidad, los workers envían los mismos comandos que
+  antes. Las esperas de condición agrupadas todavía no la activan. Con un
+  Server anterior, actualiza a 3.11 todos los workers de la cola antes de
+  actualizar el Server. Con un Server que ya anuncia la capacidad, drena o
+  detén todos los workers anteriores antes de que cualquier worker 3.11 consuma
+  la cola. Una vez que exista una espera anclada, no reviertas los workers de
+  esa cola a una versión anterior a 3.11.
+
+El SDK PHP 3.10 también añade `WorkflowContext::startChildWorkflow()`, que
+devuelve un `ChildWorkflowHandle` una vez confirmado el inicio del hijo y
+necesita un runtime que anuncie `child_workflow_start_turn`. Otras novedades son
+`ActivityContext::activityExecutionId`, declaraciones tipadas opcionales para
+`upsertSearchAttributes()`, iteradores diferidos de listas e historial de
+workflows y la opción de Worker `enableCompletionPipelining`, que de forma
+predeterminada es `false`. Los sondeos transportados en la finalización solo se
+usan cuando el runtime los anuncia. Consulta el
+[registro de cambios de 3.11.0](https://github.com/durable-workflow/sdk-php/blob/3.11.0/CHANGELOG.md)
+para ver la lista completa.
+
 ## Límites de protocolo y versiones {#protocol-and-release-boundary}
 
 El SDK declara el intervalo de servidores admitidos, la versión de protocolo
@@ -313,7 +364,9 @@ del SDK, no de que coincidan los números de versión de paquetes.
 
 ## Páginas de lista e historial de workflows {#workflow-list-and-history-pages}
 
-Estas llamadas publicadas devuelven **una página**, no una lectura completa automática: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continúe con el token opaco devuelto manteniendo namespace, filtros y workflow/ejecución seleccionados; termine con token nulo/vacío y gestione los errores de página. Una página parcial no es un bundle de reproducción. Use la API de exportación de historial del SDK para reproducción sin servidor. El [cliente publicado PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) define los parámetros actuales; no se implica un nuevo iterador.
+Estas llamadas publicadas devuelven **una página**, no una lectura completa automática: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continúe con el token opaco devuelto manteniendo namespace, filtros y workflow/ejecución seleccionados; termine con token nulo/vacío y gestione los errores de página. Una página parcial no es un bundle de reproducción. Use la API de exportación de historial del SDK para reproducción sin servidor. El [cliente publicado PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) define los parámetros de página.
+
+El SDK PHP 3.10.0 y posteriores también ofrecen `Client::iterateWorkflows()` y `Client::iterateWorkflowHistory()`. Leen de forma diferida un listado completo de workflows o el historial de una ejecución exacta, una página cada vez, conservando el cursor opaco, el namespace y los filtros. Los errores de páginas posteriores se propagan, y las continuaciones mal formadas o los ciclos de tokens se rechazan en lugar de truncar el resultado o entrar en bucle. Consulte el [cliente publicado PHP 3.11.0](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
 
 ## Informes de error acotados {#bounded-failure-reports}
 
