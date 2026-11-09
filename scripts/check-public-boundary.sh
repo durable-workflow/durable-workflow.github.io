@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 root="${1:-.}"
 cd "$root"
+
+# Exact source from durable-workflow/.github d3b990dac1cb076b88c95e0768cf757f39c3ded2.
+# Refuse paths before existing content scans can open a local settings file.
+python3 -I -B "$script_root/check-agent-local-settings.py"
 
 status=0
 
