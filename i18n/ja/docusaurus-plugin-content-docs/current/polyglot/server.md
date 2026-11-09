@@ -367,15 +367,28 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-ビルド識別、能力フラグ、プロトコルのマニフェスト、制限値、そして `X-Namespace`（または `namespace` クエリパラメーター、どちらもなければ `default`）で指定した Namespace の検出情報を返します。3.0.5 イメージの出力を抜粋します。
+ビルド識別、能力フラグ、プロトコルのマニフェスト、制限値、そして `X-Namespace`（または `namespace` クエリパラメーター、どちらもなければ `default`）で指定した Namespace の検出情報を返します。3.3.2 イメージの出力を抜粋します。
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -383,6 +396,8 @@ curl http://localhost:8080/api/cluster/info \
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -420,10 +435,11 @@ curl http://localhost:8080/api/cluster/info \
 クライアントコード向けの主なフィールドの注意点：
 
 - ビルドバージョンは `server_version` ではなく `version` です。ネイティブ Server では `implementation` が `"rust"` です。
-- API を呼び出す前に `control_plane.version` と `worker_protocol.version` を確認してください。ネイティブ 3.0.5 はコントロールプレーン `2` と Worker プロトコル `1.20` を提供し、`1.0` から `1.20` までの任意のプロトコルバージョンを送る Worker 要求を受け付けます。
+- API を呼び出す前に `control_plane.version` と `worker_protocol.version` を確認してください。ネイティブ 3.3.2 はコントロールプレーン `2` と Worker プロトコル `1.20` を提供し、`1.0` から `1.20` までの任意のプロトコルバージョンを送る Worker 要求を受け付けます。
 - ワークフロータスクのコマンドは `worker_protocol.server_capabilities.supported_workflow_task_commands` にあります。
 - `false` の能力フラグは、ネイティブが提供しない機能や公開契約を示します。ネイティブは圧縮しない応答を送るため、`response_compression` は空です。
-- `native_unqualified` は、PHP 2.x の応答のうちネイティブが含めない各メンバーを理由とともに列挙します。`topology`、`supported_sdk_versions`、`client_compatibility` が含まれます。
+- `native_unqualified` は、PHP 2.x の応答のうちネイティブが含めない各メンバーを理由とともに列挙します。`topology` が含まれます。
+- 3.1.0 以降、ネイティブは `supported_sdk_versions` と `client_compatibility` も提供し、CLI の `server:info` と `doctor` がこれらを読み取ります。`client_compatibility.authority` は `"protocol_manifests"` です。API を呼び出す前に、SDK の範囲ではなくプロトコルのマニフェストを確認してください。
 - ペイロードコーデックは Avro だけです。`capabilities.payload_codecs` は正確に `["avro"]` です。
 - `qualified_for_php_takeover` は常に `false` です。これは起動時にデータベースをテイクオーバーすることのない、実行中の Server を表すもので、`upgrade-takeover` がお使いのデータベースを受け入れるかどうかを示すものではありません。
 - 応答には `auth_composition_contract`、`principal_attribution_contract`、`service_catalog_read_contract`、`message_streams_contract` のマニフェストも含まれます。

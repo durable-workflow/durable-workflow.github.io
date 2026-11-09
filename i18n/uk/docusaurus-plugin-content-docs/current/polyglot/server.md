@@ -506,15 +506,28 @@ curl http://localhost:8080/api/cluster/info \
 
 Повертає ідентичність збірки, прапорці можливостей, маніфести протоколів,
 ліміти та дані виявлення для namespace, названого в `X-Namespace` (або в
-параметрі запиту `namespace`, інакше `default`). Скорочений вивід образу 3.0.5:
+параметрі запиту `namespace`, інакше `default`). Скорочений вивід образу 3.3.2:
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -522,6 +535,8 @@ curl http://localhost:8080/api/cluster/info \
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -561,7 +576,7 @@ curl http://localhost:8080/api/cluster/info \
 - Версія збірки міститься в `version`, а не в `server_version`. На нативному
   Server `implementation` має значення `"rust"`.
 - Перевіряйте `control_plane.version` і `worker_protocol.version` перед
-  викликами API. Нативний 3.0.5 обслуговує площину керування `2` і протокол
+  викликами API. Нативний 3.3.2 обслуговує площину керування `2` і протокол
   worker `1.20`, а також приймає запити worker із будь-якою версією протоколу
   від `1.0` до `1.20`.
 - Команди workflow-task містяться в
@@ -570,8 +585,11 @@ curl http://localhost:8080/api/cluster/info \
   контракт, який нативний Server не обслуговує. `response_compression`
   порожній, бо нативний Server надсилає нестиснені відповіді.
 - `native_unqualified` перелічує кожен член відповіді PHP 2.x, який нативний
-  Server пропускає, разом із причиною. Серед них `topology`,
-  `supported_sdk_versions` і `client_compatibility`.
+  Server пропускає, разом із причиною. Серед них `topology`.
+- Починаючи з 3.1.0, нативний Server також обслуговує `supported_sdk_versions`
+  і `client_compatibility`, які читають `server:info` і `doctor` CLI.
+  `client_compatibility.authority` має значення `"protocol_manifests"`:
+  перед викликами API перевіряйте маніфести протоколів, а не діапазони SDK.
 - Єдиний кодек payload — Avro: `capabilities.payload_codecs` дорівнює точно
   `["avro"]`.
 - `qualified_for_php_takeover` завжди дорівнює `false`. Поле описує запущений

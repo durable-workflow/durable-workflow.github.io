@@ -170,6 +170,37 @@ docker compose --env-file durable-workflow.prod.env \
 
 ネイティブ Server は起動時にスキーマを確認します。ネイティブの同一マイナー系列内のパッチリリースはスキーマを維持するため、イメージの変更だけで済みます。リリースノートでスキーマ変更が告知されたリリースでは、データベースをバックアップし、全 Server を停止した状態で、イメージの `schema-upgrade` コマンドも実行する必要があります。最新のコマンド例は Server リファレンスの[公式イメージと Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)にあります。
 
+### Server 3.0.x から 3.3.2 へのアップグレード {#native-schema-upgrade-3-0-to-3-3}
+
+Server 3.3.2 は 3.0.x から 3 つのマイナーリリースをまたぎ、ネイティブのスキーマを変更します。MySQL、MariaDB、PostgreSQL では、バージョン 8（3.0.x と 3.1.0）から 10（3.2.0）を経て 11（3.3.0～3.3.2）へ移行します。SQLite では 8 から 10 へ移行します。Server が起動時にスキーマをアップグレードすることはありません。3.3.2 はバージョン 8 のデータベースで起動すると `native_schema_upgrade_required` で拒否するため、`DW_SERVER_IMAGE` を変更するだけでは新しい Server を起動できません。3.3.2 イメージの `schema-upgrade` コマンドは、バージョン 8 のデータベースを直接アップグレードします。[3.3.0 のアップグレードノート](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade)がこの手順を説明し、Helm チャートの[チャート 1.1.0 / Server 3.3.2 のノート](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)が、3.0.5 から 3.3.2 までのスキーマ手順とランタイムの変更を列挙しています。
+
+単一ノードの Compose デプロイでは次のようにします。
+
+1. MySQL は稼働させたまま、Server を停止します。
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. MySQL と `server_storage` をバックアップし、現在のイメージ参照を記録します。3.0.x へ戻る手段はこのバックアップだけです。
+3. `DW_SERVER_IMAGE` を 3.3.2 イメージに変更し、pull してから `schema-upgrade` を一度実行します。
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   バックエンドと、アップグレード前後のスキーマバージョンを出力します。例: `"from_schema_version":8,"schema_version":11,"status":"upgraded"`。すでに最新のデータベースでは、スキーマの検証だけを行います。
+4. `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` で Server を起動し、`/api/ready`、`/api/cluster/info`（`version` が `3.3.2`）、Worker 登録を確認します。
+
+- **PostgreSQL:** バージョン 10 と 11 の手順は通常の `CREATE INDEX` でインデックスを作成するため、作成が終わるまで `workflow_tasks` への書き込みがブロックされます。`workflow_tasks` テーブルが大きい場合は、そのためのダウンタイムを計画してください。
+- **MySQL と MariaDB:** これらでは DDL が単独でコミットされるため、アップグレードは完了までデータベースをアップグレード中としてマークし、その間はすべての Server が `native_schema_upgrade_incomplete` で拒否します。アップグレードが中断された場合は、`schema-upgrade` を再実行すると再開します。
+- **ロールバックにはバックアップが必要です。** スキーマのダウングレードはありません。3.0.x の Server はアップグレード済みのデータベースを `native_schema_newer_than_binary` で拒否します。戻すには、手順 2 で取得したバックアップを復元し（それ以降に書き込まれた内容はすべて失われます）、その後 3.0.x イメージを起動してください。
+
+Worker プロトコルは `1.20`、コントロールプレーンはバージョン `2` のままです。
+
 ## 小規模クラスター {#small-clustered-deployments}
 
 :::note PHP Server 2.x の契約
@@ -339,6 +370,8 @@ helm install durable-workflow \
 チャート 1.x は既定でネイティブ Server を実行します（`runtime: native`）。一つの Server Deployment で構成され、Worker、スケジューラー、マイグレーション Job、Redis はありません。values ファイルでは、外部の MySQL、MariaDB、PostgreSQL データベースを指定し、既存の Kubernetes Secret で `DW_AUTH_TOKEN` とロール別トークンを渡し、環境に合った ingress/TLS を設定してください。共有の `DW_AUTH_TOKEN` がないとチャートはレンダリングを拒否し、SQLite も拒否します。ネイティブ導入は既定で一つのレプリカを実行します。複数レプリカやオートスケーリングには、外部ペイロードオブジェクト用の ReadWriteMany ボリュームを `native.storage.existingClaim` で指定する必要があります。チャートは永続ストレージやプロバイダー管理のインフラを作成しません。再現可能なデプロイのため、Server イメージをダイジェストで固定してください。
 
 既存の PHP 2.x リリースは、通常のアップグレードではネイティブへ移行しません。`runtime` を明示的に設定するまで、チャートはアップグレードを拒否します。PHP 2.x の Worker、スケジューラー、bootstrap Job、Redis を維持するには `runtime: php` を設定します。`runtime: native` へ移行するには、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従い、テイクオーバーが完了するまでは `runtime: php` を維持してください。チャートの[UPGRADING ノート](%%artifact.helmChartUpgradeUrl%%)も参照してください。
+
+チャート 1.1.0 は既定のイメージを Server 3.0.5 から 3.3.2 に変更します。3.3.2 には 8 から 11 への[ネイティブスキーマのアップグレード](#native-schema-upgrade-3-0-to-3-3)が必要です。チャート 1.0.x からの通常の `helm upgrade` はイメージだけを変更するため、新しい Pod は `native_schema_upgrade_required` で起動を拒否します。チャートの[チャート 1.1.0 / Server 3.3.2 の手順](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)に従ってください。オートスケーリングを無効にして Server をゼロにスケールし、データベースをバックアップしてから、`native.schemaUpgrade.enabled=true` でチャート 1.1.0 にアップグレードします。その `pre-upgrade` フックは、新しい Pod の起動前に `schema-upgrade` を一度実行します。ただし実行するのは、Helm の `lookup` ですべての Server が停止していると確認できる場合だけです。Argo CD、Flux、`helm template` によるレンダリングではフックが拒否されるため、代わりにチャート README の手動 Job を使ってください。チャート 1.0.x のリビジョンへ `helm rollback` しても Server は戻りません。3.0.x はアップグレード済みのデータベースを拒否するためです。代わりにバックアップを復元してください。
 
 ### チャートのリリースを選ぶ {#helm-chart-selection}
 

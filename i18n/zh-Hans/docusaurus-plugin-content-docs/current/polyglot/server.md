@@ -366,15 +366,28 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-返回构建标识、能力标志、协议清单、限制，以及由 `X-Namespace`（或 `namespace` 查询参数，否则为 `default`）指定的命名空间的发现信息。以下为 3.0.5 镜像的节选输出：
+返回构建标识、能力标志、协议清单、限制，以及由 `X-Namespace`（或 `namespace` 查询参数，否则为 `default`）指定的命名空间的发现信息。以下为 3.3.2 镜像的节选输出：
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -382,6 +395,8 @@ curl http://localhost:8080/api/cluster/info \
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -419,10 +434,11 @@ curl http://localhost:8080/api/cluster/info \
 面向客户端代码的关键字段说明：
 
 - 构建版本是 `version`，而不是 `server_version`。在原生 Server 上，`implementation` 为 `"rust"`。
-- 调用 API 之前，请检查 `control_plane.version` 和 `worker_protocol.version`。原生 3.0.5 提供控制平面 `2` 与 Worker 协议 `1.20`，并接受发送 `1.0` 至 `1.20` 之间任一协议版本的 Worker 请求。
+- 调用 API 之前，请检查 `control_plane.version` 和 `worker_protocol.version`。原生 3.3.2 提供控制平面 `2` 与 Worker 协议 `1.20`，并接受发送 `1.0` 至 `1.20` 之间任一协议版本的 Worker 请求。
 - 工作流任务命令位于 `worker_protocol.server_capabilities.supported_workflow_task_commands`。
 - 值为 `false` 的能力标志表示原生 Server 不提供的功能或已发布契约。`response_compression` 为空，因为原生 Server 发送未压缩的响应。
-- `native_unqualified` 列出原生 Server 省略的每个 PHP 2.x 响应成员及其原因，其中包括 `topology`、`supported_sdk_versions` 和 `client_compatibility`。
+- `native_unqualified` 列出原生 Server 省略的每个 PHP 2.x 响应成员及其原因，其中包括 `topology`。
+- 自 3.1.0 起，原生 Server 也提供 `supported_sdk_versions` 和 `client_compatibility`，CLI 的 `server:info` 和 `doctor` 会读取它们。`client_compatibility.authority` 为 `"protocol_manifests"`：调用 API 之前，请检查协议清单，而不是 SDK 版本范围。
 - 唯一的载荷编解码器是 Avro：`capabilities.payload_codecs` 恰好为 `["avro"]`。
 - `qualified_for_php_takeover` 始终为 `false`。它描述的是正在运行的 Server（启动时从不接管数据库），而不是表示 `upgrade-takeover` 是否会接受某个数据库。
 - 响应还携带 `auth_composition_contract`、`principal_attribution_contract`、`service_catalog_read_contract` 和 `message_streams_contract` 清单。

@@ -269,6 +269,67 @@ pendant que tous les Servers sont arrêtés. La référence Server conserve les
 exemples Compose actuels au niveau des commandes dans la section
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Mettre à niveau de Server 3.0.x vers 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+Server 3.3.2 franchit trois versions mineures depuis 3.0.x et modifie le schéma
+natif. Sur MySQL, MariaDB et PostgreSQL, il passe de la version 8 (3.0.x et
+3.1.0) à la 10 (3.2.0), puis à la 11 (3.3.0 à 3.3.2). Sur SQLite, il passe de 8
+à 10. Un Server ne met jamais son schéma à niveau au démarrage : 3.3.2 démarré
+sur une base en version 8 refuse avec `native_schema_upgrade_required`, si bien
+que changer uniquement `DW_SERVER_IMAGE` laisse le nouveau Server incapable de
+démarrer. La commande `schema-upgrade` de l'image 3.3.2 met directement à
+niveau une base en version 8. Les
+[notes de mise à niveau 3.3.0](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade)
+décrivent cette étape, et les
+[notes Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)
+du chart Helm énumèrent les étapes de schéma et les changements du runtime de
+3.0.5 à 3.3.2.
+
+Pour le déploiement Compose sur un nœud :
+
+1. Arrêtez le Server et laissez MySQL en marche :
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Sauvegardez MySQL et `server_storage`, et consignez la référence de l'image
+   actuelle. Cette sauvegarde est le seul moyen de revenir à 3.0.x.
+3. Remplacez `DW_SERVER_IMAGE` par l'image 3.3.2, téléchargez-la et exécutez
+   `schema-upgrade` une fois :
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   La commande affiche le backend et les versions de schéma avant et après, par
+   exemple `"from_schema_version":8,"schema_version":11,"status":"upgraded"`.
+   Sur une base déjà à jour, elle vérifie seulement le schéma.
+4. Démarrez le Server avec
+   `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`,
+   puis confirmez `/api/ready`, `/api/cluster/info` (`version` vaut `3.3.2`) et
+   l'enregistrement worker.
+
+- **PostgreSQL :** les étapes des versions 10 et 11 construisent leurs index
+  avec un simple `CREATE INDEX`, qui bloque les écritures dans `workflow_tasks`
+  jusqu'à la fin de la construction. Sur une grande table `workflow_tasks`,
+  prévoyez l'interruption correspondante.
+- **MySQL et MariaDB :** le DDL y est validé de façon autonome ; la mise à
+  niveau marque donc la base comme en cours de mise à niveau jusqu'à son terme,
+  et chaque Server la refuse entre-temps avec `native_schema_upgrade_incomplete`.
+  Si une mise à niveau est interrompue, relancez `schema-upgrade` pour la
+  reprendre.
+- **Le retour arrière nécessite la sauvegarde.** Il n'existe aucune
+  rétrogradation de schéma. Un Server 3.0.x refuse une base mise à niveau avec
+  `native_schema_newer_than_binary`. Pour revenir en arrière, restaurez la
+  sauvegarde prise à l'étape 2, ce qui supprime tout ce qui a été écrit depuis,
+  puis démarrez l'image 3.0.x.
+
+Le protocole worker reste à `1.20` et le plan de contrôle à la version `2`.
+
 ## Petits clusters {#small-clustered-deployments}
 
 :::note Contrat PHP Server 2.x
@@ -527,6 +588,8 @@ helm install durable-workflow \
 Le chart 1.x exécute par défaut le Server natif (`runtime: native`) : un seul Deployment Server, sans worker, ordonnanceur, Job de migration ni Redis. Le fichier de valeurs doit désigner une base externe MySQL, MariaDB ou PostgreSQL, fournir `DW_AUTH_TOKEN` et les jetons par rôle via des Kubernetes Secrets existants et configurer ingress/TLS pour votre environnement. Le chart refuse de générer les manifestes sans le `DW_AUTH_TOKEN` partagé et refuse SQLite. Une installation native exécute un seul réplica par défaut ; plusieurs réplicas, ou l’autoscaling, exigent que `native.storage.existingClaim` désigne un volume ReadWriteMany pour les objets de payload externes. Le chart ne crée ni persistance ni infrastructure gérée par le fournisseur. Fixez l’image Server par digest pour un déploiement reproductible.
 
 Une version PHP 2.x existante ne passe pas au natif lors d’une mise à niveau ordinaire : le chart refuse tant que vous n’avez pas défini `runtime` explicitement. Définissez `runtime: php` pour conserver le worker, l’ordonnanceur, le job d’initialisation et Redis de PHP 2.x. Pour passer à `runtime: native`, suivez le [runbook de reprise native](%%artifact.serverTakeoverRunbookUrl%%) et conservez `runtime: php` jusqu’à ce que la reprise soit terminée. Consultez les [notes UPGRADING](%%artifact.helmChartUpgradeUrl%%) du chart.
+
+Le chart 1.1.0 change l’image par défaut de Server 3.0.5 à 3.3.2, ce qui nécessite la [mise à niveau du schéma natif](#native-schema-upgrade-3-0-to-3-3) de 8 à 11. Un `helm upgrade` ordinaire depuis le chart 1.0.x ne change que l’image, et les nouveaux pods refusent de démarrer avec `native_schema_upgrade_required`. Suivez les [étapes Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native) du chart : ramenez le Server à zéro réplica avec l’autoscaling désactivé, sauvegardez la base, puis passez au chart 1.1.0 avec `native.schemaUpgrade.enabled=true`. Son hook `pre-upgrade` exécute `schema-upgrade` une fois avant le démarrage des nouveaux pods, et seulement si le `lookup` de Helm montre que tous les Servers sont arrêtés. Les rendus Argo CD, Flux et `helm template` refusent le hook ; utilisez plutôt le Job manuel du README du chart. Un `helm rollback` vers une révision du chart 1.0.x ne rétablit pas le Server, car 3.0.x refuse la base mise à niveau : restaurez plutôt la sauvegarde.
 
 ### Choisir une version du chart {#helm-chart-selection}
 

@@ -268,6 +268,62 @@ command-level Compose examples in the
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)
 section.
 
+### Upgrading from Server 3.0.x to 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+Server 3.3.2 crosses three minor releases from 3.0.x and changes the native
+schema. On MySQL, MariaDB and PostgreSQL it moves from version 8 (3.0.x and
+3.1.0) through 10 (3.2.0) to 11 (3.3.0 to 3.3.2). On SQLite it moves from 8
+to 10. A Server never upgrades its schema at startup: 3.3.2 started on a
+version 8 database refuses with `native_schema_upgrade_required`, so changing
+`DW_SERVER_IMAGE` alone leaves the new Server unable to start. The 3.3.2
+image's `schema-upgrade` command upgrades a version 8 database directly. The
+[3.3.0 upgrade notes](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade)
+describe the step, and the Helm chart's
+[Chart 1.1.0 / Server 3.3.2 notes](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)
+list the schema steps and the runtime changes from 3.0.5 to 3.3.2.
+
+For the single-node Compose deployment:
+
+1. Stop the Server and leave MySQL running:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Back up MySQL and `server_storage`, and record the current image
+   reference. This backup is the only way back to 3.0.x.
+3. Change `DW_SERVER_IMAGE` to the 3.3.2 image, pull it and run
+   `schema-upgrade` once:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   It prints the backend and the schema versions before and after, for
+   example `"from_schema_version":8,"schema_version":11,"status":"upgraded"`.
+   On a database that is already current it only verifies the schema.
+4. Start the Server with
+   `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`,
+   then confirm `/api/ready`, `/api/cluster/info` (`version` is `3.3.2`) and
+   worker registration.
+
+- **PostgreSQL:** the version 10 and 11 steps build their indexes with a plain
+  `CREATE INDEX`, which blocks writes to `workflow_tasks` until the build
+  finishes. On a large `workflow_tasks` table, plan the downtime for it.
+- **MySQL and MariaDB:** DDL commits on its own there, so the upgrade marks the
+  database as upgrading until it finishes, and every Server refuses it
+  meanwhile with `native_schema_upgrade_incomplete`. If an upgrade is
+  interrupted, run `schema-upgrade` again to resume it.
+- **Rollback needs the backup.** There is no schema downgrade. A 3.0.x Server
+  refuses an upgraded database with `native_schema_newer_than_binary`. To go
+  back, restore the backup taken in step 2, which discards everything written
+  after it, and then start the 3.0.x image.
+
+The worker protocol stays at `1.20` and the control plane at version `2`.
+
 ## Small clustered deployments
 
 :::note PHP Server 2.x contract
@@ -539,6 +595,19 @@ the PHP 2.x worker, scheduler, bootstrap job and Redis. To move to
 [native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%)
 and keep `runtime: php` until the takeover is done. See the chart's
 [UPGRADING notes](%%artifact.helmChartUpgradeUrl%%).
+
+Chart 1.1.0 changes the default image from Server 3.0.5 to 3.3.2, which needs
+the [native schema upgrade](#native-schema-upgrade-3-0-to-3-3) from 8 to 11.
+An ordinary `helm upgrade` from chart 1.0.x changes only the image, and the new
+pods refuse to start with `native_schema_upgrade_required`. Follow the chart's
+[Chart 1.1.0 / Server 3.3.2 steps](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native):
+scale the Server to zero with autoscaling off, back up the database, then
+upgrade to chart 1.1.0 with `native.schemaUpgrade.enabled=true`. Its
+`pre-upgrade` hook runs `schema-upgrade` once before the new pods start, and
+only when Helm's `lookup` shows every Server stopped. Argo CD, Flux and
+`helm template` renders refuse the hook; use the chart README's manual Job
+instead. A `helm rollback` to a chart 1.0.x revision does not bring the Server
+back, because 3.0.x refuses the upgraded database: restore the backup instead.
 
 ### Choosing a chart release {#helm-chart-selection}
 
