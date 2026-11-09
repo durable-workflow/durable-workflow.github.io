@@ -74,7 +74,10 @@ for the complete ownership comparison.
 
 ## Requirements
 
-- PHP 8.1 or later
+- PHP 8.1 or later for the framework-neutral SDK
+- For the Laravel service-mode bridge in PHP SDK 3.10 and later: PHP 8.2 or
+  later and Laravel 12.69 or later in 12.x, or Laravel 13.30 or later in 13.x
+  with PHP 8.3 or later
 - A reachable [self-hosted Server](/docs/polyglot/server/) or provisioned
   [Cloud namespace runtime](/docs/polyglot/cloud-control-plane)
 
@@ -282,6 +285,48 @@ service-mode bridge, including drain and rollback. Use
 [Deployment Modes](/docs/polyglot/deployment-modes/) for the wider runtime
 boundary comparison.
 
+## Upgrade to PHP SDK 3.10 and 3.11 {#upgrade-to-3-10-and-3-11}
+
+Read the [PHP SDK upgrade guide](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)
+before deploying. Upgrade every worker that can receive work from a task queue
+together, including standby and autoscaling pools.
+
+- **Laravel bridge.** From 3.10, the Laravel service-mode bridge follows
+  Workflow 2.21: PHP `^8.2` and patched Laravel `^12.69.0|^13.30.0`. Laravel
+  10 and 11 are no longer supported. The provider refuses unsupported or
+  unknown framework and PHP versions before registering anything. The bare SDK
+  keeps PHP `^8.1` and Symfony 6.4/7/8 support.
+- **Condition fingerprints.** From 3.10, new condition waits record v2
+  (`dwphp2:sha256:`) predicate fingerprints. Older workers reject them, so
+  rolling workers back below 3.10 after v2 waits exist can fail replay. Stop or
+  drain older workers before replacements start, deploy PHP sources atomically
+  and restart every long-running worker, including workers using OPcache.
+  Workers that replay v2 waits need PHP's tokenizer. Existing v1 waits still
+  require an exact source-line match.
+- **Static credentials.** From 3.10, static credentials are validated as
+  given. Malformed UTF-8, Unicode whitespace at either edge and embedded
+  control characters now fail instead of being trimmed or ignored. Check shared,
+  client, worker and framework process-handoff values before upgrading.
+- **Occurrence deadlines.** In 3.11, a new top-level condition wait keeps its
+  first deadline across false wakes when the Server advertises
+  `condition_wait_occurrence_deadline` (native Server 3.3.0 or later). Without
+  that capability, workers send the same commands as before. Grouped condition
+  waits do not opt in yet. On an older Server, upgrade every worker on the queue
+  to 3.11 before upgrading the Server. On a Server that already advertises the
+  capability, drain or stop every older worker before any 3.11 worker consumes
+  the queue. Once an anchored wait exists, do not roll that queue's workers back
+  below 3.11.
+
+PHP SDK 3.10 also adds `WorkflowContext::startChildWorkflow()`, which returns a
+`ChildWorkflowHandle` once the child start commits and needs a runtime that
+advertises `child_workflow_start_turn`. Other additions are
+`ActivityContext::activityExecutionId`, optional typed declarations for
+`upsertSearchAttributes()`, lazy workflow list and history iterators, and the
+`enableCompletionPipelining` Worker option, which defaults to `false`.
+Completion-carried polls are used only when the runtime advertises them. See
+the [3.11.0 changelog](https://github.com/durable-workflow/sdk-php/blob/3.11.0/CHANGELOG.md)
+for the complete list.
+
 ## Protocol and release boundary
 
 The SDK declares its supported server range, worker protocol version,
@@ -308,7 +353,9 @@ not matching package version numbers.
 
 ## Workflow list and history pages {#workflow-list-and-history-pages}
 
-These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the current parameters; no new iterator capability is implied.
+These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the page parameters.
+
+PHP SDK 3.10.0 and later also provide `Client::iterateWorkflows()` and `Client::iterateWorkflowHistory()`. They read a complete workflow listing or exact-run history lazily, one page at a time, keeping the opaque cursor, namespace and filters. Errors on later pages propagate, and malformed continuations or token cycles are refused instead of truncating or looping. See the [published PHP 3.11.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
 
 ## Bounded failure reports {#bounded-failure-reports}
 

@@ -42,11 +42,13 @@ choisi ici votre politique de transition.
 | Laravel 2.0 embarqué | SDK PHP en mode service | L'application doit cesser de posséder le runtime d'orchestration ou nécessite un runtime partagé ou polyglotte. | Dirigez les nouveaux démarrages vers le service une fois ses workers prêts. Terminez les exécutions embarquées là où elles ont démarré, ou utilisez la procédure explicite d'import embarqué-v2 éligible pour Server auto-hébergé. |
 
 Consultez les [branches publiées compatibles avec Laravel](./compatibility.md#laravel-support)
-avant de choisir la destination. Le paquet embarqué actuel exige Laravel 12.69
-ou 13.30 et une version PHP compatible. Le SDK PHP 3.9.5 publié conserve Laravel
-10–13 avec les correctifs minimaux ; son client de base conserve PHP 8.1.
-Une ancienne application v1 peut nécessiter une mise à niveau du framework avant
-le passage à la branche embarquée actuelle. Conservez son runtime v1 et ses exécutions ouvertes.
+avant de choisir la destination. Le paquet embarqué actuel et, à partir du SDK
+PHP 3.10, le pont Laravel en mode service exigent tous deux Laravel 12.69 ou 13.30
+et une version PHP compatible. Le client de base en mode service conserve PHP 8.1.
+Le SDK PHP 3.9.x conserve son contrat de pont antérieur pour Laravel 10–13 avec
+les correctifs minimaux. Une ancienne application v1 peut nécessiter une mise à
+niveau du framework avant le passage à l'une ou l'autre des branches actuelles.
+Conservez son runtime v1 et ses exécutions ouvertes pendant cette mise à niveau.
 
 ## Comparer les responsabilités {#compare-the-ownership-boundary}
 
@@ -333,8 +335,10 @@ partir de la référence d'artefacts SDK PHP publiée, sans recopier une version
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Les versions compatibles de Laravel découvrent automatiquement le fournisseur. Publiez la
-configuration et listez les classes de gestionnaire munies d'attributs :
+Les versions compatibles de Laravel découvrent automatiquement le fournisseur. Si la
+version de Laravel ou de PHP n'est pas prise en charge ou est inconnue, le fournisseur
+la refuse avant d'enregistrer la moindre configuration, le moindre client ou
+worker. Publiez la configuration et listez les classes de gestionnaire munies d'attributs :
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

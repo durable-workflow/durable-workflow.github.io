@@ -45,7 +45,8 @@ Cloud 客户使用配置时返回的运行时 URL 和命名空间，并使用独
 
 ## 要求 {#requirements}
 
-- PHP 8.1 或更高版本
+- 框架无关的 SDK 需要 PHP 8.1 或更高版本
+- PHP SDK 3.10 及更高版本中的 Laravel 服务模式桥接：需要 PHP 8.2 或更高版本，以及 12.x 中的 Laravel 12.69 或更高版本，或 13.x 中的 Laravel 13.30 或更高版本（需 PHP 8.3 或更高版本）
 - 可访问的[自托管 Server](/docs/polyglot/server/) 或已配置的 [Cloud 命名空间运行时](/docs/polyglot/cloud-control-plane)
 
 ## 安装 {#install}
@@ -183,6 +184,17 @@ Worker 会自动声明 `workflow_entry_arguments_validation`。在配套 Server 
 
 这些桥接不同于[嵌入式 Laravel 工作流](/docs/installation/)；后者通过 `durable-workflow/workflow` 使 Laravel 应用自身管理持久状态并通过 Laravel 队列执行。参见 [Laravel 采用与运行时迁移](/docs/laravel-adoption/)，了解同一个典型 Laravel 用例如何使用 v1、v2 嵌入式及已提供的服务模式桥接，包括排空和回滚。更全面的运行时边界比较见[部署模式](/docs/polyglot/deployment-modes/)。
 
+## 升级到 PHP SDK 3.10 和 3.11 {#upgrade-to-3-10-and-3-11}
+
+部署前请阅读 [PHP SDK 升级指南](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)。可从同一任务队列接收工作的所有 Worker 须一并升级，包括备用池和自动扩缩容池。
+
+- **Laravel 桥接。** 从 3.10 起，Laravel 服务模式桥接与 Workflow 2.21 保持一致：PHP `^8.2` 及已打补丁的 Laravel `^12.69.0|^13.30.0`。不再支持 Laravel 10 和 11。provider 会在注册任何内容之前拒绝不受支持或未知的框架与 PHP 版本。基础 SDK 继续支持 PHP `^8.1` 以及 Symfony 6.4/7/8。
+- **条件指纹。** 从 3.10 起，新的条件等待会记录 v2（`dwphp2:sha256:`）谓词指纹。旧版 Worker 会拒绝这类指纹，因此在已存在 v2 等待后将 Worker 回滚到 3.10 以下，可能导致 replay 失败。请在替换 Worker 启动前停止或排空旧版 Worker，以原子方式部署 PHP 源码，并重启每个长时间运行的 Worker，包括使用 OPcache 的 Worker。replay v2 等待的 Worker 需要 PHP 的 tokenizer 扩展。现有 v1 等待仍要求源码行完全匹配。
+- **静态凭据。** 从 3.10 起，静态凭据按原样校验。格式错误的 UTF-8、首尾的 Unicode 空白字符以及内嵌的控制字符现在会导致失败，而不再被裁剪或忽略。升级前请检查共享、客户端、Worker 以及框架进程交接中使用的值。
+- **单次出现截止时间。** 在 3.11 中，当 Server 声明 `condition_wait_occurrence_deadline`（原生 Server 3.3.0 或更高版本）时，新的顶层条件等待在虚假唤醒后仍保留其首个截止时间。若没有该能力，Worker 发送的命令与之前相同。分组条件等待暂未启用此行为。对于较旧的 Server，请先将该队列上的所有 Worker 升级到 3.11，再升级 Server。对于已声明该能力的 Server，请在任何 3.11 Worker 消费该队列之前，排空或停止所有旧版 Worker。一旦存在锚定的等待，就不要将该队列的 Worker 回滚到 3.11 以下。
+
+PHP SDK 3.10 还新增了 `WorkflowContext::startChildWorkflow()`，它在子工作流启动提交后返回 `ChildWorkflowHandle`，并要求运行时声明 `child_workflow_start_turn`。其他新增内容包括 `ActivityContext::activityExecutionId`、`upsertSearchAttributes()` 的可选类型化声明、惰性工作流列表与历史迭代器，以及默认值为 `false` 的 `enableCompletionPipelining` Worker 选项。只有在运行时声明支持时才会使用随完成结果携带的轮询。完整列表见 [3.11.0 变更日志](https://github.com/durable-workflow/sdk-php/blob/3.11.0/CHANGELOG.md)。
+
 ## 协议与发布边界 {#protocol-and-release-boundary}
 
 SDK 在 Composer 元数据中声明支持的 Server 范围、Worker 协议版本、控制平面版本和负载编解码器。Server 也通过 `GET /api/cluster/info` 公布接受的协议和编解码器集合。部署时检查运行时发现，不要根据 Server 补丁版本推断兼容性。
@@ -202,7 +214,9 @@ PHP SDK 独立于 Laravel 包进行版本管理。可运行示例中保留精确
 
 ## 工作流列表与历史页面 {#workflow-list-and-history-pages}
 
-这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义当前参数；这里不声称新增自动迭代器。
+这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义分页参数。
+
+PHP SDK 3.10.0 及更高版本还提供 `Client::iterateWorkflows()` 和 `Client::iterateWorkflowHistory()`。它们以惰性方式逐页读取完整的工作流列表或精确运行的历史，并保持不透明游标、namespace 和筛选条件不变。后续页面的错误会向上传播；格式错误的续读或 token 循环会被拒绝，而不会截断结果或陷入循环。参见[已发布的 PHP 3.11.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php)。
 
 ## 有界失败报告 {#bounded-failure-reports}
 

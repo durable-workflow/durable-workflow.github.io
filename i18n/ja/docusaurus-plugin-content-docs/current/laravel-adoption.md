@@ -35,10 +35,11 @@ Laravel アプリケーションには、Durable Workflow 2.0 のファースト
 | 2.0 組み込み Laravel | PHP SDK サービスモード | アプリによるオーケストレーションランタイム所有をやめる、または共有・多言語ランタイムが必要。 | Worker 準備後、新規開始をサービスへ振り向ける。組み込み実行は開始元でドレインするか、セルフホスト Server 向けの適格な組み込み v2 の明示的インポートを使う。 |
 
 移行先を選ぶ前に、[公開済み Laravel 対応系列](./compatibility.md#laravel-support)を確認してください。
-現在の組み込みパッケージには Laravel 12.69 または 13.30 と互換 PHP が必要です。
-公開済み PHP SDK 3.9.5 は必要なパッチを適用した Laravel 10～13 に引き続き対応し、
-基本クライアントは PHP 8.1 を維持します。古い v1 アプリは、現在の組み込み系列へ
-移る前にフレームワーク更新が必要な場合があります。v1 の実行環境と未完了の実行を保持してください。
+現在の組み込みパッケージと、PHP SDK 3.10 以降のサービスモード Laravel ブリッジは、
+いずれも Laravel 12.69 または 13.30 と互換 PHP が必要です。基本のサービスモードクライアントは
+PHP 8.1 のサポートを維持します。PHP SDK 3.9.x は、必要なパッチを適用した Laravel 10～13 向けの
+従来のブリッジ契約を維持します。古い v1 アプリは、いずれかの現行系列へ移る前にフレームワーク更新が
+必要な場合があります。その更新中は v1 の実行環境と未完了の実行を保持してください。
 
 ## 所有境界を比較する {#compare-the-ownership-boundary}
 
@@ -298,7 +299,7 @@ WorkflowStub::assertDispatched(
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-対応する Laravel バージョンは provider を自動検出します。設定を公開し、属性付きハンドラークラスを列挙します。
+対応する Laravel バージョンは provider を自動検出します。未対応または不明な Laravel・PHP のバージョンでは、provider は設定、クライアント、Worker を一切登録する前に拒否します。設定を公開し、属性付きハンドラークラスを列挙します。
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php
