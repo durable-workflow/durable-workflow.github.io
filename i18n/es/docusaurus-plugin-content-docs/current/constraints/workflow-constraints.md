@@ -51,6 +51,16 @@ Configura `DW_V2_GUARDRAILS_BOOT=throw` en CI para que la compilación falle si
 se añaden llamadas incompatibles con la reproducción. Mantén `warn` en
 producción para que un hallazgo previo no impida un despliegue.
 
+### Qué comprueba el análisis {#scan-coverage}
+
+El análisis es léxico. Solo lee la clase del workflow, sus clases padre y sus traits, y señala:
+
+- lecturas del reloj: `time()`, `date()`, `microtime()`, `hrtime()`, `today()`, llamadas estáticas como `Carbon::now()`, y `new DateTime()`, `new DateTimeImmutable()`, `new Carbon()` o `new CarbonImmutable()` sin argumento o con un tiempo relativo como `'now'` o `'+1 day'`. Una fecha fija no se señala.
+- aleatoriedad: `random_int()`, `random_bytes()`, `rand()`, `mt_rand()`, `uniqid()`, `shuffle()`, `array_rand()`, `str_shuffle()` y ayudantes del estilo de `Str::uuid()`.
+- estado en vivo: `DB::`, `Cache::`, `Http::`, `Auth::`, `auth()` y `request()`.
+
+No ve llamadas hechas mediante clases auxiliares o de servicio, valores que dependen del estado del proceso como propiedades estáticas o el orden de datos sin orden, ni nada que se decida en tiempo de ejecución. Un análisis limpio no prueba el determinismo. Ejecuta la [verificación de replay](../testing.md) sobre historiales registrados para detectar el resto.
+
 En la primera versión, el análisis al iniciar la aplicación es la única
 comprobación del modo workflow que puede bloquear el inicio. El runtime no
 repite el diagnóstico de determinismo al reclamar una tarea de workflow. Esta
