@@ -90,6 +90,18 @@ $result = activity(
 
 `ActivityOptions` のルーティング指定は、新しいアクティビティ実行をスケジュールするときに適用されます。履歴に記録済みのアクティビティは移動しません。ワーカープールを変更する前に、[記録済みのアクティビティキュー](../polyglot/task-matching-dispatch.md#recorded-activity-queues)を確認してください。
 
+リトライとタイムアウトのフィールドは、この呼び出しに限りアクティビティクラスの設定を上書きします。
+
+- `maxAttempts`：最初の試行を含む総試行回数です。1 以上である必要があります。0 以下で新しいアクティビティをスケジュールすると、実行は失敗します。省略するとクラスの `$tries` を使い、`0` は無期限にリトライします。
+- `backoff`：各リトライ前に待つ秒数で、リストまたは単一の値です。クラスの `backoff()` を上書きします。
+- `nonRetryableErrorTypes`：次の試行を行わずにアクティビティを失敗させるエラー型またはクラス名です。
+- `startToCloseTimeout`：1 回の試行の最大秒数です。
+- `scheduleToStartTimeout`：アクティビティが開始前にワーカーを待てる最大秒数です。
+- `scheduleToCloseTimeout`：スケジュールから完了までの、全試行を通した最大秒数です。
+- `heartbeatTimeout`：ハートビート間の最大秒数で、これを超えると試行は応答なしとして扱われます。
+
+`LocalActivityOptions` は同じリトライ用フィールドに加えて、`startToCloseTimeout`、`scheduleToCloseTimeout`、`heartbeatTimeout` を受け付けます。ルーティング用フィールドと `scheduleToStartTimeout` はありません。
+
 ## 接続 {#connection}
 
 `$connection` はワークフローやアクティビティを送るキュー接続を指定します。既定では未設定のため、既定の接続を使います。ワークフローやアクティビティクラスの `$connection` で上書きできます。
@@ -102,7 +114,7 @@ $result = activity(
 
 ## リトライ {#retries}
 
-`$tries` はアクティビティを失敗とするまでの総試行回数を制御します。既定は `1`（1回だけ試行し、自動リトライなし）です。リトライを許可するには `1` より大きくし、無期限にリトライするには `0` にします。`ActivityOptions::$maxAttempts` で呼び出しごとに上書きできます。
+`$tries` はアクティビティを失敗とするまでの総試行回数を制御します。既定は `1`（1回だけ試行し、自動リトライなし）です。リトライを許可するには `1` より大きくし、無期限にリトライするには `0` にします。`ActivityOptions::$maxAttempts` で呼び出しごとに上書きできます。`maxAttempts` は最初の試行を含み、1 以上である必要があります。
 
 ## タイムアウト {#timeout}
 

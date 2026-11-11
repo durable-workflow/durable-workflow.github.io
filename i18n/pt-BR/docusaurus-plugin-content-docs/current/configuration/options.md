@@ -90,6 +90,18 @@ $result = activity(
 
 As substituições de roteamento em `ActivityOptions` se aplicam ao agendar uma nova execução de atividade. Elas não movem uma atividade já registrada no histórico. Consulte as [filas de atividade registradas](../polyglot/task-matching-dispatch.md#recorded-activity-queues) antes de mudar os pools de workers.
 
+Os campos de nova tentativa e tempo limite substituem a classe da atividade apenas nesta chamada:
+
+- `maxAttempts`: total de tentativas, contando a primeira. Deve ser pelo menos 1. Uma nova atividade agendada com 0 ou menos faz a execução falhar. Omita-o para usar o `$tries` da classe, em que `0` tenta indefinidamente.
+- `backoff`: segundos de espera antes de cada nova tentativa, como lista ou valor único. Substitui o `backoff()` da classe.
+- `nonRetryableErrorTypes`: nomes de tipos ou classes de erro que fazem a atividade falhar sem outra tentativa.
+- `startToCloseTimeout`: máximo de segundos para uma tentativa.
+- `scheduleToStartTimeout`: máximo de segundos que uma atividade pode esperar por um worker antes de começar.
+- `scheduleToCloseTimeout`: máximo de segundos do agendamento à conclusão, somando todas as tentativas.
+- `heartbeatTimeout`: máximo de segundos entre heartbeats antes de a tentativa ser tratada como sem resposta.
+
+`LocalActivityOptions` aceita os mesmos campos de nova tentativa, além de `startToCloseTimeout`, `scheduleToCloseTimeout` e `heartbeatTimeout`. Não tem campos de roteamento nem `scheduleToStartTimeout`.
+
 ## Conexão {#connection}
 
 A configuração `$connection` especifica para qual conexão de fila o workflow ou a atividade deve ser enviado. Por padrão, o valor de `$connection` não é definido e a conexão padrão é usada. Você pode substituir esse comportamento definindo a propriedade `$connection` na classe do workflow ou da atividade.
@@ -102,7 +114,7 @@ Uma atividade armazena a conexão e a fila resolvidas ao ser agendada. Suas nova
 
 ## Novas tentativas {#retries}
 
-A configuração `$tries` controla o número total de tentativas de uma atividade antes que ela seja considerada com falha. Por padrão, `$tries` é `1` (uma única tentativa, sem novas tentativas automáticas). Defina `$tries` com um valor maior que `1` para permitir novas tentativas, ou com `0` para tentar indefinidamente. Você pode substituir esse valor por chamada por meio de `ActivityOptions::$maxAttempts`.
+A configuração `$tries` controla o número total de tentativas de uma atividade antes que ela seja considerada com falha. Por padrão, `$tries` é `1` (uma única tentativa, sem novas tentativas automáticas). Defina `$tries` com um valor maior que `1` para permitir novas tentativas, ou com `0` para tentar indefinidamente. Você pode substituir esse valor por chamada por meio de `ActivityOptions::$maxAttempts`. `maxAttempts` conta a primeira tentativa e deve ser pelo menos 1.
 
 ## Limite de tempo {#timeout}
 
