@@ -90,6 +90,18 @@ $result = activity(
 
 Las opciones de enrutamiento de `ActivityOptions` se aplican al programar una nueva ejecución de actividad. No trasladan una actividad ya registrada en el historial. Antes de cambiar los grupos de workers, consulta las [colas de actividad registradas](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
+Los campos de reintento y tiempo límite sustituyen a la clase de la actividad solo en esta llamada:
+
+- `maxAttempts`: número total de intentos, incluido el primero. Debe ser al menos 1. Una actividad nueva programada con 0 o menos hace fallar la ejecución. Omítelo para usar `$tries` de la clase, donde `0` reintenta indefinidamente.
+- `backoff`: segundos de espera antes de cada reintento, como lista o como un único valor. Sustituye a `backoff()` de la clase.
+- `nonRetryableErrorTypes`: nombres de tipos o clases de error que hacen fallar la actividad sin otro intento.
+- `startToCloseTimeout`: segundos máximos para un intento.
+- `scheduleToStartTimeout`: segundos máximos que una actividad puede esperar a un worker antes de empezar.
+- `scheduleToCloseTimeout`: segundos máximos desde la programación hasta la finalización, sumando todos los intentos.
+- `heartbeatTimeout`: segundos máximos entre heartbeats antes de considerar que un intento no responde.
+
+`LocalActivityOptions` acepta los mismos campos de reintento y además `startToCloseTimeout`, `scheduleToCloseTimeout` y `heartbeatTimeout`. No tiene campos de enrutamiento ni `scheduleToStartTimeout`.
+
 ## Conexión {#connection}
 
 El ajuste `$connection` especifica la conexión de cola a la que se enviará el workflow o la actividad. Su valor no se establece de forma predeterminada, por lo que se usa la conexión predeterminada. Puedes cambiarlo con la propiedad `$connection` de la clase de workflow o actividad.
@@ -102,7 +114,7 @@ Una actividad guarda su conexión y cola resueltas al programarse. Sus reintento
 
 ## Reintentos {#retries}
 
-El ajuste `$tries` controla el número total de intentos de una actividad antes de considerarla fallida. Su valor predeterminado es `1` (un solo intento, sin reintentos automáticos). Establece un valor mayor que `1` para permitir reintentos, o `0` para reintentar indefinidamente. Puedes sustituirlo por llamada mediante `ActivityOptions::$maxAttempts`.
+El ajuste `$tries` controla el número total de intentos de una actividad antes de considerarla fallida. Su valor predeterminado es `1` (un solo intento, sin reintentos automáticos). Establece un valor mayor que `1` para permitir reintentos, o `0` para reintentar indefinidamente. Puedes sustituirlo por llamada mediante `ActivityOptions::$maxAttempts`. `maxAttempts` cuenta el primer intento y debe ser al menos 1.
 
 ## Tiempo de espera {#timeout}
 

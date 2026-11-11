@@ -90,6 +90,18 @@ $result = activity(
 
 Les surcharges de routage dans `ActivityOptions` s’appliquent lors de la planification d’une nouvelle exécution d’activité. Elles ne déplacent pas une activité déjà enregistrée dans l’historique. Consultez les [files d’activité enregistrées](../polyglot/task-matching-dispatch.md#recorded-activity-queues) avant de changer de pools de workers.
 
+Les champs de nouvelle tentative et de délai remplacent la classe de l’activité pour cet appel uniquement :
+
+- `maxAttempts` : nombre total de tentatives, la première comprise. Il doit valoir au moins 1. Une nouvelle activité planifiée avec 0 ou moins fait échouer l’exécution. Omettez-le pour utiliser le `$tries` de la classe, où `0` réessaie indéfiniment.
+- `backoff` : secondes d’attente avant chaque nouvelle tentative, sous forme de liste ou de valeur unique. Il remplace le `backoff()` de la classe.
+- `nonRetryableErrorTypes` : noms de types ou de classes d’erreur qui font échouer l’activité sans nouvelle tentative.
+- `startToCloseTimeout` : nombre maximal de secondes pour une tentative.
+- `scheduleToStartTimeout` : nombre maximal de secondes pendant lesquelles une activité peut attendre un worker avant de démarrer.
+- `scheduleToCloseTimeout` : nombre maximal de secondes entre la planification et la fin, toutes tentatives comprises.
+- `heartbeatTimeout` : nombre maximal de secondes entre deux heartbeats avant qu’une tentative soit considérée comme ne répondant plus.
+
+`LocalActivityOptions` accepte les mêmes champs de nouvelle tentative, ainsi que `startToCloseTimeout`, `scheduleToCloseTimeout` et `heartbeatTimeout`. Il n’a ni champs de routage ni `scheduleToStartTimeout`.
+
 ## Connexion {#connection}
 
 Le réglage `$connection` indique la connexion de file vers laquelle envoyer le workflow ou l’activité. Par défaut, `$connection` n’est pas défini et la connexion par défaut est utilisée. Redéfinissez ce comportement avec la propriété `$connection` de la classe de workflow ou d’activité.
@@ -102,7 +114,7 @@ Une activité enregistre sa connexion et sa file résolues lors de sa planificat
 
 ## Nouvelles tentatives {#retries}
 
-Le réglage `$tries` contrôle le nombre total de tentatives d’une activité avant qu’elle soit considérée en échec. Par défaut, `$tries` vaut `1` (une seule tentative, sans nouvelle tentative automatique). Définissez `$tries` à une valeur supérieure à `1` pour autoriser les nouvelles tentatives, ou à `0` pour réessayer indéfiniment. `ActivityOptions::$maxAttempts` permet de redéfinir cette valeur par appel.
+Le réglage `$tries` contrôle le nombre total de tentatives d’une activité avant qu’elle soit considérée en échec. Par défaut, `$tries` vaut `1` (une seule tentative, sans nouvelle tentative automatique). Définissez `$tries` à une valeur supérieure à `1` pour autoriser les nouvelles tentatives, ou à `0` pour réessayer indéfiniment. `ActivityOptions::$maxAttempts` permet de redéfinir cette valeur par appel. `maxAttempts` compte la première tentative et doit valoir au moins 1.
 
 ## Délai d’expiration {#timeout}
 
