@@ -73,6 +73,8 @@ el plazo original. Si un worker muere, su sustituto reproduce el mismo límite
 de entrega y las llamadas de limpieza completadas antes de continuar. El
 vencimiento o la terminación revocan la autoridad de ejecución restante.
 
+Los workflows integrados en Laravel usan `cancellationShield()`. Consulta [Limpieza protegida](../features/cancel-and-terminate.md#protected-cleanup). La compensación de sagas en modo integrado y en los SDK de PHP y Python se ejecuta bajo un escudo automáticamente.
+
 Un intento antiguo de actividad no puede publicar un resultado después de que
 se revoque su autoridad. Los efectos externos ya aceptados siguen necesitando
 idempotencia o reconciliación en la aplicación.

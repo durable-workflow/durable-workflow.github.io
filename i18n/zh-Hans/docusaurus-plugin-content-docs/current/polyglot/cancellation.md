@@ -45,6 +45,8 @@ Content-Type: application/json
 
 清理可以使用取消屏蔽来执行持久化活动、定时器和子工作流调用。屏蔽保留原始截止时间。如果 Worker 退出，替代 Worker 会先重放相同的交付边界及已完成的清理调用，再继续执行。截止时间到期或终止会撤销剩余的执行权限。
 
+嵌入式 Laravel 工作流使用 `cancellationShield()`。参见 [受保护清理](../features/cancel-and-terminate.md#protected-cleanup)。嵌入式模式以及 PHP 和 Python SDK 中的 Saga 补偿会自动在保护范围内运行。
+
 旧活动尝试被隔离后，不能再发布结果。已被外部系统接受的副作用仍需要应用幂等性或对账处理。
 
 ## 检查取消级联 {#inspect-the-cascade}

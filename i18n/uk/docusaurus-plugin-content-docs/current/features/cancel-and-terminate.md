@@ -151,6 +151,38 @@ POST /webhooks/instances/{workflowId}/runs/{runId}/terminate
 }
 ```
 
+## Захищене очищення після запиту на скасування {#protected-cleanup}
+
+`requestCancellation()` залишає запуск активним. Код workflow отримує запит під час наступного довговічного виклику як `Workflow\V2\Exceptions\WorkflowCancellationRequestedException`. Як і `WorkflowCancelledException`, він розширює `\Error`, тому `catch (\Exception $e)` його не перехоплює. Перехоплюйте його за назвою або використовуйте `finally`.
+
+Виконуйте очищення, якому потрібні довговічні виклики, усередині `cancellationShield()`. Усередині щита activity, timer і дочірні workflow виконуються звичайно й не отримують запит повторно:
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+Повторне викидання запиту або звичайне повернення закриває запуск як `cancelled`. Щит не подовжує дедлайн очищення, заданий `requestCancellation()`, а примусова зупинка й тайм-аути запуску та виконання так само закривають запуск. `compensate()` у saga автоматично виконується під щитом. Див. [Sagas](./sagas.md). SDK для режиму сервісу мають такий самий щит. Див. [Кооперативне скасування](/docs/polyglot/cancellation) і сайт кожного SDK.
+
 ## Скасування не є помилкою для випадкового перехоплення {#cancellation-is-not-an-error-you-catch-by-accident}
 
 Скасування — це явний результат життєвого циклу, а не неочікувана помилка

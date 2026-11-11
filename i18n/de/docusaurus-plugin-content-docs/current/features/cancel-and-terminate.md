@@ -170,6 +170,38 @@ Begründung:
 }
 ```
 
+## Geschützte Bereinigung nach einer Abbruchanforderung {#protected-cleanup}
+
+`requestCancellation()` lässt den Lauf aktiv. Workflow-Code erhält die Anforderung beim nächsten dauerhaften Aufruf als `Workflow\V2\Exceptions\WorkflowCancellationRequestedException`. Wie `WorkflowCancelledException` erweitert sie `\Error`, daher fängt `catch (\Exception $e)` sie nicht ab. Fangen Sie sie über ihren Namen ab oder verwenden Sie `finally`.
+
+Führen Sie Bereinigung, die dauerhafte Aufrufe braucht, innerhalb von `cancellationShield()` aus. Innerhalb des Schutzes laufen Aktivitäten, Timer und Kind-Workflows normal, statt die Anforderung erneut zu erhalten:
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+Das erneute Werfen der Anforderung oder eine normale Rückkehr schließt den Lauf als `cancelled`. Der Schutz verlängert die von `requestCancellation()` gesetzte Bereinigungsfrist nicht, und Beenden sowie Lauf- und Ausführungs-Timeouts schließen den Lauf weiterhin. Saga-`compensate()` läuft automatisch unter einem Schutz. Siehe [Sagas](./sagas.md). Die SDKs im Service-Modus haben denselben Schutz. Siehe [Kooperativer Abbruch](/docs/polyglot/cancellation) und die jeweilige SDK-Website.
+
 ## Abbruch ist kein versehentlich abgefangener Fehler {#cancellation-is-not-an-error-you-catch-by-accident}
 
 Abbruch ist ein explizites Lebenszyklusergebnis, kein unerwarteter

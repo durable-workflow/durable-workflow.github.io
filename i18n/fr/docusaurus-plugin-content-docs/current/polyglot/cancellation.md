@@ -75,6 +75,8 @@ conserve l'échéance d'origine. Si un worker meurt, son remplaçant relit la m�
 frontière de livraison et les appels de nettoyage terminés avant de reprendre.
 L'expiration ou la terminaison révoque l'autorité d'exécution restante.
 
+Les workflows Laravel intégrés utilisent `cancellationShield()`. Voir [Nettoyage protégé](../features/cancel-and-terminate.md#protected-cleanup). La compensation des sagas en mode intégré et dans les SDK PHP et Python s’exécute automatiquement sous un bouclier.
+
 Une ancienne tentative d'activité ne peut plus publier de résultat après la
 révocation de son autorité. Les effets externes déjà acceptés nécessitent
 toujours une idempotence ou une réconciliation au niveau de l'application.

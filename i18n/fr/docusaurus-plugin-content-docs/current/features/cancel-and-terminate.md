@@ -151,6 +151,38 @@ La réponse inclut le résultat de commande, l’identifiant public d’instance
 }
 ```
 
+## Nettoyage protégé après une demande d’annulation {#protected-cleanup}
+
+`requestCancellation()` laisse l’exécution active. Le code du workflow reçoit la demande lors de son prochain appel durable sous la forme d’une `Workflow\V2\Exceptions\WorkflowCancellationRequestedException`. Comme `WorkflowCancelledException`, elle étend `\Error`, donc `catch (\Exception $e)` ne l’intercepte pas. Interceptez-la par son nom ou utilisez `finally`.
+
+Exécutez dans `cancellationShield()` le nettoyage qui a besoin d’appels durables. Dans le bouclier, les activités, temporisateurs et workflows enfants s’exécutent normalement au lieu de recevoir à nouveau la demande :
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+Relancer la demande, ou retourner normalement, clôture l’exécution comme `cancelled`. Le bouclier ne prolonge pas l’échéance de nettoyage fixée par `requestCancellation()`, et l’arrêt forcé ainsi que les délais d’exécution clôturent toujours l’exécution. Le `compensate()` d’une saga s’exécute automatiquement sous un bouclier. Voir [Sagas](./sagas.md). Les SDK du mode service disposent du même bouclier. Voir [Annulation coopérative](/docs/polyglot/cancellation) et le site de chaque SDK.
+
 ## L’annulation se traite explicitement {#cancellation-is-not-an-error-you-catch-by-accident}
 
 L’annulation est un résultat explicite du cycle de vie, pas une erreur
