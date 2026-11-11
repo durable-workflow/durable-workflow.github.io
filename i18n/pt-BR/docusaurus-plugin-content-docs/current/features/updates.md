@@ -208,5 +208,6 @@ Regras das atualizações:
 - `load($instanceId)` atualiza a execução durável mais recente da instância, inclusive após continue-as-new.
 - Novas atualizações por `loadRun($runId)` são rejeitadas com `rejected_not_current` quando a execução selecionada se torna histórica. A inspeção de recibos retidos é uma operação separada.
 - Novas atualizações em execuções encerradas são rejeitadas com `rejected_not_active`. A reprodução de um recibo retido associado à chave é separada.
+- Uma atualização aceita enquanto a tarefa de workflow que conclui a execução está em andamento recebe uma vez de entrega antes de a execução ser encerrada, como acontece com um sinal. O handler dela é executado e quem chamou recebe o resultado. Atualizações ainda pendentes quando uma execução falha, é cancelada ou é terminada são encerradas com uma falha explícita.
 - Corpos de atualização que falham não encerram a execução do workflow. As falhas são registradas no escopo da atualização, deixando a execução aberta para a próxima tarefa de replay.
 - Consultas reproduzem atualizações concluídas, mas atualizações rejeitadas ou que falharam permanecem apenas como fatos de comandos e de histórico que não são reproduzidos.
