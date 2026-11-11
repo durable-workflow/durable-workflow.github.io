@@ -207,5 +207,6 @@ Règles des mises à jour :
 - `load($instanceId)` met à jour la dernière exécution durable de l’instance, y compris après continuation.
 - Les nouvelles mises à jour via `loadRun($runId)` sont rejetées avec `rejected_not_current` dès que l’exécution devient historique. L’inspection des reçus conservés est distincte.
 - Les nouvelles mises à jour sur une exécution clôturée sont rejetées avec `rejected_not_active`. La relecture d’un reçu conservé associé à une clé est distincte.
+- Une mise à jour acceptée pendant l’exécution de la tâche de workflow qui termine l’exécution obtient un tour de livraison avant la clôture, comme un signal. Son gestionnaire s’exécute et l’appelant reçoit son résultat. Les mises à jour encore en attente lorsqu’une exécution échoue, est annulée ou est terminée de force sont clôturées avec un échec explicite.
 - L’échec du corps d’une mise à jour ne clôture pas le workflow. Il est enregistré comme échec propre à la mise à jour et laisse l’exécution ouverte pour la prochaine tâche de relecture.
 - Les requêtes de lecture relisent les mises à jour terminées. Les mises à jour rejetées ou en échec restent uniquement des faits de commandes et d’historique non relisibles.

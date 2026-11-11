@@ -224,5 +224,6 @@ Update-Regeln:
 - `load($instanceId)` aktualisiert den neuesten dauerhaften Lauf dieser Instanz, auch nach Continue-as-new.
 - Neue Updates über `loadRun($runId)` werden mit `rejected_not_current` abgelehnt, sobald der ausgewählte Lauf historisch ist. Die Untersuchung aufbewahrter Belege ist davon getrennt.
 - Neue Updates gegen geschlossene Läufe werden mit `rejected_not_active` abgelehnt. Das Wiedergeben aufbewahrter schlüsselbezogener Belege ist davon getrennt.
+- Ein Update, das angenommen wird, während die Workflow-Aufgabe läuft, die den Lauf abschließt, erhält wie ein Signal vor dem Schließen des Laufs einen Zustellungsdurchgang. Sein Handler läuft, und der Aufrufer erhält das Ergebnis. Updates, die noch ausstehen, wenn ein Lauf fehlschlägt, abgebrochen oder beendet wird, werden mit einem expliziten Fehler geschlossen.
 - Fehlgeschlagene Update-Rümpfe schließen den Workflow-Lauf nicht. Sie werden als Update-bezogene Fehler aufgezeichnet und lassen den Lauf für die nächste Replay-Aufgabe offen.
 - Abfragen spielen abgeschlossene Updates erneut ab. Abgelehnte oder fehlgeschlagene Updates bleiben ausschließlich nicht erneut abspielbare Befehls- und Historienfakten.
