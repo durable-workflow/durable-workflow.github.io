@@ -90,6 +90,18 @@ $result = activity(
 
 Routing overrides in `ActivityOptions` apply when a new activity execution is scheduled. They do not move an activity already recorded in history. See [recorded activity queues](../polyglot/task-matching-dispatch.md#recorded-activity-queues) before changing worker pools.
 
+Retry and timeout fields override the activity class for this call only:
+
+- `maxAttempts`: total attempts, counting the first one. It must be at least 1. A new activity scheduled with 0 or less fails the run. Omit it to use the class `$tries`, where `0` retries forever.
+- `backoff`: seconds to wait before each retry, as a list or a single value. It overrides the class `backoff()`.
+- `nonRetryableErrorTypes`: error type or class names that fail the activity without another attempt.
+- `startToCloseTimeout`: maximum seconds for one attempt.
+- `scheduleToStartTimeout`: maximum seconds an activity may wait for a worker before it starts.
+- `scheduleToCloseTimeout`: maximum seconds from scheduling to completion, across all attempts.
+- `heartbeatTimeout`: maximum seconds between heartbeats before an attempt is treated as unresponsive.
+
+`LocalActivityOptions` accepts the same retry fields plus `startToCloseTimeout`, `scheduleToCloseTimeout` and `heartbeatTimeout`. It has no routing or `scheduleToStartTimeout` fields.
+
 ## Connection
 
 The `$connection` setting is used to specify which queue connection the workflow or activity should be sent to. By default, the `$connection` value is not set which will use the default connection. This can be overridden by setting the `$connection` property on the workflow or activity class.
@@ -102,7 +114,7 @@ An activity stores its resolved connection and queue when it is scheduled. Its r
 
 ## Retries
 
-The `$tries` setting is used to control the total number of attempts for an activity before it is considered failed. By default, `$tries` is `1` (a single attempt, no automatic retries). Set `$tries` to a value greater than `1` to allow retries, or set it to `0` to retry forever. This can be overridden per call through `ActivityOptions::$maxAttempts`.
+The `$tries` setting is used to control the total number of attempts for an activity before it is considered failed. By default, `$tries` is `1` (a single attempt, no automatic retries). Set `$tries` to a value greater than `1` to allow retries, or set it to `0` to retry forever. This can be overridden per call through `ActivityOptions::$maxAttempts`. `maxAttempts` counts the first attempt and must be at least 1.
 
 ## Timeout
 
