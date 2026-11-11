@@ -201,5 +201,6 @@ Update rules:
 - `load($instanceId)` updates the newest durable run for that instance (including after continue-as-new).
 - Fresh updates through `loadRun($runId)` reject with `rejected_not_current` once that selected run is historical. Retained receipt inspection is separate.
 - Fresh updates against closed runs reject with `rejected_not_active`. Replaying a retained keyed receipt is separate.
+- An update accepted while the workflow task that completes the run is running gets one delivery turn before the run closes, as a signal does. Its handler runs and the caller receives its result. Updates still pending when a run fails, is cancelled or is terminated close with an explicit failure.
 - Failed update bodies do not close the workflow run; they are recorded as update-scoped failures and leave the run open for the next replay task.
 - Queries replay completed updates, but rejected or failed updates remain non-replayable command and history facts only.
