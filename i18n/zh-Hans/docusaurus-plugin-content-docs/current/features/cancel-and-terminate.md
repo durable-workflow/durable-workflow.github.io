@@ -140,6 +140,38 @@ POST /webhooks/instances/{workflowId}/runs/{runId}/terminate
 }
 ```
 
+## 取消请求后的受保护清理 {#protected-cleanup}
+
+`requestCancellation()` 会让运行保持活动状态。工作流代码会在下一次持久调用时以 `Workflow\V2\Exceptions\WorkflowCancellationRequestedException` 的形式收到该请求。它与 `WorkflowCancelledException` 一样继承自 `\Error`，因此 `catch (\Exception $e)` 捕获不到它。请按名称捕获它，或使用 `finally`。
+
+需要持久调用的清理应在 `cancellationShield()` 中执行。在保护范围内，活动、定时器和子工作流会正常运行，而不会再次收到该请求：
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+重新抛出该请求或正常返回，都会以 `cancelled` 关闭运行。保护范围不会延长 `requestCancellation()` 设置的清理期限，终止以及运行和执行超时仍会关闭运行。Saga 的 `compensate()` 会自动在保护范围内运行。参见 [Sagas](./sagas.md)。服务模式 SDK 也有相同的保护。参见 [协作式取消](/docs/polyglot/cancellation) 和各 SDK 站点。
+
 ## 取消是显式的生命周期结果 {#cancellation-is-not-an-error-you-catch-by-accident}
 
 取消是显式生命周期结果，不是意外应用错误。嵌入式包的 `Workflow\V2\Exceptions\WorkflowCancelledException` 继承 `\Error`，而非 `\Exception`。`catch (\Exception $e)` 无法捕获它，`catch (\Throwable $t)` 可以。

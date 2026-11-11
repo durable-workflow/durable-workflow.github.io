@@ -68,6 +68,8 @@ child calls. The shield preserves the original deadline. If a worker dies,
 a replacement replays the same delivery boundary and completed cleanup calls
 before resuming. Expiry or termination revokes remaining execution authority.
 
+Embedded Laravel workflows use `cancellationShield()`. See [Protected cleanup](../features/cancel-and-terminate.md#protected-cleanup). Saga compensation in embedded mode and in the PHP and Python SDKs runs under a shield automatically.
+
 An old activity attempt cannot publish a result after it is fenced. Already
 accepted external side effects still need application idempotency or
 reconciliation.
