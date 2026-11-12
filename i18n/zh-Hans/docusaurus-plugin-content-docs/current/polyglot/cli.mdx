@@ -50,8 +50,6 @@ dw --version
 - `DURABLE_WORKFLOW_INSTALL_DIR`：安装位置（默认 `~/.local/bin`）。
 - `DURABLE_WORKFLOW_BIN_NAME`：安装的可执行文件名（默认 `dw`）。
 
-Shell 安装脚本暂不安装 Intel macOS 二进制文件。在 Intel Mac 上，请使用 [从 `dw.phar` 迁移](#moving-from-dwphar) 中的校验下载方式，并选择 `dw-macos-x86_64`。
-
 GitHub Actions 示例：
 
 ```yaml
@@ -113,7 +111,7 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 
 在 2.x PHAR 安装中，`dw upgrade` 仍会回复 "Download the matching PHAR manually"。该消息来自旧发布且无法更改，请改用上方命令。独立二进制文件安装照常使用 `dw upgrade` 升级。
 
-在 Intel Mac 上，请使用上述校验下载方式并选择 `dw-macos-x86_64`。已发布的 2.x `dw upgrade` 没有可迁移到的 Intel macOS 制品，Shell 安装脚本也暂不安装它。
+在 Intel Mac 上，请使用 Shell 安装脚本从 2.x 迁移。已发布的 2.x `dw upgrade` 没有可迁移到的 Intel macOS 制品。
 
 ### 更新已安装的二进制文件 {#update-an-installed-binary}
 

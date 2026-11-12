@@ -68,10 +68,6 @@ préversion. Variables d'environnement supplémentaires :
 - `DURABLE_WORKFLOW_INSTALL_DIR` : emplacement d'installation (`~/.local/bin` par défaut).
 - `DURABLE_WORKFLOW_BIN_NAME` : nom de l'exécutable installé (`dw` par défaut).
 
-Le script d'installation shell n'installe pas encore le binaire macOS Intel.
-Sur un Mac Intel, utilisez le téléchargement vérifié décrit dans [Migrer depuis
-`dw.phar`](#moving-from-dwphar) avec `dw-macos-x86_64`.
-
 Exemple GitHub Actions :
 
 ```yaml
@@ -146,10 +142,9 @@ matching PHAR manually ». Ce message provient de l'ancienne version et ne peut
 pas être modifié ; utilisez donc les commandes ci-dessus. Les installations du
 binaire autonome se mettent à jour normalement avec `dw upgrade`.
 
-Sur un Mac Intel, utilisez le téléchargement vérifié ci-dessus avec
-`dw-macos-x86_64`. La commande `dw upgrade` publiée en 2.x n'a aucun artefact
-macOS Intel vers lequel migrer, et le script d'installation shell ne l'installe
-pas encore.
+Sur un Mac Intel, migrez depuis 2.x avec le script d'installation shell. La
+commande `dw upgrade` publiée en 2.x n'a aucun artefact macOS Intel vers lequel
+migrer.
 
 ### Mettre à jour un binaire installé {#update-an-installed-binary}
 

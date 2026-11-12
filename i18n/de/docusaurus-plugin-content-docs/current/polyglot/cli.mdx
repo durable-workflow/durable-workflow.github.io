@@ -68,10 +68,6 @@ Umgebungsvariablen:
 - `DURABLE_WORKFLOW_INSTALL_DIR`: Installationsort (Standard `~/.local/bin`).
 - `DURABLE_WORKFLOW_BIN_NAME`: Name der installierten ausführbaren Datei (Standard `dw`).
 
-Die Shell-Installation installiert die Intel-macOS-Binärdatei noch nicht.
-Verwenden Sie auf einem Intel-Mac den geprüften Download unter [Umstieg von
-`dw.phar`](#moving-from-dwphar) mit `dw-macos-x86_64`.
-
 Ein Beispiel für GitHub Actions:
 
 ```yaml
@@ -149,10 +145,9 @@ matching PHAR manually". Diese Meldung stammt aus dem alten Release und lässt
 sich nicht ändern; verwenden Sie stattdessen die obigen Befehle. Installationen
 der eigenständigen Binärdatei aktualisieren sich wie gewohnt mit `dw upgrade`.
 
-Verwenden Sie auf einem Intel-Mac den obigen geprüften Download mit
-`dw-macos-x86_64`. Das veröffentlichte `dw upgrade` aus 2.x hat kein
-Intel-macOS-Artefakt, zu dem es wechseln könnte, und die Shell-Installation
-installiert es noch nicht.
+Auf einem Intel-Mac wechseln Sie von 2.x mit der Shell-Installation. Das
+veröffentlichte `dw upgrade` aus 2.x hat kein Intel-macOS-Artefakt, zu dem es
+wechseln könnte.
 
 ### Eine installierte Binärdatei aktualisieren {#update-an-installed-binary}
 
