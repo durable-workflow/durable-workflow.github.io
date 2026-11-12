@@ -6,7 +6,7 @@ sidebar_position: 8
 
 心跳使长时间运行的活动能够报告当前尝试仍在运行。
 
-`heartbeat()` 更新当前已认领的 `activity_attempts` 行，将最新心跳同步到活动执行，续租该活动任务，并为当前尝试追加类型化 `ActivityHeartbeatRecorded` 历史事件。Waterline 所选运行详情和历史导出，优先从类型化 `ActivityStarted`、`ActivityHeartbeatRecorded`、`ActivityRetryScheduled`、`ActivityCompleted`、`ActivityFailed` 和 `ActivityCancelled` 历史重建尝试状态、任务 ID、Worker、心跳、租约、取消和关闭时间。可变尝试行仅为旧数据提供回退或补充。
+`heartbeat()` 会用心跳时间和最新进度更新当前已认领的 `activity_attempts` 行，把最新心跳同步到正在运行的活动执行上，并续期该活动任务的租约。只有当进度发生变化时，它才会写入 `ActivityHeartbeatRecorded` 历史事件，并且每个记录间隔最多一次（见下文）。Waterline 所选运行详情和历史导出会从尝试行读取最新的心跳和进度，并根据类型化的 `ActivityStarted`、`ActivityHeartbeatRecorded`、`ActivityRetryScheduled`、`ActivityCompleted`、`ActivityFailed` 和 `ActivityCancelled` 历史重建尝试状态、任务 ID、Worker、租约、取消和关闭时间，较旧的数据则以尝试行作为后备。
 
 ```php
 use Workflow\V2\Activity;
@@ -50,7 +50,7 @@ Python Worker 应遵循[上下文捕获与取消示例](../polyglot/python.md#he
 
 发送节奏应在窗口内留足余量，并限制两次调用之间的工作量。超时为 15 秒时，可以先考虑约 5 秒的目标间隔，但前提是交付、每个批次或 I/O 调用、执行暂停、网络延迟和传输重试都能放进剩余预算。请测量这些延迟并留足余量。这是规划建议，不是安全间隔的保证。已过期或被替换的尝试不能通过迟到的心跳恢复租约。
 
-没有自动进度心跳计划，也没有 SDK 批量发送保证。Worker 注册心跳和所有权状态探测不会发布活动进度。每次被接受的进度心跳都会增加持久历史，因此不要报告每个极小操作。
+没有自动的进度心跳计划，SDK 也不保证批量发送。Worker 注册心跳和所有权状态探测不会发布活动进度。每个被接受的心跳都会续期租约并推后心跳截止时间。只有当进度与上次记录的进度不同，且距离那次事件至少已过去心跳超时与 60 秒中的较大者时，才会写入历史事件。没有进度的心跳只证明存活，不写入历史。因间隔而暂缓的进度会在尝试关闭时记录一次。在进度不变的情况下每秒心跳一次、持续一小时，只会写入一个事件。较旧的历史会保留已经记录的逐次心跳事件。
 
 嵌入式 `Activity::heartbeat()` 返回 `void`。无效进度和存储故障可能抛出异常。正常返回不是确认对象：已关闭、过期或被替换的尝试可能直接返回，而不再记录心跳。服务模式下，直接客户端调用与受监督 Worker 的错误行为不同。请参阅 [PHP](../polyglot/php.md#activity-heartbeats)、[Python](../polyglot/python.md#activity-heartbeat-requests) 和 [Rust](../polyglot/rust.md#activity-heartbeats) 指南。
 
@@ -75,6 +75,6 @@ Python Worker 应遵循[上下文捕获与取消示例](../polyglot/python.md#he
 
 ## 持久尝试跟踪 {#durable-attempt-tracking}
 
-运行时为每次活动尝试记录独立的持久行，包括尝试序号、状态、开始时间、最新心跳、租约到期时间和关闭时间。活动开始、心跳、重试、完成、失败或取消时，也会记录类型化尝试历史，使历史尝试详情在可变尝试或任务行后续发生变化时仍可保留。当前已认领尝试的每次成功心跳都会记录一个紧凑的 `ActivityHeartbeatRecorded` 时间线点，包括活动执行 ID、活动尝试 ID、心跳时间、租约到期时间和事件发生时的活动快照。取消或终止命令关闭运行后，桥接会在 Worker 观察到停止时记录 `ActivityCancelled`，并将后续完成或失败报告作为过期报告拒绝，避免把取消转换为结果。
+运行时为每次活动尝试记录一行独立的持久数据，包括尝试编号、状态、开始时间、最新心跳和进度、租约到期时间以及关闭时间。它还会在活动开始、发送心跳、重试、完成、失败或取消时记录类型化的尝试历史，因此即使之后可变的尝试行或任务行发生偏差，历史尝试详情依然保留。被记录的心跳会添加一个紧凑的 `ActivityHeartbeatRecorded` 时间线点，包含活动执行 ID、活动尝试 ID、心跳时间、租约到期时间、进度以及当时的活动快照。如果 cancel 或 terminate 命令关闭了运行，桥接器会在 Worker 观察到停止时记录 `ActivityCancelled`，并把之后的完成或失败作为过期结果拒绝，而不是把取消变成结果。
 
-心跳是运维存活信号。每个已接受心跳都是持久历史，因此应根据超时和恢复需求选择有实际意义的间隔，避免将其用作高频进度日志。可选进度快照也应足够紧凑，适合运维诊断，不要将其当作流式事件源。
+心跳是运行层面的存活信号。按照超时和恢复的需要决定心跳频率。仅证明存活的心跳不会增加历史，进度变化每个间隔最多记录一次。请让可选的进度快照保持紧凑，便于运维诊断，不要把它当作事件流。

@@ -7,17 +7,7 @@ sidebar_position: 8
 Heartbeats ermöglichen einer langlebigen Aktivität zu melden, dass ihr
 aktueller Versuch noch aktiv ist.
 
-`heartbeat()` aktualisiert die aktuell übernommene Zeile in
-`activity_attempts`, spiegelt den neuesten Heartbeat in die aktive
-Aktivitätsausführung, verlängert die Lease dieser Aktivitätsaufgabe und fügt
-für den aktuellen Versuch ein typisiertes Historienereignis
-`ActivityHeartbeatRecorded` hinzu. Waterlines Detailansicht des ausgewählten
-Laufs und Historienexporte rekonstruieren Versuchsstatus, Aufgaben-ID, Worker,
-Heartbeat, Lease, Abbruch- und Abschlusszeitstempel zuerst aus typisierter
-Historie: `ActivityStarted`, `ActivityHeartbeatRecorded`,
-`ActivityRetryScheduled`, `ActivityCompleted`, `ActivityFailed` und
-`ActivityCancelled`. Veränderliche Versuchszeilen bleiben Fallback oder
-Ergänzung für ältere Daten.
+`heartbeat()` aktualisiert die aktuell übernommene Zeile in `activity_attempts` mit der Heartbeat-Zeit und dem neuesten Fortschritt, spiegelt den neuesten Heartbeat in die aktive Aktivitätsausführung und verlängert die Lease dieser Aktivitätsaufgabe. Ein `ActivityHeartbeatRecorded`-Ereignis schreibt er nur, wenn sich der Fortschritt geändert hat, und höchstens einmal pro Aufzeichnungsintervall (siehe unten). Die Detailansicht des ausgewählten Laufs in Waterline und Verlaufsexporte lesen den neuesten Heartbeat und Fortschritt aus der Versuchszeile und rekonstruieren Versuchsstatus, Aufgaben-ID, Worker, Lease, Abbruch und Abschlusszeiten aus dem typisierten Verlauf `ActivityStarted`, `ActivityHeartbeatRecorded`, `ActivityRetryScheduled`, `ActivityCompleted`, `ActivityFailed` und `ActivityCancelled`, mit Versuchszeilen als Rückfall für ältere Daten.
 
 ```php
 use Workflow\V2\Activity;
@@ -69,7 +59,7 @@ Bei einer Aktivität in der Warteschlange beginnt die erste Heartbeat-Frist, wen
 
 Wählen Sie einen Takt deutlich innerhalb dieses Zeitfensters und begrenzen Sie die Arbeit zwischen Aufrufen. Bei einem Zeitlimit von 15 Sekunden können etwa fünf Sekunden ein Ausgangspunkt sein, aber nur wenn Auslieferung, jeder Stapel oder E/A-Aufruf, Ausführungspausen, Netzwerklatenz und Transportwiederholungen in das verbleibende Budget passen. Messen Sie diese Verzögerungen und lassen Sie Spielraum. Das ist Planungshilfe, kein garantiert sicheres Intervall. Ein abgelaufener oder ersetzter Versuch erhält seine Lease nicht durch einen späten Heartbeat zurück.
 
-Es gibt keinen automatischen Fortschritts-Heartbeat-Takt und keine Zusage einer SDK-Bündelung. Worker-Registrierungs-Heartbeats und Besitzstatusabfragen veröffentlichen keinen Aktivitätsfortschritt. Jeder angenommene Fortschritts-Heartbeat erweitert die dauerhafte Historie. Melden Sie deshalb nicht jeden winzigen Arbeitsschritt.
+Es gibt keinen automatischen Fortschritts-Heartbeat-Takt und keine Zusage einer SDK-Bündelung. Worker-Registrierungs-Heartbeats und Besitzstatusabfragen veröffentlichen keinen Aktivitätsfortschritt. Jeder angenommene Heartbeat verlängert die Lease und verschiebt die Heartbeat-Frist. Ein Verlaufsereignis wird nur geschrieben, wenn sich der Fortschritt vom zuletzt aufgezeichneten unterscheidet und seit diesem Ereignis mindestens der größere Wert aus Heartbeat-Timeout und 60 Sekunden vergangen ist. Ein Heartbeat ohne Fortschritt belegt nur die Lebendigkeit und schreibt keinen Verlauf. Durch das Intervall zurückgehaltener Fortschritt wird einmal beim Abschluss des Versuchs aufgezeichnet. Ein Heartbeat pro Sekunde über eine Stunde mit unverändertem Fortschritt schreibt ein Ereignis. Ältere Verläufe behalten die bereits aufgezeichneten Ereignisse pro Heartbeat.
 
 Eingebettetes `Activity::heartbeat()` gibt `void` zurück. Ungültiger Fortschritt und Speicherfehler können Ausnahmen auslösen. Eine normale Rückkehr ist kein Bestätigungsobjekt: Ein geschlossener, abgelaufener oder ersetzter Versuch kann zurückkehren, ohne einen weiteren Heartbeat aufzuzeichnen. Im Service-Modus unterscheiden sich direkte Client-Aufrufe und überwachte Worker. Siehe die Anleitungen für [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) und [Rust](../polyglot/rust.md#activity-heartbeats).
 
@@ -101,23 +91,6 @@ normalisierten Payload unter `progress`.
 
 ## Dauerhafte Versuchsnachverfolgung {#durable-attempt-tracking}
 
-Die Laufzeit zeichnet für jeden Aktivitätsversuch eine eigene dauerhafte Zeile
-mit Versuchsnummer, Status, Startzeit, neuestem Heartbeat, Lease-Ablauf und
-Abschlusszeit auf. Sie zeichnet außerdem typisierte Versuchshistorie für Start,
-Heartbeat, Wiederholung, Abschluss, Fehler und Abbruch auf. Historische
-Versuchsdetails bleiben so erhalten, wenn veränderliche Versuchs- oder
-Aufgabenzeilen später abweichen. Jeder erfolgreiche Heartbeat des aktuell
-übernommenen Versuchs zeichnet einen kompakten Zeitleistenpunkt
-`ActivityHeartbeatRecorded` mit Aktivitätsausführungs-ID, Aktivitätsversuchs-ID,
-Heartbeat-Zeitstempel, Lease-Ablauf und Aktivitätssnapshot zum Ereigniszeitpunkt
-auf. Schließt ein Abbruch- oder Beendigungsbefehl den Lauf, zeichnet die Brücke
-`ActivityCancelled` auf, sobald der Worker den Stopp bemerkt. Spätere Abschluss-
-oder Fehlermeldungen werden als veraltet abgelehnt, statt den Abbruch in ein
-Ergebnis umzuwandeln.
+Die Laufzeit zeichnet für jeden Aktivitätsversuch eine eigene dauerhafte Zeile mit Versuchsnummer, Status, Startzeit, neuestem Heartbeat und Fortschritt, Lease-Ablauf und Abschlusszeit auf. Sie zeichnet außerdem typisierten Versuchsverlauf auf, wenn Aktivitäten starten, Heartbeats senden, wiederholt werden, abschließen, fehlschlagen oder abgebrochen werden, sodass historische Versuchsdetails erhalten bleiben, auch wenn veränderliche Versuchs- oder Aufgabenzeilen später abweichen. Ein aufgezeichneter Heartbeat fügt einen kompakten `ActivityHeartbeatRecorded`-Zeitleistenpunkt mit Aktivitätsausführungs-ID, Versuchs-ID, Heartbeat-Zeit, Lease-Ablauf, Fortschritt und dem Aktivitätsschnappschuss zum Zeitpunkt des Ereignisses hinzu. Schließt ein cancel- oder terminate-Befehl den Lauf, zeichnet die Brücke `ActivityCancelled` auf, sobald der Worker den Stopp bemerkt, und weist spätere Abschlüsse oder Fehler als veraltet zurück, statt den Abbruch in ein Ergebnis zu verwandeln.
 
-Heartbeats sind betriebliche Lebenszeichen. Da jeder angenommene Heartbeat
-dauerhafte Historie ist, wählen Sie das Intervall passend zu Timeout- und
-Wiederherstellungsanforderungen. Verwenden Sie es nicht als hochfrequentes
-Fortschrittsprotokoll. Halten Sie den optionalen Fortschritts-Snapshot kompakt
-für Betreiberdiagnosen, statt ihn als kontinuierlichen Ereignisstrom zu
-behandeln.
+Heartbeats sind betriebliche Lebenszeichen. Senden Sie Heartbeats so oft, wie Ihre Timeouts und Ihre Wiederherstellung es erfordern. Heartbeats, die nur die Lebendigkeit belegen, erzeugen keinen Verlauf, und Fortschrittsänderungen werden höchstens einmal pro Intervall aufgezeichnet. Halten Sie den optionalen Fortschrittsschnappschuss kompakt genug für die Diagnose durch Betreiber, statt ihn wie einen Ereignisstrom zu behandeln.

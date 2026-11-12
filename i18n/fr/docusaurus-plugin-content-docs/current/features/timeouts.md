@@ -208,6 +208,8 @@ L’échéance est calculée une seule fois à la planification et n’est jamai
 
 Pour une activité mise en file d’attente, la première échéance commence lorsque le moteur la réclame, avant la livraison de la tâche et l’exécution du code applicatif. Chaque heartbeat accepté fixe l’échéance à son horodatage enregistré par le moteur, plus le délai configuré. Il n’ajoute pas de temps à l’échéance précédente et n’ouvre pas une nouvelle fenêtre lorsque l’appelant reçoit la réponse. Prévoyez une marge pour la livraison, le travail borné, les pauses d’exécution, la latence des requêtes et les nouvelles tentatives de transport. Envoyez les heartbeats bien avant l’expiration de la fenêtre. Une tentative expirée ou remplacée ne retrouve pas son autorité en envoyant un heartbeat tardif. S’il reste des tentatives, une nouvelle est planifiée avec un délai schedule-to-start réinitialisé, s’il est configuré. Sinon, une expiration terminale est enregistrée.
 
+Repousser l’échéance n’ajoute pas d’historique. Un heartbeat écrit un événement `ActivityHeartbeatRecorded` uniquement lorsque sa progression a changé, au plus une fois par intervalle d’enregistrement : vous pouvez donc en envoyer aussi souvent que ce délai l’exige. Voir [Heartbeats](./heartbeats.md).
+
 ```php
 use Workflow\V2\Activity;
 
