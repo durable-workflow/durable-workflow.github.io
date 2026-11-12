@@ -247,7 +247,11 @@ ScheduleManager::update(
 );
 ```
 
-Das Ändern von Cron-Ausdruck oder Zeitzone berechnet `next_fire_at` neu.
+Nur eine Änderung der Spezifikation (Cron-Ausdrücke, Intervalle oder Zeitzone) oder des Jitters berechnet `next_fire_at` neu. Andere Änderungen behalten den Wert bei und können daher keine fällige Auslösung überspringen. Das Ereignis `ScheduleUpdated` führt in `changed_fields` nur die Felder auf, deren gespeicherter Wert sich geändert hat.
+
+Eine Aktualisierung, die nichts ändert, zeichnet kein Ereignis auf und behält `next_fire_at` einschließlich des Jitters bei. Bei einem frisch geladenen Zeitplan liefert `wasChanged()` auf dem zurückgegebenen Modell `false`.
+
+Eine Änderung der Aktion (Workflow-Typ, Argumente, Queue-Routing oder Timeouts) verwirft Auslösungen, die unter `BufferOne` oder `BufferAll` gepuffert wurden, weil sie für die alte Aktion erfasst wurden. Jede verworfene Auslösung wird als Ereignis `ScheduleTriggerSkipped` mit dem Grund `action_changed` und ihrer `occurrence_time` aufgezeichnet.
 
 ### Löschen {#delete}
 
@@ -257,7 +261,41 @@ ScheduleManager::delete($schedule);
 
 Das Löschen erfolgt logisch: Die Zeile bleibt mit Status `deleted` und
 Zeitstempel `deleted_at` bestehen. Ein gelöschter Zeitplan kann nicht pausiert,
-fortgesetzt, aktualisiert oder ausgelöst werden.
+fortgesetzt, aktualisiert oder ausgelöst werden. Die ID bleibt belegt. Siehe [Aus Konfiguration anwenden](#apply-from-configuration).
+
+### Aus Konfiguration anwenden {#apply-from-configuration}
+
+Deploy-Werkzeuge können bei jedem Deployment dieselben Zeitplandefinitionen anwenden. Legen Sie jeden Zeitplan an und aktualisieren Sie ihn, wenn seine ID bereits belegt ist:
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+Das erneute Anwenden einer unveränderten Definition zeichnet nichts auf, daher kann dies bei jedem Deployment laufen.
+
+Zeitplan-IDs sind nicht wiederverwendbar. Ein gelöschter Zeitplan, auch einer, der nach Erreichen von `max_runs` gelöscht wurde, behält seine ID. Das Anlegen eines Zeitplans mit dieser ID löst `ScheduleAlreadyExistsException` mit `existingStatus` `deleted` aus. Verwenden Sie stattdessen eine neue ID.
+
+Der native Server wendet dieselbe ID-Regel an: Das Anlegen eines Zeitplans mit einer belegten ID liefert `409 schedule_already_exists`. Der native Server zeichnet weiterhin bei jeder Aktualisierung ein Ereignis `ScheduleUpdated` auf und berechnet `next_fire_at` neu, auch wenn sich nichts geändert hat ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
 
 ### Beschreiben {#describe}
 
@@ -564,7 +602,7 @@ pro Zeitplan monoton.
 | `ScheduleResumed` | Zeitplan wurde fortgesetzt | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | Cron, Zeitzone, Spezifikation, Aktion oder Richtlinie wurde geändert | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | Ein Workflow-Lauf wurde aus dem Zeitplan gestartet | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | Auslösung wurde wegen Überschneidungsrichtlinie, nicht auslösbarem Status oder ausgeschöpfter Aktionen übersprungen | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | Auslösung wurde wegen Überschneidungsrichtlinie, nicht auslösbarem Status oder ausgeschöpfter Aktionen übersprungen | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | Zeitplan wurde durch explizites Löschen oder Ausschöpfen von `max_runs` logisch gelöscht (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
 
 `command_context` enthält die von `ScheduleManager` aufgezeichneten Attribute

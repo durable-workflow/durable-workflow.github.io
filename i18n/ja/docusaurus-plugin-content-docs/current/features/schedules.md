@@ -219,7 +219,11 @@ ScheduleManager::update(
 );
 ```
 
-cron やタイムゾーンの更新は `next_fire_at` を再計算します。
+`next_fire_at` を再計算するのは、仕様（cron 式、間隔、タイムゾーン）またはジッターの変更だけです。その他の更新では値を保持するため、期限到来の起動を飛ばすことはありません。`ScheduleUpdated` イベントの `changed_fields` には、保存値が変わったフィールドだけが入ります。
+
+何も変えない更新はイベントを記録せず、ジッターを含めて `next_fire_at` を保持します。新しく読み込んだスケジュールでは、返されたモデルの `wasChanged()` は `false` です。
+
+アクション（ワークフロー型、引数、キューのルーティング、タイムアウト）を変更すると、`BufferOne` または `BufferAll` でバッファーされた起動は破棄されます。古いアクションのために取り込まれたものだからです。破棄された起動はそれぞれ、理由 `action_changed` とその `occurrence_time` を持つ `ScheduleTriggerSkipped` イベントとして記録されます。
 
 ### 削除 {#delete}
 
@@ -227,7 +231,41 @@ cron やタイムゾーンの更新は `next_fire_at` を再計算します。
 ScheduleManager::delete($schedule);
 ```
 
-論理削除のため行は `deleted` と `deleted_at` を持って残ります。削除後は停止、再開、更新、起動できません。
+論理削除のため行は `deleted` と `deleted_at` を持って残ります。削除後は停止、再開、更新、起動できません。ID は使用済みのまま残ります。[設定からの適用](#apply-from-configuration)を参照してください。
+
+### 設定からの適用 {#apply-from-configuration}
+
+デプロイツールは、デプロイのたびに同じスケジュール定義を適用できます。各スケジュールを作成し、ID が使用済みなら更新します。
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+変更のない定義を再適用しても何も記録されないため、デプロイのたびに実行して問題ありません。
+
+スケジュール ID は再利用できません。削除されたスケジュールは、`max_runs` を使い切って削除されたものも含め、ID を保持します。その ID でスケジュールを作成すると、`existingStatus` が `deleted` の `ScheduleAlreadyExistsException` が発生します。新しい ID を使ってください。
+
+ネイティブ Server も同じ ID の規則に従い、使用済みの ID での作成には `409 schedule_already_exists` を返します。ネイティブ Server は現在も、変更のない更新を含むすべての更新で `ScheduleUpdated` イベントを記録し、`next_fire_at` を再計算します（[server#1147](https://github.com/durable-workflow/server/issues/1147)）。
 
 ### 詳細取得 {#describe}
 
@@ -446,7 +484,7 @@ $schedule = ScheduleManager::create(
 | `ScheduleResumed` | 再開 | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | cron、時間帯、仕様、action、ポリシーの変更 | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | 実行の開始 | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | 重複方針、起動不可状態、残回数消尽でスキップ | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | 重複方針、起動不可状態、残回数消尽でスキップ | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | 明示削除または `max_runs` 消尽（`reason: max_runs_exhausted`）で論理削除 | `reason`, `deleted_at`, `command_context` |
 
 `CommandContext` を渡すと、`ScheduleManager` が記録した principal、request id、source、reason を `command_context` に含みます。任意なので、未指定なら空値を書かずキーを省略します。
