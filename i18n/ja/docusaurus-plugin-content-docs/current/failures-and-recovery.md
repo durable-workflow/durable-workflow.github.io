@@ -261,7 +261,7 @@ Workflow 2.18.0 は、完了したアクティビティ、副作用、バージ�
 
 2.19.0 より前のリリースは、再利用されたシグナル、メモ、検索属性のステップの `reused_recorded_at` を無視します。Workflow 2.19.0 以降の後継実行がこれらのステップを再利用した後は、2.19.0 以降のワーカーを使い続けるか、ロールバックの前にそのような履歴がリプレイされないことを確認してください。組み込みモードでは、Workflow 2.19.0 は、更新または連鎖したシグナル待機を再利用した 2.20.0 の後継実行を、2.20.0 と同じようにリプレイ、インポート、再開します（[検証記録](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)）。
 
-3.7.0 以降、ネイティブ Server の redrive は、開始時に設定されたメモと検索属性を後継実行に引き継ぎ、`describe()` は `actions` の下に `can_redrive` と `redrive_blocked_reason` を報告します。それ以外については、現在も 2.18.0 より前の規則が適用されます。ネイティブ Server での残りの規則への対応は [server#980](https://github.com/durable-workflow/server/issues/980) で追跡しています。
+3.7.0 以降、ネイティブ Server の redrive は、開始時に設定されたメモと検索属性を後継実行に引き継ぎ、`describe()` は `actions` の下に `can_redrive` と `redrive_blocked_reason` を報告します。3.8.0 以降は、失敗したステップより前のサイドエフェクトとバージョンマーカーも再利用し、それぞれを元のペイロード、`reused_from_run_id`、`reused_recorded_at` とともに記録するため、それ以降のワークフロー時刻は失敗した実行と一致します。Server 3.8.0 は、ワークフローコードがメモや検索属性を upsert した実行（`service_redrive_history_not_qualified`）や、サイドエフェクトの結果が外部に保存されている実行（`external_side_effect_result_not_supported`）の redrive を拒否します。それ以外については現在も 2.18.0 より前の規則が適用されるため、発火済みのタイマーは引き続き `unsupported_history` で拒否されます。ネイティブ Server での残りの規則への対応は [server#980](https://github.com/durable-workflow/server/issues/980) で追跡しています。
 
 ## サービスモードのエントリ拒否と復旧 {#service-entry-recovery}
 
