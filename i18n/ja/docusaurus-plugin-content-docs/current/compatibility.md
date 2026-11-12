@@ -66,12 +66,12 @@ PHP と Laravel の要件を比較する前にパッケージのリリースを�
 
 | パッケージ系列 | PHP | Laravel |
 | --- | --- | --- |
-| 現在の組み込み Workflow 2.22 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| 現在の組み込み Workflow 2.24 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | 組み込み Workflow 2.20.5 | PHP `^8.1`。Laravel 自身の最低要件も適用 | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 | 公開済み PHP SDK 3.11 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | PHP SDK 3.9.5 | 基本 SDK は PHP `^8.1`。Laravel ブリッジはフレームワークの最低要件にも従う | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 
-[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
 と各リリースの `composer.json` がパッケージの根拠です。現在の組み込みリリースは
 Laravel 12/PHP 8.2～8.4 と Laravel 13/PHP 8.3～8.4 で検証されています。
 PHP 8.1 と Laravel 10/11 のサポートは終了しました。
@@ -100,6 +100,15 @@ Workflow 2.22 にはデータベースマイグレーションがなく、2.21 �
 アップグレード前に取得したバックアップを復元する方法に限ってください。古いリリースはポリシーを破棄して
 待機チェーンを混在させる場合があり、再度アップグレードしてもその履歴は修復されません。
 [2.22.0 の変更履歴](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md)を参照してください。
+
+Workflow 2.23 と 2.24 は 2.21 のサポート下限と組み込みワーカープロトコル `1.22` を維持します。2.23 はデータベースマイグレーションを追加しません。2.24 は 1 つ追加するため、アップグレード時に `php artisan migrate` を実行してください。`activity_attempts` に NULL 許容の `last_heartbeat_progress`、`last_heartbeat_progress_at`、`last_heartbeat_recorded_at` 列を追加し、バックフィルは行いません。アップグレード前に確認すべき動作の変更:
+
+- 2.24 以降、heartbeat は進捗が変わった場合にだけ、max（heartbeat タイムアウト, 60 秒）に最大 1 回 `ActivityHeartbeatRecorded` イベントを書き込みます。[Heartbeats](./features/heartbeats.md) を参照してください。
+- 2.24 以降、削除済みや上限到達済みのスケジュールを含め、使用済みの ID でスケジュールを作成すると `ScheduleAlreadyExistsException` が発生します。変更のないスケジュールを再適用しても何も記録されません。
+- 2.23.1 以降、`maxAttempts` が 1 未満の新しいアクティビティは 1 回実行されるのではなく、実行を失敗させます。無制限に試行するには `maxAttempts` を省略し、アクティビティクラスの `$tries` を 0 にします。以前に記録された履歴は引き続きリプレイされます。
+- 2.23.1 以降、組み込みの saga の補償はキャンセルシールドの下で実行され、実行の終了中に受け付けた update も結果を受け取ります。
+
+[2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2)、[2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0) のリリースノートを参照してください。
 
 ## 安定性レベル {#stability-levels}
 
