@@ -367,11 +367,11 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-ビルド識別、能力フラグ、プロトコルのマニフェスト、制限値、そして `X-Namespace`（または `namespace` クエリパラメーター、どちらもなければ `default`）で指定した Namespace の検出情報を返します。3.3.2 イメージの出力を抜粋します。
+ビルド識別、能力フラグ、プロトコルのマニフェスト、制限値、そして `X-Namespace`（または `namespace` クエリパラメーター、どちらもなければ `default`）で指定した Namespace の検出情報を返します。3.5.0 イメージの出力を抜粋します。
 
 ```json
 {
-  "version": "3.3.2",
+  "version": "3.5.0",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -412,6 +412,9 @@ curl http://localhost:8080/api/cluster/info \
       "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
       "query_tasks": true,
       "workflow_updates": true,
+      "sticky_execution": { "supported": true, "...": "..." },
+      "sticky_history_suffix": { "supported": true, "version": 1 },
+      "activity_workflow_continuation": { "version": 1, "...": "..." },
       "...": "..."
     }
   },
@@ -435,7 +438,8 @@ curl http://localhost:8080/api/cluster/info \
 クライアントコード向けの主なフィールドの注意点：
 
 - ビルドバージョンは `server_version` ではなく `version` です。ネイティブ Server では `implementation` が `"rust"` です。
-- API を呼び出す前に `control_plane.version` と `worker_protocol.version` を確認してください。ネイティブ 3.3.2 はコントロールプレーン `2` と Worker プロトコル `1.20` を提供し、`1.0` から `1.20` までの任意のプロトコルバージョンを送る Worker 要求を受け付けます。
+- API を呼び出す前に `control_plane.version` と `worker_protocol.version` を確認してください。ネイティブ 3.5.0 はコントロールプレーン `2` と Worker プロトコル `1.20` を提供し、`1.0` から `1.20` までの任意のプロトコルバージョンを送る Worker 要求を受け付けます。
+- 3.5.0 以降、`worker_protocol.server_capabilities` は `sticky_execution` と `sticky_history_suffix` を示します。3.4.0 以降は `activity_workflow_continuation` も示しますが、ワーカーが使うのは自身でオプトインした場合だけです。
 - ワークフロータスクのコマンドは `worker_protocol.server_capabilities.supported_workflow_task_commands` にあります。
 - `false` の能力フラグは、ネイティブが提供しない機能や公開契約を示します。ネイティブは圧縮しない応答を送るため、`response_compression` は空です。
 - `native_unqualified` は、PHP 2.x の応答のうちネイティブが含めない各メンバーを理由とともに列挙します。`topology` が含まれます。

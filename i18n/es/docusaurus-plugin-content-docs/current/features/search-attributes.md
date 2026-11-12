@@ -99,6 +99,16 @@ Cada llamada:
 
 La reproducción reutiliza los eventos registrados sin volver a aplicar la operación, conservando el determinismo.
 
+## Registrar atributos {#registering-attributes}
+
+En el Server puede registrar un atributo de búsqueda con un tipo mediante `POST /api/search-attributes`. A partir de ese momento, una clave registrada debe llevar un valor de su tipo, y se rechaza un inicio o upsert con el tipo incorrecto.
+
+El registro solo restringe las claves que registra. Desde Server nativo 3.5.0, una clave no registrada se sigue aceptando y su tipo se infiere, como en un namespace sin atributos registrados. Registrar un atributo no rompe los workflows en ejecución que hacen upsert de otras claves. PHP Server 2.x y Server nativo anterior a 3.5.0 rechazan toda clave no registrada en cuanto se registra cualquier atributo, así que ahí registre todas las claves que usan sus workflows antes de registrar la primera.
+
+Eliminar un registro deja de validar esa clave. Los valores almacenados y los workflows en ejecución no cambian, y los upserts posteriores de la clave vuelven a inferirse.
+
+Para cambiar el tipo de un atributo, registre un nombre de atributo nuevo con el tipo nuevo, actualice sus workflows para que lo escriban y filtre por el nombre nuevo cuando las ejecuciones existentes se hayan puesto al día. Si elimina y vuelve a registrar el mismo nombre con otro tipo, los valores anteriores quedan en el tipo antiguo.
+
 ## Combinación de valores {#merging-behavior}
 
 Varias operaciones de una misma ejecución combinan sus atributos. Cada una superpone las claves nuevas a las existentes:
