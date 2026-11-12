@@ -55,6 +55,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -67,6 +69,8 @@ abstract class Workflow
 | `historyLength()` | O workflow precisa de uma indicação de orçamento de histórico baseada em contagem. | Contagem atual de eventos do histórico. |
 | `historySize()` | O workflow precisa de uma indicação de orçamento de histórico baseada em bytes. | Tamanho aproximado do histórico persistido em bytes. |
 | `shouldContinueAsNew()` | O workflow deve iniciar outra execução antes que o histórico fique caro. | `true` quando os orçamentos de histórico configurados recomendam essa troca. |
+| `historyBudgetAtStep()` | O workflow lê o orçamento mais de uma vez em uma execução, por exemplo em um loop (Workflow 2.26+). | Contadores do orçamento no passo atual, iguais em todo replay. |
+| `shouldContinueAsNewAtStep()` | Um loop decide se deve iniciar outra execução (Workflow 2.26+). | `true` quando o histórico anterior ao passo atual ultrapassa um orçamento configurado. |
 
 ## Comandos duráveis {#durable-commands}
 

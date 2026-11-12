@@ -96,12 +96,12 @@ embarqué et le SDK en mode service ont des contrats distincts.
 
 | Branche du paquet | PHP | Laravel |
 | --- | --- | --- |
-| Workflow embarqué 2.24 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| Workflow embarqué 2.26 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | Workflow embarqué 2.20.5 | PHP `^8.1`, sous réserve du minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.14 publié | SDK de base PHP `^8.1` ; le pont Laravel exige PHP `^8.2`, et PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.9.5 | SDK de base PHP `^8.1` ; le pont Laravel suit aussi le minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 
-Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
+Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
 et le `composer.json` de chaque version font autorité. La version embarquée
 actuelle a été vérifiée sur Laravel 12/PHP 8.2–8.4 et Laravel 13/PHP 8.3–8.4.
 Elle retire PHP 8.1 et Laravel 10/11. Le [guide historique v1 stable](/docs/1.x/installation/)
@@ -142,6 +142,16 @@ Workflow 2.23 et 2.24 conservent les planchers de support de 2.21 et le protocol
 - Depuis 2.23.1, la compensation de saga embarquée s'exécute sous un bouclier d'annulation, et une mise à jour acceptée pendant la clôture de l'exécution obtient quand même son résultat.
 
 Voir les notes de version de [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) et [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
+
+Workflow 2.25 et 2.26 conservent les planchers de support de 2.21 et le protocole de worker embarqué `1.22`. 2.25 n'ajoute aucune migration de base de données. 2.26 en ajoute une : exécutez donc `php artisan migrate` lors de la mise à niveau. Elle crée la table `workflow_child_supervisions`. Changements à vérifier avant la mise à niveau :
+
+- Depuis 2.26, un parent qui continue dans une nouvelle exécution alors que des enfants qu'il a démarrés sont encore ouverts les transmet à l'exécution suivante. La dernière exécution de la chaîne leur applique leur politique de clôture du parent, et un enfant qui échoue est toujours relancé selon la politique de nouvelles tentatives enregistrée. Voir [Continuation et enfants ouverts](./features/child-workflows.md#continue-as-new-and-open-children).
+- Depuis 2.26, les migrations des versions antérieures qui remplissent les lignes existantes (`2026_07_13`, `2026_09_24`, `2026_09_29` et `2026_10_11`) ne verrouillent plus la table pendant tout le remplissage. Elles ajoutent d'abord la colonne, remplissent les lignes par petits lots, puis construisent leurs index sans bloquer les écritures. Si l'une d'elles est interrompue, exécutez de nouveau `php artisan migrate`. Les installations qui les ont déjà exécutées ne sont pas concernées.
+- Depuis 2.26, le redrive réutilise un workflow enfant terminé avant l'échec. Les versions antérieures à 2.26 rejouent un tel successeur avec un temps de workflow différent après l'enfant réutilisé : gardez donc les workers en 2.26 ou plus dès qu'un tel successeur existe. Voir [Relancer une exécution échouée par redrive](./failures-and-recovery.md#redrive).
+- Depuis 2.26, `historyBudgetAtStep()` et `shouldContinueAsNewAtStep()` lisent le budget d'historique de la même façon à chaque relecture. Utilisez-les dans les boucles. Voir [Budget d'historique](./features/continue-as-new.md#history-budget).
+- Depuis 2.25, dépasser une limite fixe de mémo ou d'attributs de recherche lève `StructuralLimitExceededException` au lieu de `InvalidArgumentException`, et la valeur par défaut de `memo_size_bytes` est 65 536. Voir [Limites structurelles](./constraints/structural-limits.md).
+
+Voir les notes de version de [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) et [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ## Niveaux de stabilité {#stability-levels}
 

@@ -326,7 +326,9 @@ New in these releases:
   the `Worker` constructor to submit the next workflow commands together with a
   successful activity result when the Server advertises
   `activity_workflow_continuation` (native Server 3.4.0 or later). It defaults
-  to `false`. Use 3.12.1 or later if you enable it, and drain or disable
+  to `false`. Turning it on currently costs throughput: in our benchmark under
+  load, workflows ran 24–49% slower with it on and used twice as many database
+  transactions ([measurement](https://github.com/durable-workflow/server/issues/1078)). Use 3.12.1 or later if you enable it, and drain or disable
   opted-in workers before downgrading the Server or adding older Server nodes.
 
 See the [3.14.0 changelog](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md)

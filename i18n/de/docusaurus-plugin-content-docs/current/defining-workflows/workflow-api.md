@@ -50,6 +50,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -62,6 +64,8 @@ abstract class Workflow
 | `historyLength()` | Der Workflow einen anzahlbasierten Hinweis auf sein Historienbudget benötigt. | Aktuelle Anzahl der Historienereignisse. |
 | `historySize()` | Der Workflow einen bytebasierten Hinweis auf sein Historienbudget benötigt. | Ungefähre Größe der gespeicherten Historie in Bytes. |
 | `shouldContinueAsNew()` | Der Workflow vor zu hohen Historienkosten einen neuen Lauf beginnen sollte. | `true`, wenn die konfigurierten Historienbudgets einen Wechsel empfehlen. |
+| `historyBudgetAtStep()` | Der Workflow das Budget in einem Lauf mehrmals liest, etwa in einer Schleife (Workflow 2.26+). | Budgetzähler zum aktuellen Schritt, bei jedem Replay gleich. |
+| `shouldContinueAsNewAtStep()` | Eine Schleife entscheidet, ob ein neuer Lauf beginnen soll (Workflow 2.26+). | `true`, wenn die Historie vor dem aktuellen Schritt ein konfiguriertes Budget überschreitet. |
 
 ## Dauerhafte Befehle {#durable-commands}
 

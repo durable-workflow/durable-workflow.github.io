@@ -105,7 +105,7 @@ Sur le Server, vous pouvez enregistrer un attribut de recherche avec un type via
 
 L'enregistrement ne contraint que les clés que vous enregistrez. À partir du Server natif 3.5.0, une clé non enregistrée reste acceptée et son type est déduit, comme dans un namespace sans attribut enregistré. Enregistrer un attribut ne casse pas les workflows en cours qui font un upsert d'autres clés. PHP Server 2.x et le Server natif antérieur à 3.5.0 refusent toute clé non enregistrée dès qu'un attribut est enregistré. Sur ces versions, enregistrez donc toutes les clés utilisées par vos workflows avant d'enregistrer la première.
 
-Supprimer un enregistrement arrête la vérification de cette clé. Les valeurs stockées et les workflows en cours ne changent pas, et les upserts ultérieurs de la clé sont de nouveau déduits.
+Supprimer un enregistrement arrête la vérification de cette clé. Les valeurs stockées et les workflows en cours ne changent pas, et les upserts ultérieurs de la clé sont de nouveau déduits. Sur le Server natif, une requête de liste qui filtre sur une clé non enregistrée, y compris une clé dont vous avez supprimé l'enregistrement, est refusée, car la clé n'est pas définie dans le namespace.
 
 Pour changer le type d'un attribut, enregistrez un nouveau nom d'attribut avec le nouveau type, modifiez vos workflows pour qu'ils l'écrivent, puis filtrez sur le nouveau nom une fois les exécutions existantes à jour. Supprimer puis réenregistrer le même nom avec un autre type laisse les valeurs antérieures dans l'ancien type.
 

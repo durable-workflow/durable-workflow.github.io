@@ -46,6 +46,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -58,6 +60,8 @@ abstract class Workflow
 | `historyLength()` | Le workflow a besoin d’un indicateur de budget d’historique basé sur le nombre d’événements. | Nombre actuel d’événements d’historique. |
 | `historySize()` | Le workflow a besoin d’un indicateur de budget d’historique en octets. | Taille approximative de l’historique persistant en octets. |
 | `shouldContinueAsNew()` | Le workflow doit passer à une nouvelle exécution avant que l’historique devienne coûteux. | `true` lorsque les budgets d’historique configurés recommandent une rotation. |
+| `historyBudgetAtStep()` | Le workflow lit le budget plusieurs fois dans une exécution, par exemple dans une boucle (Workflow 2.26+). | Compteurs du budget à l’étape courante, identiques à chaque relecture. |
+| `shouldContinueAsNewAtStep()` | Une boucle décide s’il faut passer à une nouvelle exécution (Workflow 2.26+). | `true` lorsque l’historique avant l’étape courante dépasse un budget configuré. |
 
 ## Commandes durables {#durable-commands}
 

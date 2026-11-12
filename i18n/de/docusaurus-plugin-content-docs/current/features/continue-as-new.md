@@ -88,6 +88,18 @@ Historienlänge und ein Empfehlungssignal für Continue-as-new abfragen.
 Langlebige Schleifen können so bewusst übergeben, bevor sie an kostspielige
 Historienbudgetgrenzen stoßen.
 
+In Workflow 2.26 und später verwenden Sie `shouldContinueAsNewAtStep()` und
+`historyBudgetAtStep()`. Sie zählen nur die Historie, die vor dem aktuellen
+Workflow-Schritt aufgezeichnet wurde, sodass dieselbe Zeile bei jedem Replay
+dieselbe Antwort liefert. Eine Schleife, die das Budget in jeder Iteration
+prüft, wird einmal mit Continue-as-new fortgesetzt, und zwar in der ersten
+Iteration, die die Schwelle überschreitet.
+
+Die älteren Methoden lesen die gesamte aktuelle Historie. In einer Schleife kann
+eine frühere Iteration beim Replay eine spätere Gesamtzahl sehen und einen
+anderen Zweig nehmen als beim ersten Mal. Sie bleiben unverändert, damit Läufe,
+die bereits mit ihnen entschieden haben, weiterhin abgespielt werden.
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -115,6 +127,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | Anzahl der Historienereignisse im aktuellen Lauf |
 | `$this->historySize()` | `int` | Gesamtgröße der Historienereignisse in Bytes |
 | `$this->shouldContinueAsNew()` | `bool` | `true`, wenn der Lauf das konfigurierte Ereignisanzahl- oder Byte-Größenbudget überschreitet |
+| `$this->historyBudgetAtStep()` | `array` | Das Budget zum aktuellen Schritt: `history_event_count`, `history_size_bytes`, `history_fan_out`, `continue_as_new_recommended`, `pressure`, `pressure_dimensions` und `observation` (`step_prefix.v1`). Workflow 2.26 und später. |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `continue_as_new_recommended` aus `historyBudgetAtStep()`. Verwenden Sie es in Schleifen. Workflow 2.26 und später. |
 
 ### Konfiguration {#configuration}
 
@@ -130,7 +144,7 @@ Die Empfehlungsschwellen für Continue-as-new sind konfigurierbar:
 ],
 ```
 
-`shouldContinueAsNew()` gibt `true` zurück, wenn eine der Schwellen
+`shouldContinueAsNew()` und `shouldContinueAsNewAtStep()` geben `true` zurück, wenn eine der Schwellen
 überschritten wird. Laufzusammenfassungen führen auch `history_event_count`,
 `history_size_bytes` und `continue_as_new_recommended`, damit Waterline
 langlebige Läufe in Flottenansichten kennzeichnen kann.
@@ -175,6 +189,10 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+Ein Elternworkflow, der mit Continue-as-new fortgesetzt wird, während von ihm
+gestartete Child-Workflows noch offen sind, übergibt diese an den fortgesetzten
+Lauf. Siehe [Continue-as-new und offene Kinder](./child-workflows.md#continue-as-new-and-open-children).
 
 Für langlebige Schleifen mit menschlichen Eingaben oder Assistenten bevorzugen
 Sie die vollwertige Fassade `$this->inbox()` / `$this->outbox()` für

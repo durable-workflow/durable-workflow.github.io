@@ -66,12 +66,12 @@ Das eingebettete Paket und das Service-Modus-SDK haben eigene Supportverträge.
 
 | Paketlinie | PHP | Laravel |
 | --- | --- | --- |
-| Aktuelles eingebettetes Workflow 2.24 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
+| Aktuelles eingebettetes Workflow 2.26 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
 | Eingebettetes Workflow 2.20.5 | PHP `^8.1`, zusätzlich gilt das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 | Veröffentlichtes PHP-SDK 3.14 | Reines SDK PHP `^8.1`; die Laravel-Bridge benötigt PHP `^8.2` und für Laravel 13 PHP 8.3+ | `^12.69.0` oder `^13.30.0` |
 | PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 
-Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
+Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
 und die jeweilige `composer.json`. Das aktuelle eingebettete Release wurde mit
 Laravel 12/PHP 8.2–8.4 und Laravel 13/PHP 8.3–8.4 geprüft. Es entfernt PHP 8.1
 und Laravel 10/11. Die [historische stabile v1-Anleitung](/docs/1.x/installation/)
@@ -113,6 +113,16 @@ Workflow 2.23 und 2.24 behalten die Mindestanforderungen von 2.21 und das eingeb
 - Ab 2.23.1 läuft die eingebettete Saga-Kompensation unter einem Abbruchschutz, und ein Update, das angenommen wird, während die Ausführung endet, erhält trotzdem sein Ergebnis.
 
 Siehe die Versionshinweise zu [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) und [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
+
+Workflow 2.25 und 2.26 behalten die Mindestanforderungen von 2.21 und das eingebettete Worker-Protokoll `1.22` bei. 2.25 fügt keine Datenbankmigration hinzu. 2.26 fügt eine hinzu, führen Sie beim Upgrade also `php artisan migrate` aus. Sie legt die Tabelle `workflow_child_supervisions` an. Vor dem Upgrade zu prüfende Änderungen:
+
+- Ab 2.26 übergibt ein Elternworkflow, der mit Continue-as-new fortgesetzt wird, während von ihm gestartete Kinder noch offen sind, diese an den fortgesetzten Lauf. Der letzte Lauf der Kette wendet ihre Parent-close-Richtlinie an, und ein fehlschlagendes Kind wird weiterhin nach seiner aufgezeichneten Wiederholungsrichtlinie wiederholt. Siehe [Continue-as-new und offene Kinder](./features/child-workflows.md#continue-as-new-and-open-children).
+- Ab 2.26 sperren die Migrationen früherer Releases, die bestehende Zeilen befüllen (`2026_07_13`, `2026_09_24`, `2026_09_29` und `2026_10_11`), die Tabelle nicht mehr für den gesamten Backfill. Sie fügen zuerst die Spalte hinzu, befüllen die Zeilen in kleinen Stapeln und bauen anschließend ihre Indizes auf, ohne Schreibzugriffe zu blockieren. Wird eine davon unterbrochen, führen Sie `php artisan migrate` erneut aus. Installationen, die sie bereits ausgeführt haben, sind nicht betroffen.
+- Ab 2.26 verwendet Redrive einen untergeordneten Workflow wieder, der vor dem Fehler abgeschlossen wurde. Releases vor 2.26 spielen einen solchen Nachfolger nach dem wiederverwendeten Kind mit einer anderen Workflow-Zeit ab. Halten Sie Worker daher auf 2.26 oder neuer, sobald ein solcher existiert. Siehe [Fehlgeschlagenen Lauf per Redrive fortsetzen](./failures-and-recovery.md#redrive).
+- Ab 2.26 lesen `historyBudgetAtStep()` und `shouldContinueAsNewAtStep()` das Historienbudget bei jedem Replay gleich. Verwenden Sie sie in Schleifen. Siehe [Historienbudget](./features/continue-as-new.md#history-budget).
+- Ab 2.25 löst das Überschreiten einer festen Obergrenze für Memos oder Suchattribute `StructuralLimitExceededException` statt `InvalidArgumentException` aus, und der Standardwert von `memo_size_bytes` ist 65.536. Siehe [Strukturelle Grenzen](./constraints/structural-limits.md).
+
+Siehe die Versionshinweise zu [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) und [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ## Stabilitätsstufen {#stability-levels}
 

@@ -355,7 +355,7 @@ Both policies record durable command and history events, so you can also assert 
 
 ### Testing History Budget
 
-The `HistoryBudget` fields (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) are surfaced on the run summary projection and are available through the `RunDetailView`. In your workflow code, the `Workflow` base class exposes these as `$this->historyLength()`, `$this->historySize()`, and `$this->shouldContinueAsNew()`:
+The `HistoryBudget` fields (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) are surfaced on the run summary projection and are available through the `RunDetailView`. In your workflow code, the `Workflow` base class exposes these as `$this->historyLength()`, `$this->historySize()`, and `$this->shouldContinueAsNew()`. Inside a loop, use `$this->shouldContinueAsNewAtStep()` (Workflow 2.26 and later), which gives the same answer on every replay:
 
 ```php
 use Workflow\V2\Workflow;
@@ -367,7 +367,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }

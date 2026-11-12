@@ -357,7 +357,7 @@ Beide Richtlinien zeichnen dauerhafte Befehls- und Historienereignisse auf. Für
 
 ### Historienbudget testen {#testing-history-budget}
 
-Die Felder von `HistoryBudget` (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) erscheinen in der Zusammenfassungsprojektion des Laufes und sind über `RunDetailView` verfügbar. Im Workflow-Code stellt die Basisklasse `Workflow` sie als `$this->historyLength()`, `$this->historySize()` und `$this->shouldContinueAsNew()` bereit:
+Die Felder von `HistoryBudget` (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) erscheinen in der Zusammenfassungsprojektion des Laufes und sind über `RunDetailView` verfügbar. Im Workflow-Code stellt die Basisklasse `Workflow` sie als `$this->historyLength()`, `$this->historySize()` und `$this->shouldContinueAsNew()` bereit. Verwenden Sie in einer Schleife `$this->shouldContinueAsNewAtStep()` (Workflow 2.26 und später), das bei jedem Replay dieselbe Antwort liefert:
 
 ```php
 use Workflow\V2\Workflow;
@@ -369,7 +369,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }

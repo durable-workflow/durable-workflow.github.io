@@ -82,6 +82,10 @@ Core 2.7.0 і сумісні Server зберігають прийняті сиг
 
 Код workflow може перевіряти поточну довжину історії та прапорець рекомендації continue-as-new через явний контекст runtime. Це дає тривалим циклам змогу свідомо передавати виконання до досягнення граничного бюджету історії.
 
+У Workflow 2.26 і новіших використовуйте `shouldContinueAsNewAtStep()` і `historyBudgetAtStep()`. Вони враховують лише історію, записану до поточного кроку workflow, тож той самий рядок повертає ту саму відповідь під час кожного відтворення. Цикл, який перевіряє бюджет на кожній ітерації, продовжується як новий запуск один раз — на першій ітерації, що перетинає поріг.
+
+Старіші методи читають усю поточну історію. У циклі попередня ітерація під час відтворення може побачити пізнішу загальну кількість і піти іншою гілкою, ніж уперше. Ці методи не змінено, тож запуски, які вже ухвалили рішення з їхньою допомогою, і далі відтворюються.
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -109,6 +113,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | Кількість подій історії поточного запуску |
 | `$this->historySize()` | `int` | Загальний розмір подій історії в байтах |
 | `$this->shouldContinueAsNew()` | `bool` | `true`, коли запуск перевищує налаштований бюджет кількості подій або розміру в байтах |
+| `$this->historyBudgetAtStep()` | `array` | Бюджет станом на поточний крок: `history_event_count`, `history_size_bytes`, `history_fan_out`, `continue_as_new_recommended`, `pressure`, `pressure_dimensions` і `observation` (`step_prefix.v1`). Workflow 2.26 і новіші. |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `continue_as_new_recommended` з `historyBudgetAtStep()`. Використовуйте в циклах. Workflow 2.26 і новіші. |
 
 ### Налаштування {#configuration}
 
@@ -124,7 +130,7 @@ class PollingWorkflow extends Workflow
 ],
 ```
 
-`shouldContinueAsNew()` повертає `true` після перетину будь-якого порога. Стислі представлення запусків також відстежують `history_event_count`, `history_size_bytes` та `continue_as_new_recommended`, щоб Waterline міг позначати тривалі запуски в загальних представленнях.
+`shouldContinueAsNew()` і `shouldContinueAsNewAtStep()` повертають `true` після перетину будь-якого порога. Стислі представлення запусків також відстежують `history_event_count`, `history_size_bytes` та `continue_as_new_recommended`, щоб Waterline міг позначати тривалі запуски в загальних представленнях.
 
 ## Перенесення метаданих {#metadata-carry-forward}
 
@@ -163,6 +169,8 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+Батьківський workflow, який продовжується як новий запуск, поки запущені ним дочірні workflow ще відкриті, передає їх продовженому запуску. Див. [Continue-as-new і відкриті дочірні workflow](./child-workflows.md#continue-as-new-and-open-children).
 
 Для тривалих циклів введення користувачем або роботи асистента обирайте
 повноцінний фасад `$this->inbox()` / `$this->outbox()`

@@ -200,7 +200,7 @@ PHP `^8.1`、Laravel ブリッジの下限、ワーカープロトコル `1.20`�
 
 - **sticky 履歴サフィックス（3.14）。** ワーカーは `sticky_history_suffix` を示します。Server 3.5.0 以降では、実行の履歴をすでに保持しているワーカーは、キャッシュしたシーケンスより後のイベントだけを受け取ります。キャッシュした履歴に正確に続かないサフィックスは破棄され、完全な履歴を取得します。古い Server は引き続き完全な履歴を送ります。
 - **スケジュールの起点（3.13）。** `WorkflowContext::scheduleOrigin()` は、実行を開始したスケジュール発火のスケジュール ID、発生時刻、トリガー番号を返します。通常の開始では `null` です。リプレイでも同じ値になります。Server 3.5.0 以降、continue-as-new で続く実行はスケジュールの起点を保持します。
-- **アクティビティ継続（3.12）。** Server が `activity_workflow_continuation` を示す場合（ネイティブ Server 3.4.0 以降）、`Worker` コンストラクターに `enableActivityContinuation: true` を渡すと、成功したアクティビティ結果と次のワークフローコマンドをまとめて送信します。デフォルトは `false` です。有効にする場合は 3.12.1 以降を使い、Server をダウングレードしたり古い Server ノードを追加したりする前に、それらのワーカーをドレインまたは無効化してください。
+- **アクティビティ継続（3.12）。** Server が `activity_workflow_continuation` を示す場合（ネイティブ Server 3.4.0 以降）、`Worker` コンストラクターに `enableActivityContinuation: true` を渡すと、成功したアクティビティ結果と次のワークフローコマンドをまとめて送信します。デフォルトは `false` です。現在、有効にするとスループットが低下します。負荷をかけたベンチマークでは、有効にするとワークフローが 24〜49% 遅くなり、データベーストランザクションが 2 倍になりました（[測定](https://github.com/durable-workflow/server/issues/1078)）。有効にする場合は 3.12.1 以降を使い、Server をダウングレードしたり古い Server ノードを追加したりする前に、それらのワーカーをドレインまたは無効化してください。
 
 完全な一覧は [3.14.0 の変更履歴](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md) を参照してください。
 

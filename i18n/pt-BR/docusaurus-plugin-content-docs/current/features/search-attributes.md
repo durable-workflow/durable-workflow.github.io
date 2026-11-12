@@ -105,7 +105,7 @@ No Server, você pode registrar um atributo de busca com um tipo por meio de `PO
 
 O registro restringe apenas as chaves que você registra. A partir do Server nativo 3.5.0, uma chave não registrada continua sendo aceita e seu tipo é inferido, como em um namespace sem atributos registrados. Registrar um atributo não quebra workflows em execução que fazem upsert de outras chaves. PHP Server 2.x e o Server nativo anterior à 3.5.0 recusam toda chave não registrada assim que qualquer atributo é registrado, então, nessas versões, registre todas as chaves que seus workflows usam antes de registrar a primeira.
 
-Excluir um registro encerra a verificação dessa chave. Os valores armazenados e os workflows em execução não mudam, e upserts posteriores da chave voltam a ser inferidos.
+Excluir um registro encerra a verificação dessa chave. Os valores armazenados e os workflows em execução não mudam, e upserts posteriores da chave voltam a ser inferidos. No Server nativo, uma consulta de lista que filtra por uma chave não registrada, inclusive uma cujo registro você excluiu, é recusada porque a chave não está definida no namespace.
 
 Para mudar o tipo de um atributo, registre um novo nome de atributo com o novo tipo, atualize seus workflows para gravá-lo e filtre pelo novo nome quando as execuções existentes estiverem em dia. Excluir e registrar de novo o mesmo nome com outro tipo deixa os valores anteriores no tipo antigo.
 

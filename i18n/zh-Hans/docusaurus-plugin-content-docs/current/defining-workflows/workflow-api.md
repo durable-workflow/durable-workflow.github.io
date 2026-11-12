@@ -46,6 +46,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -58,6 +60,8 @@ abstract class Workflow
 | `historyLength()` | 工作流需要基于数量的历史预算指标。 | 当前历史事件数。 |
 | `historySize()` | 工作流需要基于字节的历史预算指标。 | 持久化历史大小的近似字节数。 |
 | `shouldContinueAsNew()` | 工作流应在历史成本变高前轮换运行。 | 配置的历史预算建议轮换时为 `true`。 |
+| `historyBudgetAtStep()` | 工作流在一次运行中多次读取预算，例如在循环中（Workflow 2.26+）。 | 截至当前步骤的预算计数，每次重放都相同。 |
+| `shouldContinueAsNewAtStep()` | 循环决定是否轮换运行（Workflow 2.26+）。 | 当前步骤之前的历史超过配置的预算时为 `true`。 |
 
 ## 持久命令 {#durable-commands}
 

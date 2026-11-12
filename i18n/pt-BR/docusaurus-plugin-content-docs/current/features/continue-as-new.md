@@ -82,6 +82,10 @@ Loops de longa duração podem limitar o histórico por execução sem inventar 
 
 O código do workflow pode observar o tamanho atual do histórico e um indicador de sugestão de continuar como novo por meio do contexto explícito do runtime. Isso permite que loops de longa duração façam a transferência deliberadamente antes de atingir os limites do histórico.
 
+No Workflow 2.26 e posteriores, use `shouldContinueAsNewAtStep()` e `historyBudgetAtStep()`. Eles contam apenas o histórico registrado antes do passo atual do workflow, então a mesma linha retorna a mesma resposta em todo replay. Um loop que verifica o limite a cada iteração continua como novo uma única vez, na primeira iteração que ultrapassa o limite.
+
+Os métodos mais antigos leem todo o histórico atual. Dentro de um loop, uma iteração anterior pode ver um total posterior no replay e seguir um caminho diferente do que seguiu da primeira vez. Eles não mudaram, então execuções que já decidiram com eles continuam sendo reproduzidas.
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -109,6 +113,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | Número de eventos de histórico na execução atual |
 | `$this->historySize()` | `int` | Tamanho total dos eventos de histórico em bytes |
 | `$this->shouldContinueAsNew()` | `bool` | `true` quando a execução excede o limite configurado de quantidade de eventos ou tamanho em bytes |
+| `$this->historyBudgetAtStep()` | `array` | O limite no passo atual: `history_event_count`, `history_size_bytes`, `history_fan_out`, `continue_as_new_recommended`, `pressure`, `pressure_dimensions` e `observation` (`step_prefix.v1`). Workflow 2.26 e posteriores. |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `continue_as_new_recommended` de `historyBudgetAtStep()`. Use-o em loops. Workflow 2.26 e posteriores. |
 
 ### Configuração {#configuration}
 
@@ -124,7 +130,7 @@ Os limites para recomendar continuar como novo são configuráveis:
 ],
 ```
 
-`shouldContinueAsNew()` retorna `true` quando qualquer um dos limites é ultrapassado. Os resumos de execução também acompanham `history_event_count`, `history_size_bytes` e `continue_as_new_recommended`, para que o Waterline possa sinalizar execuções de longa duração nas visões da frota.
+`shouldContinueAsNew()` e `shouldContinueAsNewAtStep()` retornam `true` quando qualquer um dos limites é ultrapassado. Os resumos de execução também acompanham `history_event_count`, `history_size_bytes` e `continue_as_new_recommended`, para que o Waterline possa sinalizar execuções de longa duração nas visões da frota.
 
 ## Transferência de metadados {#metadata-carry-forward}
 
@@ -163,6 +169,8 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+Um pai que continua como novo enquanto workflows filhos que ele iniciou ainda estão abertos os transfere para a nova execução. Veja [Continuar como novo e filhos abertos](./child-workflows.md#continue-as-new-and-open-children).
 
 Para loops de longa duração com entrada humana ou de assistentes, prefira a
 fachada própria `$this->inbox()` / `$this->outbox()` de

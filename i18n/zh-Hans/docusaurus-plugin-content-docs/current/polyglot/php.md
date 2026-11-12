@@ -197,7 +197,7 @@ PHP `^8.1`、Laravel 桥接的下限、worker 协议 `1.20` 和控制平面 `2` 
 
 - **Sticky 历史后缀（3.14）。** Worker 声明 `sticky_history_suffix`。在 Server 3.5.0 或更高版本上，已持有某个运行历史的 worker 只接收其缓存序列之后的事件。不能精确接续缓存历史的后缀会被丢弃，并重新获取完整历史。旧版 Server 仍发送完整历史。
 - **计划来源（3.13）。** `WorkflowContext::scheduleOrigin()` 返回启动该运行的计划触发的计划 id、发生时间和触发编号；普通启动返回 `null`。重放时该值相同。自 Server 3.5.0 起，以 continue-as-new 继续的运行会保留其计划来源。
-- **活动续接（3.12）。** 当 Server 声明 `activity_workflow_continuation`（原生 Server 3.4.0 或更高版本）时，向 `Worker` 构造函数传入 `enableActivityContinuation: true`，即可把下一批工作流命令与成功的活动结果一起提交。默认值为 `false`。如果启用，请使用 3.12.1 或更高版本，并在降级 Server 或加入旧版 Server 节点之前排空或停用这些 worker。
+- **活动续接（3.12）。** 当 Server 声明 `activity_workflow_continuation`（原生 Server 3.4.0 或更高版本）时，向 `Worker` 构造函数传入 `enableActivityContinuation: true`，即可把下一批工作流命令与成功的活动结果一起提交。默认值为 `false`。目前启用它会降低吞吐量：在我们的负载基准测试中，启用后工作流运行慢了 24–49%，数据库事务数量是原来的两倍（[测量](https://github.com/durable-workflow/server/issues/1078)）。如果启用，请使用 3.12.1 或更高版本，并在降级 Server 或加入旧版 Server 节点之前排空或停用这些 worker。
 
 完整列表请参见 [3.14.0 变更日志](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md)。
 

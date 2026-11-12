@@ -98,12 +98,12 @@ OpenAPI, AsyncAPI чи JSON Schema. Schema
 
 | Лінійка пакета | PHP | Laravel |
 | --- | --- | --- |
-| Поточний вбудований Workflow 2.24 | PHP 8.2+ у 8.x; PHP 8.3+ для Laravel 13 | `^12.69.0` або `^13.30.0` |
+| Поточний вбудований Workflow 2.26 | PHP 8.2+ у 8.x; PHP 8.3+ для Laravel 13 | `^12.69.0` або `^13.30.0` |
 | Вбудований Workflow 2.20.5 | PHP `^8.1` з урахуванням мінімуму фреймворку | `^10.50.4`, `^11.56.1`, `^12.69.0` або `^13.30.0` |
 | Опублікований PHP SDK 3.14 | Базовий SDK PHP `^8.1`; міст Laravel потребує PHP `^8.2`, а для Laravel 13 — PHP 8.3+ | `^12.69.0` або `^13.30.0` |
 | PHP SDK 3.9.5 | Базовий SDK PHP `^8.1`; міст Laravel також дотримується мінімуму фреймворку | `^10.50.4`, `^11.56.1`, `^12.69.0` або `^13.30.0` |
 
-Першоджерела пакета — [опублікований контракт вбудованого оновлення](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
+Першоджерела пакета — [опублікований контракт вбудованого оновлення](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
 і `composer.json` кожного випуску. Поточний вбудований випуск перевірено з
 Laravel 12/PHP 8.2–8.4 та Laravel 13/PHP 8.3–8.4. Підтримку PHP 8.1 і Laravel
 10/11 вилучено. [Історичний посібник стабільної v1](/docs/1.x/installation/) та
@@ -141,6 +141,16 @@ Workflow 2.23 і 2.24 зберігають мінімальні вимоги 2.2
 - Починаючи з 2.23.1, вбудована компенсація saga виконується під захистом від скасування, а update, прийнятий під час закриття запуску, усе одно отримує свій результат.
 
 Див. примітки до випусків [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) та [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
+
+Workflow 2.25 і 2.26 зберігають мінімальні вимоги 2.21 і вбудований протокол workers `1.22`. 2.25 не додає міграцій бази даних. 2.26 додає одну, тож під час оновлення виконайте `php artisan migrate`. Вона створює таблицю `workflow_child_supervisions`. Зміни, які варто перевірити перед оновленням:
+
+- Починаючи з 2.26, батьківський workflow, який продовжується як новий запуск, поки запущені ним дочірні workflow ще відкриті, передає їх продовженому запуску. Останній запуск ланцюжка застосовує до них політику закриття батьківського workflow, а дочірній workflow, що завершився помилкою, і далі повторюється згідно із записаною політикою повторних спроб. Див. [Continue-as-new і відкриті дочірні workflow](./features/child-workflows.md#continue-as-new-and-open-children).
+- Починаючи з 2.26, міграції з попередніх випусків, які заповнюють наявні рядки (`2026_07_13`, `2026_09_24`, `2026_09_29` і `2026_10_11`), більше не блокують таблицю на весь час заповнення. Вони спочатку додають стовпець, заповнюють рядки невеликими пакетами, а потім будують індекси без блокування записів. Якщо одну з них перервано, знову виконайте `php artisan migrate`. Інсталяцій, які вже виконали ці міграції, це не стосується.
+- Починаючи з 2.26, redrive повторно використовує дочірній workflow, що завершився до помилки. Випуски до 2.26 відтворюють такого наступника з іншим часом workflow після повторно використаного дочірнього workflow, тож щойно такий наступник існує, тримайте workers на 2.26 або новішій версії. Див. [Redrive невдалого запуску](./failures-and-recovery.md#redrive).
+- Починаючи з 2.26, `historyBudgetAtStep()` і `shouldContinueAsNewAtStep()` зчитують бюджет історії однаково під час кожного відтворення. Використовуйте їх у циклах. Див. [Бюджет історії](./features/continue-as-new.md#history-budget).
+- Починаючи з 2.25, перевищення фіксованого обмеження memo або атрибута пошуку викидає `StructuralLimitExceededException` замість `InvalidArgumentException`, а типове значення `memo_size_bytes` становить 65 536. Див. [Структурні обмеження](./constraints/structural-limits.md).
+
+Див. примітки до випусків [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) та [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ## Рівні стабільності {#stability-levels}
 

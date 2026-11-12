@@ -70,6 +70,10 @@ Los bucles prolongados pueden desprenderse del historial sin inventar otro id p�
 
 El código puede observar la longitud actual del historial y una sugerencia de continuación mediante contexto explícito del runtime. Así puede traspasar deliberadamente antes de alcanzar límites costosos.
 
+En Workflow 2.26 y versiones posteriores, usa `shouldContinueAsNewAtStep()` y `historyBudgetAtStep()`. Solo cuentan el historial registrado antes del paso actual del workflow, así que la misma línea devuelve la misma respuesta en cada replay. Un bucle que comprueba el presupuesto en cada iteración continúa como nueva ejecución una sola vez, en la primera iteración que supera el umbral.
+
+Los métodos anteriores leen todo el historial actual. Dentro de un bucle, una iteración anterior puede ver en el replay un total posterior y tomar una rama distinta de la que tomó la primera vez. No han cambiado, así que las ejecuciones que ya decidieron con ellos siguen reproduciéndose.
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -97,6 +101,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | Número de eventos de historial de la ejecución actual |
 | `$this->historySize()` | `int` | Tamaño total de los eventos en bytes |
 | `$this->shouldContinueAsNew()` | `bool` | `true` cuando supera el presupuesto configurado de cantidad o bytes |
+| `$this->historyBudgetAtStep()` | `array` | El presupuesto en el paso actual: `history_event_count`, `history_size_bytes`, `history_fan_out`, `continue_as_new_recommended`, `pressure`, `pressure_dimensions` y `observation` (`step_prefix.v1`). Workflow 2.26 y versiones posteriores. |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `continue_as_new_recommended` de `historyBudgetAtStep()`. Úsalo en bucles. Workflow 2.26 y versiones posteriores. |
 
 ### Configuración {#configuration}
 
@@ -112,7 +118,7 @@ Los umbrales de recomendación son configurables:
 ],
 ```
 
-`shouldContinueAsNew()` devuelve `true` al superar cualquiera. Los resúmenes también registran `history_event_count`, `history_size_bytes` y `continue_as_new_recommended` para que Waterline señale ejecuciones largas en las vistas de flota.
+`shouldContinueAsNew()` y `shouldContinueAsNewAtStep()` devuelven `true` al superar cualquiera. Los resúmenes también registran `history_event_count`, `history_size_bytes` y `continue_as_new_recommended` para que Waterline señale ejecuciones largas en las vistas de flota.
 
 ## Conservación de metadatos {#metadata-carry-forward}
 
@@ -151,5 +157,7 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+Un padre que continúa como nueva ejecución mientras los workflows hijos que inició siguen abiertos los entrega a la ejecución continuada. Consulta [Continuar como nueva ejecución e hijos abiertos](./child-workflows.md#continue-as-new-and-open-children).
 
 Para bucles prolongados de intervención humana o asistentes, prefiere la fachada de primera clase `$this->inbox()` / `$this->outbox()` de [Flujos de mensajes](./message-streams.md). Los mensajes pendientes del flujo y el cursor pasan a la nueva ejecución; los mensajes consumidos permanecen en la original como evidencia histórica. Workflow 2.20.1 y versiones anteriores dejaban los mensajes pendientes del flujo en la ejecución cerrada ([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018), corregido en 2.20.2); consulta [Flujos de mensajes](./message-streams.md#continue-as-new).

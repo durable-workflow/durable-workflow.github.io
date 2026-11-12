@@ -54,6 +54,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -66,6 +68,8 @@ abstract class Workflow
 | `historyLength()` | El workflow necesita una señal del presupuesto de historial por cantidad. | Número actual de eventos de historial. |
 | `historySize()` | El workflow necesita una señal del presupuesto de historial por bytes. | Tamaño aproximado del historial guardado en bytes. |
 | `shouldContinueAsNew()` | El workflow debe rotar antes de encarecer el historial. | `true` cuando los presupuestos de historial configurados recomiendan rotar. |
+| `historyBudgetAtStep()` | El workflow lee el presupuesto más de una vez en una ejecución, por ejemplo en un bucle (Workflow 2.26+). | Contadores del presupuesto en el paso actual, iguales en cada replay. |
+| `shouldContinueAsNewAtStep()` | Un bucle decide si rotar (Workflow 2.26+). | `true` cuando el historial anterior al paso actual supera un presupuesto configurado. |
 
 ## Comandos duraderos {#durable-commands}
 
