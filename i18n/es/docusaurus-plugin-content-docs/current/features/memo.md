@@ -61,7 +61,7 @@ $workflow->start(
 
 `upsertMemo()` acepta un array asociativo de pares clave-valor:
 
-- Las **claves** deben ser cadenas no vacías de hasta 64 caracteres.
+- Las **claves** deben tener de 1 a 64 caracteres entre letras, dígitos, `.`, `_`, `-` y `:`, y no pueden ser un entero como `42`
 - Los **valores** pueden ser cualquier dato serializable a JSON: escalares, null, arrays u objetos anidados.
 - Un valor `null` elimina esa clave.
 
@@ -129,11 +129,14 @@ upsertMemo([
 ]);
 ```
 
-Los objetos anidados tienen las mismas restricciones de claves: cadenas no vacías de hasta 64 caracteres por clave en cada nivel.
+La regla de claves se aplica a las claves de primer nivel del memo. Los valores anidados cuentan para el límite de tamaño del valor del memo.
 
 ## Restricciones {#constraints}
 
-- Claves: cadenas no vacías de hasta 64 caracteres por nivel de anidamiento.
+- Nombres de clave: de 1 a 64 caracteres entre letras, dígitos, `.`, `_`, `-` y `:`, sin ser un entero como `42`. La regla se aplica a las claves de primer nivel.
+- Tamaño: cada valor hasta 10.240 bytes codificado, como máximo 100 claves y 65.536 bytes en total por ejecución. El límite [`memo_size_bytes`](../constraints/structural-limits.md#memo-size) (64 KiB por defecto) puede reducir el total, pero no ampliarlo.
+- Superar un límite lanza `StructuralLimitExceededException`, cuyo `limitName` indica qué límite. Un inicio se rechaza sin escribir nada, y un upsert desde el código del workflow hace fallar la ejecución con un fallo `structural_limit`.
+- Cada upsert añade un evento de historial `MemoUpserted`, así que hacer upserts en un bucle hace crecer el historial.
 - Valores: cualquier tipo serializable a JSON (escalares, null, arrays u objetos anidados).
 - Asignar `null` elimina la clave.
 - Los memos son metadatos de consistencia eventual, no la autoridad de reproducción. No bases bifurcaciones del workflow en sus valores.
@@ -144,7 +147,7 @@ Los objetos anidados tienen las mismas restricciones de claves: cadenas no vací
 |---|---|---|---|
 | **Cuándo se fijan** | Al iniciar o durante la ejecución | Durante la ejecución | Solo al iniciar |
 | **Mutables** | Sí, con `upsertMemo()` | Sí, con `upsertSearchAttributes()` | No |
-| **Tipos de valor** | Cualquier valor serializable a JSON | Solo escalares | Solo escalares |
+| **Tipos de valor** | Cualquier valor serializable a JSON | Escalares y listas de cadenas | Solo escalares |
 | **Indexados** | No | Sí | Sí |
 | **Filtrables** | No | Sí | Sí |
 | **Uso** | Metadatos ricos, notas y contexto | Estado dinámico y seguimiento de progreso | Clasificación estática |

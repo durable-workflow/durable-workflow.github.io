@@ -68,7 +68,7 @@ $options = StartOptions::rejectDuplicate()
 $workflow->start($orderId, $customer, $options);
 ```
 
-Les attributs de démarrage suivent les mêmes règles de validation que `upsertSearchAttributes()` : clés de 1 à 64 caractères utilisables dans une URL, valeurs scalaires ou null, et valeurs null abandonnées, sans persistance.
+Les attributs de recherche au démarrage suivent les mêmes règles de clés et limites que `upsertSearchAttributes()`. Les valeurs null sont ignorées (non enregistrées). Un démarrage au-delà d’une limite est refusé avant toute écriture.
 
 ### Plan de contrôle {#control-plane}
 
@@ -85,9 +85,9 @@ $controlPlane->start('orders.process-order', 'order-42', [
 
 La fonction `upsertSearchAttributes()` accepte un tableau associatif de paires clé-valeur :
 
-- Les **clés** doivent contenir 1 à 64 caractères utilisables dans une URL (lettres, chiffres, traits d’union et de soulignement)
-- Les **valeurs** doivent être scalaires (string, int, float, bool) ou null ; les chaînes sont limitées à 191 caractères
-- Passer `null` comme valeur supprime la clé des attributs de recherche
+- Les **clés** doivent compter de 1 à 64 caractères parmi les lettres, chiffres, `.`, `_`, `-` et `:`
+- Les **valeurs** sont une chaîne, un int, un float, un bool, une liste de chaînes ou null. Voir [Confidentialité et limites](#privacy-and-limits) pour les limites de taille
+- Passer `null` comme valeur supprime cette clé des attributs de recherche
 
 Chaque appel :
 
@@ -186,9 +186,12 @@ Les attributs de recherche sont des **métadonnées opérateur en texte clair**.
 
 Contraintes :
 
-- Noms de clés : 1 à 64 caractères utilisables dans une URL (`[a-zA-Z0-9_-]`)
-- Valeurs : types scalaires uniquement (string, int, float, bool), chaînes limitées à 191 caractères
-- Définir une valeur à `null` supprime la clé
+- Noms de clés : de 1 à 64 caractères parmi les lettres, chiffres, `.`, `_`, `-` et `:`. Sur Server, un attribut de recherche doit d’abord être enregistré, et les noms enregistrés commencent par une lettre et n’utilisent que des lettres, chiffres et `_` (jusqu’à 128 caractères). Utilisez cette forme pour des clés valables dans les deux modes.
+- Valeurs : chaînes jusqu’à 2 048 caractères, keywords jusqu’à 255 caractères, listes de keywords, int, float, bool et datetime.
+- Par exécution : au plus 100 attributs et 65 536 octets au total. La limite [`search_attribute_size_bytes`](../constraints/structural-limits.md#search-attribute-size) (40 KiB par défaut) peut resserrer le total, sans pouvoir l’augmenter.
+- Dépasser une limite lève `StructuralLimitExceededException`, dont `limitName` indique la limite. Un démarrage est refusé sans rien écrire, et un upsert depuis le code du workflow fait échouer l’exécution avec un échec `structural_limit`.
+- Chaque upsert ajoute un événement d’historique `SearchAttributesUpserted` ; des upserts dans une boucle font donc grossir l’historique.
+- Définir une valeur à `null` supprime cette clé
 
 ## Comparaison des attributs de recherche, mémos et étiquettes de visibilité {#search-attributes-vs-memo-vs-visibility-labels}
 
@@ -196,7 +199,7 @@ Contraintes :
 |---|---|---|---|
 | **Définition** | Au démarrage ou pendant l’exécution | Au démarrage ou pendant l’exécution | Au démarrage uniquement |
 | **Modifiable** | Oui, via `upsertSearchAttributes()` | Oui, via `upsertMemo()` | Non |
-| **Types de valeurs** | Scalaires uniquement | Tout type sérialisable en JSON | Scalaires uniquement |
+| **Types de valeurs** | Scalaires et listes de chaînes | Tout type sérialisable en JSON | Scalaires uniquement |
 | **Indexé** | Oui | Non | Oui |
 | **Filtrable** | Oui | Non | Oui |
 | **Usage** | Statut dynamique, suivi de progression | Métadonnées riches, notes, contexte | Classification statique |

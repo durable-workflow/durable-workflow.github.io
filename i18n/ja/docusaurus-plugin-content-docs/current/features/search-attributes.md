@@ -68,7 +68,7 @@ $options = StartOptions::rejectDuplicate()
 $workflow->start($orderId, $customer, $options);
 ```
 
-開始時も同じ検証ルールです。キーは URL 安全な1〜64文字、値はスカラーまたは null で、null は保存せず除去します。
+開始時の検索属性は `upsertSearchAttributes()` と同じキー規則と上限に従います。null 値は破棄されます（保存されません）。上限を超える開始は、何も書き込まれる前に拒否されます。
 
 ### コントロールプレーン {#control-plane}
 
@@ -85,9 +85,9 @@ $controlPlane->start('orders.process-order', 'order-42', [
 
 `upsertSearchAttributes()` はキーと値の連想配列を受け取ります。
 
-- **キー**は URL 安全な1〜64文字（英字、数字、ハイフン、アンダースコア）です。
-- **値**はスカラー（string、int、float、bool）または null で、文字列は191文字以内です。
-- 値に `null` を渡すとキーを削除します。
+- **キー**は英字、数字、`.`、`_`、`-`、`:` からなる1〜64文字です
+- **値**は string、int、float、bool、文字列のリスト、または null です。サイズの上限は[プライバシーと上限](#privacy-and-limits)を参照してください
+- 値に `null` を渡すと、そのキーは検索属性から削除されます
 
 呼び出しごとに次を行います。
 
@@ -186,9 +186,12 @@ continue-as-new 時、現在の検索属性は自動で引き継がれます。�
 
 制約:
 
-- キー名: URL 安全な1〜64文字（`[a-zA-Z0-9_-]`）。
-- 値: スカラー型のみ（string、int、float、bool）、文字列は191文字以内。
-- `null` でキーを削除。
+- キー名: 英字、数字、`.`、`_`、`-`、`:` からなる1〜64文字。Server では検索属性を先に登録する必要があり、登録名は英字で始まり、英字、数字、`_` のみを使います（最大128文字）。両方のモードで使うキーにはこの形式を使ってください。
+- 値: 最大2,048文字の文字列、最大255文字の keyword、keyword のリスト、int、float、bool、datetime。
+- 実行ごと: 最大100属性、合計65,536バイト。[`search_attribute_size_bytes`](../constraints/structural-limits.md#search-attribute-size) の上限（既定 40 KiB）は合計を厳しくできますが、引き上げることはできません。
+- 上限を超えると `StructuralLimitExceededException` が発生し、その `limitName` がどの上限かを示します。開始は何も書き込まずに拒否され、ワークフローコードからの upsert は実行を `structural_limit` の失敗として終了させます。
+- upsert のたびに `SearchAttributesUpserted` 履歴イベントが追加されるため、ループ内の upsert は履歴を増やします。
+- 値を `null` にすると、そのキーは削除されます
 
 ## 検索属性、メモ、可視化ラベルの比較 {#search-attributes-vs-memo-vs-visibility-labels}
 
@@ -196,7 +199,7 @@ continue-as-new 時、現在の検索属性は自動で引き継がれます。�
 |---|---|---|---|
 | **設定時期** | 開始時または実行中 | 開始時または実行中 | 開始時のみ |
 | **変更可能** | はい、`upsertSearchAttributes()` | はい、`upsertMemo()` | いいえ |
-| **値の型** | スカラーのみ | JSON シリアライズ可能なもの | スカラーのみ |
+| **値の型** | スカラーと文字列のリスト | JSON シリアライズ可能なもの | スカラーのみ |
 | **索引** | あり | なし | あり |
 | **フィルター** | 可 | 不可 | 可 |
 | **用途** | 動的な状態、進捗追跡 | 豊富なメタデータ、注記、コンテキスト | 静的な分類 |

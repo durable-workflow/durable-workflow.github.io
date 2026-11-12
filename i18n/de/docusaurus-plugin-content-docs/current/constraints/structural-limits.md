@@ -22,7 +22,7 @@ unbegrenzter Auffächerung, übergroßen Payloads und aufgeblähten Metadaten.
 | `pending_update_count` | 500 | Gleichzeitig ausstehende, nicht aufgelöste Updates |
 | `command_batch_size` | 1.000 | Elemente einer einzelnen parallelen Auffächerung (`all()`) |
 | `payload_size_bytes` | 2 MiB | Serialisierte Größe eines einzelnen Argument-Payloads |
-| `memo_size_bytes` | 256 KiB | Serialisierte Größe nicht indexierter Memo-Metadaten |
+| `memo_size_bytes` | 64 KiB | Serialisierte Größe nicht indexierter Memo-Metadaten |
 | `search_attribute_size_bytes` | 40 KiB | Serialisierte Größe indexierter Suchattribut-Metadaten |
 | `history_transaction_size` | 5.000 | Von einer einzelnen Workflow-Aufgabenausführung erzeugte Verlaufsereignisse |
 
@@ -81,7 +81,7 @@ Konfiguration oder über Umgebungsvariablen:
         'pending_update_count' => (int) env('DW_V2_LIMIT_PENDING_UPDATES', 500),
         'command_batch_size' => (int) env('DW_V2_LIMIT_COMMAND_BATCH_SIZE', 1000),
         'payload_size_bytes' => (int) env('DW_V2_LIMIT_PAYLOAD_SIZE_BYTES', 2097152),
-        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
+        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 65536),
         'search_attribute_size_bytes' => (int) env('DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
         'warning_threshold_percent' => (int) env('DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
@@ -200,11 +200,11 @@ daher den Referenzumschlag als Payload und nicht die ausgelagerten Bytes.
 
 ### Memo-Größe {#memo-size}
 
-Wenn ein Workflow Memo-Einträge über `upsertMemo()` aktualisiert oder einfügt,
-führt der Executor die neuen Einträge mit der vorhandenen Memo-Zuordnung
-zusammen. Er kodiert das Ergebnis als JSON und prüft die Byte-Länge gegen
-`memo_size_bytes`. Überschreitet das zusammengeführte Memo die Grenze, schlägt
-die Ausführung fehl, bevor das Memo gespeichert wird.
+Memos haben feste Obergrenzen: jeder Wert kodiert bis 10.240 Bytes (`memo_value_bytes`), höchstens 100 Schlüssel (`memo_keys`) und insgesamt 65.536 Bytes (`memo_total_bytes`). `memo_size_bytes` prüft die kodierte Größe der zusammengeführten Memo-Zuordnung und kann die Gesamtgrenze verschärfen, aber nicht anheben: Ein größerer Wert wirkt wie 65.536. Der Wert `0` schaltet diese Prüfung ab; die festen Obergrenzen bleiben.
+
+Start, `upsertMemo()` und Memo-Upserts von Service-Workern prüfen das Memo, das der Schreibvorgang am Lauf hinterlassen würde, bevor etwas geschrieben wird. Das Überschreiten einer Grenze löst `StructuralLimitExceededException` mit `limitName` aus. Ein Upsert aus Workflow-Code lässt den Lauf fehlschlagen, und sein `WorkflowFailed`-Ereignis zeichnet `structural_limit_name` auf.
+
+Diese Regeln gelten ab Workflow 2.25.0. Frühere Versionen setzten `memo_size_bytes` standardmäßig auf 256 KiB, was die feste Gesamtgrenze unerreichbar machte, und lösten bei den festen Obergrenzen `InvalidArgumentException` aus.
 
 ### Größe der Verlaufstransaktion {#history-transaction-size}
 
@@ -236,11 +236,9 @@ aktuellen Aufgabe geschrieben werden.
 
 ### Suchattributgröße {#search-attribute-size}
 
-Wenn ein Workflow Suchattribute über `upsertSearchAttributes()` aktualisiert
-oder einfügt, führt der Executor die neuen Attribute mit der vorhandenen Menge
-zusammen. Er kodiert das Ergebnis als JSON und prüft die Byte-Länge gegen
-`search_attribute_size_bytes`. Überschreiten die zusammengeführten Attribute
-die Grenze, schlägt die Ausführung vor ihrer Speicherung fehl.
+Suchattribute haben feste Obergrenzen: Zeichenfolgen bis 2.048 Zeichen (`search_attribute_string_characters`), Keywords und Keyword-Listeneinträge bis 255 Zeichen (`search_attribute_keyword_characters`), höchstens 100 Attribute (`search_attribute_count`) und insgesamt 65.536 Bytes (`search_attribute_total_bytes`). `search_attribute_size_bytes` prüft die JSON-Größe der zusammengeführten Attributzuordnung und kann die Gesamtgrenze verschärfen, aber nicht anheben. Der Wert `0` schaltet diese Prüfung ab; die festen Obergrenzen bleiben.
+
+Start, `upsertSearchAttributes()` und Upserts von Service-Workern wenden dieselben Grenzen an, bevor etwas geschrieben wird, und schlagen wie bei Memo-Grenzen fehl.
 
 ## Fehlertaxonomie {#failure-taxonomy}
 
@@ -273,7 +271,7 @@ die aktiven Obergrenzen:
     "pending_update_count": 500,
     "command_batch_size": 1000,
     "payload_size_bytes": 2097152,
-    "memo_size_bytes": 262144,
+    "memo_size_bytes": 65536,
     "search_attribute_size_bytes": 40960,
     "history_transaction_size": 5000,
     "warning_threshold_percent": 80

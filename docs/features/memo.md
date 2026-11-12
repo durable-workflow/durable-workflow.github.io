@@ -61,7 +61,7 @@ $workflow->start(
 
 The `upsertMemo()` function accepts an associative array of key-value pairs:
 
-- **Keys** must be non-empty strings up to 64 characters
+- **Keys** must be 1-64 characters from letters, digits, `.`, `_`, `-` and `:`, and can't be an integer such as `42`
 - **Values** can be any JSON-serializable data: scalars, null, arrays, or nested objects
 - Passing `null` as a value removes that key from the memo
 
@@ -129,11 +129,14 @@ upsertMemo([
 ]);
 ```
 
-Nested objects have the same key constraints (non-empty strings up to 64 characters per key at each level).
+The key rule applies to top-level memo keys. Nested values count toward the memo value size limit.
 
 ## Constraints
 
-- Key names: non-empty strings up to 64 characters per nesting level
+- Key names: 1-64 characters from letters, digits, `.`, `_`, `-` and `:`, and not an integer such as `42`. The rule applies to top-level keys.
+- Size: each value up to 10,240 bytes when encoded, at most 100 keys, and 65,536 bytes in total per run. The [`memo_size_bytes`](../constraints/structural-limits.md#memo-size) limit (default 64 KiB) can tighten the total but not raise it.
+- Going over a limit raises `StructuralLimitExceededException`, whose `limitName` says which limit. A start is refused without writing anything, and an upsert from workflow code fails the run as a `structural_limit` failure.
+- Each upsert appends a `MemoUpserted` history event, so upserting in a loop grows the run's history.
 - Values: any JSON-serializable type (scalars, null, arrays, nested objects)
 - Setting a value to `null` removes that key
 - Memos are eventually consistent metadata, not replay authority — do not branch workflow logic based on memo values
@@ -144,7 +147,7 @@ Nested objects have the same key constraints (non-empty strings up to 64 charact
 |---|---|---|---|
 | **Set when** | Start time or any time during execution | Any time during execution | Start time only |
 | **Mutable** | Yes, via `upsertMemo()` | Yes, via `upsertSearchAttributes()` | No |
-| **Value types** | Any JSON-serializable | Scalar only | Scalar only |
+| **Value types** | Any JSON-serializable | Scalars and lists of strings | Scalar only |
 | **Indexed** | No | Yes | Yes |
 | **Filterable** | No | Yes | Yes |
 | **Use case** | Rich metadata, notes, context | Dynamic status, progress tracking | Static classification |
