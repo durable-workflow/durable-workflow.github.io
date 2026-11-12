@@ -10,7 +10,7 @@
     "sdk-rust": "4.13.0",
     "server": "3.5.0",
     "waterline": "2.17.0",
-    "workflow": "2.24.0"
+    "workflow": "2.25.0"
   },
   "helm_chart": {
     "app_version": "3.5.0",
