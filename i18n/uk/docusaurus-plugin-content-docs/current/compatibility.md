@@ -98,12 +98,12 @@ OpenAPI, AsyncAPI чи JSON Schema. Schema
 
 | Лінійка пакета | PHP | Laravel |
 | --- | --- | --- |
-| Поточний вбудований Workflow 2.22 | PHP 8.2+ у 8.x; PHP 8.3+ для Laravel 13 | `^12.69.0` або `^13.30.0` |
+| Поточний вбудований Workflow 2.24 | PHP 8.2+ у 8.x; PHP 8.3+ для Laravel 13 | `^12.69.0` або `^13.30.0` |
 | Вбудований Workflow 2.20.5 | PHP `^8.1` з урахуванням мінімуму фреймворку | `^10.50.4`, `^11.56.1`, `^12.69.0` або `^13.30.0` |
 | Опублікований PHP SDK 3.11 | Базовий SDK PHP `^8.1`; міст Laravel потребує PHP `^8.2`, а для Laravel 13 — PHP 8.3+ | `^12.69.0` або `^13.30.0` |
 | PHP SDK 3.9.5 | Базовий SDK PHP `^8.1`; міст Laravel також дотримується мінімуму фреймворку | `^10.50.4`, `^11.56.1`, `^12.69.0` або `^13.30.0` |
 
-Першоджерела пакета — [опублікований контракт вбудованого оновлення](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+Першоджерела пакета — [опублікований контракт вбудованого оновлення](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
 і `composer.json` кожного випуску. Поточний вбудований випуск перевірено з
 Laravel 12/PHP 8.2–8.4 та Laravel 13/PHP 8.3–8.4. Підтримку PHP 8.1 і Laravel
 10/11 вилучено. [Історичний посібник стабільної v1](/docs/1.x/installation/) та
@@ -132,6 +132,15 @@ Workflow 2.22 не додає міграцій бази даних і збері
 зробленої до оновлення. Старіші випуски можуть відкинути політику й перемішати
 ланцюжок очікування, а повторне оновлення не виправляє цю історію. Див.
 [журнал змін 2.22.0](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md).
+
+Workflow 2.23 і 2.24 зберігають мінімальні вимоги 2.21 і вбудований протокол workers `1.22`. 2.23 не додає міграцій бази даних. 2.24 додає одну, тож під час оновлення виконайте `php artisan migrate`. Вона додає до `activity_attempts` nullable-стовпці `last_heartbeat_progress`, `last_heartbeat_progress_at` і `last_heartbeat_recorded_at`, без заповнення наявних рядків. Зміни поведінки, які варто перевірити перед оновленням:
+
+- Починаючи з 2.24, heartbeat записує подію `ActivityHeartbeatRecorded` лише тоді, коли його прогрес змінився, не частіше ніж раз на max(тайм-аут heartbeat, 60 секунд). Див. [Heartbeats](./features/heartbeats.md).
+- Починаючи з 2.24, створення розкладу з уже зайнятим id, зокрема id видаленого або вичерпаного розкладу, викидає `ScheduleAlreadyExistsException`, а повторне застосування незміненого розкладу нічого не записує.
+- Починаючи з 2.23.1, нова активність із `maxAttempts` менше 1 завершує запуск помилкою замість одноразового виконання. Для необмеженої кількості спроб пропустіть `maxAttempts` і встановіть `$tries` класу активності в 0. Раніше записані історії й далі відтворюються.
+- Починаючи з 2.23.1, вбудована компенсація saga виконується під захистом від скасування, а update, прийнятий під час закриття запуску, усе одно отримує свій результат.
+
+Див. примітки до випусків [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) та [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
 
 ## Рівні стабільності {#stability-levels}
 

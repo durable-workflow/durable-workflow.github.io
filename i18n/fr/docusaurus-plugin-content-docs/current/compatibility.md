@@ -96,12 +96,12 @@ embarqué et le SDK en mode service ont des contrats distincts.
 
 | Branche du paquet | PHP | Laravel |
 | --- | --- | --- |
-| Workflow embarqué 2.22 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| Workflow embarqué 2.24 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | Workflow embarqué 2.20.5 | PHP `^8.1`, sous réserve du minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.11 publié | SDK de base PHP `^8.1` ; le pont Laravel exige PHP `^8.2`, et PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.9.5 | SDK de base PHP `^8.1` ; le pont Laravel suit aussi le minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 
-Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
 et le `composer.json` de chaque version font autorité. La version embarquée
 actuelle a été vérifiée sur Laravel 12/PHP 8.2–8.4 et Laravel 13/PHP 8.3–8.4.
 Elle retire PHP 8.1 et Laravel 10/11. Le [guide historique v1 stable](/docs/1.x/installation/)
@@ -133,6 +133,15 @@ de Workflow qu'en restaurant une sauvegarde effectuée avant la mise à niveau. 
 versions antérieures peuvent ignorer la politique et mélanger la chaîne
 d'attente, et une nouvelle mise à niveau ne répare pas cet historique. Consultez
 le [journal des modifications 2.22.0](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md).
+
+Workflow 2.23 et 2.24 conservent les planchers de support de 2.21 et le protocole de worker embarqué `1.22`. 2.23 n'ajoute aucune migration de base de données. 2.24 en ajoute une : exécutez `php artisan migrate` lors de la mise à niveau. Elle ajoute à `activity_attempts` les colonnes nullables `last_heartbeat_progress`, `last_heartbeat_progress_at` et `last_heartbeat_recorded_at`, sans remplissage rétroactif. Changements de comportement à vérifier avant la mise à niveau :
+
+- Depuis 2.24, un heartbeat n'écrit un événement `ActivityHeartbeatRecorded` que si sa progression a changé, au plus une fois par max(délai de heartbeat, 60 secondes). Voir [Heartbeats](./features/heartbeats.md).
+- Depuis 2.24, créer un schedule avec un identifiant déjà pris, y compris celui d'un schedule supprimé ou épuisé, lève `ScheduleAlreadyExistsException`, et réappliquer un schedule inchangé n'enregistre rien.
+- Depuis 2.23.1, une nouvelle activité avec `maxAttempts` inférieur à 1 fait échouer l'exécution au lieu de s'exécuter une fois. Pour des tentatives illimitées, omettez `maxAttempts` et mettez `$tries` de la classe d'activité à 0. Les historiques enregistrés auparavant continuent d'être rejoués.
+- Depuis 2.23.1, la compensation de saga embarquée s'exécute sous un bouclier d'annulation, et une mise à jour acceptée pendant la clôture de l'exécution obtient quand même son résultat.
+
+Voir les notes de version de [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) et [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
 
 ## Niveaux de stabilité {#stability-levels}
 

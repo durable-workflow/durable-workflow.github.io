@@ -65,12 +65,12 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 | 包版本线 | PHP | Laravel |
 | --- | --- | --- |
-| 当前嵌入式 Workflow 2.22 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| 当前嵌入式 Workflow 2.24 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | 嵌入式 Workflow 2.20.5 | PHP `^8.1`，并满足框架自身最低要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 | 已发布 PHP SDK 3.11 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | PHP SDK 3.9.5 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接还需满足框架的 PHP 要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 
-包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
 及各版本的 `composer.json`。当前嵌入式版本已验证 Laravel 12/PHP 8.2–8.4 与 Laravel 13/PHP 8.3–8.4，
 不再支持 PHP 8.1 和 Laravel 10/11。[历史稳定 v1 安装指南](/docs/1.x/installation/)与
 [PHP SDK 的独立要求](https://php.durable-workflow.com/)保持独立。
@@ -91,6 +91,15 @@ Workflow 2.22 不新增数据库迁移，并保持 2.21 的最低支持版本。
 一旦有任何工作流使用过该策略，回滚到更早的 Workflow 版本只能通过恢复升级前创建的备份来完成。
 较旧版本可能丢弃该策略并混淆等待链，再次升级也无法修复这段历史。参见
 [2.22.0 变更日志](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md)。
+
+Workflow 2.23 和 2.24 保留 2.21 的支持下限和嵌入式 worker 协议 `1.22`。2.23 不添加数据库迁移。2.24 添加一个，因此升级时请运行 `php artisan migrate`。它为 `activity_attempts` 添加可为空的 `last_heartbeat_progress`、`last_heartbeat_progress_at` 和 `last_heartbeat_recorded_at` 列，不回填数据。升级前需要检查的行为变化：
+
+- 自 2.24 起，heartbeat 只在进度发生变化时写入 `ActivityHeartbeatRecorded` 事件，且每 max（heartbeat 超时, 60 秒）最多一次。参见 [Heartbeats](./features/heartbeats.md)。
+- 自 2.24 起，用已被占用的 id（包括已删除或已耗尽的计划）创建计划会抛出 `ScheduleAlreadyExistsException`，重新应用未变化的计划不会记录任何内容。
+- 自 2.23.1 起，`maxAttempts` 小于 1 的新活动会使运行失败，而不是运行一次。如需无限次尝试，请省略 `maxAttempts` 并将活动类的 `$tries` 设为 0。之前记录的历史仍可重放。
+- 自 2.23.1 起，嵌入式 saga 补偿在取消保护下运行，运行关闭期间被接受的 update 仍会得到结果。
+
+参见 [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) 和 [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0) 的发布说明。
 
 ## 稳定性级别 {#stability-levels}
 
