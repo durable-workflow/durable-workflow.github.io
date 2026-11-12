@@ -66,10 +66,6 @@ prerelease. Additional environment variables:
 - `DURABLE_WORKFLOW_INSTALL_DIR` — install location (default `~/.local/bin`).
 - `DURABLE_WORKFLOW_BIN_NAME` — installed executable name (default `dw`).
 
-The shell installer doesn't install the Intel macOS binary yet. On an Intel
-Mac, use the verified download under
-[Moving from `dw.phar`](#moving-from-dwphar) with `dw-macos-x86_64`.
-
 A GitHub Actions example:
 
 ```yaml
@@ -141,9 +137,8 @@ manually". That message comes from the old release and can't be changed, so
 use the commands above instead. Standalone-binary installs upgrade as usual
 with `dw upgrade`.
 
-On an Intel Mac, use the verified download above with `dw-macos-x86_64`.
-Published 2.x `dw upgrade` has no Intel macOS asset to move to, and the shell
-installer doesn't install it yet.
+On an Intel Mac, move from 2.x with the shell installer. Published 2.x
+`dw upgrade` has no Intel macOS asset to move to.
 
 ### Update An Installed Binary
 

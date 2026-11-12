@@ -67,10 +67,6 @@ pré-release. Variáveis de ambiente adicionais:
 - `DURABLE_WORKFLOW_INSTALL_DIR`: local de instalação (padrão `~/.local/bin`).
 - `DURABLE_WORKFLOW_BIN_NAME`: nome do executável instalado (padrão `dw`).
 
-O instalador shell ainda não instala o binário para macOS Intel. Em um Mac
-Intel, use o download verificado em [Migrar de `dw.phar`](#moving-from-dwphar)
-com `dw-macos-x86_64`.
-
 Um exemplo de GitHub Actions:
 
 ```yaml
@@ -143,9 +139,8 @@ manually". Essa mensagem vem do release antigo e não pode ser alterada, então
 use os comandos acima. Instalações de binário independente são atualizadas
 normalmente com `dw upgrade`.
 
-Em um Mac Intel, use o download verificado acima com `dw-macos-x86_64`. O `dw
-upgrade` publicado da 2.x não tem um artefato para macOS Intel para onde
-migrar, e o instalador shell ainda não o instala.
+Em um Mac Intel, migre da 2.x com o instalador shell. O `dw upgrade` publicado
+da 2.x não tem um artefato para macOS Intel para onde migrar.
 
 ### Atualizar um binário instalado {#update-an-installed-binary}
 
