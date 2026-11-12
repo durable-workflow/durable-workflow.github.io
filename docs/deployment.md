@@ -268,7 +268,62 @@ command-level Compose examples in the
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)
 section.
 
+### Upgrading to Server 3.5.0 {#native-schema-upgrade-3-5}
+
+Server 3.5.0 adds one native-only table, `dw_run_command_contracts`. The
+native schema moves from 11 to 12 on MySQL, MariaDB and PostgreSQL, and from
+10 to 11 on SQLite. The upgrade creates the table and its index and rewrites
+no rows. Server 3.4.x has the same schema as 3.3.x, so this is the only schema
+step from 3.3.x or 3.4.x. A 3.5.0 Server started on the earlier schema refuses
+with `native_schema_upgrade_required`.
+
+For the single-node Compose deployment:
+
+1. Stop the Server and leave MySQL running:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Back up MySQL and `server_storage`, and record the current image
+   reference. This backup is the only way back to 3.4.x.
+3. Change `DW_SERVER_IMAGE` to the 3.5.0 image, pull it and run
+   `schema-upgrade` once:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   It prints the schema versions before and after, for example
+   `"from_schema_version":11,"schema_version":12,"status":"upgraded"`. Run
+   again on a current database, it reports `"status":"current"`.
+4. Start the Server with
+   `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`,
+   then confirm `/api/ready`, `/api/cluster/info` (`version` is `3.5.0`) and
+   worker registration.
+
+On MySQL and MariaDB, an interrupted upgrade resumes when you run
+`schema-upgrade` again. Rolling back to 3.4.x needs the backup: a 3.4.x Server
+refuses the upgraded database with `native_schema_newer_than_binary`. From
+3.0.x through 3.2.x, the same command also applies the earlier steps described
+in the next section. The worker protocol stays at `1.20` and the control plane
+at version `2`.
+
+What changes for running workflows is in the
+[3.5.0 release notes](https://github.com/durable-workflow/server/releases/tag/3.5.0):
+updates for runs started before their worker registered now bind that worker's
+contract instead of being rejected, sticky execution with history suffixes,
+and expired runs pruned every minute by the maintenance loop.
+
 ### Upgrading from Server 3.0.x to 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+These are the earlier schema steps. If you go from 3.0.x straight to 3.5.0,
+use the 3.5.0 image in step 3; its `schema-upgrade` applies these steps and the
+3.5.0 step together, and the notes on PostgreSQL index builds and MySQL
+resumption below still apply.
 
 Server 3.3.2 crosses three minor releases from 3.0.x and changes the native
 schema. On MySQL, MariaDB and PostgreSQL it moves from version 8 (3.0.x and
@@ -608,6 +663,17 @@ only when Helm's `lookup` shows every Server stopped. Argo CD, Flux and
 `helm template` renders refuse the hook; use the chart README's manual Job
 instead. A `helm rollback` to a chart 1.0.x revision does not bring the Server
 back, because 3.0.x refuses the upgraded database: restore the backup instead.
+
+Chart 1.2.0 moves the default image to Server 3.4.0 with no schema change, so
+a plain `helm upgrade` from chart 1.1.0 is enough. Native pods also gain a
+`preStop` sleep (`native.preStopSleepSeconds`, default 5) and a 70-second
+termination grace period. Chart 1.3.0 moves the default image to Server 3.5.0,
+which needs the [schema upgrade from 11 to 12](#native-schema-upgrade-3-5):
+scale the Server to zero, back up the database, and run `helm upgrade` with
+`native.schemaUpgrade.enabled=true` (or the manual Job), then scale back up.
+See the chart's
+[Chart 1.3.0 / Server 3.5.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native).
+Going back to chart 1.2.0 means restoring that backup.
 
 ### Choosing a chart release {#helm-chart-selection}
 

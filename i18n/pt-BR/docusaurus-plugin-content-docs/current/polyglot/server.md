@@ -377,11 +377,11 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Retorna a identidade da compilação, os indicadores de capacidade, os manifestos de protocolo, os limites e a descoberta do namespace indicado por `X-Namespace` (ou pelo parâmetro de consulta `namespace`; na ausência de ambos, `default`). Saída resumida da imagem 3.3.2:
+Retorna a identidade da compilação, os indicadores de capacidade, os manifestos de protocolo, os limites e a descoberta do namespace indicado por `X-Namespace` (ou pelo parâmetro de consulta `namespace`; na ausência de ambos, `default`). Saída resumida da imagem 3.5.0:
 
 ```json
 {
-  "version": "3.3.2",
+  "version": "3.5.0",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -422,6 +422,9 @@ Retorna a identidade da compilação, os indicadores de capacidade, os manifesto
       "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
       "query_tasks": true,
       "workflow_updates": true,
+      "sticky_execution": { "supported": true, "...": "..." },
+      "sticky_history_suffix": { "supported": true, "version": 1 },
+      "activity_workflow_continuation": { "version": 1, "...": "..." },
       "...": "..."
     }
   },
@@ -445,7 +448,8 @@ Retorna a identidade da compilação, os indicadores de capacidade, os manifesto
 Notas sobre os principais campos para o código cliente:
 
 - A versão de compilação está em `version`, não em `server_version`. `implementation` é `"rust"` no Server nativo.
-- Verifique `control_plane.version` e `worker_protocol.version` antes de chamar a API. O nativo 3.3.2 serve o plano de controle `2` e o protocolo dos workers `1.20`, e aceita requisições de workers que enviem qualquer versão de protocolo de `1.0` a `1.20`.
+- Verifique `control_plane.version` e `worker_protocol.version` antes de chamar a API. O nativo 3.5.0 serve o plano de controle `2` e o protocolo dos workers `1.20`, e aceita requisições de workers que enviem qualquer versão de protocolo de `1.0` a `1.20`.
+- Desde o 3.5.0, `worker_protocol.server_capabilities` anuncia `sticky_execution` e `sticky_history_suffix`. Desde o 3.4.0, anuncia `activity_workflow_continuation`, que um worker só usa depois de ativá-lo explicitamente.
 - Os comandos de tarefas de workflow ficam em `worker_protocol.server_capabilities.supported_workflow_task_commands`.
 - Um indicador de capacidade definido como `false` identifica um recurso ou contrato publicado que o Server nativo não oferece. `response_compression` está vazio porque o Server nativo envia respostas sem compressão.
 - `native_unqualified` lista cada membro da resposta do PHP 2.x que o Server nativo omite, com o motivo. Inclui `topology`.
