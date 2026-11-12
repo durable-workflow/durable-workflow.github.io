@@ -117,6 +117,16 @@ Bei jedem Aufruf:
 Replay verwendet aufgezeichnete Suchattributereignisse ohne erneute Ausführung
 des Upserts. Dadurch bleibt der Determinismus erhalten.
 
+## Attribute registrieren {#registering-attributes}
+
+Auf dem Server können Sie ein Suchattribut mit einem Typ über `POST /api/search-attributes` registrieren. Ein registrierter Schlüssel muss danach einen Wert dieses Typs tragen, und ein Start oder Upsert mit dem falschen Typ wird abgelehnt.
+
+Die Registrierung schränkt nur die Schlüssel ein, die Sie registrieren. Ab dem nativen Server 3.5.0 wird ein nicht registrierter Schlüssel weiterhin angenommen und sein Typ abgeleitet, wie in einem Namespace ohne registrierte Attribute. Das Registrieren eines Attributs bricht keine laufenden Workflows, die andere Schlüssel upserten. PHP Server 2.x und der native Server vor 3.5.0 lehnen jeden nicht registrierten Schlüssel ab, sobald irgendein Attribut registriert ist. Registrieren Sie dort also alle Schlüssel, die Ihre Workflows verwenden, bevor Sie das erste registrieren.
+
+Das Löschen einer Registrierung beendet die Prüfung dieses Schlüssels. Gespeicherte Werte und laufende Workflows bleiben unverändert, und spätere Upserts des Schlüssels werden wieder abgeleitet.
+
+Um den Typ eines Attributs zu ändern, registrieren Sie einen neuen Attributnamen mit dem neuen Typ, passen Sie Ihre Workflows an, damit sie ihn schreiben, und filtern Sie nach dem neuen Namen, sobald bestehende Ausführungen nachgezogen haben. Wenn Sie denselben Namen löschen und mit einem anderen Typ neu registrieren, behalten frühere Werte den alten Typ.
+
 ## Zusammenführungsverhalten {#merging-behavior}
 
 Suchattribute werden über mehrere Upserts im selben Lauf zusammengeführt.
