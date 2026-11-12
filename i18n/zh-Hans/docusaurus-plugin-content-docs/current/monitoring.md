@@ -217,6 +217,8 @@ docker run --detach \
   durableworkflow/waterline:%%artifact.waterlineVersion%%
 ```
 
+请使用 2.16.0 或更高版本的镜像。2.14.0 镜像，以及发布到 Docker Hub 但从未公告的 2.15.0 镜像，都包含受 CVE-2026-118514 和 CVE-2026-118516 影响的 Symfony 7.4.21。嵌入式 Waterline 使用你的应用自己的 Symfony 包，请在应用中更新它们。
+
 通过 `APP_URL` 所表示的 URL 打开 `/waterline`。镜像监听容器内的 `8080` 端口；仅在有意修改内部端口时设置 `PORT`。`WATERLINE_PATH` 用于修改默认的 `waterline` URL 前缀。仓库还发布了采用相同连接边界的 [Docker Compose 服务定义](https://github.com/durable-workflow/waterline/blob/main/deploy/docker-compose.service.yml)。
 
 服务模式有两个独立的身份验证层：

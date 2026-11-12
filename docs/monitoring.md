@@ -271,6 +271,11 @@ docker run --detach \
   durableworkflow/waterline:%%artifact.waterlineVersion%%
 ```
 
+Run image 2.16.0 or later. The 2.14.0 image, and the 2.15.0 image that was
+published to Docker Hub but never announced, ship Symfony 7.4.21, which is
+affected by CVE-2026-118514 and CVE-2026-118516. An embedded Waterline uses
+your application's own Symfony packages, so update them there.
+
 Open `/waterline` through the URL represented by `APP_URL`. The image listens
 on container port `8080`; set `PORT` only when you intentionally change that
 internal port. `WATERLINE_PATH` changes the default `waterline` URL prefix.

@@ -128,6 +128,14 @@ celle annoncée par Server est refusée. Les versions de publication SDK et
 Server sont suivies indépendamment. Leurs manifestes de protocole runtime
 déterminent la compatibilité.
 
+## Mettre à niveau vers le SDK Rust 4.13 {#upgrade-to-4-13}
+
+- **Jetons statiques.** La construction du client rejette désormais un jeton statique partagé, de contrôle ou de worker mal formé, y compris dans des options inutilisées ou masquées. Le diagnostic ne nomme que l'option. Vérifiez les valeurs de jeton configurées avant la mise à niveau. Les jetons vides conservent leur priorité.
+- **Backoff des activités locales.** Les tentatives au-delà de la fin de la liste de backoff répètent la dernière entrée au lieu de réessayer immédiatement, comme les activités planifiées par le Server.
+- **Activités d'une exécution.** `Client::get_run_activities` renvoie des métadonnées typées d'activités et de tentatives, y compris la progression des heartbeats.
+
+Voir le [journal des modifications 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
+
 ## Échéances des attentes de condition et mise à niveau des workers {#condition-wait-deadlines}
 
 Le SDK Rust 4.11.2 mesure le délai d’un `wait_condition` hors groupe depuis

@@ -123,6 +123,14 @@ eine andere Hauptversion oder eine höhere Worker-Nebenversion als die vom
 Server gemeldete werden abgelehnt. SDK- und Server-Release-Versionen werden
 unabhängig geführt. Ihre Laufzeit-Protokollmanifeste bestimmen die Kompatibilität.
 
+## Upgrade auf Rust-SDK 4.13 {#upgrade-to-4-13}
+
+- **Statische Tokens.** Die Client-Erstellung lehnt jetzt ein fehlerhaftes gemeinsames, Steuerungs- oder Worker-Token ab, auch bei ungenutzten oder maskierten Optionen. Die Diagnose nennt nur die Option. Prüfen Sie die konfigurierten Tokenwerte vor dem Upgrade. Leere Tokens behalten ihre bisherige Rangfolge.
+- **Backoff lokaler Aktivitäten.** Wiederholungen nach dem Ende der Backoff-Liste verwenden erneut den letzten Eintrag, statt sofort erneut zu versuchen, wie vom Server geplante Aktivitäten.
+- **Aktivitäten einer Ausführung.** `Client::get_run_activities` liefert typisierte Aktivitäts- und Versuchsmetadaten einschließlich Heartbeat-Fortschritt.
+
+Siehe den [Changelog zu 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
+
 ## Fristen für Bedingungswarteoperationen und Worker-Upgrades {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 misst das Timeout eines nicht gruppierten `wait_condition`

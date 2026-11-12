@@ -219,6 +219,8 @@ docker run --detach \
   durableworkflow/waterline:%%artifact.waterlineVersion%%
 ```
 
+イメージ 2.16.0 以降を使用してください。2.14.0 のイメージと、Docker Hub に公開されたものの告知されなかった 2.15.0 のイメージには、CVE-2026-118514 と CVE-2026-118516 の影響を受ける Symfony 7.4.21 が含まれます。組み込みの Waterline はアプリケーション自身の Symfony パッケージを使うため、そちらを更新してください。
+
 `APP_URL` が示す URL の `/waterline` を開きます。イメージはコンテナポート `8080` で待ち受けます。内部ポートを意図的に変える場合だけ `PORT` を設定してください。`WATERLINE_PATH` は既定の `waterline` URL 接頭辞を変更します。リポジトリには同じ接続境界の [Docker Compose サービス定義](https://github.com/durable-workflow/waterline/blob/main/deploy/docker-compose.service.yml)もあります。
 
 サービスモードには独立した二つの認証層があります。

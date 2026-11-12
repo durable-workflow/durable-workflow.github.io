@@ -99,12 +99,12 @@ The embedded package and the service-mode SDK have separate support contracts.
 
 | Package line | PHP | Laravel |
 | --- | --- | --- |
-| Current embedded Workflow 2.22 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Current embedded Workflow 2.24 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | Embedded Workflow 2.20.5 | PHP `^8.1`, subject to Laravel's own minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
-| Published PHP SDK 3.11 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Published PHP SDK 3.14 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | PHP SDK 3.9.5 | Bare SDK PHP `^8.1`; the Laravel bridge also follows Laravel's PHP minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 
-The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
 and each release's `composer.json` are the package authorities. The current
 embedded release was verified on Laravel 12 with PHP 8.2–8.4 and Laravel 13 with
 PHP 8.3–8.4. Its PHP 8.1 and Laravel 10/11 support has been removed. This does
@@ -120,7 +120,7 @@ Preserve the original runtime for open v1 runs, and follow the
 Changing a Composer requirement does not migrate durable history.
 
 PHP SDK 3.10 moved the Laravel service-mode bridge to the same PHP and Laravel
-floors as Workflow 2.21 and removed Laravel 10/11 support; 3.11 keeps them.
+floors as Workflow 2.21 and removed Laravel 10/11 support; 3.11 through 3.14 keep them.
 Its provider refuses unsupported or unknown framework and PHP versions before
 registering configuration, clients or workers. Existing SDK 3.9.x applications
 keep their own contract while the platform is upgraded. See the
@@ -135,6 +135,31 @@ Workflow release only by restoring a backup taken before the upgrade. Older
 releases can discard the policy and mix the wait chain, and upgrading again
 does not repair that history. See the
 [2.22.0 changelog](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md).
+
+Workflow 2.23 and 2.24 keep the 2.21 support floors and the embedded worker
+protocol `1.22`. 2.23 adds no database migration. 2.24 adds one, so run
+`php artisan migrate` when you upgrade. It adds nullable
+`last_heartbeat_progress`, `last_heartbeat_progress_at` and
+`last_heartbeat_recorded_at` columns to `activity_attempts`, with no backfill.
+Behavior changes to check before upgrading:
+
+- From 2.24, a heartbeat writes an `ActivityHeartbeatRecorded` event only when
+  its progress changed, at most once per max(heartbeat timeout, 60 seconds).
+  See [Heartbeats](./features/heartbeats.md).
+- From 2.24, creating a schedule with an id that is already taken, including a
+  deleted or exhausted schedule, raises `ScheduleAlreadyExistsException`, and
+  re-applying an unchanged schedule records nothing.
+- From 2.23.1, a new activity with `maxAttempts` below 1 fails the run instead
+  of running once. For unlimited attempts, omit `maxAttempts` and set the
+  activity class `$tries` to 0. Histories recorded earlier keep replaying.
+- From 2.23.1, embedded saga compensation runs under a cancellation shield,
+  and an update accepted while the run is closing still gets its result.
+
+See the release notes for
+[2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0),
+[2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1),
+[2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) and
+[2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
 
 ## Stability Levels
 
