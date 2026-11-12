@@ -95,6 +95,62 @@ trace、run、activity、attempt、request の ID は別々です。baggage は�
 
 ワークフロー詳細ビューは、一つの実行の永続タイムラインを表示します。発生したアクティビティ、シグナル、タイマー、子ワークフローを順番に示し、それぞれの入力、出力、時間を表示します。
 
+## 停滞した実行 {#stuck-runs}
+
+開いている実行にはそれぞれ、何を待っているかを示す `liveness_state` と、`liveness_reason` の説明文があります。どちらも実行詳細、一覧の行、履歴エクスポートに表示されます。
+
+| 状態 | 意味 |
+| --- | --- |
+| `workflow_task_ready`, `activity_task_ready`, `timer_task_ready` | タスクがワーカーを待っています。 |
+| `workflow_task_leased`, `activity_task_leased`, `timer_task_leased` | ワーカーがタスクを保持しています。 |
+| `workflow_task_claim_failed`, `activity_task_claim_failed`, `timer_task_claim_failed` | ワーカーがタスクを取得しようとして拒否されました。たとえばバックエンド機能の検査によるものです。 |
+| `workflow_task_waiting_for_compatible_worker`, `activity_task_waiting_for_compatible_worker`, `timer_task_waiting_for_compatible_worker` | この実行と互換性のある登録済みワーカーがありません。 |
+| `timer_scheduled` | タイマーを待っています。 |
+| `waiting_for_signal`, `waiting_for_condition`, `waiting_for_child` | シグナル、条件の変化、または子ワークフローを待っています。 |
+| `activity_running_without_task` | アクティビティが開いたタスクなしで実行中です。作業が二重に実行されないよう、修復は待機します。 |
+| `workflow_replay_blocked` | ワークフロータスクが記録済みの履歴をリプレイできません。たとえば互換性のないコード変更の後です。コードが直るまで実行は開いたままです。 |
+| `repair_needed` | 実行を続ける信頼できる手段がありません。たとえばリースの期限切れ、ディスパッチの失敗、タスクの欠落の後です。ワーカーが失敗を繰り返すサービスモードのワークフロータスクも含みます。 |
+| `closed` | 実行は終了しています。 |
+
+### タスク問題フィルター {#task-problem-filter}
+
+ワークフロータスクに問題がある実行は `task_problem = true` です。一覧は `task_problem`（Waterline の Task Problem）で絞り込めます。`task_problem_badge.code` で種類がわかります。
+
+- `replay_blocked` (Task Failure): ワークフロータスクがリプレイできません。
+- `active` (Task Problem): ワークフロータスクの作業が欠けている、再試行中、または現在配信できません。
+- `history` (Task History): 実行は以前、ワークフロータスクの修復またはリプレイの回復を必要としました。
+
+### メトリクスとヘルス {#stuck-run-metrics}
+
+組み込みのオペレーターメトリクス（Waterline の統計の `operator_metrics`）は、問題のある各状態の開いている実行を数えます。終了した実行は数えません。
+
+| フィールド | 意味 |
+| --- | --- |
+| `operator_metrics.runs.replay_blocked` | `workflow_replay_blocked` の開いている実行。 |
+| `operator_metrics.runs.oldest_replay_blocked_at`, `operator_metrics.runs.max_replay_blocked_age_ms` | 最も古いリプレイ停止中の実行の最終更新時刻と、その経過時間。 |
+| `operator_metrics.runs.repair_needed`, `operator_metrics.runs.oldest_repair_needed_at`, `operator_metrics.runs.max_repair_needed_age_ms` | `repair_needed` について同じもの。 |
+
+助言用のヘルスチェック `replay_blocked_runs`（カテゴリ `correctness`）は、リプレイ停止中の開いている実行がある間 `warning` を報告します。
+
+ネイティブ Server は `repair_needed` を報告しますが、`replay_blocked` と `replay_blocked_runs` チェックはまだ報告しません（[server#1154](https://github.com/durable-workflow/server/issues/1154)）。
+
+### Server のワークフロータスク失敗 {#workflow-task-failure-metric}
+
+Server は失敗したワークフロータスクを `GET /api/system/metrics` の `metrics.dw_workflow_task_consecutive_failures` で報告します。
+
+- `max_consecutive_failures`: 名前空間内の失敗したワークフロータスクのうち最大の試行回数。最初の失敗を 1 と数えます。
+- `failed_task_count`: 失敗したワークフロータスクの数。
+- `by_workflow_type`: 最大 20 のワークフロー型。`max_consecutive_failures` の大きい順で、それぞれに `max_consecutive_failures` と `failed_task_count` があります。残りは `suppressed_workflow_type_count` と `suppressed_failed_task_count` に入ります。
+
+`max_consecutive_failures` が上がり続けたらアラートを出してください。ワークフロータスクが完了せず、ワーカー上で失敗を繰り返しています。
+
+### 修復 {#repair-stuck-runs}
+
+- `workflow_replay_blocked`: 記録済みの履歴をリプレイできるワークフローコードをデプロイし（[バージョニング](./features/versioning.md)を参照）、その後実行を修復します。
+- `repair_needed`: 実行を修復するか、修復パスに任せます（組み込みでは `workflow:v2:repair-pass`、Server では `dw system:repair-pass`）。Server は `POST /api/workflows/{workflowId}/runs/{runId}/repair` も受け付けます。
+
+修復の内容は[障害と復旧](./failures-and-recovery.md)を参照してください。
+
 ## Waterline のデプロイとアクセス {#waterline-deployment-and-access}
 
 ### 組み込み Laravel {#embedded-laravel}

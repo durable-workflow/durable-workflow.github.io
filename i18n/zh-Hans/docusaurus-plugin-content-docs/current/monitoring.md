@@ -93,6 +93,62 @@ trace、run、activity、attempt 和 request ID 保持独立。baggage 使用默
 
 工作流详情视图显示单个运行实例的持久时间线：依次发生的活动、信号、定时器和子工作流，以及每项的输入、输出和时间信息。
 
+## 卡住的运行 {#stuck-runs}
+
+每个打开的运行都有一个说明其等待内容的 `liveness_state`，以及 `liveness_reason` 中的一句说明。两者都会出现在运行详情、列表行和历史导出中。
+
+| 状态 | 含义 |
+| --- | --- |
+| `workflow_task_ready`, `activity_task_ready`, `timer_task_ready` | 任务已就绪，等待 worker。 |
+| `workflow_task_leased`, `activity_task_leased`, `timer_task_leased` | 某个 worker 持有该任务。 |
+| `workflow_task_claim_failed`, `activity_task_claim_failed`, `timer_task_claim_failed` | 某个 worker 尝试领取任务但被拒绝，例如未通过后端能力检查。 |
+| `workflow_task_waiting_for_compatible_worker`, `activity_task_waiting_for_compatible_worker`, `timer_task_waiting_for_compatible_worker` | 没有已注册的 worker 与该运行兼容。 |
+| `timer_scheduled` | 正在等待定时器。 |
+| `waiting_for_signal`, `waiting_for_condition`, `waiting_for_child` | 正在等待信号、条件变化或子工作流。 |
+| `activity_running_without_task` | 某个活动正在运行，但没有打开的任务。修复会等待，以免重复执行工作。 |
+| `workflow_replay_blocked` | 工作流任务无法重放已记录的历史，例如在不兼容的代码变更之后。运行会保持打开，直到代码修复。 |
+| `repair_needed` | 运行没有可信的继续方式，例如租约过期、派发失败或任务缺失之后。也包括 worker 反复失败的服务模式工作流任务。 |
+| `closed` | 运行已关闭。 |
+
+### 任务问题筛选 {#task-problem-filter}
+
+工作流任务有问题的运行带有 `task_problem = true`。可按 `task_problem`（Waterline 中的 Task Problem）筛选运行列表。`task_problem_badge.code` 说明类型：
+
+- `replay_blocked` (Task Failure): 工作流任务无法重放。
+- `active` (Task Problem): 工作流任务的工作缺失、正在重试或当前无法投递。
+- `history` (Task History): 该运行之前需要过工作流任务修复或重放恢复。
+
+### 指标与健康检查 {#stuck-run-metrics}
+
+嵌入式运维指标（Waterline 统计中的 `operator_metrics`）统计处于各问题状态的打开运行。已关闭的运行不计入。
+
+| 字段 | 含义 |
+| --- | --- |
+| `operator_metrics.runs.replay_blocked` | 处于 `workflow_replay_blocked` 的打开运行。 |
+| `operator_metrics.runs.oldest_replay_blocked_at`, `operator_metrics.runs.max_replay_blocked_age_ms` | 最旧的重放受阻运行的最后更新时间及其时长。 |
+| `operator_metrics.runs.repair_needed`, `operator_metrics.runs.oldest_repair_needed_at`, `operator_metrics.runs.max_repair_needed_age_ms` | `repair_needed` 的相同信息。 |
+
+建议性健康检查 `replay_blocked_runs`（类别 `correctness`）在有任何打开运行重放受阻时报告 `warning`。
+
+原生 Server 会报告 `repair_needed`，但尚未报告 `replay_blocked` 或 `replay_blocked_runs` 检查（[server#1154](https://github.com/durable-workflow/server/issues/1154)）。
+
+### Server 工作流任务失败 {#workflow-task-failure-metric}
+
+Server 在 `GET /api/system/metrics` 的 `metrics.dw_workflow_task_consecutive_failures` 下报告失败的工作流任务：
+
+- `max_consecutive_failures`: 命名空间中失败的工作流任务的最高尝试次数。第一次失败计为一次。
+- `failed_task_count`: 失败的工作流任务数量。
+- `by_workflow_type`: 最多 20 个工作流类型，按 `max_consecutive_failures` 从高到低排列，每个类型都有自己的 `max_consecutive_failures` 和 `failed_task_count`。其余部分由 `suppressed_workflow_type_count` 和 `suppressed_failed_task_count` 汇总。
+
+当 `max_consecutive_failures` 持续上升时告警：说明某个工作流任务在 worker 上反复失败而无法完成。
+
+### 修复 {#repair-stuck-runs}
+
+- `workflow_replay_blocked`: 部署能够重放已记录历史的工作流代码（参见[版本控制](./features/versioning.md)），然后修复该运行。
+- `repair_needed`: 修复该运行，或交给修复轮次处理（嵌入式为 `workflow:v2:repair-pass`，Server 为 `dw system:repair-pass`）。Server 也接受 `POST /api/workflows/{workflowId}/runs/{runId}/repair`。
+
+修复的作用参见[故障与恢复](./failures-and-recovery.md)。
+
 ## Waterline 部署与访问 {#waterline-deployment-and-access}
 
 ### 嵌入式 Laravel {#embedded-laravel}
