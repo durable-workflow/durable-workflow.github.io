@@ -54,7 +54,7 @@ Server を利用するすべてのコマンドは、スタンドアロン Server
 | `dw debug workflow <workflow-id>` | 停滞した1ワークフローの状態、保留タスク、キュー情報、失敗、互換性メタデータを取得。 | `--run-id`、グローバルオプション、`--json` |
 | `dw server:start-dev` | 設定済みの既存 Laravel プロジェクトの HTTP アプリケーションを提供。外部 PHP が必要。 | `--port`、`--host`（既定 `127.0.0.1`）、`--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | 終了状態または設定したポーリング上限までワークフローをポーリング。 | `--run-id`, `--interval`, `--max-polls`、グローバルオプション |
-| `dw upgrade` | 稼働中の単独 `dw` バイナリを新しい（または指定した）リリースへ置換。Composer vendor、Homebrew cellar、PHAR の書き換えは拒否。 | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
+| `dw upgrade` | 稼働中の単独 `dw` バイナリを新しい（または指定した）リリースへ置換。Composer vendor と Homebrew cellar の書き換えは拒否。 | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 契約構造の検証には `server:info`、CLI が Server と通信できない理由の説明には `doctor`、サポートに機械可読な実行記録が必要な場合には `debug workflow` を使います。
 
@@ -64,7 +64,7 @@ Server を利用するすべてのコマンドは、スタンドアロン Server
 
 既定のバインドはループバックです。全インターフェースには明示的に `--host=0.0.0.0` を使います。MySQL と PostgreSQL モードには、それぞれ `mysql` または `pgsql`、および `redis` というプロジェクトの Compose サービスが必要です。依存プロセスや HTTP プロセスの失敗は非ゼロを返します。HTTP プロセス終了後も Compose サービスは稼働を続けます。
 
-POSIX ネイティブバイナリは SIGINT と SIGTERM を有効な子へ転送し、そのプロセスグループの停止を最大5秒待ちます。ソースと PHAR のインストールでは、転送に PHP の `pcntl` と `posix` 拡張が必要です。Windows はコンソール割り込み動作を使います。
+POSIX ネイティブバイナリは SIGINT と SIGTERM を有効な子へ転送し、そのプロセスグループの停止を最大5秒待ちます。Windows はコンソール割り込み動作を使います。
 
 公開イメージを使うスタンドアロン Durable Workflow Server は、[サービスクイックスタート](/docs/quickstart)に従ってください。
 
@@ -118,11 +118,11 @@ dw server:info --output=json \
 | `upgraded` | バイナリを `target_version` に置換した。 |
 | `noop` | `current_version` が `target_version` と一致する。`--force` で回避。 |
 | `dry-run` | ダウンロードせず `target_version`、`asset_url`、`checksum_url` を解決した。 |
-| `refused` | 単独リリースバイナリ以外（Composer vendor、Homebrew cellar、PHAR）、またはプラットフォーム用アセットが未公開。 |
+| `refused` | 単独リリースバイナリ以外（Composer vendor、Homebrew cellar）、またはプラットフォーム用アセットが未公開。 |
 | `permission-denied` | インストールディレクトリが書き込み不可。推奨対応を `hint` に含む。 |
 | `error` | リリースカタログ取得、チェックサム不一致、ファイルシステムのエラー。 |
 
-拒否時、JSON の `installation.kind` は管理ツール（`composer-vendor`、`homebrew`、`phar`、`binary`）を識別し、`reason` は代わりに使う正しい管理元を示します。公開されたソース不要の自動化では `https://durable-workflow.com/install.sh` で固定リリースを再インストールし、tap 管理の Homebrew では `brew upgrade durable-workflow/tap/dw` を使います。
+拒否時、JSON の `installation.kind` は管理ツール（`composer-vendor`、`homebrew`、`binary`、`unknown`）を識別し、`reason` は代わりに使う正しい管理元を示します。`phar` を報告するのは、自身の 2.x コードを実行している 2.x PHAR だけです。公開されたソース不要の自動化では `https://durable-workflow.com/install.sh` で固定リリースを再インストールし、tap 管理の Homebrew では `brew upgrade durable-workflow/tap/dw` を使います。
 
 ## 環境プロファイル {#environment-profiles}
 
