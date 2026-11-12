@@ -45,7 +45,7 @@ class BookingSagaWorkflow extends Workflow
 
 工作流捕获异常时，`$this->compensate()` 按**逆序**运行所有已注册补偿。上例中，如果 `BookRentalCarActivity` 失败，引擎先取消酒店再取消航班，从最近的步骤往前回退 saga。
 
-在每个正向活动成功后注册其补偿。重放会重建注册顺序，并复用已记录的活动结果，包括已经完成的补偿。
+活动至少执行一次，因此正向调用可能已经产生效果，但从工作流的角度看仍然失败，例如超时或完成结果丢失之后。请在正向调用之前注册以稳定业务 ID 为键的幂等补偿，这样无论正向步骤的结果是否已知，补偿都会执行。当补偿需要正向结果，且正向步骤在成功之前没有外部效果时（如上例），在正向调用成功后再注册是合适的。重放会重建注册顺序，并复用已记录的活动结果，包括已完成的补偿。
 
 ## 由截止时间驱动的补偿 {#deadline-driven-compensation}
 
@@ -109,6 +109,8 @@ WorkflowStub::load('order-123')->signal('confirm');
 等待到期且补偿成功时，工作流正常完成，输出包含 `status: expired`；这不是引擎超时的运行。如果释放活动失败，`compensate()` 会传播失败。如果引擎截止时间先到，运行关闭，剩余补偿无法执行。应为调度和重试预留时间，并考虑可能更早的执行截止时间。
 
 独立的协作式 `requestCancellation()` 操作允许调用方在运行活动期间请求清理。可用其有界取消屏蔽在取消请求下完成持久清理。工作流超时不会自动触发该机制。参阅[协作式取消](../polyglot/cancellation.md)。
+
+`compensate()` 本身在取消保护范围内运行，因此补偿期间到达的取消请求不会跳过其余补偿。参见 [受保护清理](./cancel-and-terminate.md#protected-cleanup)。
 
 ## 补偿顺序 {#compensation-ordering}
 

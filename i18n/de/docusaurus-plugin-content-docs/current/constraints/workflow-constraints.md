@@ -34,6 +34,16 @@ Für unter `workflows.v2.types.workflows` registrierte Workflow-Klassen prüft d
 
 Setzen Sie in CI `DW_V2_GUARDRAILS_BOOT=throw`, um Builds mit neuen Replay-unsicheren Aufrufen abzulehnen. In Produktion verhindert `warn`, dass eine bislang unentdeckte Stelle eine Bereitstellung blockiert.
 
+### Was die Prüfung erkennt {#scan-coverage}
+
+Die Prüfung ist lexikalisch. Sie liest nur die Workflow-Klasse, ihre Elternklassen und Traits und meldet:
+
+- Zugriffe auf die aktuelle Zeit: `time()`, `date()`, `microtime()`, `hrtime()`, `today()`, statische Aufrufe wie `Carbon::now()` sowie `new DateTime()`, `new DateTimeImmutable()`, `new Carbon()` oder `new CarbonImmutable()` ohne Argument oder mit einer relativen Zeit wie `'now'` oder `'+1 day'`. Ein festes Datum wird nicht gemeldet.
+- Zufall: `random_int()`, `random_bytes()`, `rand()`, `mt_rand()`, `uniqid()`, `shuffle()`, `array_rand()`, `str_shuffle()` und Helfer wie `Str::uuid()`.
+- externer Zustand: `DB::`, `Cache::`, `Http::`, `Auth::`, `auth()` und `request()`.
+
+Aufrufe über Hilfs- oder Service-Klassen, Werte, die vom Prozesszustand abhängen, etwa statische Eigenschaften oder die Reihenfolge ungeordneter Daten, und alles, was erst zur Laufzeit entschieden wird, erkennt sie nicht. Eine Prüfung ohne Befund beweist keinen Determinismus. Führen Sie die [Replay-Prüfung](../testing.md) gegen aufgezeichnete Verläufe aus, um den Rest zu finden.
+
 Im Umfang der ersten Veröffentlichung ist die Startprüfung die einzige blockierende Schutzprüfung für den Workflow-Modus. Beim Beanspruchen einer Workflow-Aufgabe führt die Laufzeitumgebung keine zusätzliche Determinismusdiagnose aus. Diese Entscheidung für 2.0 erlaubt es, lokal registrierte PHP-Workflows vor der Bereitstellung zu prüfen. Waterline zeigt abweichende Definitionsfingerprints bei lang laufenden Workflows, ohne zusätzliche Bereitstellungsfehler durch Aufgaben verschiedener Builds zu erzeugen.
 
 Auch Läufe ohne Fingerprint folgen einer vorsichtigen Regel. Erreicht ein Lauf einen neuen `getVersion()`-Zweig und stammt seine `WorkflowStarted`-Historie aus der Zeit vor dem Fingerprint-Snapshot, bleibt der Lauf auf `WorkflowStub::DEFAULT_VERSION`. Die aktuelle Definition wird nicht automatisch als sicher angenommen. Siehe [Versionierung](../features/versioning.md).

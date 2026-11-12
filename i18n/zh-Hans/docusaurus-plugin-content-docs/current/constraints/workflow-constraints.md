@@ -36,6 +36,16 @@ description: 保持重放的确定性，并在应用启动时发现不安全的�
 
 在 CI 中设置 `DW_V2_GUARDRAILS_BOOT=throw`，拒绝新增的不安全重放调用。生产环境保留 `warn`，避免尚未发现的问题阻止部署。
 
+### 扫描检查的内容 {#scan-coverage}
+
+扫描是词法层面的。它只读取工作流类、其父类和 trait，并标记：
+
+- 读取当前时间：`time()`、`date()`、`microtime()`、`hrtime()`、`today()`、`Carbon::now()` 之类的静态调用，以及不带参数或带 `'now'`、`'+1 day'` 等相对时间的 `new DateTime()`、`new DateTimeImmutable()`、`new Carbon()` 或 `new CarbonImmutable()`。固定日期不会被标记。
+- 随机性：`random_int()`、`random_bytes()`、`rand()`、`mt_rand()`、`uniqid()`、`shuffle()`、`array_rand()`、`str_shuffle()` 以及 `Str::uuid()` 之类的辅助方法。
+- 外部状态：`DB::`、`Cache::`、`Http::`、`Auth::`、`auth()` 和 `request()`。
+
+它看不到通过辅助类或服务类进行的调用、依赖进程状态的值（例如静态属性或无序数据的顺序），也看不到运行时才决定的内容。扫描结果干净并不能证明确定性。请对已记录的历史运行[重放验证](../testing.md)来发现其余问题。
+
 在初始发布范围内，启动时扫描是唯一可以阻止工作流运行的确定性检查。运行时不会在获取工作流任务时再次执行确定性诊断。这是 2.0 的明确选择：启动扫描在部署前检查本地注册的 PHP 工作流，Waterline 则展示长期运行任务的定义指纹变化，避免跨构建获取任务成为新的部署故障来源。
 
 对于早于指纹记录的运行，也采用保守策略。如果运行进入新的 `getVersion()` 分支，但其 `WorkflowStarted` 历史早于指纹快照，运行时将它保留在 `WorkflowStub::DEFAULT_VERSION`，不假定当前定义可以安全重放。参阅[版本管理](../features/versioning.md)。

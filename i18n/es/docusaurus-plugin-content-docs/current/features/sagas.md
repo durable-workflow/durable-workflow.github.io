@@ -47,7 +47,7 @@ class BookingSagaWorkflow extends Workflow
 
 Cuando el workflow captura una excepción, `$this->compensate()` ejecuta todas las compensaciones registradas en **orden inverso**. En el ejemplo, si falla `BookRentalCarActivity`, el motor cancela primero el hotel y después el vuelo, deshaciendo la saga desde el paso más reciente.
 
-Registre cada compensación después de que su actividad directa termine correctamente. El replay reconstruye ese orden de registro y reutiliza los resultados de actividad ya guardados, incluidas las compensaciones completadas.
+Las actividades se ejecutan al menos una vez, así que una llamada de avance puede tener efecto y aun así fallar desde el punto de vista del workflow, por ejemplo tras un tiempo límite o una finalización perdida. Registra una compensación idempotente, con una clave basada en un identificador de negocio estable, antes de la llamada de avance, para que se ejecute tanto si se conoce el resultado de ese paso como si no. Registrarla después de que la llamada de avance tenga éxito es adecuado cuando la compensación necesita su resultado y el paso no tiene efecto externo hasta tener éxito, como en el ejemplo anterior. El replay reconstruye el orden de registro y reutiliza los resultados de actividad registrados, incluidas las compensaciones completadas.
 
 ## Compensación por vencimiento del plazo {#deadline-driven-compensation}
 
@@ -111,6 +111,8 @@ WorkflowStub::load('order-123')->signal('confirm');
 Si la espera vence y la compensación termina correctamente, el workflow finaliza de forma normal con `status: expired` en su resultado. No es una ejecución cerrada por el tiempo de espera del motor. Si falla la actividad que libera la reserva, `compensate()` propaga el error. Si el plazo del motor llega primero, la ejecución se cierra y no puede ejecutarse la compensación restante. Reserve tiempo suficiente para la planificación y los reintentos, y tenga en cuenta un plazo de ejecución completa anterior si lo hay.
 
 La operación cooperativa independiente `requestCancellation()` permite que un llamador solicite limpieza mientras la ejecución está activa. Use su escudo de cancelación acotado para realizar limpieza duradera bajo esa solicitud. El tiempo de espera de un workflow no la activa automáticamente. Consulte [Cancelación cooperativa](../polyglot/cancellation.md).
+
+`compensate()` se ejecuta bajo un escudo de cancelación, así que una solicitud de cancelación que llega durante la compensación no omite las compensaciones restantes. Consulta [Limpieza protegida](./cancel-and-terminate.md#protected-cleanup).
 
 ## Orden de las compensaciones {#compensation-ordering}
 

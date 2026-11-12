@@ -47,7 +47,7 @@ class BookingSagaWorkflow extends Workflow
 
 Wenn der Workflow eine Ausnahme abfängt, führt `$this->compensate()` alle registrierten Kompensationen in **umgekehrter Reihenfolge** aus. Schlägt im Beispiel `BookRentalCarActivity` fehl, storniert die Engine zuerst das Hotel und danach den Flug. Die Saga wird vom letzten Schritt aus zurückgenommen.
 
-Registrieren Sie jede Kompensation nach erfolgreichem Abschluss der vorwärts gerichteten Aktivität. Replay rekonstruiert diese Reihenfolge und verwendet gespeicherte Aktivitätsergebnisse einschließlich abgeschlossener Kompensationen.
+Aktivitäten laufen mindestens einmal. Ein vorwärts gerichteter Aufruf kann daher wirken und aus Sicht des Workflows trotzdem fehlschlagen, etwa nach einem Timeout oder einer verlorenen Abschlussmeldung. Registrieren Sie eine idempotente Kompensation mit einer stabilen fachlichen ID als Schlüssel vor dem vorwärts gerichteten Aufruf, damit sie läuft, ob das Ergebnis dieses Schritts bekannt ist oder nicht. Die Registrierung nach erfolgreichem Aufruf ist angemessen, wenn die Kompensation das Ergebnis braucht und der Schritt vor seinem Erfolg keine externe Wirkung hat, wie im Beispiel oben. Replay rekonstruiert die Registrierungsreihenfolge und verwendet gespeicherte Aktivitätsergebnisse einschließlich abgeschlossener Kompensationen.
 
 ## Kompensation bei einer Anwendungsfrist {#deadline-driven-compensation}
 
@@ -111,6 +111,8 @@ WorkflowStub::load('order-123')->signal('confirm');
 Eine abgelaufene Wartefrist mit erfolgreicher Kompensation schließt normal mit `status: expired` in der Ausgabe ab. Der Lauf wurde nicht durch das Engine-Zeitlimit beendet. Schlägt die Freigabeaktivität fehl, gibt `compensate()` diesen Fehler weiter. Kommt die Engine-Frist zuerst, wird der Lauf geschlossen und verbleibende Kompensation kann nicht mehr ausgeführt werden. Planen Sie ausreichend Zeit für Zustellung und Wiederholungen ein und berücksichtigen Sie eine gegebenenfalls frühere Gesamtausführungsfrist.
 
 Der gesonderte kooperative Vorgang `requestCancellation()` ermöglicht vom Aufrufer gewünschtes Aufräumen während eines aktiven Laufs. Verwenden Sie seinen begrenzten Abbruchschutz für dauerhafte Aufräumarbeit unter einer Abbruchanfrage. Eine Workflow-Zeitüberschreitung löst ihn nicht automatisch aus. Siehe [Kooperativer Abbruch](../polyglot/cancellation.md).
+
+`compensate()` selbst läuft unter einem Abbruchschutz. Eine Abbruchanforderung, die während der Kompensation eintrifft, überspringt daher keine verbleibenden Kompensationen. Siehe [Geschützte Bereinigung](./cancel-and-terminate.md#protected-cleanup).
 
 ## Reihenfolge der Kompensationen {#compensation-ordering}
 

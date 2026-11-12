@@ -151,6 +151,38 @@ A resposta inclui o resultado do comando, o ID público da instância e o motivo
 }
 ```
 
+## Limpeza protegida após uma solicitação de cancelamento {#protected-cleanup}
+
+`requestCancellation()` mantém a execução ativa. O código do workflow recebe a solicitação na próxima chamada durável como `Workflow\V2\Exceptions\WorkflowCancellationRequestedException`. Assim como `WorkflowCancelledException`, ela estende `\Error`, então `catch (\Exception $e)` não a captura. Capture-a pelo nome ou use `finally`.
+
+Execute dentro de `cancellationShield()` a limpeza que precisa de chamadas duráveis. Dentro da proteção, atividades, temporizadores e workflows filhos são executados normalmente, em vez de receberem a solicitação de novo:
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+Relançar a solicitação, ou retornar normalmente, encerra a execução como `cancelled`. A proteção não estende o prazo de limpeza definido por `requestCancellation()`, e a terminação e os tempos limite de execução continuam encerrando a execução. O `compensate()` de uma saga é executado sob proteção automaticamente. Veja [Sagas](./sagas.md). Os SDKs em modo de serviço têm a mesma proteção. Veja [Cancelamento cooperativo](/docs/polyglot/cancellation) e o site de cada SDK.
+
 ## Cancelamento exige captura explícita {#cancellation-is-not-an-error-you-catch-by-accident}
 
 Cancelamento é um resultado explícito do ciclo de vida, não um erro inesperado

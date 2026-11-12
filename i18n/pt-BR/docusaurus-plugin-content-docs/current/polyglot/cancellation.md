@@ -74,6 +74,8 @@ original. Se um worker morrer, seu substituto reproduz o mesmo ponto de entrega
 e as chamadas de limpeza concluídas antes de retomar. A expiração ou a
 terminação revoga a autoridade de execução restante.
 
+Workflows embutidos no Laravel usam `cancellationShield()`. Veja [Limpeza protegida](../features/cancel-and-terminate.md#protected-cleanup). A compensação de sagas no modo embutido e nos SDKs de PHP e Python é executada sob proteção automaticamente.
+
 Uma tentativa antiga de atividade não pode publicar um resultado depois de ser
 isolada por fencing. Efeitos externos já aceitos ainda precisam de idempotência
 ou reconciliação na aplicação.

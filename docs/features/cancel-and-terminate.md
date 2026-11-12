@@ -151,6 +151,38 @@ The response includes the command outcome, the public instance id, and the reaso
 }
 ```
 
+## Protected cleanup after a cancellation request {#protected-cleanup}
+
+`requestCancellation()` keeps the run active. Workflow code receives the request at its next durable call as a `Workflow\V2\Exceptions\WorkflowCancellationRequestedException`. Like `WorkflowCancelledException`, it extends `\Error`, so `catch (\Exception $e)` does not catch it. Catch it by name or use `finally`.
+
+Run cleanup that needs durable calls inside `cancellationShield()`. Inside the shield, activities, timers and child workflows run normally instead of receiving the request again:
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+Rethrowing the request, or returning normally, closes the run as `cancelled`. The shield does not extend the cleanup deadline set by `requestCancellation()`, and termination and the run and execution timeouts still close the run. Saga `compensate()` runs under a shield automatically. See [Sagas](./sagas.md). Service-mode SDKs have the same shield. See [Cooperative Cancellation](/docs/polyglot/cancellation) and each SDK site.
+
 ## Cancellation is not an error you catch by accident
 
 Cancellation is an explicit lifecycle outcome, not an unexpected application

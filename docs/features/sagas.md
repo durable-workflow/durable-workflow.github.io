@@ -49,9 +49,7 @@ class BookingSagaWorkflow extends Workflow
 
 When the workflow catches an exception, `$this->compensate()` runs every registered compensation in **reverse order**. In the example above, if `BookRentalCarActivity` fails, the engine cancels the hotel first and then the flight — unwinding the saga from the most recent step backward.
 
-Register each compensation after its forward activity succeeds. Replay
-reconstructs that registration order and reuses recorded activity results,
-including completed compensations.
+Activities run at least once, so a forward call can take effect and still fail from the workflow's point of view, for example after a timeout or a lost completion. Register an idempotent compensation, keyed by a stable business id, before the forward call, so it runs whether or not the forward step's outcome is known. Registering after the forward call succeeds is fine when the compensation needs the forward result and the forward step has no external effect until it succeeds, as in the example above. Replay reconstructs the registration order and reuses recorded activity results, including completed compensations.
 
 ## Deadline-driven compensation
 
@@ -133,6 +131,8 @@ caller-requested cleanup while a run is active. Use its bounded cancellation
 shield for durable cleanup under a cancellation request. It is not triggered
 automatically by a workflow timeout. See
 [Cooperative Cancellation](../polyglot/cancellation.md).
+
+`compensate()` itself runs under a cancellation shield, so a cancellation request that arrives during compensation does not skip the remaining compensations. See [Protected cleanup](./cancel-and-terminate.md#protected-cleanup).
 
 ## Compensation ordering
 

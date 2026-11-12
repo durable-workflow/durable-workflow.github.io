@@ -208,6 +208,8 @@ Die Frist wird bei der Planung einmal berechnet und nie zurückgesetzt. Bei ihre
 
 Bei einer Aktivität in der Warteschlange beginnt die erste Frist, wenn die Laufzeit sie beansprucht, also vor der Aufgabenauslieferung und dem Anwendungscode. Jeder angenommene Heartbeat setzt die Frist auf seinen aufgezeichneten Laufzeitzeitpunkt plus das konfigurierte Zeitlimit. Er addiert keine Zeit zur vorherigen Frist und eröffnet beim Empfang der Antwort kein neues Zeitfenster. Planen Sie Spielraum für Auslieferung, begrenzte Arbeit, Ausführungspausen, Anfragelatenz und Transportwiederholungen ein. Senden Sie Heartbeats deutlich vor Ablauf des Zeitfensters. Ein abgelaufener oder ersetzter Versuch erhält durch einen späten Heartbeat keine Befugnis zurück. Sind weitere Versuche möglich, wird ein neuer Versuch mit erneuerter Schedule-to-start-Frist geplant, sofern sie konfiguriert ist. Andernfalls wird eine terminale Zeitüberschreitung gespeichert.
 
+Das Verschieben der Frist erzeugt keinen Verlauf. Ein Heartbeat schreibt ein `ActivityHeartbeatRecorded`-Ereignis nur, wenn sich sein Fortschritt geändert hat, und höchstens einmal pro Aufzeichnungsintervall. Sie können also so oft Heartbeats senden, wie dieser Timeout es erfordert. Siehe [Heartbeats](./heartbeats.md).
+
 ```php
 use Workflow\V2\Activity;
 
