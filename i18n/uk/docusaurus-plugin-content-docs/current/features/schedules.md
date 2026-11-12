@@ -230,7 +230,11 @@ ScheduleManager::update(
 );
 ```
 
-Оновлення виразу cron або часового поясу перераховує `next_fire_at`.
+Лише зміна специфікації (вирази cron, інтервали або часовий пояс) чи джитера перераховує `next_fire_at`. Інші оновлення зберігають його, тому не можуть пропустити належне спрацювання. Подія `ScheduleUpdated` перелічує в `changed_fields` лише поля, збережене значення яких змінилося.
+
+Оновлення, яке нічого не змінює, не записує подію і зберігає `next_fire_at` разом із джитером. Для щойно завантаженого розкладу `wasChanged()` на повернутій моделі дорівнює `false`.
+
+Зміна дії (тип workflow, аргументи, маршрутизація черги або тайм-аути) відкидає спрацювання, буферизовані за `BufferOne` або `BufferAll`, бо їх було захоплено для старої дії. Кожне відкинуте спрацювання записується як подія `ScheduleTriggerSkipped` з причиною `action_changed` і його `occurrence_time`.
 
 ### Видалення {#delete}
 
@@ -238,7 +242,41 @@ ScheduleManager::update(
 ScheduleManager::delete($schedule);
 ```
 
-Видалення є м’яким: запис залишається зі станом `deleted` і часовою міткою `deleted_at`. Видалений розклад не можна призупинити, відновити, оновити або запустити.
+Видалення є м’яким: запис залишається зі станом `deleted` і часовою міткою `deleted_at`. Видалений розклад не можна призупинити, відновити, оновити або запустити. Його ідентифікатор лишається зайнятим. Див. [Застосування з конфігурації](#apply-from-configuration).
+
+### Застосування з конфігурації {#apply-from-configuration}
+
+Інструменти розгортання можуть застосовувати ті самі визначення розкладів під час кожного розгортання. Створіть кожен розклад і оновіть його, якщо ідентифікатор уже зайнятий:
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+Повторне застосування незміненого визначення нічого не записує, тож його можна запускати під час кожного розгортання.
+
+Ідентифікатори розкладів не можна використати повторно. Видалений розклад, зокрема видалений після вичерпання `max_runs`, зберігає свій ідентифікатор. Створення розкладу з цим ідентифікатором викидає `ScheduleAlreadyExistsException` з `existingStatus` `deleted`. Використайте новий ідентифікатор.
+
+Нативний Server застосовує те саме правило: створення розкладу із зайнятим ідентифікатором повертає `409 schedule_already_exists`. Нативний Server досі записує подію `ScheduleUpdated` і перераховує `next_fire_at` під час кожного оновлення, навіть незміненого ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
 
 ### Опис {#describe}
 
@@ -509,7 +547,7 @@ Jitter застосовується лише до часу спрацюванн�
 | `ScheduleResumed` | Розклад відновлено | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | Змінено cron, часовий пояс, специфікацію, дію або політику розкладу | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | Розклад почав запуск workflow | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | Спрацювання пропущено через політику перекриття, недопустимий стан або вичерпані дії | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | Спрацювання пропущено через політику перекриття, недопустимий стан або вичерпані дії | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | Розклад м’яко видалено явним викликом або через вичерпання `max_runs` (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
 
 `command_context` містить суб’єкта, ID запиту, джерело й причину, які записує

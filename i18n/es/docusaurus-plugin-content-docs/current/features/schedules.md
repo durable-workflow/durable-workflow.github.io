@@ -220,7 +220,11 @@ ScheduleManager::update(
 );
 ```
 
-Cambiar la expresión cron o zona horaria recalcula `next_fire_at`.
+Solo un cambio en la especificación (expresiones cron, intervalos o zona horaria) o en el jitter recalcula `next_fire_at`. Las demás actualizaciones lo conservan, así que no pueden saltarse una activación pendiente. El evento `ScheduleUpdated` lista en `changed_fields` solo los campos cuyo valor guardado cambió.
+
+Una actualización que no cambia nada no registra ningún evento y conserva `next_fire_at`, incluido su jitter. En un programa recién cargado, `wasChanged()` del modelo devuelto es `false`.
+
+Cambiar la acción (tipo de workflow, argumentos, enrutamiento de cola o timeouts) descarta las activaciones en búfer bajo `BufferOne` o `BufferAll`, porque se capturaron para la acción anterior. Cada activación descartada se registra como un evento `ScheduleTriggerSkipped` con el motivo `action_changed` y su `occurrence_time`.
 
 ### Eliminar {#delete}
 
@@ -228,7 +232,41 @@ Cambiar la expresión cron o zona horaria recalcula `next_fire_at`.
 ScheduleManager::delete($schedule);
 ```
 
-La eliminación es lógica: la fila permanece con estado `deleted` y marca `deleted_at`. Ya no puede pausarse, reanudarse, actualizarse ni activarse.
+La eliminación es lógica: la fila permanece con estado `deleted` y marca `deleted_at`. Ya no puede pausarse, reanudarse, actualizarse ni activarse. Su id sigue ocupado. Consulta [Aplicar desde la configuración](#apply-from-configuration).
+
+### Aplicar desde la configuración {#apply-from-configuration}
+
+Las herramientas de despliegue pueden aplicar las mismas definiciones de programas en cada despliegue. Crea cada programa y actualízalo cuando su id ya esté ocupado:
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+Volver a aplicar una definición sin cambios no registra nada, así que es seguro ejecutarlo en cada despliegue.
+
+Los ids de programa no se pueden reutilizar. Un programa eliminado, incluido uno eliminado al agotar `max_runs`, conserva su id. Crear un programa con ese id lanza `ScheduleAlreadyExistsException` con `existingStatus` `deleted`. Usa un id nuevo.
+
+El Server nativo aplica la misma regla de ids: crear un programa con un id ocupado devuelve `409 schedule_already_exists`. El Server nativo todavía registra un evento `ScheduleUpdated` y recalcula `next_fire_at` en cada actualización, incluso sin cambios ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
 
 ### Describir {#describe}
 
@@ -484,7 +522,7 @@ Cada transición se registra en su flujo propio. Las secuencias empiezan en `1` 
 | `ScheduleResumed` | Al reanudarla | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | Al cambiar cron, zona, especificación, acción o política | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | Al iniciar una ejecución desde ella | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | Al omitir por solapamiento, estado no activable o acciones agotadas | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | Al omitir por solapamiento, estado no activable o acciones agotadas | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | Al eliminar lógicamente, explícitamente o por agotar `max_runs` (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
 
 `command_context` contiene principal, id de solicitud, origen y motivo registrados por `ScheduleManager` cuando se pasa un `CommandContext`. Es opcional; sin contexto se omite la clave en lugar de guardar un valor vacío.
