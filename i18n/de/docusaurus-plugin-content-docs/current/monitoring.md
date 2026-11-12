@@ -97,6 +97,62 @@ Verwenden Sie die [Betriebsgrenzen für Operatoren](./operator-operating-envelop
 
 Die Workflow-Detailansicht zeigt die dauerhafte Zeitleiste eines Laufes: Aktivitäten, Signale, Timer und untergeordnete Workflows in ihrer Reihenfolge, jeweils mit Eingaben, Ausgaben und Zeitangaben.
 
+## Hängende Läufe {#stuck-runs}
+
+Jeder offene Lauf hat einen `liveness_state`, der angibt, worauf er wartet, und einen Satz in `liveness_reason`. Beide erscheinen in der Laufdetailansicht, in Listenzeilen und in Verlaufsexporten.
+
+| Zustand | Bedeutung |
+| --- | --- |
+| `workflow_task_ready`, `activity_task_ready`, `timer_task_ready` | Ein Task ist für einen Worker bereit. |
+| `workflow_task_leased`, `activity_task_leased`, `timer_task_leased` | Ein Worker hält den Task. |
+| `workflow_task_claim_failed`, `activity_task_claim_failed`, `timer_task_claim_failed` | Ein Worker wollte den Task übernehmen und wurde abgewiesen, etwa durch eine Prüfung der Backend-Fähigkeiten. |
+| `workflow_task_waiting_for_compatible_worker`, `activity_task_waiting_for_compatible_worker`, `timer_task_waiting_for_compatible_worker` | Kein registrierter Worker ist mit dem Lauf kompatibel. |
+| `timer_scheduled` | Wartet auf einen Timer. |
+| `waiting_for_signal`, `waiting_for_condition`, `waiting_for_child` | Wartet auf ein Signal, eine Bedingungsänderung oder einen Child-Workflow. |
+| `activity_running_without_task` | Eine Aktivität läuft ohne offenen Task. Die Reparatur wartet, damit die Arbeit nicht doppelt läuft. |
+| `workflow_replay_blocked` | Der Workflow-Task kann den aufgezeichneten Verlauf nicht wiedergeben, etwa nach einer inkompatiblen Codeänderung. Der Lauf bleibt offen, bis der Code korrigiert ist. |
+| `repair_needed` | Der Lauf hat keinen vertrauenswürdigen Weg zum Fortfahren, etwa nach einem abgelaufenen Lease, einer fehlgeschlagenen Zustellung oder einem fehlenden Task. Dazu gehören auch Workflow-Tasks im Service-Modus, die Worker immer wieder fehlschlagen lassen. |
+| `closed` | Der Lauf ist geschlossen. |
+
+### Filter für Task-Probleme {#task-problem-filter}
+
+Läufe mit Problemen bei Workflow-Tasks haben `task_problem = true`. Filtern Sie Lauflisten nach `task_problem` (Task Problem in Waterline). `task_problem_badge.code` nennt die Art:
+
+- `replay_blocked` (Task Failure): Der Workflow-Task kann nicht wiedergegeben werden.
+- `active` (Task Problem): Workflow-Task-Arbeit fehlt, wird wiederholt oder kann gerade nicht zugestellt werden.
+- `history` (Task History): Der Lauf brauchte früher eine Workflow-Task-Reparatur oder eine Wiederherstellung der Wiedergabe.
+
+### Metriken und Health {#stuck-run-metrics}
+
+Eingebettete Operator-Metriken (`operator_metrics` in den Waterline-Statistiken) zählen offene Läufe in jedem Problemzustand. Geschlossene Läufe werden nicht gezählt.
+
+| Feld | Bedeutung |
+| --- | --- |
+| `operator_metrics.runs.replay_blocked` | Offene Läufe in `workflow_replay_blocked`. |
+| `operator_metrics.runs.oldest_replay_blocked_at`, `operator_metrics.runs.max_replay_blocked_age_ms` | Die letzte Aktualisierung des ältesten wiedergabeblockierten Laufs und ihr Alter. |
+| `operator_metrics.runs.repair_needed`, `operator_metrics.runs.oldest_repair_needed_at`, `operator_metrics.runs.max_repair_needed_age_ms` | Dasselbe für `repair_needed`. |
+
+Die beratende Health-Prüfung `replay_blocked_runs` (Kategorie `correctness`) meldet `warning`, solange ein offener Lauf wiedergabeblockiert ist.
+
+Der native Server meldet `repair_needed`, aber noch nicht `replay_blocked` oder die Prüfung `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+
+### Fehlgeschlagene Workflow-Tasks im Server {#workflow-task-failure-metric}
+
+Der Server meldet fehlgeschlagene Workflow-Tasks in `GET /api/system/metrics` unter `metrics.dw_workflow_task_consecutive_failures`:
+
+- `max_consecutive_failures`: die höchste Versuchsanzahl unter den fehlgeschlagenen Workflow-Tasks im Namespace. Der erste Fehlschlag zählt als eins.
+- `failed_task_count`: wie viele Workflow-Tasks fehlgeschlagen sind.
+- `by_workflow_type`: bis zu 20 Workflow-Typen, der höchste `max_consecutive_failures` zuerst, jeweils mit eigenem `max_consecutive_failures` und `failed_task_count`. `suppressed_workflow_type_count` und `suppressed_failed_task_count` decken den Rest ab.
+
+Alarmieren Sie, wenn `max_consecutive_failures` weiter steigt: Dann schlägt ein Workflow-Task auf Workern immer wieder fehl, statt abzuschließen.
+
+### Reparatur {#repair-stuck-runs}
+
+- `workflow_replay_blocked`: Stellen Sie Workflow-Code bereit, der den aufgezeichneten Verlauf wiedergeben kann (siehe [Versionierung](./features/versioning.md)), und reparieren Sie dann den Lauf.
+- `repair_needed`: Reparieren Sie den Lauf oder überlassen Sie es dem Reparaturdurchlauf (`workflow:v2:repair-pass` eingebettet, `dw system:repair-pass` im Server). Der Server akzeptiert auch `POST /api/workflows/{workflowId}/runs/{runId}/repair`.
+
+Was die Reparatur tut, beschreibt [Fehler und Wiederherstellung](./failures-and-recovery.md).
+
 ## Waterline-Bereitstellung und Zugriff {#waterline-deployment-and-access}
 
 ### Eingebettetes Laravel {#embedded-laravel}
@@ -164,6 +220,8 @@ docker run --detach \
   --env APP_URL=https://waterline.example.com \
   durableworkflow/waterline:%%artifact.waterlineVersion%%
 ```
+
+Verwenden Sie das Image 2.16.0 oder neuer. Das Image 2.14.0 und das auf Docker Hub veröffentlichte, aber nie angekündigte Image 2.15.0 enthalten Symfony 7.4.21, das von CVE-2026-118514 und CVE-2026-118516 betroffen ist. Ein eingebettetes Waterline verwendet die Symfony-Pakete Ihrer Anwendung, aktualisieren Sie sie also dort.
 
 Öffnen Sie `/waterline` über die durch `APP_URL` dargestellte URL. Das Image lauscht auf Containerport `8080`. Setzen Sie `PORT` nur, wenn Sie diesen internen Port bewusst ändern. `WATERLINE_PATH` ändert das Standard-URL-Präfix `waterline`. Das Repository veröffentlicht außerdem eine [Docker-Compose-Dienstdefinition](https://github.com/durable-workflow/waterline/blob/main/deploy/docker-compose.service.yml) mit derselben Verbindungsgrenze.
 

@@ -71,6 +71,14 @@ Server negocia las cabeceras del protocolo de workers dentro de la versión prin
 
 La negociación rechaza las incompatibilidades. Se rechaza una cabecera ausente o malformada, otra versión principal o una versión menor del worker superior a la anunciada por el servidor. Las versiones del SDK y de Server se gestionan por separado. Sus manifiestos de protocolo en runtime determinan la compatibilidad.
 
+## Actualizar a Rust SDK 4.13 {#upgrade-to-4-13}
+
+- **Tokens estáticos.** La construcción del cliente ahora rechaza un token estático compartido, de control o de worker mal formado, incluidas opciones no usadas o enmascaradas. El diagnóstico solo nombra la opción. Revise los valores de token configurados antes de actualizar. Los tokens vacíos mantienen su precedencia.
+- **Backoff de actividades locales.** Los reintentos después del final de la lista de backoff repiten la última entrada en lugar de reintentar de inmediato, como las actividades programadas por el Server.
+- **Actividades de una ejecución.** `Client::get_run_activities` devuelve metadatos tipados de actividades e intentos, incluido el progreso de heartbeat.
+
+Consulte el [registro de cambios de 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
+
 ## Plazos de espera de condiciones y actualización de workers {#condition-wait-deadlines}
 
 El SDK Rust 4.11.2 mide el timeout de un `wait_condition` fuera de un grupo

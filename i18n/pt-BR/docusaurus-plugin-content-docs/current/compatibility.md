@@ -101,12 +101,12 @@ O pacote embutido e o SDK de modo de serviço têm contratos separados.
 
 | Linha do pacote | PHP | Laravel |
 | --- | --- | --- |
-| Workflow embutido 2.22 atual | PHP 8.2+ da linha 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| Workflow embutido 2.24 atual | PHP 8.2+ da linha 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | Workflow embutido 2.20.5 | PHP `^8.1`, respeitando o mínimo do framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
-| SDK PHP 3.11 publicado | SDK básico PHP `^8.1`; a ponte Laravel exige PHP `^8.2`, e PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| SDK PHP 3.14 publicado | SDK básico PHP `^8.1`; a ponte Laravel exige PHP `^8.2`, e PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.9.5 | SDK básico PHP `^8.1`; a ponte Laravel também segue o mínimo do framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 
-As autoridades são o [contrato embutido publicado](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+As autoridades são o [contrato embutido publicado](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
 e o `composer.json` de cada versão. A versão embutida atual foi verificada com
 Laravel 12/PHP 8.2–8.4 e Laravel 13/PHP 8.3–8.4. Ela remove suporte a PHP 8.1 e
 Laravel 10/11. Isso preserva o [guia histórico do v1 estável](/docs/1.x/installation/)
@@ -120,8 +120,8 @@ siga o [guia de adoção](/docs/laravel-adoption) para drenagem ou coexistência
 Alterar a restrição Composer não migra o histórico durável.
 
 O SDK PHP 3.10 levou a ponte Laravel do modo de serviço aos mesmos mínimos de
-PHP e Laravel do Workflow 2.21 e removeu o suporte a Laravel 10/11; a 3.11 os
-mantém. Seu provider recusa versões de framework e PHP não suportadas ou
+PHP e Laravel do Workflow 2.21 e removeu o suporte a Laravel 10/11; da 3.11 à 3.14 os
+mantêm. Seu provider recusa versões de framework e PHP não suportadas ou
 desconhecidas antes de registrar configuração, clientes ou workers. Aplicações
 existentes com o SDK 3.9.x mantêm o próprio contrato enquanto a plataforma é
 atualizada. Consulte as
@@ -137,6 +137,15 @@ somente restaurando um backup feito antes da atualização. Versões anteriores
 podem descartar a política e misturar a cadeia de espera, e atualizar novamente
 não repara esse histórico. Consulte o
 [changelog da 2.22.0](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md).
+
+O Workflow 2.23 e o 2.24 mantêm os pisos de suporte do 2.21 e o protocolo de workers embutido `1.22`. O 2.23 não adiciona migração de banco de dados. O 2.24 adiciona uma, então execute `php artisan migrate` ao atualizar. Ela adiciona a `activity_attempts` as colunas anuláveis `last_heartbeat_progress`, `last_heartbeat_progress_at` e `last_heartbeat_recorded_at`, sem preenchimento retroativo. Mudanças de comportamento para verificar antes de atualizar:
+
+- A partir do 2.24, um heartbeat grava um evento `ActivityHeartbeatRecorded` somente quando o progresso mudou, no máximo uma vez a cada max(timeout de heartbeat, 60 segundos). Veja [Heartbeats](./features/heartbeats.md).
+- A partir do 2.24, criar um schedule com um id já usado, inclusive o de um schedule excluído ou esgotado, lança `ScheduleAlreadyExistsException`, e reaplicar um schedule inalterado não registra nada.
+- A partir do 2.23.1, uma nova atividade com `maxAttempts` menor que 1 faz a execução falhar em vez de rodar uma vez. Para tentativas ilimitadas, omita `maxAttempts` e defina `$tries` da classe da atividade como 0. Históricos gravados antes continuam sendo reproduzidos.
+- A partir do 2.23.1, a compensação de saga embutida roda sob um escudo de cancelamento, e um update aceito enquanto a execução está terminando ainda recebe seu resultado.
+
+Veja as notas de versão do [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) e [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
 
 ## Níveis de estabilidade {#stability-levels}
 

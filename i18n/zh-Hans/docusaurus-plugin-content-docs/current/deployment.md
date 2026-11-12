@@ -169,7 +169,38 @@ docker compose --env-file durable-workflow.prod.env \
 
 原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
+### 升级到 Server 3.5.0 {#native-schema-upgrade-3-5}
+
+Server 3.5.0 新增一张仅用于 native 的表 `dw_run_command_contracts`。native 架构在 MySQL、MariaDB 和 PostgreSQL 上从 11 升到 12，在 SQLite 上从 10 升到 11。升级只创建该表及其索引，不改写任何行。Server 3.4.x 与 3.3.x 的架构相同，因此从 3.3.x 或 3.4.x 升级只有这一个架构步骤。在旧架构上启动的 Server 3.5.0 会以 `native_schema_upgrade_required` 拒绝启动。
+
+对于单节点 Compose 部署：
+
+1. 停止 Server，保持 MySQL 运行：
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. 备份 MySQL 和 `server_storage`，并记录当前镜像引用。此备份是回到 3.4.x 的唯一途径。
+3. 将 `DW_SERVER_IMAGE` 改为 3.5.0 镜像，拉取该镜像，并运行一次 `schema-upgrade`：
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   它会输出升级前后的架构版本，例如 `"from_schema_version":11,"schema_version":12,"status":"upgraded"`。在已是最新的数据库上再次运行时，它报告 `"status":"current"`。
+4. 使用 `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` 启动 Server，然后确认 `/api/ready`、`/api/cluster/info`（`version` 为 `3.5.0`）和 Worker 注册。
+
+在 MySQL 和 MariaDB 上，再次运行 `schema-upgrade` 即可继续被中断的升级。回滚到 3.4.x 需要备份：3.4.x Server 会以 `native_schema_newer_than_binary` 拒绝已升级的数据库。从 3.0.x 到 3.2.x，同一命令也会应用下一节所述的早期步骤。Worker 协议仍为 `1.20`，控制平面仍为版本 `2`。
+
+正在运行的工作流有哪些变化，请见 [3.5.0 发布说明](https://github.com/durable-workflow/server/releases/tag/3.5.0)：在 worker 注册前启动的运行，其 update 现在会绑定该 worker 的契约而不再被拒绝；支持带历史后缀的 sticky execution；维护循环每分钟清理过期运行。
+
 ### 从 Server 3.0.x 升级到 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+以下是早期的架构步骤。如果从 3.0.x 直接升级到 3.5.0，请在第 3 步使用 3.5.0 镜像：它的 `schema-upgrade` 会一并应用这些步骤和 3.5.0 的步骤，下面关于 PostgreSQL 索引构建和 MySQL 续做的说明仍然适用。
 
 从 3.0.x 到 Server 3.3.2 跨越三个次版本，并会变更原生数据库模式。在 MySQL、MariaDB 和 PostgreSQL 上，模式版本从 8（3.0.x 和 3.1.0）经 10（3.2.0）升至 11（3.3.0 至 3.3.2）。在 SQLite 上，模式版本从 8 升至 10。Server 从不在启动时升级其数据库模式：在版本 8 的数据库上启动 3.3.2 会以 `native_schema_upgrade_required` 拒绝启动，因此仅修改 `DW_SERVER_IMAGE` 会使新 Server 无法启动。3.3.2 镜像的 `schema-upgrade` 命令可将版本 8 的数据库直接升级。[3.3.0 升级说明](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade)描述了这一步骤，Helm chart 的 [Chart 1.1.0 / Server 3.3.2 说明](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)列出了各模式升级步骤以及从 3.0.5 到 3.3.2 的运行时变更。
 
@@ -361,6 +392,8 @@ Chart 1.x 默认运行原生 Server（`runtime: native`）：一个 Server Deplo
 现有 PHP 2.x 发布不会在普通升级中迁移到原生 Server：在你显式设置 `runtime` 之前，Chart 会拒绝升级。设置 `runtime: php` 可保留 PHP 2.x 的 Worker、调度器、bootstrap 任务和 Redis。要迁移到 `runtime: native`，请按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)操作，并在接管完成之前保持 `runtime: php`。参见 Chart 的 [UPGRADING 说明](%%artifact.helmChartUpgradeUrl%%)。
 
 Chart 1.1.0 将默认镜像从 Server 3.0.5 改为 3.3.2，后者需要执行从 8 到 11 的[原生数据库模式升级](#native-schema-upgrade-3-0-to-3-3)。从 Chart 1.0.x 执行普通 `helm upgrade` 只会更换镜像，新 Pod 会以 `native_schema_upgrade_required` 拒绝启动。请按照 Chart 的 [Chart 1.1.0 / Server 3.3.2 步骤](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)操作：在关闭自动扩缩的情况下将 Server 缩容至零，备份数据库，然后使用 `native.schemaUpgrade.enabled=true` 升级到 Chart 1.1.0。其 `pre-upgrade` 钩子会在新 Pod 启动前运行一次 `schema-upgrade`，且仅在 Helm 的 `lookup` 显示所有 Server 均已停止时运行。Argo CD、Flux 和 `helm template` 渲染会拒绝该钩子；请改用 Chart README 中的手动 Job。`helm rollback` 回到 Chart 1.0.x 修订版本无法让 Server 恢复运行，因为 3.0.x 会拒绝已升级的数据库：请改为恢复备份。
+
+Chart 1.2.0 将默认镜像改为 Server 3.4.0，没有架构变化，因此从 chart 1.1.0 只需普通的 `helm upgrade`。native Pod 还增加了 `preStop` 休眠（`native.preStopSleepSeconds`，默认 5）和 70 秒的终止宽限期。Chart 1.3.0 将默认镜像改为 Server 3.5.0，需要[将架构从 11 升级到 12](#native-schema-upgrade-3-5)：将 Server 缩容到零，备份数据库，使用 `native.schemaUpgrade.enabled=true` 运行 `helm upgrade`（或手动 Job），然后恢复副本数。参见该 chart 的 [Chart 1.3.0 / Server 3.5.0 说明](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native)。回到 chart 1.2.0 需要恢复该备份。
 
 ### 选择 Chart 版本 {#helm-chart-selection}
 

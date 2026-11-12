@@ -136,6 +136,62 @@ The workflow detail view shows the durable timeline for a single run: the
 activities, signals, timers, and child workflows that happened in order,
 each with its inputs, outputs, and timing.
 
+## Stuck runs
+
+Every open run has a `liveness_state` that says what it is waiting for, and a `liveness_reason` sentence. Both appear on run detail, list rows and history exports.
+
+| State | Meaning |
+| --- | --- |
+| `workflow_task_ready`, `activity_task_ready`, `timer_task_ready` | A task is ready for a worker. |
+| `workflow_task_leased`, `activity_task_leased`, `timer_task_leased` | A worker holds the task. |
+| `workflow_task_claim_failed`, `activity_task_claim_failed`, `timer_task_claim_failed` | A worker tried to claim the task and was refused, for example by a backend capability check. |
+| `workflow_task_waiting_for_compatible_worker`, `activity_task_waiting_for_compatible_worker`, `timer_task_waiting_for_compatible_worker` | No registered worker is compatible with the run. |
+| `timer_scheduled` | Waiting for a timer. |
+| `waiting_for_signal`, `waiting_for_condition`, `waiting_for_child` | Waiting for a signal, a condition change or a child workflow. |
+| `activity_running_without_task` | An activity is running without an open task. Repair waits so the work is not run twice. |
+| `workflow_replay_blocked` | The workflow task cannot replay the recorded history, for example after an incompatible code change. The run stays open until the code is fixed. |
+| `repair_needed` | The run has no trusted way to continue, for example after an expired lease, a failed dispatch or a missing task. This includes service-mode workflow tasks that workers keep failing. |
+| `closed` | The run is closed. |
+
+### Task problem filter
+
+Runs with workflow-task trouble have `task_problem = true`. Filter run lists on `task_problem` (Task Problem in Waterline). `task_problem_badge.code` says which kind:
+
+- `replay_blocked` (Task Failure): the workflow task cannot replay.
+- `active` (Task Problem): workflow-task work is missing, retrying or cannot be delivered right now.
+- `history` (Task History): the run needed workflow-task repair or replay recovery earlier.
+
+### Metrics and health
+
+Embedded operator metrics (`operator_metrics` in Waterline stats) count open runs in each problem state. Closed runs are not counted.
+
+| Field | Meaning |
+| --- | --- |
+| `operator_metrics.runs.replay_blocked` | Open runs in `workflow_replay_blocked`. |
+| `operator_metrics.runs.oldest_replay_blocked_at`, `operator_metrics.runs.max_replay_blocked_age_ms` | The last update of the stalest replay-blocked run, and its age. |
+| `operator_metrics.runs.repair_needed`, `operator_metrics.runs.oldest_repair_needed_at`, `operator_metrics.runs.max_repair_needed_age_ms` | The same for `repair_needed`. |
+
+The advisory `replay_blocked_runs` health check (category `correctness`) reports `warning` while any open run is replay-blocked.
+
+Native Server reports `repair_needed` but not yet `replay_blocked` or the `replay_blocked_runs` check ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+
+### Server workflow-task failures
+
+Server reports failed workflow tasks in `GET /api/system/metrics` under `metrics.dw_workflow_task_consecutive_failures`:
+
+- `max_consecutive_failures`: the highest attempt count among failed workflow tasks in the namespace. The first failure counts as one.
+- `failed_task_count`: how many workflow tasks are failed.
+- `by_workflow_type`: up to 20 workflow types, highest `max_consecutive_failures` first, each with its own `max_consecutive_failures` and `failed_task_count`. `suppressed_workflow_type_count` and `suppressed_failed_task_count` cover the rest.
+
+Alert when `max_consecutive_failures` keeps rising: a workflow task keeps failing on workers instead of completing.
+
+### Repair
+
+- `workflow_replay_blocked`: deploy workflow code that can replay the recorded history (see [Versioning](./features/versioning.md)), then repair the run.
+- `repair_needed`: repair the run, or let the repair pass do it (`workflow:v2:repair-pass` embedded, `dw system:repair-pass` on Server). Server also accepts `POST /api/workflows/{workflowId}/runs/{runId}/repair`.
+
+See [Failures and Recovery](./failures-and-recovery.md) for what repair does.
+
 ## Waterline deployment and access
 
 ### Embedded Laravel
@@ -214,6 +270,11 @@ docker run --detach \
   --env APP_URL=https://waterline.example.com \
   durableworkflow/waterline:%%artifact.waterlineVersion%%
 ```
+
+Run image 2.16.0 or later. The 2.14.0 image, and the 2.15.0 image that was
+published to Docker Hub but never announced, ship Symfony 7.4.21, which is
+affected by CVE-2026-118514 and CVE-2026-118516. An embedded Waterline uses
+your application's own Symfony packages, so update them there.
 
 Open `/waterline` through the URL represented by `APP_URL`. The image listens
 on container port `8080`; set `PORT` only when you intentionally change that

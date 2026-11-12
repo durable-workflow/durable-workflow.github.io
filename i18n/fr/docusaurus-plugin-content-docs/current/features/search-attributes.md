@@ -99,6 +99,16 @@ Chaque appel :
 
 À la relecture, les événements enregistrés sont réutilisés sans réexécuter la modification, préservant le déterminisme.
 
+## Enregistrer des attributs {#registering-attributes}
+
+Sur le Server, vous pouvez enregistrer un attribut de recherche avec un type via `POST /api/search-attributes`. Une clé enregistrée doit ensuite porter une valeur de son type, et un démarrage ou un upsert avec un mauvais type est refusé.
+
+L'enregistrement ne contraint que les clés que vous enregistrez. À partir du Server natif 3.5.0, une clé non enregistrée reste acceptée et son type est déduit, comme dans un namespace sans attribut enregistré. Enregistrer un attribut ne casse pas les workflows en cours qui font un upsert d'autres clés. PHP Server 2.x et le Server natif antérieur à 3.5.0 refusent toute clé non enregistrée dès qu'un attribut est enregistré. Sur ces versions, enregistrez donc toutes les clés utilisées par vos workflows avant d'enregistrer la première.
+
+Supprimer un enregistrement arrête la vérification de cette clé. Les valeurs stockées et les workflows en cours ne changent pas, et les upserts ultérieurs de la clé sont de nouveau déduits.
+
+Pour changer le type d'un attribut, enregistrez un nouveau nom d'attribut avec le nouveau type, modifiez vos workflows pour qu'ils l'écrivent, puis filtrez sur le nouveau nom une fois les exécutions existantes à jour. Supprimer puis réenregistrer le même nom avec un autre type laisse les valeurs antérieures dans l'ancien type.
+
 ## Comportement de fusion {#merging-behavior}
 
 Les attributs fusionnent entre plusieurs modifications dans une même exécution. Chaque modification superpose les nouvelles clés aux existantes :

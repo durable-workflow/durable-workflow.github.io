@@ -134,6 +134,62 @@ Rust SDK **4.7.0 або новіший** надає змінні recorder мет
 signal, timer і дочірні workflow в порядку подій, кожен із входами,
 виходами й часом.
 
+## Завислі запуски {#stuck-runs}
+
+Кожен відкритий запуск має `liveness_state`, який показує, на що він чекає, і речення в `liveness_reason`. Обидва поля є в деталях запуску, рядках списків і експорті історії.
+
+| Стан | Значення |
+| --- | --- |
+| `workflow_task_ready`, `activity_task_ready`, `timer_task_ready` | Завдання готове для воркера. |
+| `workflow_task_leased`, `activity_task_leased`, `timer_task_leased` | Завдання утримує воркер. |
+| `workflow_task_claim_failed`, `activity_task_claim_failed`, `timer_task_claim_failed` | Воркер спробував взяти завдання й отримав відмову, наприклад через перевірку можливостей бекенду. |
+| `workflow_task_waiting_for_compatible_worker`, `activity_task_waiting_for_compatible_worker`, `timer_task_waiting_for_compatible_worker` | Жоден зареєстрований воркер не сумісний із запуском. |
+| `timer_scheduled` | Чекає на таймер. |
+| `waiting_for_signal`, `waiting_for_condition`, `waiting_for_child` | Чекає на сигнал, зміну умови або дочірній workflow. |
+| `activity_running_without_task` | Активність виконується без відкритого завдання. Відновлення чекає, щоб робота не виконалася двічі. |
+| `workflow_replay_blocked` | Завдання workflow не може відтворити записану історію, наприклад після несумісної зміни коду. Запуск лишається відкритим, доки код не виправлено. |
+| `repair_needed` | Запуск не має надійного способу продовжити, наприклад після простроченої оренди, невдалої доставки або відсутнього завдання. Сюди входять і завдання workflow у сервісному режимі, які воркери раз у раз провалюють. |
+| `closed` | Запуск закрито. |
+
+### Фільтр проблем із завданнями {#task-problem-filter}
+
+Запуски з проблемами в завданнях workflow мають `task_problem = true`. Фільтруйте списки за `task_problem` (Task Problem у Waterline). `task_problem_badge.code` вказує вид:
+
+- `replay_blocked` (Task Failure): завдання workflow не може відтворитися.
+- `active` (Task Problem): роботи завдання workflow бракує, вона повторюється або зараз не може бути доставлена.
+- `history` (Task History): раніше запуск потребував відновлення завдання workflow або відтворення.
+
+### Метрики та стан {#stuck-run-metrics}
+
+Вбудовані операторські метрики (`operator_metrics` у статистиці Waterline) рахують відкриті запуски в кожному проблемному стані. Закриті запуски не враховуються.
+
+| Поле | Значення |
+| --- | --- |
+| `operator_metrics.runs.replay_blocked` | Відкриті запуски в `workflow_replay_blocked`. |
+| `operator_metrics.runs.oldest_replay_blocked_at`, `operator_metrics.runs.max_replay_blocked_age_ms` | Останнє оновлення найдавнішого заблокованого запуску та його вік. |
+| `operator_metrics.runs.repair_needed`, `operator_metrics.runs.oldest_repair_needed_at`, `operator_metrics.runs.max_repair_needed_age_ms` | Те саме для `repair_needed`. |
+
+Дорадча перевірка стану `replay_blocked_runs` (категорія `correctness`) повідомляє `warning`, доки будь-який відкритий запуск заблоковано на відтворенні.
+
+Нативний Server повідомляє `repair_needed`, але ще не `replay_blocked` і не перевірку `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+
+### Збої завдань workflow у Server {#workflow-task-failure-metric}
+
+Server повідомляє про невдалі завдання workflow у `GET /api/system/metrics`, у полі `metrics.dw_workflow_task_consecutive_failures`:
+
+- `max_consecutive_failures`: найбільша кількість спроб серед невдалих завдань workflow у просторі імен. Перший збій рахується як один.
+- `failed_task_count`: скільки завдань workflow завершилися невдачею.
+- `by_workflow_type`: до 20 типів workflow, спочатку з найбільшим `max_consecutive_failures`, кожен із власними `max_consecutive_failures` і `failed_task_count`. `suppressed_workflow_type_count` і `suppressed_failed_task_count` охоплюють решту.
+
+Сповіщайте, коли `max_consecutive_failures` зростає: завдання workflow раз у раз провалюється на воркерах замість завершення.
+
+### Відновлення {#repair-stuck-runs}
+
+- `workflow_replay_blocked`: розгорніть код workflow, який може відтворити записану історію (див. [Версіонування](./features/versioning.md)), а потім відновіть запуск.
+- `repair_needed`: відновіть запуск або дайте це зробити проходу відновлення (`workflow:v2:repair-pass` у вбудованому режимі, `dw system:repair-pass` у Server). Server також приймає `POST /api/workflows/{workflowId}/runs/{runId}/repair`.
+
+Що робить відновлення, описано в [Збоях і відновленні](./failures-and-recovery.md).
+
 ## Розгортання й доступ Waterline {#waterline-deployment-and-access}
 
 ### Вбудований Laravel {#embedded-laravel}
@@ -212,6 +268,8 @@ docker run --detach \
   --env APP_URL=https://waterline.example.com \
   durableworkflow/waterline:%%artifact.waterlineVersion%%
 ```
+
+Використовуйте образ 2.16.0 або новіший. Образ 2.14.0, а також образ 2.15.0, опублікований на Docker Hub, але так і не анонсований, містять Symfony 7.4.21, уразливий до CVE-2026-118514 і CVE-2026-118516. Вбудований Waterline використовує пакети Symfony вашого застосунку, тож оновіть їх там.
 
 Відкрийте `/waterline` через URL-адресу, задану `APP_URL`. Образ слухає
 порт контейнера `8080`. Задавайте `PORT` лише за свідомої зміни внутрішнього

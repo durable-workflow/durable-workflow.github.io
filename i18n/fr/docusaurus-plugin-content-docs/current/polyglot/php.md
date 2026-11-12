@@ -295,6 +295,23 @@ mode service livré, y compris le drainage et le retour arrière.
 Les [modes de déploiement](/docs/polyglot/deployment-modes/) comparent plus
 largement les frontières du runtime.
 
+## Mettre à niveau vers le SDK PHP 3.12 à 3.14 {#upgrade-to-3-12-through-3-14}
+
+PHP `^8.1`, les planchers du pont Laravel, le protocole de worker `1.20` et le plan de contrôle `2` sont inchangés depuis 3.11. Vérifiez ces changements de comportement avant le déploiement :
+
+- **Mises à jour qui dépassent leur attente.** Depuis 3.13, quand une attente `waitFor: 'completed'` se termine avant la fin de la mise à jour, `Client::updateWorkflow()` et `WorkflowHandle::update()` lèvent `UpdateStillPending`. Les versions précédentes renvoyaient le reçu du Server comme s'il s'agissait du résultat de la mise à jour. Pour continuer à attendre, rappelez la mise à jour avec `$pending->requestId`. La mise à jour n'est pas appliquée deux fois.
+- **Enregistrement de worker périmé.** Depuis 3.13, `Worker::run()` se réenregistre après `stale_worker_registration` au lieu de s'arrêter. Les tâches détenues par le worker isolé sont abandonnées sans être terminées, et le Server les redistribue. Chaque reprise journalise `worker.reregistered` et incrémente `durable_workflow_worker_reregistrations`. Passez `stopOnStaleRegistration: true` pour conserver l'ancien comportement.
+- **Backoff des activités locales.** Depuis 3.13, une activité locale avec plus de tentatives que d'entrées `backoff_seconds` répète le dernier délai au lieu de réessayer immédiatement, comme les activités planifiées par le Server.
+- **Attentes de condition dans des groupes sur le Server native.** Le Server native n'accepte pas encore d'attente de condition ou de signal dans `all()` ou `parallel()`. Depuis 3.13.1, le worker fait échouer cette tâche de workflow avec `grouped_condition_wait_unsupported` et continue de tourner au lieu de s'arrêter. Attendez la condition en dehors du groupe.
+
+Nouveautés de ces versions :
+
+- **Suffixes d'historique sticky (3.14).** Les workers annoncent `sticky_history_suffix`. Sur Server 3.5.0 ou ultérieur, un worker qui détient déjà l'historique d'une exécution ne reçoit que les événements postérieurs à la séquence mise en cache. Un suffixe qui ne prolonge pas exactement l'historique en cache est ignoré et l'historique complet est récupéré. Les Servers plus anciens continuent d'envoyer l'historique complet.
+- **Origine du schedule (3.13).** `WorkflowContext::scheduleOrigin()` renvoie l'identifiant du schedule, l'heure d'occurrence et le numéro de déclenchement qui ont démarré l'exécution, ou `null` pour un démarrage ordinaire. La valeur est identique au rejeu. Depuis Server 3.5.0, une exécution qui continue dans une nouvelle exécution conserve son origine de schedule.
+- **Continuations d'activité (3.12).** Passez `enableActivityContinuation: true` au constructeur de `Worker` pour envoyer les commandes suivantes du workflow avec un résultat d'activité réussi quand le Server annonce `activity_workflow_continuation` (Server native 3.4.0 ou ultérieur). La valeur par défaut est `false`. Utilisez 3.12.1 ou ultérieur si vous l'activez, et videz ou désactivez ces workers avant de rétrograder le Server ou d'ajouter des nœuds Server plus anciens.
+
+Voir le [journal des modifications 3.14.0](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md) pour la liste complète.
+
 ## Mettre à niveau vers le SDK PHP 3.10 et 3.11 {#upgrade-to-3-10-and-3-11}
 
 Lisez le [guide de mise à niveau du SDK PHP](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)

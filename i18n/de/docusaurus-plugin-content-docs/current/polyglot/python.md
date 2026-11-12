@@ -110,6 +110,16 @@ gemeinsamen Fingerprint. Platziere diese Prädikate in neuen Workflow-Definition
 in getrennten Zeilen, damit ein Wechsel zwischen ihnen erkannt wird. Siehe die
 [Kompatibilitätshinweise zum Tag 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
 
+Python-SDK 2.15 und 2.16 ergänzen:
+
+- **Sticky-History-Suffixe (2.16).** Worker mit Sticky-Cache (`sticky_cache_capacity > 0`) melden `sticky_history_suffix`. Auf Server 3.5.0 oder neuer erhält ein Sticky-Treffer nur die Historie nach der zwischengespeicherten Sequenz. Ein Suffix, das die zwischengespeicherte Historie nicht exakt fortsetzt, wird verworfen und die vollständige Historie abgerufen.
+- **Typisierte Workflow-Werte (2.15).** `@workflow.defn(..., typed=True)` dekodiert Argumente von `run` und Handlern gemäß ihren Annotationen, und `result_type=` dekodiert Ergebnisse von Kind-Workflows und Clients. Untypisierte Workflows erhalten wie bisher einfache Werte, laufende Historien werden also unverändert abgespielt.
+- **Lazy Seiten (2.15).** `Client.iter_workflows`, `Client.iter_history` und `WorkflowHandle.iter_history` folgen Seiten-Tokens und halten dabei nur eine Seite.
+- **Aktivitäten einer Ausführung (2.15).** `Client.get_run_activities` und `WorkflowHandle.get_activities` liefern typisierte Aktivitäts- und Versuchsmetadaten, und `ActivityInfo.activity_execution_id` stellt die logische Aktivitätsidentität bereit.
+- **Backoff lokaler Aktivitäten (2.15.1).** Wiederholungen nach dem Ende der Backoff-Liste verwenden erneut den letzten Eintrag, statt sofort erneut zu versuchen.
+
+Die vollständige Liste steht im [Changelog zu 2.16.0](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md).
+
 ## Schnellstart {#quickstart}
 
 Dieses vollständige Python-Programm definiert einen Workflow mit einer Aktivität, startet ihn gegen einen lokalen Durable Workflow Server und wartet auf das Ergebnis:

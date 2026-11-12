@@ -99,6 +99,16 @@ Em cada chamada:
 
 No replay, os eventos registrados de atributos de busca são reutilizados sem executar novamente a inserção ou atualização, preservando o determinismo.
 
+## Registrar atributos {#registering-attributes}
+
+No Server, você pode registrar um atributo de busca com um tipo por meio de `POST /api/search-attributes`. A partir daí, uma chave registrada precisa ter um valor do seu tipo, e um início ou upsert com o tipo errado é recusado.
+
+O registro restringe apenas as chaves que você registra. A partir do Server nativo 3.5.0, uma chave não registrada continua sendo aceita e seu tipo é inferido, como em um namespace sem atributos registrados. Registrar um atributo não quebra workflows em execução que fazem upsert de outras chaves. PHP Server 2.x e o Server nativo anterior à 3.5.0 recusam toda chave não registrada assim que qualquer atributo é registrado, então, nessas versões, registre todas as chaves que seus workflows usam antes de registrar a primeira.
+
+Excluir um registro encerra a verificação dessa chave. Os valores armazenados e os workflows em execução não mudam, e upserts posteriores da chave voltam a ser inferidos.
+
+Para mudar o tipo de um atributo, registre um novo nome de atributo com o novo tipo, atualize seus workflows para gravá-lo e filtre pelo novo nome quando as execuções existentes estiverem em dia. Excluir e registrar de novo o mesmo nome com outro tipo deixa os valores anteriores no tipo antigo.
+
 ## Comportamento de mesclagem {#merging-behavior}
 
 Os atributos de busca são mesclados entre várias chamadas de inserção ou atualização na mesma execução. Cada chamada sobrepõe as novas chaves às existentes:

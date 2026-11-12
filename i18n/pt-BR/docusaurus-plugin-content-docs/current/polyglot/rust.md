@@ -122,6 +122,14 @@ major diferente ou uma minor de worker mais nova que a minor anunciada pelo
 servidor é rejeitada. Versões de release do SDK e Server são controladas
 independentemente. Seus manifestos de protocolo em runtime determinam a compatibilidade.
 
+## Atualizar para o SDK Rust 4.13 {#upgrade-to-4-13}
+
+- **Tokens estáticos.** A construção do cliente agora rejeita um token estático compartilhado, de controle ou de worker malformado, inclusive em opções não usadas ou mascaradas. O diagnóstico nomeia só a opção. Verifique os valores de token configurados antes de atualizar. Tokens vazios mantêm sua precedência.
+- **Backoff de atividades locais.** Tentativas após o fim da lista de backoff repetem a última entrada em vez de tentar de novo imediatamente, como as atividades agendadas pelo Server.
+- **Atividades de uma execução.** `Client::get_run_activities` retorna metadados tipados de atividades e tentativas, incluindo o progresso de heartbeat.
+
+Veja o [changelog da 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
+
 ## Prazos de espera de condições e atualização de workers {#condition-wait-deadlines}
 
 O SDK Rust 4.11.2 mede o timeout de um `wait_condition` fora de um grupo

@@ -79,6 +79,16 @@ Worker を SDK 2.14.1 より前のバージョンに戻さないでください�
 別々の行に置き、切り替えを検出できるようにしてください。
 [2.14.1 タグの互換性に関する注記](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04)を参照してください。
 
+Python SDK 2.15 と 2.16 では次が追加されています。
+
+- **sticky 履歴サフィックス（2.16）。** sticky キャッシュを持つワーカー（`sticky_cache_capacity > 0`）は `sticky_history_suffix` を示します。Server 3.5.0 以降では、sticky ヒットはキャッシュしたシーケンスより後の履歴だけを受け取ります。キャッシュした履歴に正確に続かないサフィックスは破棄され、完全な履歴を取得します。
+- **型付きワークフロー値（2.15）。** `@workflow.defn(..., typed=True)` は `run` とハンドラーの引数をアノテーションに従ってデコードし、`result_type=` は子ワークフローとクライアントの結果をデコードします。型なしのワークフローはこれまでどおりプレーンな値を受け取るため、進行中の履歴は変わらずリプレイされます。
+- **遅延ページ（2.15）。** `Client.iter_workflows`、`Client.iter_history`、`WorkflowHandle.iter_history` は、1 ページだけを保持しながらページトークンをたどります。
+- **実行のアクティビティ（2.15）。** `Client.get_run_activities` と `WorkflowHandle.get_activities` は型付きのアクティビティと試行のメタデータを返し、`ActivityInfo.activity_execution_id` は論理的なアクティビティ ID を公開します。
+- **ローカルアクティビティのバックオフ（2.15.1）。** バックオフリストの終わりを超えたリトライは、すぐにリトライせず最後の項目を繰り返します。
+
+完全な一覧は [2.16.0 の変更履歴](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md) を参照してください。
+
 ## クイックスタート {#quickstart}
 
 次は、アクティビティを1つ持つワークフローを定義し、ローカルの Durable Workflow Server に対して開始して結果を待つ完全な Python プログラムです。

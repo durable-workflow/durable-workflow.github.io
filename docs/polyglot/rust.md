@@ -123,6 +123,20 @@ or a worker minor newer than the server's advertised minor is rejected. The
 SDK and Server release versions are tracked independently. Their runtime
 protocol manifests determine compatibility.
 
+## Upgrade to Rust SDK 4.13 {#upgrade-to-4-13}
+
+- **Static tokens.** Client construction now rejects a malformed shared,
+  control or worker static token, including unused or masked options. The
+  diagnostic names only the option. Check configured token values before
+  upgrading. Empty tokens keep their existing precedence.
+- **Local activity backoff.** Retries past the end of the backoff list repeat
+  the final entry instead of retrying immediately, as Server-scheduled
+  activities do.
+- **Run activities.** `Client::get_run_activities` returns typed activity and
+  attempt metadata, including heartbeat progress.
+
+See the [4.13.0 changelog](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
+
 ## Condition wait deadlines and worker upgrades {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 measures an ungrouped `wait_condition` timeout from its first

@@ -187,6 +187,23 @@ Worker は `workflow_entry_arguments_validation` を自動的に通知します�
 
 これらのブリッジは、`durable-workflow/workflow` によって Laravel アプリケーション自体が永続状態を所有し Laravel キューで実行する[組み込み Laravel ワークフロー](/docs/installation/)とは別です。ドレインとロールバックを含め、v1、v2 組み込み、同梱サービスモードブリッジで同じ代表的な Laravel ユースケースを比較するには、[Laravel の採用とランタイム移行](/docs/laravel-adoption/)を参照してください。より広いランタイム境界の比較には[デプロイモード](/docs/polyglot/deployment-modes/)を使います。
 
+## PHP SDK 3.12 から 3.14 へのアップグレード {#upgrade-to-3-12-through-3-14}
+
+PHP `^8.1`、Laravel ブリッジの下限、ワーカープロトコル `1.20`、コントロールプレーン `2` は 3.11 から変わりません。デプロイ前に次の動作の変更を確認してください。
+
+- **待機より長くかかる update。** 3.13 以降、`waitFor: 'completed'` の待機が update の完了前に終わると、`Client::updateWorkflow()` と `WorkflowHandle::update()` は `UpdateStillPending` を投げます。以前のリリースは Server の受領を update の結果であるかのように返していました。待機を続けるには `$pending->requestId` を付けて update を再度呼び出します。update が二重に適用されることはありません。
+- **古くなったワーカー登録。** 3.13 以降、`Worker::run()` は `stale_worker_registration` の後に停止せず再登録します。フェンスされたワーカーが保持していたタスクは完了されずに破棄され、Server が再配信します。復旧のたびに `worker.reregistered` をログに記録し、`durable_workflow_worker_reregistrations` を増やします。以前の動作を保つには `stopOnStaleRegistration: true` を渡します。
+- **ローカルアクティビティのバックオフ。** 3.13 以降、`backoff_seconds` の項目数より多くリトライするローカルアクティビティは、すぐにリトライせず最後の遅延を繰り返します。Server がスケジュールするアクティビティと同じ動作です。
+- **ネイティブ Server でのグループ内の条件待機。** ネイティブ Server は `all()` や `parallel()` 内の条件待機やシグナル待機をまだ受け付けません。3.13.1 以降、ワーカーは終了せず、そのワークフロータスクを `grouped_condition_wait_unsupported` で失敗させて動作を続けます。条件はグループの外で待機してください。
+
+これらのリリースの新機能:
+
+- **sticky 履歴サフィックス（3.14）。** ワーカーは `sticky_history_suffix` を示します。Server 3.5.0 以降では、実行の履歴をすでに保持しているワーカーは、キャッシュしたシーケンスより後のイベントだけを受け取ります。キャッシュした履歴に正確に続かないサフィックスは破棄され、完全な履歴を取得します。古い Server は引き続き完全な履歴を送ります。
+- **スケジュールの起点（3.13）。** `WorkflowContext::scheduleOrigin()` は、実行を開始したスケジュール発火のスケジュール ID、発生時刻、トリガー番号を返します。通常の開始では `null` です。リプレイでも同じ値になります。Server 3.5.0 以降、continue-as-new で続く実行はスケジュールの起点を保持します。
+- **アクティビティ継続（3.12）。** Server が `activity_workflow_continuation` を示す場合（ネイティブ Server 3.4.0 以降）、`Worker` コンストラクターに `enableActivityContinuation: true` を渡すと、成功したアクティビティ結果と次のワークフローコマンドをまとめて送信します。デフォルトは `false` です。有効にする場合は 3.12.1 以降を使い、Server をダウングレードしたり古い Server ノードを追加したりする前に、それらのワーカーをドレインまたは無効化してください。
+
+完全な一覧は [3.14.0 の変更履歴](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md) を参照してください。
+
 ## PHP SDK 3.10 と 3.11 へのアップグレード {#upgrade-to-3-10-and-3-11}
 
 デプロイ前に [PHP SDK アップグレードガイド](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)を読んでください。待機系やオートスケーリングのプールを含め、タスクキューから処理を受け取る可能性のあるすべての Worker をまとめてアップグレードします。
