@@ -252,7 +252,7 @@ Workflow 2.18.0 は、完了したアクティビティ、副作用、バージ�
 
 2.19.0 より前のリリースは、再利用されたシグナル、メモ、検索属性のステップの `reused_recorded_at` を無視します。Workflow 2.19.0 以降の後継実行がこれらのステップを再利用した後は、2.19.0 以降のワーカーを使い続けるか、ロールバックの前にそのような履歴がリプレイされないことを確認してください。組み込みモードでは、Workflow 2.19.0 は、更新または連鎖したシグナル待機を再利用した 2.20.0 の後継実行を、2.20.0 と同じようにリプレイ、インポート、再開します（[検証記録](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)）。
 
-ネイティブ Server の redrive には、現在も 2.18.0 より前の規則が適用されます。ネイティブ Server での現在の規則への対応は [server#980](https://github.com/durable-workflow/server/issues/980) で追跡しています。
+3.7.0 以降、ネイティブ Server の redrive は、開始時に設定されたメモと検索属性を後継実行に引き継ぎ、`describe()` は `actions` の下に `can_redrive` と `redrive_blocked_reason` を報告します。それ以外については、現在も 2.18.0 より前の規則が適用されます。ネイティブ Server での残りの規則への対応は [server#980](https://github.com/durable-workflow/server/issues/980) で追跡しています。
 
 ## サービスモードのエントリ拒否と復旧 {#service-entry-recovery}
 

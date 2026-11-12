@@ -169,6 +169,37 @@ docker compose --env-file durable-workflow.prod.env \
 
 原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
+### 升级到 Server 3.7.0 {#native-schema-upgrade-3-7}
+
+Server 3.7.0 以精确文本形式存储 MySQL JSON 文档，因此双精度浮点数会保留每一位数字。只有 MySQL 发生变化：其 native 架构从 12 升到 13，36 张表中的 75 个 `json` 列变为带有强制 `json_valid` 检查的 `LONGTEXT`（`utf8mb4_bin`），每张表执行一条 `ALTER TABLE`。已存储的文档保持 MySQL 先前的呈现形式。在 MySQL 架构 12 上启动的 Server 3.7.0 会以 `native_schema_upgrade_required` 拒绝启动。
+
+MariaDB 和 PostgreSQL 保持在架构 12，SQLite 保持在 11，因此这些数据库上的 3.5.0 或 3.6.0 数据库可以原样在 3.7.0 上运行：只需修改 `DW_SERVER_IMAGE`，并按照上文的升级顺序操作。回滚到 3.6.0 只是更换镜像。从 3.4.x 或更早版本升级时，每种数据库还需要执行 [3.5.0 架构步骤](#native-schema-upgrade-3-5)；请使用 3.7.0 镜像运行它，其 `schema-upgrade` 也会一并应用早期步骤。
+
+在 MySQL 上，Server 在整个升级期间处于停机状态。在 2 个 CPU、默认缓冲池的 MySQL 8.0 上实测，每百万行历史记录约需 2 分钟。对于单节点 Compose 部署：
+
+1. 停止 Server，保持 MySQL 运行：
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. 备份 MySQL 和 `server_storage`，并记录当前镜像引用。此备份是在 MySQL 上回到 3.6.0 的唯一途径。
+3. 将 `DW_SERVER_IMAGE` 改为 3.7.0 镜像，拉取该镜像，并运行一次 `schema-upgrade`：
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   在 MySQL 上，它会输出升级前后的架构版本，例如 `"from_schema_version":12,"schema_version":13,"status":"upgraded"`。在已是最新的数据库上再次运行时，它报告 `"status":"current"`。
+4. 使用 `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` 启动 Server，然后确认 `/api/ready`、`/api/cluster/info`（`version` 为 `3.7.0`）和 Worker 注册。
+
+再次运行 `schema-upgrade` 时，被中断的升级会逐表继续。在 MySQL 上回滚到 3.6.0 需要备份：3.6.0 Server 会以 `native_schema_newer_than_binary` 拒绝已升级的数据库。Worker 协议仍为 `1.20`，控制平面仍为版本 `2`。
+
+Server 3.7.0 还改变了 native redrive（见 [3.7.0 发布说明](https://github.com/durable-workflow/server/releases/tag/3.7.0)）：启动时设置的备忘录和搜索属性会传递给后继运行，`describe` 会报告 `actions.can_redrive` 和 `actions.redrive_blocked_reason`。
+
 ### 升级到 Server 3.5.0 {#native-schema-upgrade-3-5}
 
 Server 3.5.0 新增一张仅用于 native 的表 `dw_run_command_contracts`。native 架构在 MySQL、MariaDB 和 PostgreSQL 上从 11 升到 12，在 SQLite 上从 10 升到 11。升级只创建该表及其索引，不改写任何行。Server 3.4.x 与 3.3.x 的架构相同，因此从 3.3.x 或 3.4.x 升级只有这一个架构步骤。在旧架构上启动的 Server 3.5.0 会以 `native_schema_upgrade_required` 拒绝启动。
@@ -393,7 +424,7 @@ Chart 1.x 默认运行原生 Server（`runtime: native`）：一个 Server Deplo
 
 Chart 1.1.0 将默认镜像从 Server 3.0.5 改为 3.3.2，后者需要执行从 8 到 11 的[原生数据库模式升级](#native-schema-upgrade-3-0-to-3-3)。从 Chart 1.0.x 执行普通 `helm upgrade` 只会更换镜像，新 Pod 会以 `native_schema_upgrade_required` 拒绝启动。请按照 Chart 的 [Chart 1.1.0 / Server 3.3.2 步骤](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native)操作：在关闭自动扩缩的情况下将 Server 缩容至零，备份数据库，然后使用 `native.schemaUpgrade.enabled=true` 升级到 Chart 1.1.0。其 `pre-upgrade` 钩子会在新 Pod 启动前运行一次 `schema-upgrade`，且仅在 Helm 的 `lookup` 显示所有 Server 均已停止时运行。Argo CD、Flux 和 `helm template` 渲染会拒绝该钩子；请改用 Chart README 中的手动 Job。`helm rollback` 回到 Chart 1.0.x 修订版本无法让 Server 恢复运行，因为 3.0.x 会拒绝已升级的数据库：请改为恢复备份。
 
-Chart 1.2.0 将默认镜像改为 Server 3.4.0，没有架构变化，因此从 chart 1.1.0 只需普通的 `helm upgrade`。native Pod 还增加了 `preStop` 休眠（`native.preStopSleepSeconds`，默认 5）和 70 秒的终止宽限期。Chart 1.3.0 将默认镜像改为 Server 3.5.0，需要[将架构从 11 升级到 12](#native-schema-upgrade-3-5)：将 Server 缩容到零，备份数据库，使用 `native.schemaUpgrade.enabled=true` 运行 `helm upgrade`（或手动 Job），然后恢复副本数。参见该 chart 的 [Chart 1.3.0 / Server 3.5.0 说明](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native)。回到 chart 1.2.0 需要恢复该备份。 Chart 1.4.0 在不改变架构的情况下将默认镜像改为 Server 3.6.0，因此从 chart 1.3.0 升级只需普通的 `helm upgrade`，回退到 1.3.0 也只是更换镜像。请参阅 chart 的 [Chart 1.4.0 / Server 3.6.0 说明](%%artifact.helmChartUpgradeUrl%%#chart-140--server-360-native)。
+Chart 1.2.0 将默认镜像改为 Server 3.4.0，没有架构变化，因此从 chart 1.1.0 只需普通的 `helm upgrade`。native Pod 还增加了 `preStop` 休眠（`native.preStopSleepSeconds`，默认 5）和 70 秒的终止宽限期。Chart 1.3.0 将默认镜像改为 Server 3.5.0，需要[将架构从 11 升级到 12](#native-schema-upgrade-3-5)：将 Server 缩容到零，备份数据库，使用 `native.schemaUpgrade.enabled=true` 运行 `helm upgrade`（或手动 Job），然后恢复副本数。参见该 chart 的 [Chart 1.3.0 / Server 3.5.0 说明](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native)。回到 chart 1.2.0 需要恢复该备份。 Chart 1.4.0 在不改变架构的情况下将默认镜像改为 Server 3.6.0，因此从 chart 1.3.0 升级只需普通的 `helm upgrade`，回退到 1.3.0 也只是更换镜像。请参阅 chart 的 [Chart 1.4.0 / Server 3.6.0 说明](%%artifact.helmChartUpgradeUrl%%#chart-140--server-360-native)。Chart 1.5.0 将默认镜像改为 Server 3.7.0。在 MySQL 上需要[将架构从 12 升级到 13](#native-schema-upgrade-3-7)：将 Server 缩容到零，备份数据库，使用 `native.schemaUpgrade.enabled=true` 运行 `helm upgrade`（或手动 Job），然后恢复副本数。在 MySQL 上回到 chart 1.4.0 需要恢复该备份。在 MariaDB 和 PostgreSQL 上只需普通的 `helm upgrade`，回退也只是更换镜像。请参阅 chart 的 [Chart 1.5.0 / Server 3.7.0 说明](%%artifact.helmChartUpgradeUrl%%#chart-150--server-370-native)。
 
 ### 选择 Chart 版本 {#helm-chart-selection}
 

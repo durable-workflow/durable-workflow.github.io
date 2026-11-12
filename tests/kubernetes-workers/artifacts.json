@@ -1,6 +1,6 @@
 {
-  "server": "durableworkflow/server@sha256:7f7df14be28526517753f47dd87c46206c3ca530ea88d5ba82770918ef7c9523",
-  "server_version": "3.6.0",
+  "server": "durableworkflow/server@sha256:27ca9a9156c9e4b489de770b4d5abc10f5ba9fc6da97134d26432fcaabdf37fb",
+  "server_version": "3.7.0",
   "php_sdk": "3.4.1",
   "php_source": "cb1d11e57767e20e1fdb8081024f67057ff66714",
   "python_sdk": "2.9.0",

@@ -256,7 +256,7 @@ Las versiones de Workflow anteriores a 2.18.0 aceptan menos ejecuciones. Cada pa
 
 Las versiones anteriores a 2.19.0 ignoran `reused_recorded_at` en los pasos reutilizados de señal, memo y atributo de búsqueda. Después de que un sucesor de Workflow 2.19.0 o posterior reutilice esos pasos, mantenga workers de 2.19.0 o posteriores, o confirme que ningún historial así puede reproducirse, antes de volver atrás. En modo embebido, Workflow 2.19.0 reproduce, importa y reanuda un sucesor de 2.20.0 que reutilizó un update o una espera de señal encadenada igual que 2.20.0 ([comprobante de calificación](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)).
 
-El redrive en el Server nativo sigue aplicando las reglas anteriores a 2.18.0. La compatibilidad del Server nativo con las reglas actuales se sigue en [server#980](https://github.com/durable-workflow/server/issues/980).
+Desde 3.7.0, el redrive en el Server nativo traslada a la sucesora los memos y atributos de búsqueda establecidos al inicio, y `describe()` informa `can_redrive` y `redrive_blocked_reason` dentro de `actions`. Por lo demás, sigue aplicando las reglas anteriores a 2.18.0. La compatibilidad del Server nativo con las reglas restantes se sigue en [server#980](https://github.com/durable-workflow/server/issues/980).
 
 ## Rechazo de entrada y recuperación en modo servicio {#service-entry-recovery}
 

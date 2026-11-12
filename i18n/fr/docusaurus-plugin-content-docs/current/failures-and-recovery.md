@@ -260,7 +260,7 @@ Les versions de Workflow antérieures à 2.18.0 acceptent un ensemble plus restr
 
 Les versions antérieures à 2.19.0 ignorent `reused_recorded_at` sur les étapes de signal, de mémo et d’attribut de recherche réutilisées. Une fois qu’un successeur de Workflow 2.19.0 ou ultérieur a réutilisé ces étapes, gardez des workers 2.19.0 ou ultérieurs, ou vérifiez qu’aucun historique de ce type ne peut être rejoué, avant de revenir en arrière. En mode embarqué, Workflow 2.19.0 rejoue, importe et reprend un successeur 2.20.0 qui a réutilisé un update ou une attente de signal enchaînée de la même façon que 2.20.0 ([preuve de qualification](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)).
 
-Le redrive du Server natif applique toujours les règles antérieures à 2.18.0. La prise en charge des règles actuelles par le Server natif est suivie dans [server#980](https://github.com/durable-workflow/server/issues/980).
+Depuis 3.7.0, le redrive du Server natif reporte sur le successeur les mémos et attributs de recherche définis au démarrage, et `describe()` indique `can_redrive` et `redrive_blocked_reason` sous `actions`. Pour le reste, il applique toujours les règles antérieures à 2.18.0. La prise en charge des règles restantes par le Server natif est suivie dans [server#980](https://github.com/durable-workflow/server/issues/980).
 
 ## Refus à l’entrée en mode service et récupération {#service-entry-recovery}
 
