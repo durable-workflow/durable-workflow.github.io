@@ -377,11 +377,11 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Renvoie l’identité du build, les indicateurs de capacités, les manifestes de protocole, les limites et la découverte pour le namespace désigné par `X-Namespace` (ou le paramètre de requête `namespace`, à défaut `default`). Sortie abrégée de l’image 3.3.2 :
+Renvoie l’identité du build, les indicateurs de capacités, les manifestes de protocole, les limites et la découverte pour le namespace désigné par `X-Namespace` (ou le paramètre de requête `namespace`, à défaut `default`). Sortie abrégée de l’image 3.5.0 :
 
 ```json
 {
-  "version": "3.3.2",
+  "version": "3.5.0",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -422,6 +422,9 @@ Renvoie l’identité du build, les indicateurs de capacités, les manifestes de
       "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
       "query_tasks": true,
       "workflow_updates": true,
+      "sticky_execution": { "supported": true, "...": "..." },
+      "sticky_history_suffix": { "supported": true, "version": 1 },
+      "activity_workflow_continuation": { "version": 1, "...": "..." },
       "...": "..."
     }
   },
@@ -445,7 +448,8 @@ Renvoie l’identité du build, les indicateurs de capacités, les manifestes de
 Points clés pour le code client :
 
 - La version du build est `version`, pas `server_version`. `implementation` vaut `"rust"` sur le Server natif.
-- Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.3.2 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
+- Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.5.0 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
+- Depuis 3.5.0, `worker_protocol.server_capabilities` annonce `sticky_execution` et `sticky_history_suffix`. Depuis 3.4.0, il annonce `activity_workflow_continuation`, qu'un worker n'utilise qu'après sa propre activation.
 - Les commandes de tâche workflow se trouvent sous `worker_protocol.server_capabilities.supported_workflow_task_commands`.
 - Un indicateur de capacité à `false` désigne une fonctionnalité ou un contrat publié que le natif ne sert pas. `response_compression` est vide, car le natif envoie des réponses non compressées.
 - `native_unqualified` liste chaque membre de la réponse PHP 2.x que le natif omet, avec la raison. On y trouve `topology`.

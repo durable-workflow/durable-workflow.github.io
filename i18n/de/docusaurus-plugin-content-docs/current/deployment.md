@@ -195,7 +195,38 @@ Upgrade-Reihenfolge:
 
 Der native Server prüft sein Schema beim Start. Patch-Veröffentlichungen innerhalb einer nativen Minor-Linie behalten das Schema bei, daher genügt ein Image-Wechsel. Eine Veröffentlichung, deren Hinweise eine Schemaänderung ankündigen, benötigt zusätzlich den Befehl `schema-upgrade` des Images, ausgeführt nach einer Datenbanksicherung, während alle Server gestoppt sind. Die Server-Referenz enthält aktuelle Compose-Befehlsbeispiele unter [Offizielles Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Upgrade auf Server 3.5.0 {#native-schema-upgrade-3-5}
+
+Server 3.5.0 fügt eine nur native Tabelle hinzu, `dw_run_command_contracts`. Das native Schema wechselt auf MySQL, MariaDB und PostgreSQL von 11 auf 12 und auf SQLite von 10 auf 11. Das Upgrade legt die Tabelle und ihren Index an und schreibt keine Zeilen um. Server 3.4.x hat dasselbe Schema wie 3.3.x, daher ist dies von 3.3.x oder 3.4.x aus der einzige Schemaschritt. Ein Server 3.5.0, der auf dem früheren Schema gestartet wird, verweigert den Start mit `native_schema_upgrade_required`.
+
+Für die Compose-Bereitstellung auf einem einzelnen Knoten:
+
+1. Stoppen Sie den Server und lassen Sie MySQL weiterlaufen:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Sichern Sie MySQL und `server_storage` und halten Sie die aktuelle Image-Referenz fest. Diese Sicherung ist der einzige Weg zurück zu 3.4.x.
+3. Ändern Sie `DW_SERVER_IMAGE` auf das 3.5.0-Image, rufen Sie es ab und führen Sie `schema-upgrade` einmal aus:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   Der Befehl gibt die Schemaversionen vorher und nachher aus, zum Beispiel `"from_schema_version":11,"schema_version":12,"status":"upgraded"`. Erneut auf einer aktuellen Datenbank ausgeführt, meldet er `"status":"current"`.
+4. Starten Sie den Server mit `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` und bestätigen Sie dann `/api/ready`, `/api/cluster/info` (`version` ist `3.5.0`) und die Worker-Registrierung.
+
+Auf MySQL und MariaDB wird ein unterbrochenes Upgrade fortgesetzt, wenn Sie `schema-upgrade` erneut ausführen. Ein Rollback auf 3.4.x erfordert die Sicherung: Ein 3.4.x-Server verweigert die aktualisierte Datenbank mit `native_schema_newer_than_binary`. Von 3.0.x bis 3.2.x wendet derselbe Befehl auch die früheren Schritte aus dem nächsten Abschnitt an. Das Worker-Protokoll bleibt bei `1.20` und die Steuerungsebene bei Version `2`.
+
+Was sich für laufende Workflows ändert, steht in den [Versionshinweisen zu 3.5.0](https://github.com/durable-workflow/server/releases/tag/3.5.0): Updates für Ausführungen, die gestartet wurden, bevor ihr Worker sich registriert hat, binden jetzt den Vertrag dieses Workers, statt abgelehnt zu werden; Sticky Execution mit History-Suffixen; und abgelaufene Ausführungen werden von der Wartungsschleife jede Minute bereinigt.
+
 ### Upgrade von Server 3.0.x auf 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+Dies sind die früheren Schemaschritte. Wenn Sie von 3.0.x direkt auf 3.5.0 wechseln, verwenden Sie in Schritt 3 das 3.5.0-Image. Sein `schema-upgrade` wendet diese Schritte und den Schritt für 3.5.0 gemeinsam an, und die Hinweise unten zu PostgreSQL-Indexaufbau und Fortsetzung auf MySQL gelten weiterhin.
 
 Server 3.3.2 liegt drei Minor-Veröffentlichungen nach 3.0.x und ändert das native Schema. Auf MySQL, MariaDB und PostgreSQL wechselt es von Version 8 (3.0.x und 3.1.0) über 10 (3.2.0) auf 11 (3.3.0 bis 3.3.2). Auf SQLite wechselt es von 8 auf 10. Ein Server aktualisiert sein Schema nie beim Start: 3.3.2 verweigert auf einer Datenbank mit Version 8 den Start mit `native_schema_upgrade_required`, daher kann der neue Server nicht starten, wenn nur `DW_SERVER_IMAGE` geändert wird. Der Befehl `schema-upgrade` des 3.3.2-Images aktualisiert eine Datenbank mit Version 8 direkt. Die [Upgrade-Hinweise zu 3.3.0](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade) beschreiben den Schritt, und die [Hinweise zu Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native) des Helm-Charts führen die Schemaschritte und die Laufzeitänderungen von 3.0.5 auf 3.3.2 auf.
 
@@ -437,6 +468,8 @@ Chart 1.x betreibt standardmäßig den nativen Server (`runtime: native`): ein S
 Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten. Um auf `runtime: native` zu wechseln, folgen Sie dem [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%) und behalten `runtime: php` bei, bis die Übernahme abgeschlossen ist. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
 
 Chart 1.1.0 ändert das Standard-Image von Server 3.0.5 auf 3.3.2, das das [native Schema-Upgrade](#native-schema-upgrade-3-0-to-3-3) von 8 auf 11 erfordert. Ein gewöhnliches `helm upgrade` von Chart 1.0.x ändert nur das Image, und die neuen Pods verweigern den Start mit `native_schema_upgrade_required`. Folgen Sie den [Schritten zu Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native) des Charts: Skalieren Sie den Server bei ausgeschaltetem Autoscaling auf null, sichern Sie die Datenbank und führen Sie dann das Upgrade auf Chart 1.1.0 mit `native.schemaUpgrade.enabled=true` aus. Sein `pre-upgrade`-Hook führt `schema-upgrade` einmal aus, bevor die neuen Pods starten, und nur, wenn Helms `lookup` zeigt, dass alle Server gestoppt sind. Renderings durch Argo CD, Flux und `helm template` verweigern den Hook; verwenden Sie stattdessen den manuellen Job aus der README des Charts. Ein `helm rollback` auf eine Revision von Chart 1.0.x bringt den Server nicht zurück, weil 3.0.x die aktualisierte Datenbank verweigert: Stellen Sie stattdessen die Sicherung wieder her.
+
+Chart 1.2.0 setzt das Standard-Image ohne Schemaänderung auf Server 3.4.0, daher genügt von Chart 1.1.0 aus ein einfaches `helm upgrade`. Native Pods erhalten außerdem eine `preStop`-Pause (`native.preStopSleepSeconds`, Standard 5) und eine Beendigungsfrist von 70 Sekunden. Chart 1.3.0 setzt das Standard-Image auf Server 3.5.0, das das [Schema-Upgrade von 11 auf 12](#native-schema-upgrade-3-5) benötigt: Skalieren Sie den Server auf null, sichern Sie die Datenbank und führen Sie `helm upgrade` mit `native.schemaUpgrade.enabled=true` aus (oder den manuellen Job), skalieren Sie danach wieder hoch. Siehe die [Hinweise zu Chart 1.3.0 / Server 3.5.0](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native) des Charts. Zurück zu Chart 1.2.0 geht es nur über diese Sicherung.
 
 ### Einen Chart-Release auswählen {#helm-chart-selection}
 

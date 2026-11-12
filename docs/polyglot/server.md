@@ -516,11 +516,11 @@ curl http://localhost:8080/api/cluster/info \
 
 Returns the build identity, capability flags, protocol manifests, limits and
 discovery for the namespace named by `X-Namespace` (or the `namespace` query
-parameter, else `default`). Abridged output from the 3.3.2 image:
+parameter, else `default`). Abridged output from the 3.5.0 image:
 
 ```json
 {
-  "version": "3.3.2",
+  "version": "3.5.0",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -561,6 +561,9 @@ parameter, else `default`). Abridged output from the 3.3.2 image:
       "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
       "query_tasks": true,
       "workflow_updates": true,
+      "sticky_execution": { "supported": true, "...": "..." },
+      "sticky_history_suffix": { "supported": true, "version": 1 },
+      "activity_workflow_continuation": { "version": 1, "...": "..." },
       "...": "..."
     }
   },
@@ -586,11 +589,15 @@ Key field notes for client code:
 - The build version is `version`, not `server_version`. `implementation` is
   `"rust"` on the native Server.
 - Check `control_plane.version` and `worker_protocol.version` before calling
-  the API. Native 3.3.2 serves control plane `2` and worker protocol `1.20`,
+  the API. Native 3.5.0 serves control plane `2` and worker protocol `1.20`,
   and accepts worker requests that send any protocol version from `1.0` to
   `1.20`.
 - Workflow-task commands live under
   `worker_protocol.server_capabilities.supported_workflow_task_commands`.
+- Since 3.5.0, `worker_protocol.server_capabilities` advertises
+  `sticky_execution` and `sticky_history_suffix`. Since 3.4.0 it advertises
+  `activity_workflow_continuation`, which a worker uses only after its own
+  opt-in.
 - A capability flag set to `false` names a feature or published contract that
   native does not serve. `response_compression` is empty because native sends
   uncompressed responses.
