@@ -28,13 +28,6 @@ const PLATFORMS = [
     asset: 'dw-macos-aarch64',
   },
   {
-    id: 'macos-x86_64',
-    label: 'macOS (Intel)',
-    shell: 'bash',
-    command: 'curl -fsSL https://durable-workflow.com/install.sh | sh',
-    asset: 'dw-macos-x86_64',
-  },
-  {
     id: 'windows-x86_64',
     label: 'Windows (x86_64)',
     shell: 'powershell',

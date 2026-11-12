@@ -50,6 +50,10 @@ dw --version
 - `DURABLE_WORKFLOW_INSTALL_DIR`: ubicación de instalación (predeterminada `~/.local/bin`).
 - `DURABLE_WORKFLOW_BIN_NAME`: nombre del ejecutable instalado (predeterminado `dw`).
 
+El instalador de shell todavía no instala el binario para macOS Intel. En un
+Mac Intel, use la descarga verificada de [Migrar desde
+`dw.phar`](#moving-from-dwphar) con `dw-macos-x86_64`.
+
 Un ejemplo de GitHub Actions:
 
 ```yaml
@@ -73,12 +77,17 @@ dw --version
 
 El instalador escribe `dw.exe` en `%USERPROFILE%\.durable-workflow\bin` y añade ese directorio al `PATH` del usuario.
 
+Defina antes `$env:DURABLE_WORKFLOW_INSTALL_NO_PATH_UPDATE = '1'` para dejar el
+`PATH` del usuario sin cambios, por ejemplo en una instalación temporal de CI.
+
 </details>
 
-<details>
-<summary><b>Migrar desde <code>dw.phar</code></b></summary>
+### Migrar desde `dw.phar` {#moving-from-dwphar}
 
 A partir de CLI 2.5.0, las publicaciones no incluyen PHAR. Si ejecutas `php dw.phar`, cambia al binario independiente, que no necesita PHP, con el instalador de shell o de PowerShell anterior. Después elimina `dw.phar`. Los instaladores verifican el binario con el `SHA256SUMS` de la publicación antes de instalarlo.
+
+El PHAR de la línea 2.3.x recibe correcciones de seguridad solo hasta el
+2027-02-28. Después de esa fecha deja de tener soporte.
 
 Si no canalizas scripts hacia una shell, descarga la publicación y verifícala primero. Elige el artefacto de tu plataforma: `dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` o `dw-windows-x86_64.exe`.
 
@@ -94,10 +103,12 @@ En Windows, descarga, verifica y copia sin ejecutar ningún script:
 ```powershell
 New-Item -ItemType Directory -Force release | Out-Null
 gh release download %%artifact.cliVersion%% --repo durable-workflow/cli --dir release
+if ($LASTEXITCODE -ne 0) { throw 'gh release download failed' }
 $expected = ((Select-String -Path release\SHA256SUMS -Pattern ' dw-windows-x86_64\.exe$').Line -split '\s+')[0]
 $actual = (Get-FileHash release\dw-windows-x86_64.exe -Algorithm SHA256).Hash.ToLower()
 if ($actual -ne $expected) { throw 'dw-windows-x86_64.exe does not match SHA256SUMS' }
-gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml
+gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml --deny-self-hosted-runners
+if ($LASTEXITCODE -ne 0) { throw 'dw-windows-x86_64.exe failed attestation verification' }
 New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Programs\dw" | Out-Null
 Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 ```
@@ -106,9 +117,9 @@ Añade `%LOCALAPPDATA%\Programs\dw` a tu `PATH` si aún no está.
 
 En una instalación PHAR 2.x, `dw upgrade` sigue respondiendo "Download the matching PHAR manually". Ese mensaje procede de la publicación antigua y no puede cambiarse, así que utiliza los comandos anteriores. Las instalaciones de binario independiente se actualizan con `dw upgrade` como siempre.
 
-En un Mac con Intel, migra desde 2.x con el instalador de shell. El `dw upgrade` publicado de 2.x no tiene ningún artefacto de macOS x86_64 al que cambiar.
-
-</details>
+En un Mac Intel, use la descarga verificada anterior con `dw-macos-x86_64`. El
+`dw upgrade` publicado de 2.x no tiene un artefacto para macOS Intel al que
+cambiar, y el instalador de shell todavía no lo instala.
 
 ### Actualizar un binario instalado {#update-an-installed-binary}
 

@@ -50,6 +50,8 @@ dw --version
 - `DURABLE_WORKFLOW_INSTALL_DIR`：安装位置（默认 `~/.local/bin`）。
 - `DURABLE_WORKFLOW_BIN_NAME`：安装的可执行文件名（默认 `dw`）。
 
+Shell 安装脚本暂不安装 Intel macOS 二进制文件。在 Intel Mac 上，请使用 [从 `dw.phar` 迁移](#moving-from-dwphar) 中的校验下载方式，并选择 `dw-macos-x86_64`。
+
 GitHub Actions 示例：
 
 ```yaml
@@ -73,12 +75,15 @@ dw --version
 
 安装器将 `dw.exe` 写入 `%USERPROFILE%\.durable-workflow\bin`，并将该目录加入用户 `PATH`。
 
+如需保持用户 `PATH` 不变（例如临时 CI 安装），请先设置 `$env:DURABLE_WORKFLOW_INSTALL_NO_PATH_UPDATE = '1'`。
+
 </details>
 
-<details>
-<summary><b>从 <code>dw.phar</code> 迁移</b></summary>
+### 从 `dw.phar` 迁移 {#moving-from-dwphar}
 
 自 CLI 2.5.0 起，发布不再包含 PHAR。如果你运行 `php dw.phar`，请使用上方 shell 或 PowerShell 安装器切换到无需 PHP 的独立二进制文件，然后删除 `dw.phar`。安装器会在安装前根据发布的 `SHA256SUMS` 校验二进制文件。
+
+2.3.x PHAR 仅在 2027-02-28 之前接收安全修复，此后不再受支持。
 
 如果你不将脚本通过管道传给 shell，请先下载发布并进行验证。选择与你平台对应的制品：`dw-linux-x86_64`、`dw-linux-aarch64`、`dw-macos-aarch64`、`dw-macos-x86_64` 或 `dw-windows-x86_64.exe`。
 
@@ -94,10 +99,12 @@ install -m 0755 release/dw-linux-x86_64 ~/.local/bin/dw
 ```powershell
 New-Item -ItemType Directory -Force release | Out-Null
 gh release download %%artifact.cliVersion%% --repo durable-workflow/cli --dir release
+if ($LASTEXITCODE -ne 0) { throw 'gh release download failed' }
 $expected = ((Select-String -Path release\SHA256SUMS -Pattern ' dw-windows-x86_64\.exe$').Line -split '\s+')[0]
 $actual = (Get-FileHash release\dw-windows-x86_64.exe -Algorithm SHA256).Hash.ToLower()
 if ($actual -ne $expected) { throw 'dw-windows-x86_64.exe does not match SHA256SUMS' }
-gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml
+gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml --deny-self-hosted-runners
+if ($LASTEXITCODE -ne 0) { throw 'dw-windows-x86_64.exe failed attestation verification' }
 New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Programs\dw" | Out-Null
 Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 ```
@@ -106,9 +113,7 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 
 在 2.x PHAR 安装中，`dw upgrade` 仍会回复 "Download the matching PHAR manually"。该消息来自旧发布且无法更改，请改用上方命令。独立二进制文件安装照常使用 `dw upgrade` 升级。
 
-在 Intel Mac 上，请使用 shell 安装器从 2.x 迁移。已发布的 2.x `dw upgrade` 没有可迁移到的 macOS x86_64 制品。
-
-</details>
+在 Intel Mac 上，请使用上述校验下载方式并选择 `dw-macos-x86_64`。已发布的 2.x `dw upgrade` 没有可迁移到的 Intel macOS 制品，Shell 安装脚本也暂不安装它。
 
 ### 更新已安装的二进制文件 {#update-an-installed-binary}
 

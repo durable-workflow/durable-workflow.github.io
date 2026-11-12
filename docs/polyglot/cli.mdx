@@ -66,6 +66,10 @@ prerelease. Additional environment variables:
 - `DURABLE_WORKFLOW_INSTALL_DIR` — install location (default `~/.local/bin`).
 - `DURABLE_WORKFLOW_BIN_NAME` — installed executable name (default `dw`).
 
+The shell installer doesn't install the Intel macOS binary yet. On an Intel
+Mac, use the verified download under
+[Moving from `dw.phar`](#moving-from-dwphar) with `dw-macos-x86_64`.
+
 A GitHub Actions example:
 
 ```yaml
@@ -88,17 +92,21 @@ dw --version
 ```
 
 The installer writes `dw.exe` to `%USERPROFILE%\.durable-workflow\bin` and adds
-that directory to the user `PATH`.
+that directory to the user `PATH`. Set
+`$env:DURABLE_WORKFLOW_INSTALL_NO_PATH_UPDATE = '1'` first to leave the user
+`PATH` unchanged, for example in a temporary CI install.
 
 </details>
 
-<details>
-<summary><b>Moving from <code>dw.phar</code></b></summary>
+### Moving from `dw.phar`
 
-From CLI 2.5.0, releases ship no PHAR. If you run `php dw.phar`, switch to the
+CLI 2.5.0 and later ship no PHAR. If you run `php dw.phar`, switch to the
 standalone binary, which needs no PHP, with the shell or PowerShell installer
 above. Then delete `dw.phar`. The installers check the binary against the
 release's `SHA256SUMS` before installing it.
+
+The 2.3.x PHAR receives security fixes only until 2027-02-28. It is
+unsupported after that date.
 
 If you don't pipe scripts into a shell, download the release and verify it
 first. Pick your platform's asset: `dw-linux-x86_64`, `dw-linux-aarch64`,
@@ -116,10 +124,12 @@ On Windows, download, verify and copy without running a script:
 ```powershell
 New-Item -ItemType Directory -Force release | Out-Null
 gh release download %%artifact.cliVersion%% --repo durable-workflow/cli --dir release
+if ($LASTEXITCODE -ne 0) { throw 'gh release download failed' }
 $expected = ((Select-String -Path release\SHA256SUMS -Pattern ' dw-windows-x86_64\.exe$').Line -split '\s+')[0]
 $actual = (Get-FileHash release\dw-windows-x86_64.exe -Algorithm SHA256).Hash.ToLower()
 if ($actual -ne $expected) { throw 'dw-windows-x86_64.exe does not match SHA256SUMS' }
-gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml
+gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml --deny-self-hosted-runners
+if ($LASTEXITCODE -ne 0) { throw 'dw-windows-x86_64.exe failed attestation verification' }
 New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Programs\dw" | Out-Null
 Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 ```
@@ -131,10 +141,9 @@ manually". That message comes from the old release and can't be changed, so
 use the commands above instead. Standalone-binary installs upgrade as usual
 with `dw upgrade`.
 
-On an Intel Mac, move from 2.x with the shell installer. Published 2.x
-`dw upgrade` has no macOS x86_64 asset to move to.
-
-</details>
+On an Intel Mac, use the verified download above with `dw-macos-x86_64`.
+Published 2.x `dw upgrade` has no Intel macOS asset to move to, and the shell
+installer doesn't install it yet.
 
 ### Update An Installed Binary
 
