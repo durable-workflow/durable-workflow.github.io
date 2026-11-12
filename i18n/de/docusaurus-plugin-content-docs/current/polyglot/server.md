@@ -412,11 +412,11 @@ curl http://localhost:8080/api/cluster/info \
 
 Liefert Build-Identität, Fähigkeitsflags, Protokollmanifeste, Limits und
 Erkennungsdaten für den Namespace aus `X-Namespace` (oder dem Abfrageparameter
-`namespace`, sonst `default`). Gekürzte Ausgabe des Images 3.3.2:
+`namespace`, sonst `default`). Gekürzte Ausgabe des Images 3.5.0:
 
 ```json
 {
-  "version": "3.3.2",
+  "version": "3.5.0",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
@@ -457,6 +457,9 @@ Erkennungsdaten für den Namespace aus `X-Namespace` (oder dem Abfrageparameter
       "supported_workflow_task_commands": ["schedule_activity", "start_timer", "complete_workflow", "..."],
       "query_tasks": true,
       "workflow_updates": true,
+      "sticky_execution": { "supported": true, "...": "..." },
+      "sticky_history_suffix": { "supported": true, "version": 1 },
+      "activity_workflow_continuation": { "version": 1, "...": "..." },
       "...": "..."
     }
   },
@@ -482,11 +485,12 @@ Wichtige Feldhinweise für Client-Code:
 - Die Build-Version steht in `version`, nicht in `server_version`.
   `implementation` ist auf dem nativen Server `"rust"`.
 - Prüfen Sie `control_plane.version` und `worker_protocol.version`, bevor Sie die
-  API aufrufen. Der native Server 3.3.2 bedient Steuerungsebene `2` und Worker-Protokoll
+  API aufrufen. Der native Server 3.5.0 bedient Steuerungsebene `2` und Worker-Protokoll
   `1.20` und akzeptiert Worker-Anfragen mit jeder Protokollversion von `1.0` bis
   `1.20`.
 - Workflow-Aufgabenbefehle stehen unter
   `worker_protocol.server_capabilities.supported_workflow_task_commands`.
+- Seit 3.5.0 meldet `worker_protocol.server_capabilities` `sticky_execution` und `sticky_history_suffix`. Seit 3.4.0 meldet es `activity_workflow_continuation`, das ein Worker nur nach seinem eigenen Opt-in verwendet.
 - Ein auf `false` gesetztes Fähigkeitsflag benennt eine Funktion oder einen
   veröffentlichten Vertrag, den der native Server nicht bedient.
   `response_compression` ist leer, weil der native Server Antworten
