@@ -265,7 +265,7 @@ try {
 
 スケジュール ID は再利用できません。削除されたスケジュールは、`max_runs` を使い切って削除されたものも含め、ID を保持します。その ID でスケジュールを作成すると、`existingStatus` が `deleted` の `ScheduleAlreadyExistsException` が発生します。新しい ID を使ってください。
 
-ネイティブ Server も同じ ID の規則に従い、使用済みの ID での作成には `409 schedule_already_exists` を返します。ネイティブ Server は現在も、変更のない更新を含むすべての更新で `ScheduleUpdated` イベントを記録し、`next_fire_at` を再計算します（[server#1147](https://github.com/durable-workflow/server/issues/1147)）。
+ネイティブ Server も同じ ID の規則に従い、使用済みの ID での作成には `409 schedule_already_exists` を返します。ネイティブ Server 3.6.0 以降では、変更のないスケジュールを再適用しても何も起こりません。`ScheduleUpdated` イベントは記録されず、`next_fire_at` も維持されます。レスポンスの結果は引き続き `updated` です。3.6.0 より前のネイティブ Server は、変更のない更新を含むすべての更新で `ScheduleUpdated` を記録し、`next_fire_at` を再計算します。
 
 ### 詳細取得 {#describe}
 

@@ -274,7 +274,7 @@ Re-applying an unchanged definition records nothing, so this is safe to run on e
 
 Schedule ids are not reusable. A deleted schedule, including one deleted when its `max_runs` ran out, keeps its id. Creating a schedule with that id raises `ScheduleAlreadyExistsException` with `existingStatus` `deleted`. Use a new id instead.
 
-Native Server applies the same id rule: creating a schedule with a taken id returns `409 schedule_already_exists`. Native Server still records a `ScheduleUpdated` event and recomputes `next_fire_at` on every update, including an unchanged one ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
+Native Server applies the same id rule: creating a schedule with a taken id returns `409 schedule_already_exists`. Since native Server 3.6.0, re-applying an unchanged schedule is also a no-op: it records no `ScheduleUpdated` event and keeps `next_fire_at`. The response outcome is still `updated`. Native Server releases before 3.6.0 record `ScheduleUpdated` and recompute `next_fire_at` on every update, including an unchanged one.
 
 ### Describe
 
