@@ -276,7 +276,7 @@ Reaplicar uma definição sem mudanças não registra nada, então é seguro exe
 
 Ids de agendamento não podem ser reutilizados. Um agendamento excluído, inclusive um excluído ao esgotar `max_runs`, mantém seu id. Criar um agendamento com esse id lança `ScheduleAlreadyExistsException` com `existingStatus` `deleted`. Use um id novo.
 
-O Server nativo aplica a mesma regra de ids: criar um agendamento com um id ocupado retorna `409 schedule_already_exists`. O Server nativo ainda registra um evento `ScheduleUpdated` e recalcula `next_fire_at` a cada atualização, mesmo sem mudanças ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
+O Server nativo aplica a mesma regra de ids: criar um agendamento com um id ocupado retorna `409 schedule_already_exists`. A partir do Server nativo 3.6.0, reaplicar um agendamento sem mudanças também não faz nada: não registra nenhum evento `ScheduleUpdated` e mantém `next_fire_at`. O resultado da resposta continua sendo `updated`. Versões do Server nativo anteriores à 3.6.0 registram `ScheduleUpdated` e recalculam `next_fire_at` a cada atualização, mesmo sem mudanças.
 
 ### Descrever {#describe}
 

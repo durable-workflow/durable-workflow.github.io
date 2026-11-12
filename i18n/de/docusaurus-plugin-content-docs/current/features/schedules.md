@@ -295,7 +295,7 @@ Das erneute Anwenden einer unveränderten Definition zeichnet nichts auf, daher 
 
 Zeitplan-IDs sind nicht wiederverwendbar. Ein gelöschter Zeitplan, auch einer, der nach Erreichen von `max_runs` gelöscht wurde, behält seine ID. Das Anlegen eines Zeitplans mit dieser ID löst `ScheduleAlreadyExistsException` mit `existingStatus` `deleted` aus. Verwenden Sie stattdessen eine neue ID.
 
-Der native Server wendet dieselbe ID-Regel an: Das Anlegen eines Zeitplans mit einer belegten ID liefert `409 schedule_already_exists`. Der native Server zeichnet weiterhin bei jeder Aktualisierung ein Ereignis `ScheduleUpdated` auf und berechnet `next_fire_at` neu, auch wenn sich nichts geändert hat ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
+Der native Server wendet dieselbe ID-Regel an: Das Anlegen eines Zeitplans mit einer belegten ID liefert `409 schedule_already_exists`. Seit dem nativen Server 3.6.0 ist das erneute Anwenden eines unveränderten Zeitplans ebenfalls wirkungslos: Es wird kein Ereignis `ScheduleUpdated` aufgezeichnet, und `next_fire_at` bleibt erhalten. Das Ergebnis der Antwort ist weiterhin `updated`. Native Server-Versionen vor 3.6.0 zeichnen bei jeder Aktualisierung `ScheduleUpdated` auf und berechnen `next_fire_at` neu, auch wenn sich nichts geändert hat.
 
 ### Beschreiben {#describe}
 

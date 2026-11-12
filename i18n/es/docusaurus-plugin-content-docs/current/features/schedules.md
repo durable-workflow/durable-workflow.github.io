@@ -266,7 +266,7 @@ Volver a aplicar una definición sin cambios no registra nada, así que es segur
 
 Los ids de programa no se pueden reutilizar. Un programa eliminado, incluido uno eliminado al agotar `max_runs`, conserva su id. Crear un programa con ese id lanza `ScheduleAlreadyExistsException` con `existingStatus` `deleted`. Usa un id nuevo.
 
-El Server nativo aplica la misma regla de ids: crear un programa con un id ocupado devuelve `409 schedule_already_exists`. El Server nativo todavía registra un evento `ScheduleUpdated` y recalcula `next_fire_at` en cada actualización, incluso sin cambios ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
+El Server nativo aplica la misma regla de ids: crear un programa con un id ocupado devuelve `409 schedule_already_exists`. Desde el Server nativo 3.6.0, volver a aplicar un programa sin cambios tampoco hace nada: no registra ningún evento `ScheduleUpdated` y conserva `next_fire_at`. El resultado de la respuesta sigue siendo `updated`. Las versiones del Server nativo anteriores a 3.6.0 registran `ScheduleUpdated` y recalculan `next_fire_at` en cada actualización, incluso sin cambios.
 
 ### Describir {#describe}
 
