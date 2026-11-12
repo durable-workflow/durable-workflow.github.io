@@ -99,12 +99,12 @@ The embedded package and the service-mode SDK have separate support contracts.
 
 | Package line | PHP | Laravel |
 | --- | --- | --- |
-| Current embedded Workflow 2.24 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Current embedded Workflow 2.26 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | Embedded Workflow 2.20.5 | PHP `^8.1`, subject to Laravel's own minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 | Published PHP SDK 3.14 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | PHP SDK 3.9.5 | Bare SDK PHP `^8.1`; the Laravel bridge also follows Laravel's PHP minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 
-The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
+The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
 and each release's `composer.json` are the package authorities. The current
 embedded release was verified on Laravel 12 with PHP 8.2–8.4 and Laravel 13 with
 PHP 8.3–8.4. Its PHP 8.1 and Laravel 10/11 support has been removed. This does
@@ -160,6 +160,38 @@ See the release notes for
 [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1),
 [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) and
 [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0).
+
+Workflow 2.25 and 2.26 keep the 2.21 support floors and the embedded worker
+protocol `1.22`. 2.25 adds no database migration. 2.26 adds one, so run
+`php artisan migrate` when you upgrade. It creates the
+`workflow_child_supervisions` table. Changes to check before upgrading:
+
+- From 2.26, a parent that continues as new while children it started are
+  still open hands them to the continued run. The chain's final run applies
+  their parent-close policy, and a child that fails is still retried under its
+  recorded retry policy. See
+  [Continue-as-new and open children](./features/child-workflows.md#continue-as-new-and-open-children).
+- From 2.26, the migrations from earlier releases that fill in existing rows
+  (`2026_07_13`, `2026_09_24`, `2026_09_29` and `2026_10_11`) no longer lock the
+  table for the whole backfill. They add the column first, fill rows in small
+  batches and then build their indexes without blocking writes. If one of them
+  is interrupted, run `php artisan migrate` again. Installs that already ran
+  them are not affected.
+- From 2.26, redrive reuses a child workflow that completed before the failure.
+  Releases before 2.26 replay such a successor with a different workflow time
+  after the reused child, so keep workers on 2.26 or later once one exists. See
+  [Redrive a Failed Run](./failures-and-recovery.md#redrive).
+- From 2.26, `historyBudgetAtStep()` and `shouldContinueAsNewAtStep()` read
+  the history budget the same way on every replay. Use them in loops. See
+  [History Budget](./features/continue-as-new.md#history-budget).
+- From 2.25, going over a fixed memo or search attribute cap raises
+  `StructuralLimitExceededException` instead of `InvalidArgumentException`,
+  and the `memo_size_bytes` default is 65,536. See
+  [Structural Limits](./constraints/structural-limits.md).
+
+See the release notes for
+[2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) and
+[2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ## Stability Levels
 

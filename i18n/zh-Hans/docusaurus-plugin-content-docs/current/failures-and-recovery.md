@@ -114,6 +114,7 @@ redrive 会在同一工作流实例的新运行中继续一个失败的运行。
 - 工作流代码在失败步骤之前 upsert 的备忘录或搜索属性会按步骤顺序复用，后继运行保留相同的值。
 - 已接收并应用其信号的信号等待（`await('name')`）会连同该信号的值一起复用。该信号不会再次投递。
 - 在失败步骤之前已被接受、应用并完成的更新，会在相同位置重新记录。重放会用记录的参数运行更新处理程序，因此工作流状态保持一致。更新不会再次投递。被拒绝的更新，以及在执行前就被失败关闭的更新，会被省略。
+- 在 Workflow 2.26 及更高版本中，在失败步骤之前已完成的子工作流调用会返回其记录的结果。子工作流不会再次启动。后继运行会记录该调用的 `ChildWorkflowScheduled`、`ChildRunStarted` 和 `ChildRunCompleted` 事件，并保留原始的子工作流实例、子运行、链接 id 和调用 id，但自身不会获得子链接。
 - 复用的工作流代码中的 `outbox()->sendReference()` 和 `inbox()->receive()` 会返回失败运行发送或消费过的消息，不会再次发送或消费。原始调用没有找到任何消息的 receive 在重放时会再次读取 stream。
 - 在 Workflow 2.20.2 及之后的版本中，失败运行上仍待处理的入站 stream 消息会转移到后继运行。Workflow 2.20.1 及之前的版本会把它们留在失败运行上，因此后继运行永远收不到这些消息（[workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)）。
 - 如果运行因活动失败而结束，失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
@@ -123,7 +124,7 @@ redrive 会在同一工作流实例的新运行中继续一个失败的运行。
 - 后继运行保留失败运行的执行截止时间。它的运行超时从 redrive 时重新开始计算。
 - 每个被复用的步骤都带有 `reused_from_run_id` 和 `reused_recorded_at`。在复用的更新或信号事件上，这两个字段总是成对出现。
 - 复用过步骤的后继运行可以再次 redrive。复用的信号或更新负载会在 `workflow_run_id` 中保留最初记录它的运行，`reused_from_run_id` 指向它被 redrive 时的来源运行，且每个复用的步骤都保留其首次运行的时间，因此一连串 redrive 中每个步骤只复用一次。
-- 在嵌入式模式下，后继运行中的 `Workflow::now()` 从失败运行的开始时间起算。重放使用 `reused_recorded_at`，因此复用步骤之后的 `Workflow::now()` 与失败运行中的时间一致。被第二次 redrive 复用的步骤保留其首次运行的时间。
+- 在嵌入式模式下，后继运行中的 `Workflow::now()` 从失败运行的开始时间起算。重放使用 `reused_recorded_at`，因此复用步骤之后的 `Workflow::now()` 与失败运行中的时间一致。在复用的子工作流调用之后，该时间是子工作流首次完成的时间。被第二次 redrive 复用的步骤保留其首次运行的时间。
 
 ### 请求 redrive {#request-a-redrive}
 
@@ -179,11 +180,12 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 
 - 该运行是实例的当前运行。
 - 运行失败的原因是活动失败到达工作流代码且未被捕获，或者是工作流代码抛出异常或结构限制使其停止。因工作流超时失败的运行会被拒绝。
-- 失败步骤之前的每个步骤都是已完成的活动、副作用、版本标记、已触发的 `timer()`、备忘录或搜索属性的 upsert、已接收并应用其信号的信号等待，或者以相同参数被接受、应用并完成的更新。被拒绝的更新，以及在执行前就被失败关闭的更新，是允许的，会被省略。活动、副作用、信号和更新的负载必须以内联方式存储。存放在外部负载存储中的负载会被拒绝。
+- 失败步骤之前的每个步骤都是已完成的活动、副作用、版本标记、已触发的 `timer()`、备忘录或搜索属性的 upsert、已接收并应用其信号的信号等待，以相同参数被接受、应用并完成的更新，或者（在 Workflow 2.26 及更高版本中）已完成的子工作流调用。被拒绝的更新，以及在执行前就被失败关闭的更新，是允许的，会被省略。活动、副作用、信号、更新和子工作流结果的负载必须以内联方式存储。存放在外部负载存储中的负载会被拒绝。
 - 工作流定义与运行开始时记录的指纹一致，或者你传入了 `allow_definition_change` 且修正后的代码能够重放已完成的步骤。同一定义上的工作流代码失败会被拒绝。
 - 执行截止时间尚未过去。
-- 运行没有父工作流、子工作流或本地活动，且其输入以内联方式存储。
-- 如果运行由服务模式 Worker 启动，失败之前的步骤只能是活动、副作用、版本标记和已触发的计时器。备忘录和搜索属性的 upsert、信号等待以及已应用的更新，在服务模式运行中会被拒绝。
+- 运行没有父工作流或本地活动，且其输入以内联方式存储。在 Workflow 2.26 之前，运行还不能有子工作流。本身是子工作流的运行永远不会被 redrive，因为其父工作流已经记录了该子工作流的结果。
+- 失败步骤之前的每个子工作流调用都独立完成，不在并行组或取消作用域中，且没有经过重试或 continue-as-new。
+- 如果运行由服务模式 Worker 启动，失败之前的步骤只能是活动、副作用、版本标记和已触发的计时器。备忘录和搜索属性的 upsert、信号等待、已应用的更新以及已完成的子工作流调用，在服务模式运行中会被拒绝。
 
 拒绝结果会指出第一条未满足的规则：
 
@@ -193,7 +195,12 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 | `source_run_not_current` | 该实例存在更新的运行。 |
 | `unrecorded_failure_boundary` | 运行的失败没有记录对应的步骤，例如 2.19.0 之前的版本记录的工作流代码失败。 |
 | `workflow_code_failure_requires_corrected_definition` | 工作流代码抛出了异常，且定义没有变化，因此同样的代码会再次抛出异常。 |
-| `unsupported_history` | 失败之前的历史包含 redrive 无法复用的步骤，例如子工作流或已取消的计时器。 |
+| `unsupported_history` | 失败之前的历史包含 redrive 无法复用的步骤，例如已取消的计时器。在 Workflow 2.26 之前，任何子工作流都属于此类。 |
+| `unsupported_open_child` | 失败之前的某个子工作流调用从未关闭。Workflow 2.26 及更高版本。 |
+| `unsupported_child_outcome` | 失败之前的某个子工作流失败、被取消或被终止。Workflow 2.26 及更高版本。 |
+| `unsupported_child_workflow` | 某个子工作流调用位于并行组或取消作用域中，经过了重试或 continue-as-new，或者其事件没有指向单一的子工作流调用。Workflow 2.26 及更高版本。 |
+| `external_child_result_not_supported` | 某个已完成子工作流的结果存储在外部负载存储中。Workflow 2.26 及更高版本。 |
+| `unavailable_child_result` | 某个已完成子工作流的结果无法解码。Workflow 2.26 及更高版本。 |
 | `unsupported_local_activity` | 历史中包含本地活动。 |
 | `unsupported_timer` | 历史中包含条件或信号超时、取消清理计时器，或位于取消作用域或并行组中的计时器。 |
 | `incomplete_timer_step` | 某个计时器步骤没有同时具备调度事件和触发事件。 |
@@ -220,7 +227,7 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 | `definition_incompatible_with_prefix` | 修正后的代码无法重放已完成的步骤。`definition_mismatch` 指出第一个不同的步骤。 |
 | `definition_check_over_budget` | 已完成的历史超出了重放检查允许的历史预算。 |
 | `definition_change_requires_replay_check` | 运行由服务模式 Worker 启动，因此 redrive 无法检查已变更的定义。 |
-| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert、信号等待或已应用的更新。在能够针对每个 SDK 运行时检查其能否重放这些步骤之前，redrive 会在服务模式运行中拒绝这些步骤。 |
+| `service_redrive_history_not_qualified` | 运行由服务模式 Worker 启动，且失败之前的步骤包含备忘录 upsert、搜索属性 upsert、信号等待、已应用的更新或已完成的子工作流调用。在能够针对每个 SDK 运行时检查其能否重放这些步骤之前，redrive 会在服务模式运行中拒绝这些步骤。 |
 | `request_id_already_used` | 该 `request_id` 已用于该实例的另一次 redrive。 |
 | `already_redriven` | 对于已经被 redrive 过的运行，由运行详情和 `describe()` 报告。对它发起的 redrive 请求会改为返回现有的后继运行。 |
 | `invalid_request_id` | `request_id` 超过 191 个字符。 |
@@ -241,6 +248,8 @@ $result = app(WorkflowControlPlane::class)->redrive($instanceId, $failedRunId, [
 在 Workflow 2.20.0 及更高版本中，运行详情和 `describe()` 会把 redrive 链接报告为有类型的血缘。后继运行的 `parents` 和失败运行的 `continuedWorkflows` 会以 `link_type: redrive` 和 `history_authority: typed_history` 列出它，步骤和时间取自后继运行的 `WorkflowStarted`。历史无法确认的链接只会列出一次，并带有 `history_authority: mutable_open_fallback` 和 `diagnostic_only: true`。
 
 ### 更早的版本与原生 Server {#redrive-earlier-releases}
+
+2.26.0 之前的 Workflow 版本会以 `unsupported_history` 拒绝历史中的任何子工作流。它们会忽略子工作流事件上的 `reused_recorded_at`，因此复用过子工作流调用的 2.26.0 后继运行在这些版本上重放时，该调用之后的工作流时间以及截止时间可能不同。它们还会拒绝再次对其 redrive。一旦存在这样的后继运行，请继续使用 2.26.0 或更高版本的 Worker，或在回滚前确认没有这样的历史会被重放。
 
 Workflow 2.20.0 不会拒绝任何 2.20.1 接受的内容。在 2.20.0 中，复用的工作流代码里的 `outbox()->sendReference()` 会再次发送，而重放的 `inbox()->receive()` 可能返回不同的消息或什么都不返回，也可能消费一条更新的消息（[workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)）。
 

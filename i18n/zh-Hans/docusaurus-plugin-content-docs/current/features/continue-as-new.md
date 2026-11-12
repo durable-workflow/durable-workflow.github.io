@@ -70,6 +70,10 @@ Core 2.7.0 和兼容 Server 会保留已收到、由运行命令契约声明处�
 
 工作流代码可通过显式运行时上下文读取当前历史长度和继续为新运行的建议标记，让长期循环在触及历史预算边界之前主动交接。
 
+在 Workflow 2.26 及更高版本中，请使用 `shouldContinueAsNewAtStep()` 和 `historyBudgetAtStep()`。它们只统计当前工作流步骤之前记录的历史，因此同一行代码在每次重放时都返回相同的结果。在每次迭代中检查预算的循环，只会在第一次超过阈值的迭代处继续为新运行一次。
+
+旧方法读取的是整个当前历史。在循环中，较早的迭代在重放时可能看到较晚的总量，从而走上与第一次不同的分支。这些方法没有变化，因此已经用它们做出决定的运行仍可继续重放。
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -97,6 +101,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | 当前运行的历史事件数 |
 | `$this->historySize()` | `int` | 历史事件的总字节数 |
 | `$this->shouldContinueAsNew()` | `bool` | 运行超过配置的事件数量或字节大小预算时为 `true` |
+| `$this->historyBudgetAtStep()` | `array` | 截至当前步骤的预算：`history_event_count`、`history_size_bytes`、`history_fan_out`、`continue_as_new_recommended`、`pressure`、`pressure_dimensions` 和 `observation`（`step_prefix.v1`）。Workflow 2.26 及更高版本。 |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | 来自 `historyBudgetAtStep()` 的 `continue_as_new_recommended`。请在循环中使用。Workflow 2.26 及更高版本。 |
 
 ### 配置 {#configuration}
 
@@ -112,7 +118,7 @@ class PollingWorkflow extends Workflow
 ],
 ```
 
-任一阈值被超过时，`shouldContinueAsNew()` 返回 `true`。运行摘要也跟踪 `history_event_count`、`history_size_bytes` 和 `continue_as_new_recommended`，便于 Waterline 在集群视图中标记长期运行。
+任一阈值被超过时，`shouldContinueAsNew()` 和 `shouldContinueAsNewAtStep()` 返回 `true`。运行摘要也跟踪 `history_event_count`、`history_size_bytes` 和 `continue_as_new_recommended`，便于 Waterline 在集群视图中标记长期运行。
 
 ## 元数据继承 {#metadata-carry-forward}
 
@@ -151,5 +157,7 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+父工作流在其启动的子工作流仍未关闭时继续为新运行，会把这些子工作流交给继续运行。参见[继续为新运行与未关闭的子工作流](./child-workflows.md#continue-as-new-and-open-children)。
 
 长期运行的人类输入或助手循环，优先使用正式的 `$this->inbox()` / `$this->outbox()` [消息流](./message-streams.md)门面。待处理的流消息和游标位置会转移到新运行，已消费消息留在原运行，作为历史证据。Workflow 2.20.1 及之前的版本会把待处理的流消息留在已关闭的运行上（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)，已在 2.20.2 中修复）；参见[消息流](./message-streams.md#continue-as-new)。

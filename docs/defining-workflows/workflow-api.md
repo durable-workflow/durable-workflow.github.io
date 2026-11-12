@@ -55,6 +55,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -67,6 +69,8 @@ abstract class Workflow
 | `historyLength()` | The workflow needs a count-based history budget signal. | Current history event count. |
 | `historySize()` | The workflow needs a byte-based history budget signal. | Approximate persisted history size in bytes. |
 | `shouldContinueAsNew()` | The workflow should rotate before history becomes expensive. | `true` when configured history budgets recommend rotation. |
+| `historyBudgetAtStep()` | The workflow reads the budget more than once in a run, for example in a loop (Workflow 2.26+). | Budget counters as of the current step, the same on every replay. |
+| `shouldContinueAsNewAtStep()` | A loop decides whether to rotate (Workflow 2.26+). | `true` when the history before the current step crosses a configured budget. |
 
 ## Durable commands
 

@@ -203,7 +203,7 @@ $results = all([
 - When the parent run closes for any reason, the engine queries open child links with a non-abandon policy and sends the appropriate command (request cancellation, cancel, or terminate) to each open child.
 - If the child has already closed by the time the policy is enforced, no action is taken — the command is silently skipped.
 - Policy enforcement is best-effort: if a child command is rejected (e.g. the child is already terminal), the parent's closure is not affected. When enforcement succeeds, a `ParentClosePolicyApplied` history event is recorded on the parent run. When enforcement fails, a `ParentClosePolicyFailed` history event is recorded instead, so operators can distinguish successful enforcement from silent failures.
-- Continue-as-new does **not** trigger parent-close policy, because the workflow instance remains active under a new run.
+- Continue-as-new does **not** trigger parent-close policy, because the workflow instance remains active under a new run. From Workflow 2.26, the chain's final run applies it instead. See [Continue-as-new and open children](#continue-as-new-and-open-children).
 
 ### Parent disposition matrix
 
@@ -216,8 +216,20 @@ Parent-close policy fires on every terminal parent disposition, and stays inert 
 | Timed out | Yes | Fires after `WorkflowTimedOut` is recorded for run-timeout and execution-timeout closures. |
 | Cancelled | Yes | Fires after the accepted `CancelRequested` command closes the parent run. |
 | Terminated | Yes | Fires after the accepted `TerminateRequested` command closes the parent run. |
-| Continue-as-new | No | The workflow instance stays active under the new run, so existing child links are re-pointed at the continued run with their original policy preserved. |
+| Continue-as-new | No | The workflow instance stays active under the new run. From Workflow 2.26, the continued run takes over supervising the open children, and the chain's final run applies their policy. |
 | Reset | Not currently applicable | The v2 runtime does not expose a standalone reset command or reset terminal disposition. A future reset or repair operation that closes or replaces a parent run must define whether child ownership transfers; if the old run becomes terminal, it must apply parent-close policy before it stops owning open children. |
+
+### Continue-as-new and open children {#continue-as-new-and-open-children}
+
+In Workflow 2.26 and later, a parent that continues as new while children it started are still open hands them to the continued run, in the same transaction. Embedded and service-mode runs behave the same:
+
+- Each open child gets a row in the `workflow_child_supervisions` table, which the 2.26 migration creates. A child that has already closed is not handed on.
+- The child link, child call, sequence, deadlines and parent-close policy stay as the starting run recorded them. When the continued run continues as new again, it hands the children on again.
+- When the chain's final run completes, fails, times out, is cancelled or is terminated, it applies each child's policy and records `ParentClosePolicyApplied` or `ParentClosePolicyFailed` in its own history. `abandon` stays `abandon`. The closed earlier run gets no new history.
+- The continued run has no handle on these children, and their results are not delivered to it. Pass anything the next run needs in the arguments to `continueAsNew()`.
+- A handed-on child that fails is retried under the retry policy the starting run recorded, with the same child call identity and attempt count, while a run of the chain still supervises it. The retry run's `WorkflowStarted` names the starting run as its parent, and the chain's final run applies the parent-close policy to the retry run. The failure is final once the attempts are spent, the failure is non-retryable, or the chain has closed.
+
+Before 2.26, these children kept running after the chain closed and their policy was never applied, and a child that failed after its parent continued as new was not retried. See the [2.26.0 release notes](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ### When to use each policy
 

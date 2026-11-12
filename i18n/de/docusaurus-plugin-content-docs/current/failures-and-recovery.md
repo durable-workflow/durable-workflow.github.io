@@ -114,6 +114,7 @@ Der Nachfolger spielt den Workflow-Code von Anfang an erneut ab:
 - Ein Memo oder Suchattribut, das der Workflow-Code vor dem fehlgeschlagenen Schritt per Upsert gesetzt hat, wird in Schrittreihenfolge wiederverwendet, und der Nachfolger behält dieselben Werte.
 - Eine Signalwarteoperation (`await('name')`), die ihr Signal empfangen und angewendet hat, wird mit dem Wert des Signals wiederverwendet. Das Signal wird nicht erneut zugestellt.
 - Ein Update, das vor dem fehlgeschlagenen Schritt angenommen, angewendet und abgeschlossen wurde, wird an derselben Stelle erneut aufgezeichnet. Das Replay führt den Update-Handler mit den aufgezeichneten Argumenten aus, sodass der Zustand des Workflows übereinstimmt. Das Update wird nicht erneut zugestellt. Ein abgelehntes Update und eines, das der Fehler vor seiner Ausführung geschlossen hat, werden ausgelassen.
+- In Workflow 2.26 und später liefert ein Child-Workflow-Aufruf, der vor dem fehlgeschlagenen Schritt abgeschlossen wurde, sein aufgezeichnetes Ergebnis. Das Child wird nicht erneut gestartet. Der Nachfolger zeichnet die Ereignisse `ChildWorkflowScheduled`, `ChildRunStarted` und `ChildRunCompleted` des Aufrufs auf und behält die ursprüngliche Child-Instanz, den Child-Lauf, die Link-ID und die Call-ID, erhält aber keine eigene Child-Verknüpfung.
 - `outbox()->sendReference()` und `inbox()->receive()` in wiederverwendetem Workflow-Code geben die Nachricht zurück, die der fehlgeschlagene Lauf gesendet oder konsumiert hat. Sie senden oder konsumieren sie nicht erneut. Ein Receive im Replay, dessen ursprünglicher Aufruf nichts gefunden hat, liest den Stream erneut.
 - In Workflow 2.20.2 und später gehen eingehende Stream-Nachrichten, die auf dem fehlgeschlagenen Lauf noch ausstehen, auf den Nachfolger über. Workflow 2.20.1 und früher ließen sie auf dem fehlgeschlagenen Lauf, sodass der Nachfolger sie nie erhielt ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Wenn ein Aktivitätsfehler den Lauf beendet hat, wird der fehlgeschlagene Aktivitätsaufruf als neue Aktivitätsausführung mit der Wiederholungsrichtlinie aus dem Workflow-Code eingeplant. Seine Versuche beginnen von vorn.
@@ -123,7 +124,7 @@ Der Nachfolger spielt den Workflow-Code von Anfang an erneut ab:
 - Der Nachfolger übernimmt die Ausführungsfrist des fehlgeschlagenen Laufs. Sein Lauf-Zeitlimit beginnt beim Redrive neu.
 - Jeder wiederverwendete Schritt trägt `reused_from_run_id` und `reused_recorded_at`. Bei einem wiederverwendeten Update- oder Signalereignis treten die beiden immer als Paar auf.
 - Ein Nachfolger, der Schritte wiederverwendet hat, kann erneut per Redrive fortgesetzt werden. Ein wiederverwendeter Signal- oder Update-Payload behält in `workflow_run_id` den Lauf, der ihn zuerst aufgezeichnet hat, `reused_from_run_id` nennt den Lauf, aus dem er per Redrive hervorging, und jeder wiederverwendete Schritt behält den Zeitpunkt seiner ersten Ausführung. So verwendet eine Kette von Redrives jeden Schritt nur einmal wieder.
-- Im Embedded-Modus beginnt `Workflow::now()` im Nachfolger bei der Startzeit des fehlgeschlagenen Laufs. Das Replay verwendet `reused_recorded_at`. Deshalb entspricht `Workflow::now()` nach einem wiederverwendeten Schritt der Zeit im fehlgeschlagenen Lauf. Ein Schritt, den ein zweiter Redrive wiederverwendet, behält den Zeitpunkt seiner ersten Ausführung.
+- Im Embedded-Modus beginnt `Workflow::now()` im Nachfolger bei der Startzeit des fehlgeschlagenen Laufs. Das Replay verwendet `reused_recorded_at`. Deshalb entspricht `Workflow::now()` nach einem wiederverwendeten Schritt der Zeit im fehlgeschlagenen Lauf. Nach einem wiederverwendeten Child-Workflow-Aufruf ist das der Zeitpunkt, zu dem das Child ursprünglich abgeschlossen wurde. Ein Schritt, den ein zweiter Redrive wiederverwendet, behält den Zeitpunkt seiner ersten Ausführung.
 
 ### Redrive anfordern {#request-a-redrive}
 
@@ -179,11 +180,12 @@ Redrive nimmt einen fehlgeschlagenen Lauf an, wenn alle folgenden Bedingungen er
 
 - Der Lauf ist der aktuelle Lauf der Instanz.
 - Der Lauf ist fehlgeschlagen, weil ein Aktivitätsfehler den Workflow-Code erreicht hat und nicht abgefangen wurde, oder weil der Workflow-Code eine Exception ausgelöst hat oder ein strukturelles Limit ihn gestoppt hat. Ein Lauf, der an einem Workflow-Zeitlimit fehlgeschlagen ist, wird abgelehnt.
-- Jeder Schritt vor dem fehlgeschlagenen Schritt ist eine abgeschlossene Aktivität, ein Seiteneffekt, ein Versionsmarker, ein ausgelöster `timer()`, ein Upsert eines Memos oder Suchattributs, eine Signalwarteoperation, die ihr Signal empfangen und angewendet hat, oder ein Update, das mit denselben Argumenten angenommen, angewendet und abgeschlossen wurde. Ein abgelehntes Update und eines, das der Fehler vor seiner Ausführung geschlossen hat, sind erlaubt und werden ausgelassen. Payloads von Aktivitäten, Seiteneffekten, Signalen und Updates müssen inline gespeichert sein. Ein Payload im externen Payload-Speicher wird abgelehnt.
+- Jeder Schritt vor dem fehlgeschlagenen Schritt ist eine abgeschlossene Aktivität, ein Seiteneffekt, ein Versionsmarker, ein ausgelöster `timer()`, ein Upsert eines Memos oder Suchattributs, eine Signalwarteoperation, die ihr Signal empfangen und angewendet hat, ein Update, das mit denselben Argumenten angenommen, angewendet und abgeschlossen wurde, oder, in Workflow 2.26 und später, ein abgeschlossener Child-Workflow-Aufruf. Ein abgelehntes Update und eines, das der Fehler vor seiner Ausführung geschlossen hat, sind erlaubt und werden ausgelassen. Payloads von Aktivitäten, Seiteneffekten, Signalen, Updates und Child-Ergebnissen müssen inline gespeichert sein. Ein Payload im externen Payload-Speicher wird abgelehnt.
 - Die Workflow-Definition entspricht dem Fingerprint, der beim Start des Laufs aufgezeichnet wurde, oder Sie haben `allow_definition_change` übergeben und der korrigierte Code spielt die abgeschlossenen Schritte erneut ab. Ein Fehler im Workflow-Code bei unveränderter Definition wird abgelehnt.
 - Die Ausführungsfrist ist nicht abgelaufen.
-- Der Lauf hat keinen übergeordneten Workflow, keine Child-Workflows und keine lokalen Aktivitäten, und seine Eingabe ist inline gespeichert.
-- Wenn ein Service-Worker den Lauf gestartet hat, bestehen die Schritte vor dem Fehler nur aus Aktivitäten, Seiteneffekten, Versionsmarkern und ausgelösten Timern. Memo- und Suchattribut-Upserts, Signalwarteoperationen und angewendete Updates werden für Läufe im Servicemodus abgelehnt.
+- Der Lauf hat keinen übergeordneten Workflow und keine lokalen Aktivitäten, und seine Eingabe ist inline gespeichert. Vor Workflow 2.26 hat er außerdem keine Child-Workflows. Ein Lauf, der selbst ein Child ist, wird nie per Redrive fortgesetzt, weil sein übergeordneter Workflow das Ergebnis des Childs bereits aufgezeichnet hat.
+- Jeder Child-Workflow-Aufruf vor dem fehlgeschlagenen Schritt wurde eigenständig abgeschlossen, außerhalb einer parallelen Gruppe oder eines Cancellation Scope, ohne Wiederholung und ohne Continue-as-new.
+- Wenn ein Service-Worker den Lauf gestartet hat, bestehen die Schritte vor dem Fehler nur aus Aktivitäten, Seiteneffekten, Versionsmarkern und ausgelösten Timern. Memo- und Suchattribut-Upserts, Signalwarteoperationen, angewendete Updates und abgeschlossene Child-Workflow-Aufrufe werden für Läufe im Servicemodus abgelehnt.
 
 Eine Ablehnung nennt die erste Regel, die nicht erfüllt ist:
 
@@ -193,7 +195,12 @@ Eine Ablehnung nennt die erste Regel, die nicht erfüllt ist:
 | `source_run_not_current` | Es gibt einen neueren Lauf der Instanz. |
 | `unrecorded_failure_boundary` | Für den Fehler des Laufs ist kein Schritt aufgezeichnet, etwa bei einem Fehler im Workflow-Code, den ein Release vor 2.19.0 aufgezeichnet hat. |
 | `workflow_code_failure_requires_corrected_definition` | Der Workflow-Code hat eine Exception ausgelöst, und die Definition hat sich nicht geändert. Derselbe Code würde also erneut eine Exception auslösen. |
-| `unsupported_history` | Die Historie vor dem Fehler enthält einen Schritt, den Redrive nicht wiederverwenden kann, etwa einen Child-Workflow oder einen abgebrochenen Timer. |
+| `unsupported_history` | Die Historie vor dem Fehler enthält einen Schritt, den Redrive nicht wiederverwenden kann, etwa einen abgebrochenen Timer. Vor Workflow 2.26 jeden Child-Workflow. |
+| `unsupported_open_child` | Ein Child-Workflow-Aufruf vor dem Fehler wurde nie geschlossen. Workflow 2.26 und später. |
+| `unsupported_child_outcome` | Ein Child-Workflow vor dem Fehler ist fehlgeschlagen, wurde abgebrochen oder beendet. Workflow 2.26 und später. |
+| `unsupported_child_workflow` | Ein Child-Workflow-Aufruf liegt in einer parallelen Gruppe oder einem Cancellation Scope, wurde wiederholt oder per Continue-as-new fortgesetzt, oder seine Ereignisse nennen nicht genau einen Child-Aufruf. Workflow 2.26 und später. |
+| `external_child_result_not_supported` | Das Ergebnis eines abgeschlossenen Child-Workflows liegt im externen Payload-Speicher. Workflow 2.26 und später. |
+| `unavailable_child_result` | Das Ergebnis eines abgeschlossenen Child-Workflows lässt sich nicht dekodieren. Workflow 2.26 und später. |
 | `unsupported_local_activity` | Die Historie enthält eine lokale Aktivität. |
 | `unsupported_timer` | Die Historie enthält einen Bedingungs- oder Signal-Timeout, einen Timer für die Abbruch-Bereinigung oder einen Timer in einem Cancellation Scope oder einer parallelen Gruppe. |
 | `incomplete_timer_step` | Einem Timer-Schritt fehlt das Ereignis für das Einplanen oder für das Auslösen. |
@@ -220,7 +227,7 @@ Eine Ablehnung nennt die erste Regel, die nicht erfüllt ist:
 | `definition_incompatible_with_prefix` | Der korrigierte Code kann die abgeschlossenen Schritte nicht erneut abspielen. `definition_mismatch` nennt den ersten abweichenden Schritt. |
 | `definition_check_over_budget` | Die abgeschlossene Historie ist größer als das Historienbudget, das die Replay-Prüfung zulässt. |
 | `definition_change_requires_replay_check` | Ein Service-Worker hat den Lauf gestartet. Daher kann Redrive eine geänderte Definition nicht prüfen. |
-| `service_redrive_history_not_qualified` | Ein Service-Worker hat den Lauf gestartet, und die Schritte vor dem Fehler enthalten einen Memo-Upsert, einen Suchattribut-Upsert, eine Signalwarteoperation oder ein angewendetes Update. Redrive lehnt diese Schritte für Läufe im Servicemodus ab, bis es für jede SDK-Laufzeit prüfen kann, ob sie diese Schritte per Replay verarbeiten kann. |
+| `service_redrive_history_not_qualified` | Ein Service-Worker hat den Lauf gestartet, und die Schritte vor dem Fehler enthalten einen Memo-Upsert, einen Suchattribut-Upsert, eine Signalwarteoperation, ein angewendetes Update oder einen abgeschlossenen Child-Workflow-Aufruf. Redrive lehnt diese Schritte für Läufe im Servicemodus ab, bis es für jede SDK-Laufzeit prüfen kann, ob sie diese Schritte per Replay verarbeiten kann. |
 | `request_id_already_used` | Die `request_id` wurde bereits für einen anderen Redrive der Instanz verwendet. |
 | `already_redriven` | Wird von den Laufdetails und `describe()` für einen Lauf gemeldet, der bereits per Redrive fortgesetzt wurde. Eine Redrive-Anfrage dafür gibt stattdessen den vorhandenen Nachfolger zurück. |
 | `invalid_request_id` | Die `request_id` ist länger als 191 Zeichen. |
@@ -241,6 +248,8 @@ In Workflow 2.19.0 und später meldet ein Nachfolger, der korrigierten Code ausf
 In Workflow 2.20.0 und später melden die Laufdetails und `describe()` die Redrive-Verknüpfung als typisierte Herkunft. `parents` des Nachfolgers und `continuedWorkflows` des fehlgeschlagenen Laufs führen sie mit `link_type: redrive` und `history_authority: typed_history` und übernehmen Schritt und Zeitpunkt aus dem `WorkflowStarted` des Nachfolgers. Eine Verknüpfung, die die Historie nicht bestätigt, erscheint einmal mit `history_authority: mutable_open_fallback` und `diagnostic_only: true`.
 
 ### Frühere Releases und der native Server {#redrive-earlier-releases}
+
+Workflow-Releases vor 2.26.0 lehnen jeden Child-Workflow in der Historie mit `unsupported_history` ab. Sie ignorieren `reused_recorded_at` bei Child-Workflow-Ereignissen, sodass ein 2.26.0-Nachfolger, der einen Child-Aufruf wiederverwendet hat, dort nach dem Aufruf mit einer anderen Workflow-Zeit und anderen Fristen abgespielt werden kann. Außerdem lehnen sie einen erneuten Redrive dieses Nachfolgers ab. Sobald ein solcher Nachfolger existiert, behalten Sie Worker ab 2.26.0 bei oder stellen Sie vor einem Rollback sicher, dass keine solche Historie per Replay verarbeitet werden kann.
 
 Workflow 2.20.0 lehnt nichts ab, was 2.20.1 annimmt. In 2.20.0 sendet `outbox()->sendReference()` in wiederverwendetem Workflow-Code erneut, und ein `inbox()->receive()` im Replay kann andere oder keine Nachrichten zurückgeben oder eine neuere Nachricht konsumieren ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
 

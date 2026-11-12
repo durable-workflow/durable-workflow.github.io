@@ -77,9 +77,13 @@ explicitly on the predecessor.
 
 Long-lived loops can shed history without inventing a new public workflow id every time the run rolls forward.
 
-## History Budget
+## History Budget {#history-budget}
 
 Workflow code can observe its current history length and a continue-as-new suggestion flag through explicit runtime context. This lets long-lived loops hand off deliberately before they hit history-budget cliffs.
+
+In Workflow 2.26 and later, use `shouldContinueAsNewAtStep()` and `historyBudgetAtStep()`. They count only the history recorded before the current workflow step, so the same line returns the same answer on every replay. A loop that checks the budget on each iteration continues as new once, at the first iteration that crosses the threshold.
+
+The older methods read the whole current history. Inside a loop, an earlier iteration can see a later total on replay and take a different branch than it took the first time. They are unchanged, so runs that already decided with them keep replaying.
 
 ```php
 use function Workflow\V2\activity;
@@ -108,6 +112,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | Number of history events in the current run |
 | `$this->historySize()` | `int` | Total size of history events in bytes |
 | `$this->shouldContinueAsNew()` | `bool` | `true` when the run exceeds the configured event count or byte size budget |
+| `$this->historyBudgetAtStep()` | `array` | The budget as of the current step: `history_event_count`, `history_size_bytes`, `history_fan_out`, `continue_as_new_recommended`, `pressure`, `pressure_dimensions` and `observation` (`step_prefix.v1`). Workflow 2.26 and later. |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `continue_as_new_recommended` from `historyBudgetAtStep()`. Use it in loops. Workflow 2.26 and later. |
 
 ### Configuration
 
@@ -123,7 +129,7 @@ The continue-as-new recommendation thresholds are configurable:
 ],
 ```
 
-`shouldContinueAsNew()` returns `true` when either threshold is crossed. Run summaries also track `history_event_count`, `history_size_bytes`, and `continue_as_new_recommended` so Waterline can flag long-lived runs in fleet views.
+`shouldContinueAsNew()` and `shouldContinueAsNewAtStep()` return `true` when either threshold is crossed. Run summaries also track `history_event_count`, `history_size_bytes`, and `continue_as_new_recommended` so Waterline can flag long-lived runs in fleet views.
 
 ## Metadata Carry-Forward
 
@@ -162,6 +168,8 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+A parent that continues as new while child workflows it started are still open hands them to the continued run. See [Continue-as-new and open children](./child-workflows.md#continue-as-new-and-open-children).
 
 For long-lived human-input or assistant loops, prefer the first-class
 `$this->inbox()` / `$this->outbox()` [Message Streams](./message-streams.md)

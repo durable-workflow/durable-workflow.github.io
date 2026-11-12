@@ -359,7 +359,7 @@ Ambas políticas registran comandos duraderos y eventos de historial. También p
 
 ### Probar el presupuesto del historial {#testing-history-budget}
 
-Los campos de `HistoryBudget` (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) aparecen en la proyección del resumen de ejecución y están disponibles mediante `RunDetailView`. En el workflow, la clase base `Workflow` los expone como `$this->historyLength()`, `$this->historySize()` y `$this->shouldContinueAsNew()`:
+Los campos de `HistoryBudget` (`history_event_count`, `history_size_bytes`, `continue_as_new_recommended`) aparecen en la proyección del resumen de ejecución y están disponibles mediante `RunDetailView`. En el workflow, la clase base `Workflow` los expone como `$this->historyLength()`, `$this->historySize()` y `$this->shouldContinueAsNew()`. Dentro de un bucle, usa `$this->shouldContinueAsNewAtStep()` (Workflow 2.26 y versiones posteriores), que da la misma respuesta en cada replay:
 
 ```php
 use Workflow\V2\Workflow;
@@ -371,7 +371,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }

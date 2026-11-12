@@ -46,6 +46,8 @@ abstract class Workflow
     public function historyLength(): int;
     public function historySize(): int;
     public function shouldContinueAsNew(): bool;
+    public function historyBudgetAtStep(): array;
+    public function shouldContinueAsNewAtStep(): bool;
 }
 ```
 
@@ -58,6 +60,8 @@ abstract class Workflow
 | `historyLength()` | Workflow потрібен кількісний показник бюджету історії. | Поточна кількість подій історії. |
 | `historySize()` | Workflow потрібен показник бюджету історії в байтах. | Приблизний розмір збереженої історії в байтах. |
 | `shouldContinueAsNew()` | Workflow має перейти до нового запуску до того, як історія стане дорогою. | `true`, якщо налаштовані бюджети історії рекомендують перехід. |
+| `historyBudgetAtStep()` | Workflow зчитує бюджет більше одного разу за запуск, наприклад у циклі (Workflow 2.26+). | Лічильники бюджету станом на поточний крок, однакові під час кожного відтворення. |
+| `shouldContinueAsNewAtStep()` | Цикл вирішує, чи переходити до нового запуску (Workflow 2.26+). | `true`, якщо історія до поточного кроку перевищує налаштований бюджет. |
 
 ## Стійкі команди {#durable-commands}
 

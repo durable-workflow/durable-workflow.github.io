@@ -350,7 +350,7 @@ public function testReturnExistingActiveStart(): void
 
 ### 测试历史预算 {#testing-history-budget}
 
-`HistoryBudget` 字段（`history_event_count`、`history_size_bytes`、`continue_as_new_recommended`）通过运行摘要投影公开，并可由 `RunDetailView` 获取。工作流代码中，`Workflow` 基类以 `$this->historyLength()`、`$this->historySize()` 和 `$this->shouldContinueAsNew()` 公开这些值：
+`HistoryBudget` 字段（`history_event_count`、`history_size_bytes`、`continue_as_new_recommended`）通过运行摘要投影公开，并可由 `RunDetailView` 获取。工作流代码中，`Workflow` 基类以 `$this->historyLength()`、`$this->historySize()` 和 `$this->shouldContinueAsNew()` 公开这些值。在循环中，请使用 `$this->shouldContinueAsNewAtStep()`（Workflow 2.26 及更高版本），它在每次重放时都给出相同的结果：
 
 ```php
 use Workflow\V2\Workflow;
@@ -362,7 +362,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }

@@ -117,6 +117,7 @@ The successor replays workflow code from the start:
 - A memo or search attribute that workflow code upserted before the failed step is reused in step order, and the successor keeps the same values.
 - A signal wait (`await('name')`) that received and applied its signal is reused with the signal's value. The signal is not delivered again.
 - An update that was accepted, applied and completed before the failed step is recorded again at the same position. Replay runs the update handler from its recorded arguments, so the workflow's state matches. The update is not delivered again. A rejected update, and one the failure closed before it ran, are left out.
+- In Workflow 2.26 and later, a child workflow call that completed before the failed step returns its recorded result. The child is not started again. The successor records the call's `ChildWorkflowScheduled`, `ChildRunStarted` and `ChildRunCompleted` events and keeps the original child instance, child run, link id and call id, but gets no child link of its own.
 - `outbox()->sendReference()` and `inbox()->receive()` in reused workflow code return the message the failed run sent or consumed. They don't send or consume it again. A replayed receive whose original call found nothing reads the stream again.
 - In Workflow 2.20.2 and later, inbound stream messages still pending on the failed run move to the successor. Workflow 2.20.1 and earlier left them on the failed run, so the successor never received them ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - If an activity failure ended the run, the failed activity call is scheduled as a new activity execution, using the retry policy in the workflow code. Its attempts start again.
@@ -126,7 +127,7 @@ The successor replays workflow code from the start:
 - The successor keeps the failed run's execution deadline. Its run timeout starts again at the redrive.
 - Each reused step carries `reused_from_run_id` and `reused_recorded_at`. On a reused update or signal event, the two always come as a pair.
 - A successor that reused steps can be redriven again. A reused signal or update payload keeps the run that first recorded it in `workflow_run_id`, `reused_from_run_id` names the run it was redriven from, and every reused step keeps the time it first ran, so a chain of redrives reuses each step once.
-- In embedded mode, `Workflow::now()` in the successor starts at the failed run's start time. Replay uses `reused_recorded_at`, so `Workflow::now()` after a reused step equals the time in the failed run. A step reused by a second redrive keeps the time it first ran.
+- In embedded mode, `Workflow::now()` in the successor starts at the failed run's start time. Replay uses `reused_recorded_at`, so `Workflow::now()` after a reused step equals the time in the failed run. After a reused child workflow call, that is the time the child first finished. A step reused by a second redrive keeps the time it first ran.
 
 ### Request a redrive {#request-a-redrive}
 
@@ -182,11 +183,12 @@ Redrive accepts a failed run when all of these are true:
 
 - The run is the instance's current run.
 - The run failed because an activity failure reached workflow code and was not caught, or because workflow code threw or a structural limit stopped it. A run that failed on a workflow timeout is refused.
-- Every step before the failed step is a completed activity, a side effect, a version marker, a `timer()` that fired, a memo or search-attribute upsert, a signal wait that received and applied its signal, or an update that was accepted, applied and completed with the same arguments. A rejected update, and one the failure closed before it ran, are allowed and left out. Activity, side effect, signal and update payloads must be stored inline. A payload held in external payload storage is refused.
+- Every step before the failed step is a completed activity, a side effect, a version marker, a `timer()` that fired, a memo or search-attribute upsert, a signal wait that received and applied its signal, an update that was accepted, applied and completed with the same arguments, or, in Workflow 2.26 and later, a child workflow call that completed. A rejected update, and one the failure closed before it ran, are allowed and left out. Activity, side effect, signal, update and child result payloads must be stored inline. A payload held in external payload storage is refused.
 - The workflow definition matches the fingerprint recorded when the run started, or you passed `allow_definition_change` and the corrected code replays the completed steps. A workflow-code failure on the same definition is refused.
 - The execution deadline has not passed.
-- The run has no parent workflow, no child workflows and no local activities, and its input is stored inline.
-- If a service worker started the run, the steps before the failure are only activities, side effects, version markers and fired timers. Memo and search-attribute upserts, signal waits and applied updates are refused for service runs.
+- The run has no parent workflow and no local activities, and its input is stored inline. Before Workflow 2.26, it also has no child workflows. A run that is itself a child is never redriven, because its parent has already recorded the child's outcome.
+- Each child workflow call before the failed step completed on its own, outside a parallel group or cancellation scope, without a retry or continue-as-new.
+- If a service worker started the run, the steps before the failure are only activities, side effects, version markers and fired timers. Memo and search-attribute upserts, signal waits, applied updates and completed child workflow calls are refused for service runs.
 
 A refusal names the first rule that failed:
 
@@ -196,7 +198,12 @@ A refusal names the first rule that failed:
 | `source_run_not_current` | A newer run of the instance exists. |
 | `unrecorded_failure_boundary` | The run's failure has no recorded step, such as a workflow-code failure recorded by a release before 2.19.0. |
 | `workflow_code_failure_requires_corrected_definition` | Workflow code threw, and the definition hasn't changed, so the same code would throw again. |
-| `unsupported_history` | The history before the failure contains a step that redrive cannot reuse, such as a child workflow or a cancelled timer. |
+| `unsupported_history` | The history before the failure contains a step that redrive cannot reuse, such as a cancelled timer. Before Workflow 2.26, any child workflow. |
+| `unsupported_open_child` | A child workflow call before the failure never closed. Workflow 2.26 and later. |
+| `unsupported_child_outcome` | A child workflow before the failure failed, was cancelled or was terminated. Workflow 2.26 and later. |
+| `unsupported_child_workflow` | A child workflow call is in a parallel group or cancellation scope, was retried or continued as new, or its events don't name one child call. Workflow 2.26 and later. |
+| `external_child_result_not_supported` | A completed child workflow's result is stored in external payload storage. Workflow 2.26 and later. |
+| `unavailable_child_result` | A completed child workflow's result cannot be decoded. Workflow 2.26 and later. |
 | `unsupported_local_activity` | The history contains a local activity. |
 | `unsupported_timer` | The history contains a condition or signal timeout, a cancellation cleanup timer, or a timer inside a cancellation scope or parallel group. |
 | `incomplete_timer_step` | A timer step does not have both its scheduled and fired events. |
@@ -223,7 +230,7 @@ A refusal names the first rule that failed:
 | `definition_incompatible_with_prefix` | The corrected code can't replay the completed steps. `definition_mismatch` names the first step that differs. |
 | `definition_check_over_budget` | The completed history is larger than the history budget the replay check allows. |
 | `definition_change_requires_replay_check` | A service worker started the run, so redrive can't check a changed definition. |
-| `service_redrive_history_not_qualified` | A service worker started the run, and the steps before the failure include a memo upsert, search-attribute upsert, signal wait or applied update. Redrive refuses these steps for service runs until it can check each SDK runtime's replay capability for them. |
+| `service_redrive_history_not_qualified` | A service worker started the run, and the steps before the failure include a memo upsert, search-attribute upsert, signal wait, applied update or completed child workflow call. Redrive refuses these steps for service runs until it can check each SDK runtime's replay capability for them. |
 | `request_id_already_used` | The `request_id` was already used for another redrive of the instance. |
 | `already_redriven` | Reported by run detail and `describe()` for a run that was already redriven. A redrive request for it returns the existing successor instead. |
 | `invalid_request_id` | The `request_id` is longer than 191 characters. |
@@ -244,6 +251,8 @@ In Workflow 2.19.0 and later, a successor that runs corrected code reports the r
 In Workflow 2.20.0 and later, run detail and `describe()` report the redrive link as typed lineage. The successor's `parents` and the failed run's `continuedWorkflows` list it with `link_type: redrive` and `history_authority: typed_history`, taking the step and time from the successor's `WorkflowStarted`. A link that history doesn't confirm is listed once with `history_authority: mutable_open_fallback` and `diagnostic_only: true`.
 
 ### Earlier releases and the native Server {#redrive-earlier-releases}
+
+Workflow releases before 2.26.0 refuse any child workflow in the history with `unsupported_history`. They ignore `reused_recorded_at` on child workflow events, so a 2.26.0 successor that reused a child call can replay there with a different workflow time, and different deadlines, after the call. They also refuse to redrive it again. Once such a successor exists, keep workers on 2.26.0 or later, or confirm that no such history can replay, before you roll back.
 
 Workflow 2.20.0 refuses nothing that 2.20.1 accepts. In 2.20.0, `outbox()->sendReference()` in reused workflow code sends again, and a replayed `inbox()->receive()` can return different messages or none, or consume a newer message ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
 

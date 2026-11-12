@@ -105,7 +105,7 @@ On the Server you can register a search attribute with a type through `POST /api
 
 Registration only constrains the keys you register. From native Server 3.5.0, a key that is not registered is still accepted and its type is inferred, as in a namespace with no registered attributes. Registering one attribute does not break running workflows that upsert other keys. PHP Server 2.x and native Server before 3.5.0 refuse every unregistered key once any attribute is registered, so register all the keys your workflows use before registering the first one there.
 
-Deleting a registration stops checking that key. Stored values and running workflows are not changed, and later upserts of the key are inferred again.
+Deleting a registration stops checking that key. Stored values and running workflows are not changed, and later upserts of the key are inferred again. On native Server, a list query that filters on a key that is not registered, including one whose registration you deleted, is refused because the key is not defined in the namespace.
 
 To change an attribute's type, register a new attribute name with the new type, update your workflows to write it, and filter on the new name once existing runs have caught up. Deleting and re-registering the same name with a different type leaves earlier values in the old type.
 

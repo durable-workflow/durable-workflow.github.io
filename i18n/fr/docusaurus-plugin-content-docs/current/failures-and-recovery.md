@@ -122,6 +122,7 @@ Le successeur rejoue le code du workflow depuis le début :
 - Un mémo ou un attribut de recherche sur lequel le code du workflow a fait un upsert avant l’étape échouée est réutilisé dans l’ordre des étapes, et le successeur garde les mêmes valeurs.
 - Une attente de signal (`await('name')`) qui a reçu et appliqué son signal est réutilisée avec la valeur du signal. Le signal n’est pas remis à nouveau.
 - Un update accepté, appliqué et terminé avant l’étape échouée est enregistré de nouveau à la même position. Le replay exécute le handler de l’update avec ses arguments enregistrés, si bien que l’état du workflow correspond. L’update n’est pas livré de nouveau. Un update rejeté, et un update que l’échec a fermé avant son exécution, sont laissés de côté.
+- Dans Workflow 2.26 et les versions ultérieures, un appel de workflow enfant terminé avant l’étape échouée renvoie son résultat enregistré. L’enfant n’est pas redémarré. Le successeur enregistre les événements `ChildWorkflowScheduled`, `ChildRunStarted` et `ChildRunCompleted` de l’appel et conserve l’instance enfant, l’exécution enfant, l’identifiant de lien et l’identifiant d’appel d’origine, mais ne reçoit aucun lien enfant propre.
 - `outbox()->sendReference()` et `inbox()->receive()` dans le code de workflow réutilisé renvoient le message que l’exécution échouée a envoyé ou consommé. Ils ne l’envoient ni ne le consomment de nouveau. Un receive rejoué dont l’appel d’origine n’a rien trouvé relit le stream.
 - Dans Workflow 2.20.2 et les versions ultérieures, les messages entrants du stream encore en attente sur l’exécution échouée passent au successeur. Workflow 2.20.1 et les versions antérieures les laissaient sur l’exécution échouée, si bien que le successeur ne les recevait jamais ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Si un échec d’activité a mis fin à l’exécution, l’appel d’activité échoué est planifié comme une nouvelle exécution d’activité, avec la politique de nouvelles tentatives du code du workflow. Ses tentatives repartent de zéro.
@@ -131,7 +132,7 @@ Le successeur rejoue le code du workflow depuis le début :
 - Le successeur conserve l’échéance d’exécution de l’exécution échouée. Son délai d’exécution repart au moment du redrive.
 - Chaque étape réutilisée porte `reused_from_run_id` et `reused_recorded_at`. Sur un événement d’update ou de signal réutilisé, les deux vont toujours de pair.
 - Un successeur qui a réutilisé des étapes peut à son tour faire l’objet d’un redrive. Un payload de signal ou d’update réutilisé garde dans `workflow_run_id` l’exécution qui l’a enregistré en premier, `reused_from_run_id` désigne l’exécution d’où vient le redrive, et chaque étape réutilisée garde l’heure de sa première exécution, si bien qu’une chaîne de redrives réutilise chaque étape une seule fois.
-- En mode embedded, `Workflow::now()` dans le successeur commence à l’heure de démarrage de l’exécution échouée. Le rejeu utilise `reused_recorded_at`, donc `Workflow::now()` après une étape réutilisée correspond à l’heure de l’exécution échouée. Une étape réutilisée par un second redrive garde l’heure de sa première exécution.
+- En mode embedded, `Workflow::now()` dans le successeur commence à l’heure de démarrage de l’exécution échouée. Le rejeu utilise `reused_recorded_at`, donc `Workflow::now()` après une étape réutilisée correspond à l’heure de l’exécution échouée. Après un appel de workflow enfant réutilisé, c’est l’heure à laquelle l’enfant s’est terminé la première fois. Une étape réutilisée par un second redrive garde l’heure de sa première exécution.
 
 ### Demander un redrive {#request-a-redrive}
 
@@ -187,11 +188,12 @@ Le redrive accepte une exécution échouée lorsque toutes ces conditions sont r
 
 - L’exécution est l’exécution courante de l’instance.
 - L’exécution a échoué parce qu’un échec d’activité a atteint le code du workflow sans y être intercepté, ou parce que le code du workflow a levé une exception ou qu’une limite structurelle l’a arrêtée. Une exécution qui a échoué sur un délai du workflow est refusée.
-- Chaque étape avant l’étape échouée est une activité terminée, un effet de bord, un marqueur de version, un `timer()` déclenché, un upsert de mémo ou d’attribut de recherche, une attente de signal qui a reçu et appliqué son signal, ou un update accepté, appliqué et terminé avec les mêmes arguments. Un update rejeté, et un update que l’échec a fermé avant son exécution, sont admis et laissés de côté. Les payloads d’activité, d’effet de bord, de signal et d’update doivent être stockés en ligne. Un payload placé dans le stockage externe des payloads est refusé.
+- Chaque étape avant l’étape échouée est une activité terminée, un effet de bord, un marqueur de version, un `timer()` déclenché, un upsert de mémo ou d’attribut de recherche, une attente de signal qui a reçu et appliqué son signal, un update accepté, appliqué et terminé avec les mêmes arguments ou, dans Workflow 2.26 et les versions ultérieures, un appel de workflow enfant terminé. Un update rejeté, et un update que l’échec a fermé avant son exécution, sont admis et laissés de côté. Les payloads d’activité, d’effet de bord, de signal, d’update et de résultat d’enfant doivent être stockés en ligne. Un payload placé dans le stockage externe des payloads est refusé.
 - La définition du workflow correspond à l’empreinte enregistrée au démarrage de l’exécution, ou vous avez passé `allow_definition_change` et le code corrigé rejoue les étapes terminées. Un échec du code du workflow sur la même définition est refusé.
 - L’échéance d’exécution n’est pas dépassée.
-- L’exécution n’a ni workflow parent, ni workflows enfants, ni activités locales, et son entrée est stockée en ligne.
-- Si un worker de service a démarré l’exécution, les étapes avant l’échec sont uniquement des activités, des effets de bord, des marqueurs de version et des minuteurs déclenchés. Les upserts de mémo et d’attribut de recherche, les attentes de signal et les updates appliqués sont refusés pour les exécutions de service.
+- L’exécution n’a ni workflow parent ni activités locales, et son entrée est stockée en ligne. Avant Workflow 2.26, elle n’a pas non plus de workflows enfants. Une exécution qui est elle-même un enfant ne fait jamais l’objet d’un redrive, car son parent a déjà enregistré le résultat de l’enfant.
+- Chaque appel de workflow enfant avant l’étape échouée s’est terminé seul, hors d’un groupe parallèle ou d’une portée d’annulation, sans nouvelle tentative ni continue-as-new.
+- Si un worker de service a démarré l’exécution, les étapes avant l’échec sont uniquement des activités, des effets de bord, des marqueurs de version et des minuteurs déclenchés. Les upserts de mémo et d’attribut de recherche, les attentes de signal, les updates appliqués et les appels de workflow enfant terminés sont refusés pour les exécutions de service.
 
 Un refus indique la première règle non respectée :
 
@@ -201,7 +203,12 @@ Un refus indique la première règle non respectée :
 | `source_run_not_current` | Une exécution plus récente de l’instance existe. |
 | `unrecorded_failure_boundary` | L’échec de l’exécution n’a aucune étape enregistrée, par exemple un échec du code du workflow enregistré par une version antérieure à 2.19.0. |
 | `workflow_code_failure_requires_corrected_definition` | Le code du workflow a levé une exception et la définition n’a pas changé, donc le même code la lèverait à nouveau. |
-| `unsupported_history` | L’historique avant l’échec contient une étape que le redrive ne peut pas réutiliser, comme un workflow enfant ou un minuteur annulé. |
+| `unsupported_history` | L’historique avant l’échec contient une étape que le redrive ne peut pas réutiliser, comme un minuteur annulé. Avant Workflow 2.26, tout workflow enfant. |
+| `unsupported_open_child` | Un appel de workflow enfant avant l’échec ne s’est jamais fermé. Workflow 2.26 et versions ultérieures. |
+| `unsupported_child_outcome` | Un workflow enfant avant l’échec a échoué, a été annulé ou a été arrêté de force. Workflow 2.26 et versions ultérieures. |
+| `unsupported_child_workflow` | Un appel de workflow enfant se trouve dans un groupe parallèle ou une portée d’annulation, a fait l’objet d’une nouvelle tentative ou d’un continue-as-new, ou ses événements ne désignent pas un seul appel enfant. Workflow 2.26 et versions ultérieures. |
+| `external_child_result_not_supported` | Le résultat d’un workflow enfant terminé se trouve dans le stockage externe des payloads. Workflow 2.26 et versions ultérieures. |
+| `unavailable_child_result` | Le résultat d’un workflow enfant terminé ne peut pas être décodé. Workflow 2.26 et versions ultérieures. |
 | `unsupported_local_activity` | L’historique contient une activité locale. |
 | `unsupported_timer` | L’historique contient un délai de condition ou de signal, un minuteur de nettoyage d’annulation, ou un minuteur dans une portée d’annulation ou un groupe parallèle. |
 | `incomplete_timer_step` | Il manque à une étape de minuteur son événement de planification ou de déclenchement. |
@@ -228,7 +235,7 @@ Un refus indique la première règle non respectée :
 | `definition_incompatible_with_prefix` | Le code corrigé ne peut pas rejouer les étapes terminées. `definition_mismatch` indique la première étape qui diffère. |
 | `definition_check_over_budget` | L’historique terminé dépasse le budget d’historique autorisé par la vérification de relecture. |
 | `definition_change_requires_replay_check` | Un worker de service a démarré l’exécution, donc le redrive ne peut pas vérifier une définition modifiée. |
-| `service_redrive_history_not_qualified` | Un worker de service a démarré l’exécution, et les étapes avant l’échec comprennent un upsert de mémo, un upsert d’attribut de recherche, une attente de signal ou un update appliqué. Le redrive refuse ces étapes pour les exécutions de service jusqu’à pouvoir vérifier, pour chaque runtime de SDK, qu’il sait les rejouer. |
+| `service_redrive_history_not_qualified` | Un worker de service a démarré l’exécution, et les étapes avant l’échec comprennent un upsert de mémo, un upsert d’attribut de recherche, une attente de signal, un update appliqué ou un appel de workflow enfant terminé. Le redrive refuse ces étapes pour les exécutions de service jusqu’à pouvoir vérifier, pour chaque runtime de SDK, qu’il sait les rejouer. |
 | `request_id_already_used` | Le `request_id` a déjà servi pour un autre redrive de l’instance. |
 | `already_redriven` | Signalé par le détail d’exécution et `describe()` pour une exécution qui a déjà fait l’objet d’un redrive. Une demande de redrive pour cette exécution renvoie le successeur existant. |
 | `invalid_request_id` | Le `request_id` dépasse 191 caractères. |
@@ -249,6 +256,8 @@ Dans Workflow 2.19.0 et les versions ultérieures, un successeur qui exécute du
 Dans Workflow 2.20.0 et versions ultérieures, le détail d’exécution et `describe()` présentent le lien de redrive comme une lignée typée. `parents` du successeur et `continuedWorkflows` de l’exécution échouée l’indiquent avec `link_type: redrive` et `history_authority: typed_history`, en reprenant l’étape et l’heure du `WorkflowStarted` du successeur. Un lien que l’historique ne confirme pas apparaît une fois avec `history_authority: mutable_open_fallback` et `diagnostic_only: true`.
 
 ### Versions antérieures et Server natif {#redrive-earlier-releases}
+
+Les versions de Workflow antérieures à 2.26.0 refusent tout workflow enfant dans l’historique avec `unsupported_history`. Elles ignorent `reused_recorded_at` sur les événements de workflow enfant, si bien qu’un successeur 2.26.0 qui a réutilisé un appel enfant peut y être rejoué avec un temps de workflow différent, et des échéances différentes, après l’appel. Elles refusent aussi de le relancer à nouveau par redrive. Dès qu’un tel successeur existe, gardez les workers en 2.26.0 ou ultérieur, ou vérifiez qu’aucun historique de ce type ne peut être rejoué, avant de revenir à une version antérieure.
 
 Workflow 2.20.0 ne refuse rien de ce que 2.20.1 accepte. Dans 2.20.0, `outbox()->sendReference()` dans le code de workflow réutilisé envoie de nouveau, et un `inbox()->receive()` rejoué peut renvoyer d’autres messages ou aucun, ou consommer un message plus récent ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
 

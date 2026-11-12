@@ -105,7 +105,7 @@ En el Server puede registrar un atributo de búsqueda con un tipo mediante `POST
 
 El registro solo restringe las claves que registra. Desde Server nativo 3.5.0, una clave no registrada se sigue aceptando y su tipo se infiere, como en un namespace sin atributos registrados. Registrar un atributo no rompe los workflows en ejecución que hacen upsert de otras claves. PHP Server 2.x y Server nativo anterior a 3.5.0 rechazan toda clave no registrada en cuanto se registra cualquier atributo, así que ahí registre todas las claves que usan sus workflows antes de registrar la primera.
 
-Eliminar un registro deja de validar esa clave. Los valores almacenados y los workflows en ejecución no cambian, y los upserts posteriores de la clave vuelven a inferirse.
+Eliminar un registro deja de validar esa clave. Los valores almacenados y los workflows en ejecución no cambian, y los upserts posteriores de la clave vuelven a inferirse. En el Server nativo, una consulta de lista que filtra por una clave no registrada, incluida una cuyo registro eliminó, se rechaza porque la clave no está definida en el namespace.
 
 Para cambiar el tipo de un atributo, registre un nombre de atributo nuevo con el tipo nuevo, actualice sus workflows para que lo escriban y filtre por el nombre nuevo cuando las ejecuciones existentes se hayan puesto al día. Si elimina y vuelve a registrar el mismo nombre con otro tipo, los valores anteriores quedan en el tipo antiguo.
 

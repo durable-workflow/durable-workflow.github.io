@@ -120,7 +120,7 @@ Auf dem Server können Sie ein Suchattribut mit einem Typ über `POST /api/searc
 
 Die Registrierung schränkt nur die Schlüssel ein, die Sie registrieren. Ab dem nativen Server 3.5.0 wird ein nicht registrierter Schlüssel weiterhin angenommen und sein Typ abgeleitet, wie in einem Namespace ohne registrierte Attribute. Das Registrieren eines Attributs bricht keine laufenden Workflows, die andere Schlüssel upserten. PHP Server 2.x und der native Server vor 3.5.0 lehnen jeden nicht registrierten Schlüssel ab, sobald irgendein Attribut registriert ist. Registrieren Sie dort also alle Schlüssel, die Ihre Workflows verwenden, bevor Sie das erste registrieren.
 
-Das Löschen einer Registrierung beendet die Prüfung dieses Schlüssels. Gespeicherte Werte und laufende Workflows bleiben unverändert, und spätere Upserts des Schlüssels werden wieder abgeleitet.
+Das Löschen einer Registrierung beendet die Prüfung dieses Schlüssels. Gespeicherte Werte und laufende Workflows bleiben unverändert, und spätere Upserts des Schlüssels werden wieder abgeleitet. Auf dem nativen Server wird eine Listenabfrage, die nach einem nicht registrierten Schlüssel filtert, auch nach einem, dessen Registrierung Sie gelöscht haben, abgelehnt, weil der Schlüssel im Namespace nicht definiert ist.
 
 Um den Typ eines Attributs zu ändern, registrieren Sie einen neuen Attributnamen mit dem neuen Typ, passen Sie Ihre Workflows an, damit sie ihn schreiben, und filtern Sie nach dem neuen Namen, sobald bestehende Ausführungen nachgezogen haben. Wenn Sie denselben Namen löschen und mit einem anderen Typ neu registrieren, behalten frühere Werte den alten Typ.
 

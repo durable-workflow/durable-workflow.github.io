@@ -119,6 +119,7 @@ A sucessora reproduz o código do workflow desde o início:
 - Um memo ou atributo de busca em que o código do workflow fez upsert antes do passo com falha é reutilizado na ordem dos passos, e a sucessora mantém os mesmos valores.
 - Uma espera de sinal (`await('name')`) que recebeu e aplicou o sinal é reutilizada com o valor do sinal. O sinal não é entregue de novo.
 - Um update que foi aceito, aplicado e concluído antes do passo com falha é registrado de novo na mesma posição. O replay executa o handler do update com os argumentos registrados, então o estado do workflow confere. O update não é entregue de novo. Um update rejeitado, e um que a falha fechou antes de ser executado, ficam de fora.
+- No Workflow 2.26 e posteriores, uma chamada de workflow filho concluída antes do passo com falha retorna o resultado registrado. O filho não é iniciado de novo. A sucessora registra os eventos `ChildWorkflowScheduled`, `ChildRunStarted` e `ChildRunCompleted` da chamada e mantém a instância filha, a execução filha, o id de vínculo e o id de chamada originais, mas não recebe um vínculo de filho próprio.
 - `outbox()->sendReference()` e `inbox()->receive()` no código de workflow reutilizado retornam a mensagem que a execução com falha enviou ou consumiu. Eles não a enviam nem a consomem de novo. Um receive em replay cuja chamada original não encontrou nada lê o stream de novo.
 - No Workflow 2.20.2 e posteriores, mensagens de entrada do stream ainda pendentes na execução com falha passam para a sucessora. O Workflow 2.20.1 e anteriores as deixavam na execução com falha, então a sucessora nunca as recebia ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Se uma falha de atividade encerrou a execução, a chamada de atividade que falhou é agendada como uma nova execução de atividade, com a política de novas tentativas do código do workflow. As tentativas recomeçam.
@@ -128,7 +129,7 @@ A sucessora reproduz o código do workflow desde o início:
 - A sucessora mantém o prazo de execução da execução com falha. O timeout de execução dela recomeça no redrive.
 - Cada passo reutilizado carrega `reused_from_run_id` e `reused_recorded_at`. Em um evento reutilizado de update ou de sinal, os dois sempre vêm em par.
 - Um sucessor que reutilizou passos pode passar por um novo redrive. Um payload de sinal ou de update reutilizado mantém em `workflow_run_id` a execução que o registrou primeiro, `reused_from_run_id` indica a execução de onde veio o redrive, e cada passo reutilizado mantém o horário em que foi executado pela primeira vez, então uma cadeia de redrives reutiliza cada passo uma única vez.
-- No modo embedded, `Workflow::now()` na sucessora começa no horário de início da execução com falha. A reprodução usa `reused_recorded_at`, então `Workflow::now()` depois de um passo reutilizado corresponde ao horário da execução com falha. Um passo reutilizado por um segundo redrive mantém o horário em que foi executado pela primeira vez.
+- No modo embedded, `Workflow::now()` na sucessora começa no horário de início da execução com falha. A reprodução usa `reused_recorded_at`, então `Workflow::now()` depois de um passo reutilizado corresponde ao horário da execução com falha. Depois de uma chamada de workflow filho reutilizada, esse é o horário em que o filho terminou pela primeira vez. Um passo reutilizado por um segundo redrive mantém o horário em que foi executado pela primeira vez.
 
 ### Solicitar um redrive {#request-a-redrive}
 
@@ -184,11 +185,12 @@ O redrive aceita uma execução com falha quando tudo isto é verdadeiro:
 
 - A execução é a execução atual da instância.
 - A execução falhou porque uma falha de atividade chegou ao código do workflow e não foi capturada, ou porque o código do workflow lançou uma exceção ou um limite estrutural a interrompeu. Uma execução que falhou em um timeout do workflow é recusada.
-- Cada passo antes do passo com falha é uma atividade concluída, um efeito colateral, um marcador de versão, um `timer()` que disparou, um upsert de memo ou de atributo de busca, uma espera de sinal que recebeu e aplicou o sinal, ou um update que foi aceito, aplicado e concluído com os mesmos argumentos. Um update rejeitado, e um que a falha fechou antes de ser executado, são permitidos e ficam de fora. Payloads de atividades, de efeitos colaterais, de sinais e de updates precisam estar armazenados inline. Um payload no armazenamento externo de payloads é recusado.
+- Cada passo antes do passo com falha é uma atividade concluída, um efeito colateral, um marcador de versão, um `timer()` que disparou, um upsert de memo ou de atributo de busca, uma espera de sinal que recebeu e aplicou o sinal, um update que foi aceito, aplicado e concluído com os mesmos argumentos ou, no Workflow 2.26 e posteriores, uma chamada de workflow filho que foi concluída. Um update rejeitado, e um que a falha fechou antes de ser executado, são permitidos e ficam de fora. Payloads de atividades, de efeitos colaterais, de sinais, de updates e de resultados de filhos precisam estar armazenados inline. Um payload no armazenamento externo de payloads é recusado.
 - A definição do workflow corresponde à impressão digital registrada no início da execução, ou você passou `allow_definition_change` e o código corrigido reproduz os passos concluídos. Uma falha no código do workflow com a mesma definição é recusada.
 - O prazo de execução não venceu.
-- A execução não tem workflow pai, nem workflows filhos, nem atividades locais, e a entrada dela está armazenada em linha.
-- Se um worker de serviço iniciou a execução, os passos antes da falha são apenas atividades, efeitos colaterais, marcadores de versão e timers disparados. Upserts de memo e de atributo de busca, esperas de sinal e updates aplicados são recusados em execuções de serviço.
+- A execução não tem workflow pai nem atividades locais, e a entrada dela está armazenada em linha. Antes do Workflow 2.26, ela também não tem workflows filhos. Uma execução que é ela própria filha nunca passa por redrive, porque o pai já registrou o resultado do filho.
+- Cada chamada de workflow filho antes do passo com falha foi concluída por conta própria, fora de um grupo paralelo ou escopo de cancelamento, sem nova tentativa nem continue-as-new.
+- Se um worker de serviço iniciou a execução, os passos antes da falha são apenas atividades, efeitos colaterais, marcadores de versão e timers disparados. Upserts de memo e de atributo de busca, esperas de sinal, updates aplicados e chamadas de workflow filho concluídas são recusados em execuções de serviço.
 
 Uma recusa indica a primeira regra que não foi atendida:
 
@@ -198,7 +200,12 @@ Uma recusa indica a primeira regra que não foi atendida:
 | `source_run_not_current` | Existe uma execução mais recente da instância. |
 | `unrecorded_failure_boundary` | A falha da execução não tem um passo registrado, como uma falha no código do workflow registrada por uma versão anterior à 2.19.0. |
 | `workflow_code_failure_requires_corrected_definition` | O código do workflow lançou uma exceção e a definição não mudou, então o mesmo código lançaria a exceção de novo. |
-| `unsupported_history` | O histórico antes da falha tem um passo que o redrive não consegue reutilizar, como um workflow filho ou um timer cancelado. |
+| `unsupported_history` | O histórico antes da falha tem um passo que o redrive não consegue reutilizar, como um timer cancelado. Antes do Workflow 2.26, qualquer workflow filho. |
+| `unsupported_open_child` | Uma chamada de workflow filho antes da falha nunca foi fechada. Workflow 2.26 e posteriores. |
+| `unsupported_child_outcome` | Um workflow filho antes da falha falhou, foi cancelado ou foi terminado. Workflow 2.26 e posteriores. |
+| `unsupported_child_workflow` | Uma chamada de workflow filho está em um grupo paralelo ou escopo de cancelamento, recebeu nova tentativa ou continuou como nova, ou seus eventos não indicam uma única chamada de filho. Workflow 2.26 e posteriores. |
+| `external_child_result_not_supported` | O resultado de um workflow filho concluído está no armazenamento externo de payloads. Workflow 2.26 e posteriores. |
+| `unavailable_child_result` | O resultado de um workflow filho concluído não pode ser decodificado. Workflow 2.26 e posteriores. |
 | `unsupported_local_activity` | O histórico contém uma atividade local. |
 | `unsupported_timer` | O histórico contém um timeout de condição ou de sinal, um timer de limpeza de cancelamento, ou um timer dentro de um escopo de cancelamento ou de um grupo paralelo. |
 | `incomplete_timer_step` | Um passo de timer não tem os dois eventos, de agendamento e de disparo. |
@@ -225,7 +232,7 @@ Uma recusa indica a primeira regra que não foi atendida:
 | `definition_incompatible_with_prefix` | O código corrigido não consegue reproduzir os passos concluídos. `definition_mismatch` indica o primeiro passo que difere. |
 | `definition_check_over_budget` | O histórico concluído é maior que o orçamento de histórico permitido pela verificação de reprodução. |
 | `definition_change_requires_replay_check` | Um worker de serviço iniciou a execução, então o redrive não consegue verificar uma definição alterada. |
-| `service_redrive_history_not_qualified` | Um worker de serviço iniciou a execução, e os passos antes da falha incluem um upsert de memo, um upsert de atributo de busca, uma espera de sinal ou um update aplicado. O redrive recusa esses passos em execuções de serviço até poder verificar, para cada runtime de SDK, se ele consegue reproduzi-los no replay. |
+| `service_redrive_history_not_qualified` | Um worker de serviço iniciou a execução, e os passos antes da falha incluem um upsert de memo, um upsert de atributo de busca, uma espera de sinal, um update aplicado ou uma chamada de workflow filho concluída. O redrive recusa esses passos em execuções de serviço até poder verificar, para cada runtime de SDK, se ele consegue reproduzi-los no replay. |
 | `request_id_already_used` | O `request_id` já foi usado em outro redrive da instância. |
 | `already_redriven` | Informado pelos detalhes da execução e por `describe()` para uma execução que já passou por redrive. Uma solicitação de redrive para ela retorna o sucessor existente. |
 | `invalid_request_id` | O `request_id` tem mais de 191 caracteres. |
@@ -246,6 +253,8 @@ No Workflow 2.19.0 e versões posteriores, uma sucessora que executa código cor
 No Workflow 2.20.0 e posteriores, os detalhes da execução e `describe()` informam o vínculo de redrive como linhagem tipada. `parents` do sucessor e `continuedWorkflows` da execução com falha o listam com `link_type: redrive` e `history_authority: typed_history`, usando o passo e o horário do `WorkflowStarted` do sucessor. Um vínculo que o histórico não confirma aparece uma vez com `history_authority: mutable_open_fallback` e `diagnostic_only: true`.
 
 ### Versões anteriores e o Server nativo {#redrive-earlier-releases}
+
+Versões do Workflow anteriores à 2.26.0 recusam qualquer workflow filho no histórico com `unsupported_history`. Elas ignoram `reused_recorded_at` nos eventos de workflow filho, então uma sucessora da 2.26.0 que reutilizou uma chamada de filho pode ser reproduzida nelas com um horário de workflow diferente, e prazos diferentes, depois da chamada. Elas também recusam um novo redrive dela. Depois que existir uma sucessora assim, mantenha os workers na 2.26.0 ou posterior, ou confirme que nenhum histórico assim pode ser reproduzido, antes de fazer rollback.
 
 O Workflow 2.20.0 não recusa nada que o 2.20.1 aceite. No 2.20.0, `outbox()->sendReference()` no código de workflow reutilizado envia de novo, e um `inbox()->receive()` em replay pode retornar outras mensagens ou nenhuma, ou consumir uma mensagem mais nova ([workflow#1010](https://github.com/durable-workflow/workflow/issues/1010)).
 

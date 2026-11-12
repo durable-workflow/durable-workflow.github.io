@@ -200,7 +200,7 @@ $results = all([
 - Al cerrar el padre por cualquier motivo, el motor consulta enlaces abiertos cuya política no sea abandonar y envía a cada hijo el comando correspondiente (solicitud cooperativa, cancelación o terminación).
 - Si el hijo ya se cerró, se omite silenciosamente el comando.
 - La aplicación es de mejor esfuerzo: rechazar un comando del hijo (por ejemplo, ya terminal) no afecta al cierre padre. El éxito registra `ParentClosePolicyApplied` en el padre; el fallo registra `ParentClosePolicyFailed` para distinguir ambos resultados.
-- Continuar como nueva ejecución **no** activa la política, porque la instancia sigue activa bajo otra ejecución.
+- Continuar como nueva ejecución **no** activa la política, porque la instancia sigue activa bajo otra ejecución. Desde Workflow 2.26, la aplica en su lugar la ejecución final de la cadena. Consulta [Continuar como nueva ejecución e hijos abiertos](#continue-as-new-and-open-children).
 
 ### Matriz de disposiciones del padre {#parent-disposition-matrix}
 
@@ -213,8 +213,20 @@ La política actúa en toda disposición terminal del padre, pero no en ejecucio
 | Plazo vencido | Sí | Tras `WorkflowTimedOut` en cierres por plazo de ejecución o plazo global del workflow. |
 | Cancelado | Sí | Después de que el comando aceptado `CancelRequested` cierre al padre. |
 | Terminado | Sí | Después de que el comando aceptado `TerminateRequested` cierre al padre. |
-| Continuar como nueva ejecución | No | La instancia sigue activa en la nueva ejecución; los enlaces hijos se redirigen conservando su política. |
+| Continuar como nueva ejecución | No | La instancia sigue activa en la nueva ejecución. Desde Workflow 2.26, la ejecución continuada asume la supervisión de los hijos abiertos, y la ejecución final de la cadena aplica su política. |
 | Restablecer | No aplicable actualmente | El runtime v2 no expone un comando independiente ni disposición terminal de restablecimiento. Una futura operación de restablecimiento o reparación que cierre o sustituya al padre debe definir si transfiere la propiedad de los hijos; si la anterior queda terminal, debe aplicar la política antes de dejar de poseer hijos abiertos. |
+
+### Continuar como nueva ejecución e hijos abiertos {#continue-as-new-and-open-children}
+
+En Workflow 2.26 y versiones posteriores, un padre que continúa como nueva ejecución mientras los hijos que inició siguen abiertos los entrega a la ejecución continuada, en la misma transacción. Las ejecuciones en modo embebido y en modo servicio se comportan igual:
+
+- Cada hijo abierto obtiene una fila en la tabla `workflow_child_supervisions`, que crea la migración de 2.26. Un hijo que ya se cerró no se entrega.
+- El enlace hijo, la llamada hija, la secuencia, los plazos y la política de cierre del padre quedan como los registró la ejecución que los inició. Cuando la ejecución continuada vuelve a continuar como nueva ejecución, vuelve a entregar los hijos.
+- Cuando la ejecución final de la cadena se completa, falla, vence su plazo, se cancela o se termina, aplica la política de cada hijo y registra `ParentClosePolicyApplied` o `ParentClosePolicyFailed` en su propio historial. `abandon` sigue siendo `abandon`. La ejecución anterior ya cerrada no recibe historial nuevo.
+- La ejecución continuada no tiene referencia a estos hijos, y sus resultados no se le entregan. Pasa lo que necesite la siguiente ejecución en los argumentos de `continueAsNew()`.
+- Un hijo entregado que falla se reintenta con la política de reintentos que registró la ejecución que lo inició, con la misma identidad de llamada hija y el mismo recuento de intentos, mientras una ejecución de la cadena siga supervisándolo. El `WorkflowStarted` de la ejecución de reintento indica como padre la ejecución que lo inició, y la ejecución final de la cadena aplica la política de cierre del padre a la ejecución de reintento. El fallo es definitivo cuando se agotan los intentos, el fallo no admite reintentos o la cadena se ha cerrado.
+
+Antes de 2.26, estos hijos seguían ejecutándose después de cerrarse la cadena y su política nunca se aplicaba, y un hijo que fallaba después de que su padre continuara como nueva ejecución no se reintentaba. Consulta las [notas de versión de 2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ### Cuándo usar cada política {#when-to-use-each-policy}
 

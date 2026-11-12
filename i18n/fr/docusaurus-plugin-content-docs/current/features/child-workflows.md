@@ -200,7 +200,7 @@ $results = all([
 - À toute clôture du parent, le moteur recherche les liens enfants ouverts avec une politique autre qu’abandon et envoie à chacun la commande adaptée : demande coopérative, annulation ou arrêt forcé.
 - Si l’enfant est déjà clôturé lors de l’application, aucune action n’est exécutée et la commande est ignorée silencieusement.
 - L’application est faite au mieux : le rejet d’une commande enfant (par exemple déjà terminal) n’affecte pas la clôture du parent. Un succès enregistre `ParentClosePolicyApplied` sur le parent. Un échec enregistre `ParentClosePolicyFailed` pour distinguer les applications réussies des échecs silencieux.
-- La continuation dans une nouvelle exécution ne déclenche **pas** cette politique, car l’instance reste active.
+- La continuation dans une nouvelle exécution ne déclenche **pas** cette politique, car l’instance reste active. Depuis Workflow 2.26, c’est la dernière exécution de la chaîne qui l’applique. Voir [Continuation et enfants ouverts](#continue-as-new-and-open-children).
 
 ### Matrice des résultats du parent {#parent-disposition-matrix}
 
@@ -213,8 +213,20 @@ La politique s’applique à chaque résultat terminal du parent et reste inacti
 | Expiré | Oui | Après l’enregistrement de `WorkflowTimedOut` pour les expirations d’exécution individuelle ou globale. |
 | Annulé | Oui | Après la clôture du parent par la commande acceptée `CancelRequested`. |
 | Arrêté de force | Oui | Après la clôture du parent par la commande acceptée `TerminateRequested`. |
-| Continuation | Non | L’instance reste active dans la nouvelle exécution. Les liens enfants existants sont redirigés vers celle-ci avec leur politique initiale. |
+| Continuation | Non | L’instance reste active dans la nouvelle exécution. Depuis Workflow 2.26, l’exécution suivante prend en charge la supervision des enfants ouverts, et la dernière exécution de la chaîne applique leur politique. |
 | Réinitialisation | Non applicable actuellement | Le runtime v2 n’expose ni commande autonome de réinitialisation ni résultat terminal correspondant. Toute future réinitialisation ou réparation clôturant ou remplaçant un parent devra définir le transfert de propriété des enfants. Si l’ancienne exécution devient terminale, elle doit appliquer la politique avant de cesser de posséder ses enfants ouverts. |
+
+### Continuation et enfants ouverts {#continue-as-new-and-open-children}
+
+Dans Workflow 2.26 et les versions ultérieures, un parent qui continue dans une nouvelle exécution alors que des enfants qu’il a démarrés sont encore ouverts les transmet à l’exécution suivante, dans la même transaction. Les exécutions embarquées et en mode service se comportent de la même façon :
+
+- Chaque enfant ouvert reçoit une ligne dans la table `workflow_child_supervisions`, créée par la migration 2.26. Un enfant déjà clôturé n’est pas transmis.
+- Le lien enfant, l’appel enfant, la séquence, les échéances et la politique de clôture du parent restent tels que l’exécution de départ les a enregistrés. Quand l’exécution suivante continue à son tour dans une nouvelle exécution, elle transmet de nouveau les enfants.
+- Quand la dernière exécution de la chaîne se termine, échoue, expire, est annulée ou est arrêtée de force, elle applique la politique de chaque enfant et enregistre `ParentClosePolicyApplied` ou `ParentClosePolicyFailed` dans son propre historique. `abandon` reste `abandon`. L’exécution antérieure clôturée ne reçoit aucun nouvel historique.
+- L’exécution suivante n’a aucun handle sur ces enfants, et leurs résultats ne lui sont pas remis. Passez tout ce dont l’exécution suivante a besoin dans les arguments de `continueAsNew()`.
+- Un enfant transmis qui échoue fait l’objet d’une nouvelle tentative selon la politique de nouvelles tentatives enregistrée par l’exécution de départ, avec la même identité d’appel enfant et le même compteur de tentatives, tant qu’une exécution de la chaîne le supervise encore. Le `WorkflowStarted` de l’exécution de nouvelle tentative désigne l’exécution de départ comme parent, et la dernière exécution de la chaîne applique la politique de clôture du parent à l’exécution de nouvelle tentative. L’échec est définitif une fois les tentatives épuisées, si l’échec n’est pas réessayable ou si la chaîne est clôturée.
+
+Avant 2.26, ces enfants continuaient à s’exécuter après la clôture de la chaîne et leur politique n’était jamais appliquée, et un enfant qui échouait après la continuation de son parent dans une nouvelle exécution ne faisait pas l’objet d’une nouvelle tentative. Voir les [notes de version 2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ### Quand utiliser chaque politique {#when-to-use-each-policy}
 

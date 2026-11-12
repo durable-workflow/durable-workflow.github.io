@@ -70,6 +70,10 @@ Core 2.7.0 と互換 Server は、実行のコマンド契約にハンドラー�
 
 ワークフローコードは明示的なランタイムコンテキストから現在の履歴長と継続推奨フラグを参照できます。長期ループが履歴の使用量上限に達する前に、計画的に引き継げます。
 
+Workflow 2.26 以降では、`shouldContinueAsNewAtStep()` と `historyBudgetAtStep()` を使ってください。これらは現在のワークフローステップより前に記録された履歴だけを数えるため、同じ行はどのリプレイでも同じ結果を返します。反復ごとに使用量上限を確認するループは、しきい値を超えた最初の反復で 1 回だけ continue-as-new します。
+
+従来のメソッドは現在の履歴全体を読み取ります。ループ内では、前の反復がリプレイ時にそれより後の合計値を見て、最初とは異なる分岐を取ることがあります。従来のメソッドは変更されていないため、すでにそれらで判断した実行は引き続きリプレイされます。
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -97,6 +101,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | 現在の実行の履歴イベント数 |
 | `$this->historySize()` | `int` | 履歴イベントの総バイト数 |
 | `$this->shouldContinueAsNew()` | `bool` | 設定した件数またはバイト数の上限を超えると `true` |
+| `$this->historyBudgetAtStep()` | `array` | 現在のステップ時点の使用量: `history_event_count`、`history_size_bytes`、`history_fan_out`、`continue_as_new_recommended`、`pressure`、`pressure_dimensions`、`observation`（`step_prefix.v1`）。Workflow 2.26 以降。 |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `historyBudgetAtStep()` の `continue_as_new_recommended`。ループではこれを使います。Workflow 2.26 以降。 |
 
 ### 設定 {#configuration}
 
@@ -112,7 +118,7 @@ class PollingWorkflow extends Workflow
 ],
 ```
 
-いずれかのしきい値を超えると `shouldContinueAsNew()` は `true` です。実行サマリーも `history_event_count`、`history_size_bytes`、`continue_as_new_recommended` を追跡し、Waterline が一覧で長期実行を示せます。
+いずれかのしきい値を超えると `shouldContinueAsNew()` と `shouldContinueAsNewAtStep()` は `true` を返します。実行サマリーも `history_event_count`、`history_size_bytes`、`continue_as_new_recommended` を追跡し、Waterline が一覧で長期実行を示せます。
 
 ## メタデータの引き継ぎ {#metadata-carry-forward}
 
@@ -151,5 +157,7 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+自身が起動した子ワークフローがまだ開いている間に continue-as-new した親は、それらの子を継続先の実行に引き渡します。[Continue-as-new と開いている子](./child-workflows.md#continue-as-new-and-open-children)を参照してください。
 
 人の入力やアシスタントの長期ループには、正式な `$this->inbox()` / `$this->outbox()` の[メッセージストリーム](./message-streams.md)ファサードを優先します。保留中のストリームメッセージとカーソル位置は新しい実行に移り、消費済みメッセージは証拠として元の実行の履歴に残ります。Workflow 2.20.1 以前は、保留中のストリームメッセージを終了した実行に残していました（[workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)、2.20.2 で修正）。[メッセージストリーム](./message-streams.md#continue-as-new)を参照してください。

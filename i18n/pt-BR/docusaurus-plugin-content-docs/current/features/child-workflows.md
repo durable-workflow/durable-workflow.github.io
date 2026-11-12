@@ -200,7 +200,7 @@ $results = all([
 - Quando a execução pai encerra por qualquer motivo, o mecanismo consulta vínculos abertos de filhos com uma política diferente de abandonar e envia o comando adequado (solicitar cancelamento cooperativo, cancelar ou terminar) a cada filho aberto.
 - Se o filho já tiver encerrado quando a política for aplicada, nenhuma ação ocorre: o comando é ignorado silenciosamente.
 - A aplicação da política é de melhor esforço: se um comando do filho for rejeitado, por exemplo porque ele já está terminal, o encerramento do pai não é afetado. Quando a aplicação tem sucesso, um evento `ParentClosePolicyApplied` é registrado no histórico da execução pai. Quando falha, registra-se `ParentClosePolicyFailed`, permitindo aos operadores distinguir a aplicação bem-sucedida de falhas silenciosas.
-- Continue-as-new **não** aciona a política de encerramento do pai, pois a instância de workflow permanece ativa sob uma nova execução.
+- Continue-as-new **não** aciona a política de encerramento do pai, pois a instância de workflow permanece ativa sob uma nova execução. A partir do Workflow 2.26, a execução final da cadeia a aplica no lugar. Veja [Continuar como novo e filhos abertos](#continue-as-new-and-open-children).
 
 ### Matriz de resultados do pai {#parent-disposition-matrix}
 
@@ -213,8 +213,20 @@ A política de encerramento do pai é acionada para todo resultado terminal do p
 | Tempo limite excedido | Sim | Aciona após o registro de `WorkflowTimedOut` em encerramentos por tempo limite de execução ou da cadeia de execuções. |
 | Cancelado | Sim | Aciona depois que o comando aceito `CancelRequested` encerra a execução pai. |
 | Terminado | Sim | Aciona depois que o comando aceito `TerminateRequested` encerra a execução pai. |
-| Continue-as-new | Não | A instância de workflow permanece ativa sob a nova execução, por isso os vínculos existentes de filhos são redirecionados a ela, preservando a política original. |
+| Continue-as-new | Não | A instância de workflow permanece ativa sob a nova execução. A partir do Workflow 2.26, a nova execução assume a supervisão dos filhos abertos, e a execução final da cadeia aplica a política deles. |
 | Reset | Não se aplica atualmente | O runtime v2 não expõe um comando independente de reset nem um resultado terminal de reset. Uma futura operação de reset ou reparo que encerre ou substitua uma execução pai deve definir se a titularidade dos filhos é transferida. Se a execução antiga se tornar terminal, deve aplicar a política de encerramento do pai antes de deixar de deter os filhos abertos. |
+
+### Continuar como novo e filhos abertos {#continue-as-new-and-open-children}
+
+No Workflow 2.26 e posteriores, um pai que continua como novo enquanto filhos que ele iniciou ainda estão abertos os transfere para a nova execução, na mesma transação. Execuções embutidas e no modo de serviço se comportam da mesma forma:
+
+- Cada filho aberto recebe uma linha na tabela `workflow_child_supervisions`, que a migração do 2.26 cria. Um filho que já foi encerrado não é transferido.
+- O vínculo do filho, a chamada do filho, a sequência, os prazos e a política de encerramento do pai permanecem como a execução inicial os registrou. Quando a nova execução continua como nova de novo, ela transfere os filhos de novo.
+- Quando a execução final da cadeia é concluída, falha, excede o tempo limite, é cancelada ou é terminada, ela aplica a política de cada filho e registra `ParentClosePolicyApplied` ou `ParentClosePolicyFailed` no próprio histórico. `abandon` continua `abandon`. A execução anterior já encerrada não recebe histórico novo.
+- A nova execução não tem referência para esses filhos, e os resultados deles não são entregues a ela. Passe tudo o que a próxima execução precisa nos argumentos de `continueAsNew()`.
+- Um filho transferido que falha recebe novas tentativas sob a política de novas tentativas que a execução inicial registrou, com a mesma identidade de chamada de filho e a mesma contagem de tentativas, enquanto uma execução da cadeia ainda o supervisiona. O `WorkflowStarted` da execução de nova tentativa indica a execução inicial como pai, e a execução final da cadeia aplica a política de encerramento do pai à execução de nova tentativa. A falha é definitiva quando as tentativas se esgotam, quando a falha não permite nova tentativa ou quando a cadeia já foi encerrada.
+
+Antes do 2.26, esses filhos continuavam executando depois que a cadeia era encerrada e a política deles nunca era aplicada, e um filho que falhava depois que o pai continuava como novo não recebia novas tentativas. Veja as [notas de versão do 2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ### Quando usar cada política {#when-to-use-each-policy}
 

@@ -354,7 +354,7 @@ public function testReturnExistingActiveStart(): void
 
 ### 履歴の使用量上限をテストする {#testing-history-budget}
 
-`HistoryBudget` フィールド（`history_event_count`、`history_size_bytes`、`continue_as_new_recommended`）は、実行概要の投影と `RunDetailView` から利用できます。ワークフローコードでは、`Workflow` 基底クラスが `$this->historyLength()`、`$this->historySize()`、`$this->shouldContinueAsNew()` として公開します。
+`HistoryBudget` フィールド（`history_event_count`、`history_size_bytes`、`continue_as_new_recommended`）は、実行概要の投影と `RunDetailView` から利用できます。ワークフローコードでは、`Workflow` 基底クラスが `$this->historyLength()`、`$this->historySize()`、`$this->shouldContinueAsNew()` として公開します。ループ内では、どのリプレイでも同じ結果を返す `$this->shouldContinueAsNewAtStep()`（Workflow 2.26 以降）を使ってください。
 
 ```php
 use Workflow\V2\Workflow;
@@ -366,7 +366,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }

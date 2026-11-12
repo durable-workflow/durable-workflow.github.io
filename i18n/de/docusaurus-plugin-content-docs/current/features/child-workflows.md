@@ -232,7 +232,7 @@ $results = all([
 - Schließt der Elternlauf aus irgendeinem Grund, sucht die Engine offene Kindverknüpfungen mit einer anderen Richtlinie als Abandon und sendet jedem offenen Kind den passenden Befehl (kooperativen Abbruch anfordern, abbrechen oder beenden).
 - Ist das Kind bei der Durchsetzung bereits geschlossen, geschieht nichts. Der Befehl wird still übersprungen.
 - Die Durchsetzung erfolgt nach bestem Bemühen: Wird ein Kindbefehl abgelehnt, etwa weil das Kind bereits endgültig geschlossen ist, beeinflusst dies den Abschluss des Elternlaufs nicht. Bei erfolgreicher Durchsetzung wird dort `ParentClosePolicyApplied` aufgezeichnet. Bei fehlgeschlagener Durchsetzung entsteht stattdessen `ParentClosePolicyFailed`, damit Betreiber Erfolg von stillen Fehlern unterscheiden können.
-- Continue-as-new löst die Parent-close-Richtlinie **nicht** aus, da die Workflow-Instanz unter einem neuen Lauf aktiv bleibt.
+- Continue-as-new löst die Parent-close-Richtlinie **nicht** aus, da die Workflow-Instanz unter einem neuen Lauf aktiv bleibt. Ab Workflow 2.26 wendet stattdessen der letzte Lauf der Kette sie an. Siehe [Continue-as-new und offene Kinder](#continue-as-new-and-open-children).
 
 ### Matrix der Elternlauf-Ergebnisse {#parent-disposition-matrix}
 
@@ -249,8 +249,20 @@ Kindverknüpfung angewendet, die nicht Abandon verwendet.
 | Timeout | Ja | Nach Aufzeichnen von `WorkflowTimedOut` für Abschlüsse durch Lauf- oder Ausführungs-Timeout. |
 | Abgebrochen | Ja | Nachdem der angenommene Befehl `CancelRequested` den Elternlauf schließt. |
 | Beendet | Ja | Nachdem der angenommene Befehl `TerminateRequested` den Elternlauf schließt. |
-| Continue-as-new | Nein | Die Workflow-Instanz bleibt unter dem neuen Lauf aktiv. Bestehende Kindverknüpfungen werden deshalb unter Erhalt ihrer ursprünglichen Richtlinie auf den fortgesetzten Lauf umgestellt. |
+| Continue-as-new | Nein | Die Workflow-Instanz bleibt unter dem neuen Lauf aktiv. Ab Workflow 2.26 übernimmt der fortgesetzte Lauf die Überwachung der offenen Kinder, und der letzte Lauf der Kette wendet ihre Richtlinie an. |
 | Zurücksetzen | Derzeit nicht anwendbar | Die v2-Laufzeit bietet keinen eigenständigen Reset-Befehl oder endgültigen Reset-Zustand. Eine künftige Reset- oder Reparaturoperation, die einen Elternlauf schließt oder ersetzt, muss definieren, ob die Kindverantwortung übergeht. Wird der alte Lauf endgültig geschlossen, muss er die Parent-close-Richtlinie anwenden, bevor er die Verantwortung für offene Kinder abgibt. |
+
+### Continue-as-new und offene Kinder {#continue-as-new-and-open-children}
+
+In Workflow 2.26 und später übergibt ein Elternworkflow, der mit Continue-as-new fortgesetzt wird, während von ihm gestartete Kinder noch offen sind, diese in derselben Transaktion an den fortgesetzten Lauf. Eingebettete Läufe und Läufe im Servicemodus verhalten sich gleich:
+
+- Jedes offene Kind erhält eine Zeile in der Tabelle `workflow_child_supervisions`, die die Migration von 2.26 anlegt. Ein bereits geschlossenes Kind wird nicht weitergegeben.
+- Kindverknüpfung, Kindaufruf, Sequenz, Fristen und Parent-close-Richtlinie bleiben so, wie der startende Lauf sie aufgezeichnet hat. Wird der fortgesetzte Lauf erneut mit Continue-as-new fortgesetzt, gibt er die Kinder wieder weiter.
+- Wenn der letzte Lauf der Kette abgeschlossen wird, fehlschlägt, ein Timeout erreicht, abgebrochen oder beendet wird, wendet er die Richtlinie jedes Kindes an und zeichnet `ParentClosePolicyApplied` oder `ParentClosePolicyFailed` in seiner eigenen Historie auf. `abandon` bleibt `abandon`. Der geschlossene frühere Lauf erhält keine neue Historie.
+- Der fortgesetzte Lauf hat keine Referenz auf diese Kinder, und ihre Ergebnisse werden ihm nicht zugestellt. Übergeben Sie alles, was der nächste Lauf benötigt, in den Argumenten von `continueAsNew()`.
+- Ein weitergegebenes Kind, das fehlschlägt, wird nach der Wiederholungsrichtlinie wiederholt, die der startende Lauf aufgezeichnet hat, mit derselben Kindaufruf-Identität und demselben Versuchszähler, solange ein Lauf der Kette es noch überwacht. Das `WorkflowStarted` des Wiederholungslaufs nennt den startenden Lauf als Elternlauf, und der letzte Lauf der Kette wendet die Parent-close-Richtlinie auf den Wiederholungslauf an. Der Fehler ist endgültig, sobald die Versuche aufgebraucht sind, der Fehler nicht wiederholbar ist oder die Kette geschlossen wurde.
+
+Vor 2.26 liefen diese Kinder nach dem Schließen der Kette weiter, ihre Richtlinie wurde nie angewendet, und ein Kind, das nach dem Continue-as-new seines Elternworkflows fehlschlug, wurde nicht wiederholt. Siehe die [Versionshinweise zu 2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
 
 ### Wann welche Richtlinie geeignet ist {#when-to-use-each-policy}
 

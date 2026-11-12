@@ -65,12 +65,12 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 | 包版本线 | PHP | Laravel |
 | --- | --- | --- |
-| 当前嵌入式 Workflow 2.24 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| 当前嵌入式 Workflow 2.26 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | 嵌入式 Workflow 2.20.5 | PHP `^8.1`，并满足框架自身最低要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 | 已发布 PHP SDK 3.14 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | PHP SDK 3.9.5 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接还需满足框架的 PHP 要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 
-包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
+包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
 及各版本的 `composer.json`。当前嵌入式版本已验证 Laravel 12/PHP 8.2–8.4 与 Laravel 13/PHP 8.3–8.4，
 不再支持 PHP 8.1 和 Laravel 10/11。[历史稳定 v1 安装指南](/docs/1.x/installation/)与
 [PHP SDK 的独立要求](https://php.durable-workflow.com/)保持独立。
@@ -100,6 +100,16 @@ Workflow 2.23 和 2.24 保留 2.21 的支持下限和嵌入式 worker 协议 `1.
 - 自 2.23.1 起，嵌入式 saga 补偿在取消保护下运行，运行关闭期间被接受的 update 仍会得到结果。
 
 参见 [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2) 和 [2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0) 的发布说明。
+
+Workflow 2.25 和 2.26 保留 2.21 的支持下限和嵌入式 worker 协议 `1.22`。2.25 不添加数据库迁移。2.26 添加一个，因此升级时请运行 `php artisan migrate`。它创建 `workflow_child_supervisions` 表。升级前需要检查的变化：
+
+- 自 2.26 起，父工作流在其启动的子工作流仍未关闭时 continue-as-new，会把这些子工作流交给继续运行。链中的最终运行会应用它们的父级关闭策略，失败的子工作流仍会按其记录的重试策略重试。参见[继续为新运行与未关闭的子工作流](./features/child-workflows.md#continue-as-new-and-open-children)。
+- 自 2.26 起，早期版本中回填现有行的迁移（`2026_07_13`、`2026_09_24`、`2026_09_29` 和 `2026_10_11`）不再在整个回填期间锁表。它们先添加列，再以小批量填充行，然后在不阻塞写入的情况下建立索引。如果其中某个迁移被中断，请再次运行 `php artisan migrate`。已运行过这些迁移的安装不受影响。
+- 自 2.26 起，redrive 会复用在失败之前已完成的子工作流。2.26 之前的版本重放这样的后继运行时，复用的子工作流之后的工作流时间会不同，因此一旦存在这样的后继运行，请继续使用 2.26 或更高版本的 worker。参见[对失败的运行执行 redrive](./failures-and-recovery.md#redrive)。
+- 自 2.26 起，`historyBudgetAtStep()` 和 `shouldContinueAsNewAtStep()` 在每次重放时以相同方式读取历史预算。请在循环中使用它们。参见[历史预算](./features/continue-as-new.md#history-budget)。
+- 自 2.25 起，超过固定的备忘录或搜索属性上限会抛出 `StructuralLimitExceededException`，而不是 `InvalidArgumentException`，且 `memo_size_bytes` 的默认值为 65,536。参见[结构限制](./constraints/structural-limits.md)。
+
+参见 [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) 和 [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0) 的发布说明。
 
 ## 稳定性级别 {#stability-levels}
 

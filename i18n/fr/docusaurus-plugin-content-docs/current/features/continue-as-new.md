@@ -82,6 +82,10 @@ Les boucles longues peuvent réduire leur historique sans inventer un nouvel ide
 
 Le code du workflow peut consulter la longueur courante de l’historique et un indicateur de recommandation de continuation via un contexte explicite du runtime. Les boucles longues peuvent ainsi passer le relais volontairement avant d’atteindre des limites de budget d’historique.
 
+Dans Workflow 2.26 et les versions ultérieures, utilisez `shouldContinueAsNewAtStep()` et `historyBudgetAtStep()`. Elles ne comptent que l’historique enregistré avant l’étape courante du workflow, si bien que la même ligne renvoie la même réponse à chaque relecture. Une boucle qui vérifie le budget à chaque itération continue dans une nouvelle exécution une seule fois, à la première itération qui dépasse le seuil.
+
+Les anciennes méthodes lisent tout l’historique courant. Dans une boucle, une itération antérieure peut voir un total ultérieur lors de la relecture et prendre une autre branche que la première fois. Elles sont inchangées, si bien que les exécutions qui ont déjà décidé avec elles continuent d’être rejouées.
+
 ```php
 use function Workflow\V2\activity;
 use function Workflow\V2\continueAsNew;
@@ -109,6 +113,8 @@ class PollingWorkflow extends Workflow
 | `$this->historyLength()` | `int` | Nombre d’événements d’historique de l’exécution courante |
 | `$this->historySize()` | `int` | Taille totale des événements d’historique en octets |
 | `$this->shouldContinueAsNew()` | `bool` | `true` lorsque l’exécution dépasse le budget configuré d’événements ou d’octets |
+| `$this->historyBudgetAtStep()` | `array` | Le budget à l’étape courante : `history_event_count`, `history_size_bytes`, `history_fan_out`, `continue_as_new_recommended`, `pressure`, `pressure_dimensions` et `observation` (`step_prefix.v1`). Workflow 2.26 et versions ultérieures. |
+| `$this->shouldContinueAsNewAtStep()` | `bool` | `continue_as_new_recommended` issu de `historyBudgetAtStep()`. Utilisez-la dans les boucles. Workflow 2.26 et versions ultérieures. |
 
 ### Configuration {#configuration}
 
@@ -124,7 +130,7 @@ Les seuils de recommandation de continuation sont configurables :
 ],
 ```
 
-`shouldContinueAsNew()` renvoie `true` dès que l’un des seuils est dépassé. Les résumés suivent aussi `history_event_count`, `history_size_bytes` et `continue_as_new_recommended` pour que Waterline signale les exécutions longues dans les vues du parc.
+`shouldContinueAsNew()` et `shouldContinueAsNewAtStep()` renvoient `true` dès que l’un des seuils est dépassé. Les résumés suivent aussi `history_event_count`, `history_size_bytes` et `continue_as_new_recommended` pour que Waterline signale les exécutions longues dans les vues du parc.
 
 ## Transmission des métadonnées {#metadata-carry-forward}
 
@@ -163,6 +169,8 @@ class PollingWorkflow extends Workflow
     }
 }
 ```
+
+Un parent qui continue dans une nouvelle exécution alors que des workflows enfants qu’il a démarrés sont encore ouverts les transmet à l’exécution suivante. Voir [Continuation et enfants ouverts](./child-workflows.md#continue-as-new-and-open-children).
 
 Pour les boucles longues d’entrées humaines ou d’assistant, préférez la façade
 native `$this->inbox()` / `$this->outbox()` des [Flux de messages](./message-streams.md).

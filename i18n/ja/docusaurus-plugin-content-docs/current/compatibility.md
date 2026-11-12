@@ -66,12 +66,12 @@ PHP と Laravel の要件を比較する前にパッケージのリリースを�
 
 | パッケージ系列 | PHP | Laravel |
 | --- | --- | --- |
-| 現在の組み込み Workflow 2.24 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| 現在の組み込み Workflow 2.26 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | 組み込み Workflow 2.20.5 | PHP `^8.1`。Laravel 自身の最低要件も適用 | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 | 公開済み PHP SDK 3.14 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | PHP SDK 3.9.5 | 基本 SDK は PHP `^8.1`。Laravel ブリッジはフレームワークの最低要件にも従う | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 
-[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
+[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
 と各リリースの `composer.json` がパッケージの根拠です。現在の組み込みリリースは
 Laravel 12/PHP 8.2～8.4 と Laravel 13/PHP 8.3～8.4 で検証されています。
 PHP 8.1 と Laravel 10/11 のサポートは終了しました。
@@ -109,6 +109,16 @@ Workflow 2.23 と 2.24 は 2.21 のサポート下限と組み込みワーカー
 - 2.23.1 以降、組み込みの saga の補償はキャンセルシールドの下で実行され、実行の終了中に受け付けた update も結果を受け取ります。
 
 [2.23.0](https://github.com/durable-workflow/workflow/releases/tag/2.23.0), [2.23.1](https://github.com/durable-workflow/workflow/releases/tag/2.23.1), [2.23.2](https://github.com/durable-workflow/workflow/releases/tag/2.23.2)、[2.24.0](https://github.com/durable-workflow/workflow/releases/tag/2.24.0) のリリースノートを参照してください。
+
+Workflow 2.25 と 2.26 は 2.21 のサポート下限と組み込みワーカープロトコル `1.22` を維持します。2.25 はデータベースマイグレーションを追加しません。2.26 は 1 つ追加するため、アップグレード時に `php artisan migrate` を実行してください。このマイグレーションは `workflow_child_supervisions` テーブルを作成します。アップグレード前に確認すべき変更:
+
+- 2.26 以降、自身が起動した子がまだ開いている間に continue-as-new した親は、それらの子を継続先の実行に引き渡します。チェーンの最後の実行がそれらの親終了時ポリシーを適用し、失敗した子は記録済みのリトライポリシーに従って引き続きリトライされます。[Continue-as-new と開いている子](./features/child-workflows.md#continue-as-new-and-open-children)を参照してください。
+- 2.26 以降、既存の行を埋める以前のリリースのマイグレーション（`2026_07_13`、`2026_09_24`、`2026_09_29`、`2026_10_11`）は、バックフィルの間ずっとテーブルをロックすることはなくなりました。まず列を追加し、行を小さなバッチで埋めてから、書き込みをブロックせずにインデックスを作成します。いずれかが中断された場合は、`php artisan migrate` を再実行してください。これらをすでに実行済みのインストールには影響しません。
+- 2.26 以降、redrive は失敗前に完了した子ワークフローを再利用します。2.26 より前のリリースは、そのような後継実行を再利用された子の後で異なるワークフロー時刻でリプレイするため、そうした後継実行が存在する場合はワーカーを 2.26 以降に保ってください。[失敗した実行を redrive する](./failures-and-recovery.md#redrive)を参照してください。
+- 2.26 以降、`historyBudgetAtStep()` と `shouldContinueAsNewAtStep()` はどのリプレイでも同じように履歴の使用量上限を読み取ります。ループではこれらを使ってください。[履歴の使用量上限](./features/continue-as-new.md#history-budget)を参照してください。
+- 2.25 以降、固定のメモまたは検索属性の上限を超えると、`InvalidArgumentException` ではなく `StructuralLimitExceededException` が発生し、`memo_size_bytes` の既定値は 65,536 です。[構造上の制限](./constraints/structural-limits.md)を参照してください。
+
+[2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0)、[2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0) のリリースノートを参照してください。
 
 ## 安定性レベル {#stability-levels}
 

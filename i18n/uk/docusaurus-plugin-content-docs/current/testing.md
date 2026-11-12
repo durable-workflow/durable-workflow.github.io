@@ -384,7 +384,9 @@ public function testReturnExistingActiveStart(): void
 `continue_as_new_recommended`) надаються проєкцією огляду run й доступні
 через `RunDetailView`. У коді workflow базовий клас `Workflow` надає їх
 як `$this->historyLength()`, `$this->historySize()` і
-`$this->shouldContinueAsNew()`:
+`$this->shouldContinueAsNew()`. У циклі використовуйте
+`$this->shouldContinueAsNewAtStep()` (Workflow 2.26 і новіші), який дає ту саму
+відповідь під час кожного відтворення:
 
 ```php
 use Workflow\V2\Workflow;
@@ -396,7 +398,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }

@@ -383,7 +383,9 @@ d'historique. Vous pouvez donc vérifier aussi les lignes `WorkflowCommand` et
 Les champs `HistoryBudget` (`history_event_count`, `history_size_bytes`,
 `continue_as_new_recommended`) sont exposés dans la projection de résumé et via
 `RunDetailView`. Dans votre code, la classe de base `Workflow` les expose par
-`$this->historyLength()`, `$this->historySize()` et `$this->shouldContinueAsNew()` :
+`$this->historyLength()`, `$this->historySize()` et `$this->shouldContinueAsNew()`. Dans une boucle,
+utilisez `$this->shouldContinueAsNewAtStep()` (Workflow 2.26 et versions ultérieures),
+qui donne la même réponse à chaque relecture :
 
 ```php
 use Workflow\V2\Workflow;
@@ -395,7 +397,7 @@ final class LongRunningWorkflow extends Workflow
         while (true) {
             // ... process work ...
 
-            if ($this->shouldContinueAsNew()) {
+            if ($this->shouldContinueAsNewAtStep()) {
                 Workflow::continueAsNew($this->carryForwardState());
             }
         }
