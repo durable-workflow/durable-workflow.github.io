@@ -54,7 +54,7 @@ La entrada JSON de inicios de workflow, señales, consultas, actualizaciones, pr
 | `dw debug workflow <workflow-id>` | Capturar diagnósticos de una ejecución atascada: estado, tareas pendientes, cola, fallos y compatibilidad. | `--run-id`, opciones globales, `--json` |
 | `dw server:start-dev` | Servir la aplicación HTTP de un proyecto Laravel existente y configurado. Requiere PHP externo. | `--port`, `--host` (predeterminado `127.0.0.1`), `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | Sondear hasta estado terminal o un límite configurado de sondeos. | `--run-id`, `--interval`, `--max-polls`, opciones globales |
-| `dw upgrade` | Reemplazar el binario independiente actual de `dw` por otra publicación posterior o fijada. Rechaza modificar Composer vendor, Homebrew cellar y PHAR. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
+| `dw upgrade` | Reemplazar el binario independiente actual de `dw` por otra publicación posterior o fijada. Rechaza modificar Composer vendor y Homebrew cellar. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 Utiliza `server:info` para validar estructuras de contrato, `doctor` para explicar por qué la CLI no se conecta y `debug workflow` si soporte necesita una captura de ejecución legible por máquinas.
 
@@ -64,7 +64,7 @@ Ejecuta `dw server:start-dev` desde el directorio de un proyecto Laravel instala
 
 El comando utiliza loopback por defecto. Usa explícitamente `--host=0.0.0.0` para todas las interfaces. Los modos MySQL y PostgreSQL requieren servicios Compose del proyecto llamados `mysql` o `pgsql`, respectivamente, y `redis`. Los fallos de dependencias o procesos HTTP devuelven un código distinto de cero. Los servicios Compose permanecen activos al terminar HTTP.
 
-Los binarios nativos POSIX reenvían SIGINT y SIGTERM al hijo activo y esperan hasta cinco segundos a que termine su grupo de procesos. Las instalaciones desde código y PHAR requieren las extensiones PHP `pcntl` y `posix` para reenviar señales. Windows utiliza su interrupción de consola.
+Los binarios nativos POSIX reenvían SIGINT y SIGTERM al hijo activo y esperan hasta cinco segundos a que termine su grupo de procesos. Windows utiliza su interrupción de consola.
 
 Para Durable Workflow Server independiente con imágenes publicadas, sigue el [inicio rápido del servicio](/docs/quickstart).
 
@@ -118,11 +118,11 @@ El comando rechaza modificar instalaciones gestionadas por otra herramienta. La 
 | `upgraded` | Binario reemplazado por `target_version`. |
 | `noop` | `current_version` ya coincide con `target_version`; `--force` evita esta omisión. |
 | `dry-run` | `--dry-run` resolvió `target_version`, `asset_url` y `checksum_url` sin descargar. |
-| `refused` | La instalación no es un binario independiente (Composer vendor, Homebrew cellar o PHAR), o no hay artefacto publicado para la plataforma. |
+| `refused` | La instalación no es un binario independiente (Composer vendor o Homebrew cellar), o no hay artefacto publicado para la plataforma. |
 | `permission-denied` | No se puede escribir en el directorio de instalación; la carga incluye `hint` con el paso recomendado. |
 | `error` | Fallo al obtener el catálogo, checksum no coincidente o error del sistema de archivos. |
 
-En rechazos, `installation.kind` identifica la herramienta gestora (`composer-vendor`, `homebrew`, `phar` o `binary`) y `reason` indica el responsable correcto. Para automatización pública sin código fuente, reinstala una publicación fijada mediante `https://durable-workflow.com/install.sh`; para Homebrew por tap, utiliza `brew upgrade durable-workflow/tap/dw`.
+En rechazos, `installation.kind` identifica la herramienta gestora (`composer-vendor`, `homebrew`, `binary` o `unknown`) y `reason` indica el responsable correcto. Solo un PHAR 2.x, al ejecutar su propio código 2.x, informa `phar`. Para automatización pública sin código fuente, reinstala una publicación fijada mediante `https://durable-workflow.com/install.sh`; para Homebrew por tap, utiliza `brew upgrade durable-workflow/tap/dw`.
 
 ## Perfiles de entorno {#environment-profiles}
 

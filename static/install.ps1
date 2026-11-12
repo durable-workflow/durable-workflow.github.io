@@ -9,6 +9,8 @@
 #   $env:DURABLE_WORKFLOW_RELEASE_BASE_URL  Release base URL override for tests.
 #   $env:DURABLE_WORKFLOW_INSTALL_VERIFY_ATTESTATIONS
 #                                        Set to 1 to verify GitHub artifact attestations with gh.
+#   $env:DURABLE_WORKFLOW_INSTALL_NO_PATH_UPDATE
+#                                        Set to 1 for temporary installs without changing user PATH.
 
 $ErrorActionPreference = 'Stop'
 
@@ -118,11 +120,13 @@ try {
 
 Write-Host "==> Installed $binName to $installDir" -ForegroundColor Green
 
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-$paths = @($userPath -split ';' | Where-Object { $_ })
-if ($paths -notcontains $installDir) {
-    [Environment]::SetEnvironmentVariable('Path', (($paths + $installDir) -join ';'), 'User')
-    Write-Host "==> Added $installDir to your user PATH. Restart your shell for the change to take effect." -ForegroundColor Green
+if ($env:DURABLE_WORKFLOW_INSTALL_NO_PATH_UPDATE -ne '1') {
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $paths = @($userPath -split ';' | Where-Object { $_ })
+    if ($paths -notcontains $installDir) {
+        [Environment]::SetEnvironmentVariable('Path', (($paths + $installDir) -join ';'), 'User')
+        Write-Host "==> Added $installDir to your user PATH. Restart your shell for the change to take effect." -ForegroundColor Green
+    }
 }
 
 & $dest --version
