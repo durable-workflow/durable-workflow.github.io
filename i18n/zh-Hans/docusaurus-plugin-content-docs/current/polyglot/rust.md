@@ -69,6 +69,14 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 协商默认拒绝不合规请求。缺失或格式错误的头、不同主版本，或高于 Server 公布次版本的 Worker 次版本都会被拒绝。SDK 和 Server 发布版本独立跟踪，由运行时协议清单决定兼容性。
 
+## 升级到 Rust SDK 4.13 {#upgrade-to-4-13}
+
+- **静态令牌。** 构造客户端时现在会拒绝格式错误的共享、控制或 worker 静态令牌，包括未使用或被屏蔽的选项。诊断只给出选项名称。升级前请检查已配置的令牌值。空令牌保持原有优先级。
+- **本地活动的退避。** 超出退避列表末尾的重试会重复最后一项，而不是立即重试，与 Server 调度的活动一致。
+- **运行的活动。** `Client::get_run_activities` 返回类型化的活动和尝试元数据，包括 heartbeat 进度。
+
+参见 [4.13.0 变更日志](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md)。
+
 ## 条件等待期限与 Worker 升级 {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 从未分组的 `wait_condition` 首次打开时开始计算超时。

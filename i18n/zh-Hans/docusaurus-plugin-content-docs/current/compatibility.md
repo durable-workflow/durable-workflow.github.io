@@ -67,7 +67,7 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 | --- | --- | --- |
 | 当前嵌入式 Workflow 2.22 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | 嵌入式 Workflow 2.20.5 | PHP `^8.1`，并满足框架自身最低要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
-| 已发布 PHP SDK 3.11 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| 已发布 PHP SDK 3.14 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | PHP SDK 3.9.5 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接还需满足框架的 PHP 要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 
 包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
@@ -81,7 +81,7 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 修改 Composer 约束不会迁移持久历史。
 
 PHP SDK 3.10 将 Laravel 服务模式桥接的 PHP 和 Laravel 最低版本调整为与 Workflow 2.21 相同，
-并移除了 Laravel 10/11 支持；3.11 保持这些要求不变。其服务提供者会在注册配置、客户端或 Worker 之前，
+并移除了 Laravel 10/11 支持；3.11 至 3.14 保持这些要求不变。其服务提供者会在注册配置、客户端或 Worker 之前，
 拒绝不受支持或未知的框架与 PHP 版本。现有 SDK 3.9.x 应用在平台升级期间保留其自身的契约。
 参见 [PHP SDK 升级说明](/docs/polyglot/php#upgrade-to-3-10-and-3-11)。
 

@@ -285,6 +285,53 @@ service-mode bridge, including drain and rollback. Use
 [Deployment Modes](/docs/polyglot/deployment-modes/) for the wider runtime
 boundary comparison.
 
+## Upgrade to PHP SDK 3.12 through 3.14 {#upgrade-to-3-12-through-3-14}
+
+PHP `^8.1`, the Laravel bridge floors, worker protocol `1.20` and control plane
+`2` are unchanged from 3.11. Check these behavior changes before deploying:
+
+- **Updates that outlast their wait.** From 3.13, when a
+  `waitFor: 'completed'` update wait ends before the update finishes,
+  `Client::updateWorkflow()` and `WorkflowHandle::update()` throw
+  `UpdateStillPending`. Earlier releases returned the Server receipt as if it
+  were the update's result. To keep waiting, call the update again with
+  `$pending->requestId`. That does not apply the update twice.
+- **Stale worker registration.** From 3.13, `Worker::run()` registers again
+  after `stale_worker_registration` instead of stopping. Tasks the fenced
+  worker held are dropped without completing, and the Server redelivers them.
+  Each recovery logs `worker.reregistered` and increments
+  `durable_workflow_worker_reregistrations`. Pass
+  `stopOnStaleRegistration: true` to keep the old behavior.
+- **Local activity backoff.** From 3.13, a local activity with more retries
+  than `backoff_seconds` entries repeats the last delay instead of retrying
+  immediately, as Server-scheduled activities do.
+- **Condition waits in groups on native Server.** Native Server doesn't accept
+  a condition or signal wait inside `all()` or `parallel()` yet. From 3.13.1,
+  the worker fails that workflow task with `grouped_condition_wait_unsupported`
+  and keeps running, instead of exiting. Await the condition outside the group.
+
+New in these releases:
+
+- **Sticky history suffixes (3.14).** Workers advertise
+  `sticky_history_suffix`. On Server 3.5.0 or later, a worker that already
+  holds a run's history receives only the events after the sequence it cached.
+  A suffix that doesn't continue the cached history exactly is dropped and the
+  full history is fetched. Older Servers keep sending full history.
+- **Schedule origin (3.13).** `WorkflowContext::scheduleOrigin()` returns the
+  schedule id, occurrence time and trigger number of the schedule fire that
+  started the run, or `null` for an ordinary start. The value is the same on
+  replay. From Server 3.5.0, a run that continues as new keeps its schedule
+  origin.
+- **Activity continuations (3.12).** Pass `enableActivityContinuation: true` to
+  the `Worker` constructor to submit the next workflow commands together with a
+  successful activity result when the Server advertises
+  `activity_workflow_continuation` (native Server 3.4.0 or later). It defaults
+  to `false`. Use 3.12.1 or later if you enable it, and drain or disable
+  opted-in workers before downgrading the Server or adding older Server nodes.
+
+See the [3.14.0 changelog](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md)
+for the complete list.
+
 ## Upgrade to PHP SDK 3.10 and 3.11 {#upgrade-to-3-10-and-3-11}
 
 Read the [PHP SDK upgrade guide](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)

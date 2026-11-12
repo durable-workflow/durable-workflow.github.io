@@ -102,7 +102,7 @@ El paquete integrado y el SDK de modo servicio tienen contratos distintos.
 | --- | --- | --- |
 | Workflow integrado 2.22 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | Workflow integrado 2.20.5 | PHP `^8.1`, sujeto al mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
-| SDK PHP 3.11 publicado | SDK básico PHP `^8.1`; el puente Laravel necesita PHP `^8.2`, y PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
+| SDK PHP 3.14 publicado | SDK básico PHP `^8.1`; el puente Laravel necesita PHP `^8.2`, y PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.9.5 | SDK básico PHP `^8.1`; el puente Laravel también exige el mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 
 Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
@@ -119,8 +119,8 @@ permita. Conserva el runtime original de las ejecuciones v1 abiertas y sigue la
 restricción Composer no migra el historial durable.
 
 El SDK PHP 3.10 llevó el puente Laravel de modo servicio a los mismos mínimos
-de PHP y Laravel que Workflow 2.21 y retiró el soporte para Laravel 10/11; 3.11
-los mantiene. Su proveedor rechaza versiones del framework y de PHP no
+de PHP y Laravel que Workflow 2.21 y retiró el soporte para Laravel 10/11; de 3.11 a 3.14
+los mantienen. Su proveedor rechaza versiones del framework y de PHP no
 compatibles o desconocidas antes de registrar configuración, clientes o workers.
 Las aplicaciones existentes con el SDK 3.9.x conservan su propio contrato
 mientras se actualiza la plataforma. Consulta las

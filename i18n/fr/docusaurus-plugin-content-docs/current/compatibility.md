@@ -98,7 +98,7 @@ embarqué et le SDK en mode service ont des contrats distincts.
 | --- | --- | --- |
 | Workflow embarqué 2.22 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | Workflow embarqué 2.20.5 | PHP `^8.1`, sous réserve du minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
-| SDK PHP 3.11 publié | SDK de base PHP `^8.1` ; le pont Laravel exige PHP `^8.2`, et PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| SDK PHP 3.14 publié | SDK de base PHP `^8.1` ; le pont Laravel exige PHP `^8.2`, et PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.9.5 | SDK de base PHP `^8.1` ; le pont Laravel suit aussi le minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 
 Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
@@ -117,7 +117,7 @@ pas l'historique durable.
 
 Le SDK PHP 3.10 a aligné le pont Laravel en mode service sur les mêmes minimums
 PHP et Laravel que Workflow 2.21 et a retiré la prise en charge de Laravel 10/11 ;
-la 3.11 les conserve. Son fournisseur refuse les versions de framework et de PHP
+les versions 3.11 à 3.14 les conservent. Son fournisseur refuse les versions de framework et de PHP
 non prises en charge ou inconnues avant d'enregistrer la configuration, les
 clients ou les workers. Les applications existantes en SDK 3.9.x conservent leur
 propre contrat pendant la mise à niveau de la plateforme. Consultez les

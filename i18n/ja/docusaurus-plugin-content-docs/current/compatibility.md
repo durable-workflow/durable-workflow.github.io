@@ -68,7 +68,7 @@ PHP と Laravel の要件を比較する前にパッケージのリリースを�
 | --- | --- | --- |
 | 現在の組み込み Workflow 2.22 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | 組み込み Workflow 2.20.5 | PHP `^8.1`。Laravel 自身の最低要件も適用 | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
-| 公開済み PHP SDK 3.11 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| 公開済み PHP SDK 3.14 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | PHP SDK 3.9.5 | 基本 SDK は PHP `^8.1`。Laravel ブリッジはフレームワークの最低要件にも従う | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 
 [公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
@@ -86,7 +86,7 @@ PHP 8.1 と Laravel 10/11 のサポートは終了しました。
 Composer 制約の変更で永続履歴は移行されません。
 
 PHP SDK 3.10 では、Laravel サービスモードブリッジの PHP と Laravel の最低要件が
-Workflow 2.21 と同じになり、Laravel 10/11 のサポートが削除されました。3.11 もこれを維持します。
+Workflow 2.21 と同じになり、Laravel 10/11 のサポートが削除されました。3.11 から 3.14 もこれを維持します。
 provider は、未対応または不明なフレームワークと PHP のバージョンを、設定、クライアント、
 Worker を登録する前に拒否します。既存の SDK 3.9.x アプリケーションは、プラットフォームの
 更新中も従来の契約を維持します。

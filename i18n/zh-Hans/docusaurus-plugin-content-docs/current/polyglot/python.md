@@ -76,6 +76,16 @@ Worker 重启后发生变化的问题。请一起升级共享同一任务队列�
 谓词放在不同的行上，以便检测它们之间的切换。参阅
 [2.14.1 标签中的兼容性说明](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04)。
 
+Python SDK 2.15 和 2.16 新增：
+
+- **Sticky 历史后缀（2.16）。** 带 sticky 缓存（`sticky_cache_capacity > 0`）的 worker 声明 `sticky_history_suffix`。在 Server 3.5.0 或更高版本上，sticky 命中只接收缓存序列之后的历史。不能精确接续缓存历史的后缀会被丢弃，并重新获取完整历史。
+- **类型化工作流值（2.15）。** `@workflow.defn(..., typed=True)` 按注解解码 `run` 和处理器的参数，`result_type=` 解码子工作流和客户端的结果。未类型化的工作流仍像以前一样接收普通值，因此进行中的历史会原样重放。
+- **惰性分页（2.15）。** `Client.iter_workflows`、`Client.iter_history` 和 `WorkflowHandle.iter_history` 按分页令牌遍历，同时只保留一页。
+- **运行的活动（2.15）。** `Client.get_run_activities` 和 `WorkflowHandle.get_activities` 返回类型化的活动和尝试元数据，`ActivityInfo.activity_execution_id` 暴露逻辑活动标识。
+- **本地活动的退避（2.15.1）。** 超出退避列表末尾的重试会重复最后一项，而不是立即重试。
+
+完整列表请参见 [2.16.0 变更日志](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md)。
+
 ## 快速入门 {#quickstart}
 
 下面的完整 Python 程序定义带一个活动的工作流，在本地 Durable Workflow Server 上启动并等待结果：

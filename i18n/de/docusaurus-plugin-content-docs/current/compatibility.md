@@ -68,7 +68,7 @@ Das eingebettete Paket und das Service-Modus-SDK haben eigene Supportverträge.
 | --- | --- | --- |
 | Aktuelles eingebettetes Workflow 2.22 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
 | Eingebettetes Workflow 2.20.5 | PHP `^8.1`, zusätzlich gilt das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
-| Veröffentlichtes PHP-SDK 3.11 | Reines SDK PHP `^8.1`; die Laravel-Bridge benötigt PHP `^8.2` und für Laravel 13 PHP 8.3+ | `^12.69.0` oder `^13.30.0` |
+| Veröffentlichtes PHP-SDK 3.14 | Reines SDK PHP `^8.1`; die Laravel-Bridge benötigt PHP `^8.2` und für Laravel 13 PHP 8.3+ | `^12.69.0` oder `^13.30.0` |
 | PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 
 Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
@@ -87,7 +87,7 @@ dauerhaften Verlauf.
 
 PHP-SDK 3.10 hat die Laravel-Bridge für den Service-Modus auf dieselben PHP- und
 Laravel-Mindestversionen wie Workflow 2.21 angehoben und den Support für
-Laravel 10/11 entfernt; 3.11 behält sie bei. Ihr Provider verweigert nicht
+Laravel 10/11 entfernt; 3.11 bis 3.14 behalten sie bei. Ihr Provider verweigert nicht
 unterstützte oder unbekannte Framework- und PHP-Versionen, bevor er
 Konfiguration, Clients oder Worker registriert. Bestehende Anwendungen mit
 SDK 3.9.x behalten ihren eigenen Vertrag, während die Plattform aktualisiert
