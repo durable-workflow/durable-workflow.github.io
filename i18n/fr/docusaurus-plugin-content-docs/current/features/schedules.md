@@ -231,7 +231,11 @@ ScheduleManager::update(
 );
 ```
 
-Modifier l’expression cron ou le fuseau horaire recalcule `next_fire_at`.
+Seule une modification de la spécification (expressions cron, intervalles ou fuseau horaire) ou du jitter recalcule `next_fire_at`. Les autres modifications le conservent et ne peuvent donc pas sauter un déclenchement dû. L’événement `ScheduleUpdated` liste dans `changed_fields` uniquement les champs dont la valeur enregistrée a changé.
+
+Une modification qui ne change rien n’enregistre aucun événement et conserve `next_fire_at`, jitter compris. Sur une planification fraîchement chargée, `wasChanged()` sur le modèle renvoyé vaut `false`.
+
+Modifier l’action (type de workflow, arguments, routage de file ou délais) abandonne les déclenchements mis en tampon sous `BufferOne` ou `BufferAll`, car ils ont été capturés pour l’ancienne action. Chaque déclenchement abandonné est enregistré comme un événement `ScheduleTriggerSkipped` avec la raison `action_changed` et son `occurrence_time`.
 
 ### Supprimer {#delete}
 
@@ -239,7 +243,41 @@ Modifier l’expression cron ou le fuseau horaire recalcule `next_fire_at`.
 ScheduleManager::delete($schedule);
 ```
 
-La suppression est logique : la ligne reste avec le statut `deleted` et un horodatage `deleted_at`. Une planification supprimée ne peut être suspendue, reprise, modifiée ou déclenchée.
+La suppression est logique : la ligne reste avec le statut `deleted` et un horodatage `deleted_at`. Une planification supprimée ne peut être suspendue, reprise, modifiée ou déclenchée. Son identifiant reste pris. Voir [Appliquer depuis la configuration](#apply-from-configuration).
+
+### Appliquer depuis la configuration {#apply-from-configuration}
+
+Les outils de déploiement peuvent appliquer les mêmes définitions de planification à chaque déploiement. Créez chaque planification, puis modifiez-la si son identifiant est déjà pris :
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+Réappliquer une définition inchangée n’enregistre rien ; vous pouvez donc l’exécuter à chaque déploiement.
+
+Les identifiants de planification ne sont pas réutilisables. Une planification supprimée, y compris une planification supprimée quand son `max_runs` est épuisé, conserve son identifiant. Créer une planification avec cet identifiant lève `ScheduleAlreadyExistsException` avec `existingStatus` `deleted`. Utilisez un nouvel identifiant.
+
+Le Server natif applique la même règle : créer une planification avec un identifiant pris renvoie `409 schedule_already_exists`. Le Server natif enregistre encore un événement `ScheduleUpdated` et recalcule `next_fire_at` à chaque modification, même inchangée ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
 
 ### Décrire {#describe}
 
@@ -474,7 +512,7 @@ monotone par planification.
 | `ScheduleResumed` | Reprise | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | Modification du cron, fuseau, spécification, action ou politique | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | Démarrage d’un workflow depuis la planification | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | Déclenchement ignoré pour chevauchement, statut non déclenchable ou actions épuisées | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | Déclenchement ignoré pour chevauchement, statut non déclenchable ou actions épuisées | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | Suppression logique explicite ou après épuisement de `max_runs` (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
 
 `command_context` porte le principal, l’identifiant de requête, la source et

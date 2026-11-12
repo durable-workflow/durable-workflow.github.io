@@ -230,7 +230,11 @@ ScheduleManager::update(
 );
 ```
 
-Atualizar a expressão cron ou o fuso horário recalcula `next_fire_at`.
+Somente uma mudança na especificação (expressões cron, intervalos ou fuso horário) ou no jitter recalcula `next_fire_at`. As demais atualizações o mantêm, então não podem pular um disparo pendente. O evento `ScheduleUpdated` lista em `changed_fields` apenas os campos cujo valor armazenado mudou.
+
+Uma atualização que não muda nada não registra evento e mantém `next_fire_at`, incluindo o jitter. Em um agendamento recém-carregado, `wasChanged()` no modelo retornado é `false`.
+
+Mudar a ação (tipo de workflow, argumentos, roteamento de fila ou timeouts) descarta os disparos em buffer sob `BufferOne` ou `BufferAll`, porque foram capturados para a ação antiga. Cada disparo descartado é registrado como um evento `ScheduleTriggerSkipped` com o motivo `action_changed` e seu `occurrence_time`.
 
 ### Excluir {#delete}
 
@@ -238,7 +242,41 @@ Atualizar a expressão cron ou o fuso horário recalcula `next_fire_at`.
 ScheduleManager::delete($schedule);
 ```
 
-A exclusão é lógica: a linha permanece com status `deleted` e horário `deleted_at`. Um agendamento excluído não pode ser pausado, retomado, atualizado nem disparado.
+A exclusão é lógica: a linha permanece com status `deleted` e horário `deleted_at`. Um agendamento excluído não pode ser pausado, retomado, atualizado nem disparado. O id continua ocupado. Veja [Aplicar a partir da configuração](#apply-from-configuration).
+
+### Aplicar a partir da configuração {#apply-from-configuration}
+
+Ferramentas de deploy podem aplicar as mesmas definições de agendamento a cada deploy. Crie cada agendamento e atualize-o quando o id já estiver ocupado:
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+Reaplicar uma definição sem mudanças não registra nada, então é seguro executar isso a cada deploy.
+
+Ids de agendamento não podem ser reutilizados. Um agendamento excluído, inclusive um excluído ao esgotar `max_runs`, mantém seu id. Criar um agendamento com esse id lança `ScheduleAlreadyExistsException` com `existingStatus` `deleted`. Use um id novo.
+
+O Server nativo aplica a mesma regra de ids: criar um agendamento com um id ocupado retorna `409 schedule_already_exists`. O Server nativo ainda registra um evento `ScheduleUpdated` e recalcula `next_fire_at` a cada atualização, mesmo sem mudanças ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
 
 ### Descrever {#describe}
 
@@ -512,7 +550,7 @@ monotonicamente por agendamento.
 | `ScheduleResumed` | O agendamento foi retomado | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | O cron, fuso horário, especificação, ação ou política do agendamento foi alterado | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | Uma execução de workflow foi iniciada pelo agendamento | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | Um disparo foi ignorado pela política de sobreposição, por status que não permite disparo ou por ações esgotadas | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | Um disparo foi ignorado pela política de sobreposição, por status que não permite disparo ou por ações esgotadas | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | O agendamento foi excluído logicamente, por chamada explícita de exclusão ou por esgotar `max_runs` (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
 
 `command_context` contém os atributos de principal, ID de requisição, origem

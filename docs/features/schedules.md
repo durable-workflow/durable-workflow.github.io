@@ -228,7 +228,11 @@ ScheduleManager::update(
 );
 ```
 
-Updating the cron expression or timezone recalculates `next_fire_at`.
+Only a change to the spec (cron expressions, intervals or timezone) or to the jitter recalculates `next_fire_at`. Other updates keep it, so they cannot skip a due fire. The `ScheduleUpdated` event lists in `changed_fields` only the fields whose stored value changed.
+
+An update that changes nothing records no event and keeps `next_fire_at`, including its jitter. On a schedule loaded fresh, `wasChanged()` on the returned model is `false`.
+
+Changing the action (workflow type, arguments, queue routing or timeouts) drops triggers buffered under `BufferOne` or `BufferAll`, because they were captured for the old action. Each dropped trigger is recorded as a `ScheduleTriggerSkipped` event with reason `action_changed` and its `occurrence_time`.
 
 ### Delete
 
@@ -236,7 +240,41 @@ Updating the cron expression or timezone recalculates `next_fire_at`.
 ScheduleManager::delete($schedule);
 ```
 
-Deleting is soft — the row remains with status `deleted` and a `deleted_at` timestamp. A deleted schedule cannot be paused, resumed, updated, or triggered.
+Deleting is soft — the row remains with status `deleted` and a `deleted_at` timestamp. A deleted schedule cannot be paused, resumed, updated, or triggered. Its id stays taken. See [Apply from configuration](#apply-from-configuration).
+
+### Apply from configuration
+
+Deploy tooling can apply the same schedule definitions on every deploy. Create each schedule, and update it when its id is taken:
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+Re-applying an unchanged definition records nothing, so this is safe to run on every deploy.
+
+Schedule ids are not reusable. A deleted schedule, including one deleted when its `max_runs` ran out, keeps its id. Creating a schedule with that id raises `ScheduleAlreadyExistsException` with `existingStatus` `deleted`. Use a new id instead.
+
+Native Server applies the same id rule: creating a schedule with a taken id returns `409 schedule_already_exists`. Native Server still records a `ScheduleUpdated` event and recomputes `next_fire_at` on every update, including an unchanged one ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
 
 ### Describe
 
@@ -506,7 +544,7 @@ monotonically per schedule.
 | `ScheduleResumed` | Schedule was resumed | `next_fire_at`, `command_context` |
 | `ScheduleUpdated` | Schedule cron, timezone, spec, action, or policy was changed | `changed_fields`, `spec`, `action`, `overlap_policy`, `next_fire_at`, `command_context` |
 | `ScheduleTriggered` | A workflow run was started from the schedule | `workflow_instance_id`, `workflow_run_id`, `outcome`, `effective_overlap_policy`, `trigger_number`, `occurrence_time`, `command_context` |
-| `ScheduleTriggerSkipped` | A trigger was skipped due to overlap policy, non-triggerable status, or exhausted actions | `reason`, `skipped_trigger_count`, `last_skipped_at`, `command_context` |
+| `ScheduleTriggerSkipped` | A trigger was skipped due to overlap policy, non-triggerable status, or exhausted actions | `reason`, `skipped_trigger_count`, `last_skipped_at`, `occurrence_time`, `command_context` |
 | `ScheduleDeleted` | Schedule was soft-deleted — either by an explicit delete call or by exhausting `max_runs` (`reason: max_runs_exhausted`) | `reason`, `deleted_at`, `command_context` |
 
 `command_context` carries the principal, request id, source, and reason

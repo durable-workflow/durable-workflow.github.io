@@ -216,7 +216,11 @@ ScheduleManager::update(
 );
 ```
 
-更新 cron 表达式或时区会重新计算 `next_fire_at`。
+只有更改规格（cron 表达式、间隔或时区）或抖动才会重新计算 `next_fire_at`。其他更新会保留该值，因此不会跳过到期的触发。`ScheduleUpdated` 事件的 `changed_fields` 只列出存储值发生变化的字段。
+
+不做任何更改的更新不会记录事件，并保留 `next_fire_at` 及其抖动。对于新加载的调度，返回模型的 `wasChanged()` 为 `false`。
+
+更改动作（工作流类型、参数、队列路由或超时）会丢弃在 `BufferOne` 或 `BufferAll` 下缓冲的触发，因为它们是为旧动作捕获的。每个被丢弃的触发都会记录为 `ScheduleTriggerSkipped` 事件，原因为 `action_changed`，并带有其 `occurrence_time`。
 
 ### 删除 {#delete}
 
@@ -224,7 +228,41 @@ ScheduleManager::update(
 ScheduleManager::delete($schedule);
 ```
 
-删除采用软删除，行保留为 `deleted` 状态，并带 `deleted_at` 时间戳。已删除调度不能暂停、恢复、更新或触发。
+删除采用软删除，行保留为 `deleted` 状态，并带 `deleted_at` 时间戳。已删除调度不能暂停、恢复、更新或触发。其 ID 仍被占用。参见[从配置应用](#apply-from-configuration)。
+
+### 从配置应用 {#apply-from-configuration}
+
+部署工具可以在每次部署时应用相同的调度定义。先创建每个调度，ID 已被占用时再更新它：
+
+```php
+use Workflow\V2\Exceptions\ScheduleAlreadyExistsException;
+use Workflow\V2\Support\ScheduleManager;
+
+try {
+    ScheduleManager::create(
+        scheduleId: 'daily-invoice-sync',
+        workflowClass: InvoiceSyncWorkflow::class,
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+} catch (ScheduleAlreadyExistsException $e) {
+    if ($e->existingStatus === 'deleted') {
+        throw $e; // The id belonged to a deleted schedule. Pick a new id.
+    }
+
+    ScheduleManager::update(
+        ScheduleManager::findByScheduleId($e->scheduleId, $e->namespace),
+        cronExpression: '0 2 * * *',
+        timezone: 'America/New_York',
+    );
+}
+```
+
+重新应用未更改的定义不会记录任何内容，因此可以在每次部署时运行。
+
+调度 ID 不可重用。已删除的调度，包括因 `max_runs` 用尽而删除的调度，会保留其 ID。用该 ID 创建调度会抛出 `existingStatus` 为 `deleted` 的 `ScheduleAlreadyExistsException`。请改用新的 ID。
+
+原生 Server 采用相同的 ID 规则：用已占用的 ID 创建调度会返回 `409 schedule_already_exists`。原生 Server 目前仍会在每次更新（包括未更改的更新）时记录 `ScheduleUpdated` 事件并重新计算 `next_fire_at`（[server#1147](https://github.com/durable-workflow/server/issues/1147)）。
 
 ### 描述 {#describe}
 
@@ -443,7 +481,7 @@ $schedule = ScheduleManager::create(
 | `ScheduleResumed` | 调度恢复时 | `next_fire_at`、`command_context` |
 | `ScheduleUpdated` | cron、时区、规范、action 或策略更改时 | `changed_fields`、`spec`、`action`、`overlap_policy`、`next_fire_at`、`command_context` |
 | `ScheduleTriggered` | 从调度启动工作流运行时 | `workflow_instance_id`、`workflow_run_id`、`outcome`、`effective_overlap_policy`、`trigger_number`、`occurrence_time`、`command_context` |
-| `ScheduleTriggerSkipped` | 因重叠策略、不可触发状态或动作耗尽跳过触发时 | `reason`、`skipped_trigger_count`、`last_skipped_at`、`command_context` |
+| `ScheduleTriggerSkipped` | 因重叠策略、不可触发状态或动作耗尽跳过触发时 | `reason`、`skipped_trigger_count`、`last_skipped_at`、`occurrence_time`、`command_context` |
 | `ScheduleDeleted` | 显式删除或用尽 `max_runs`（`reason: max_runs_exhausted`）导致调度软删除时 | `reason`、`deleted_at`、`command_context` |
 
 调用方传入 `CommandContext` 时，`command_context` 携带 `ScheduleManager` 记录的主体、请求 ID、来源和原因属性。该键可选；无上下文的事件省略该键，不写入空值。
