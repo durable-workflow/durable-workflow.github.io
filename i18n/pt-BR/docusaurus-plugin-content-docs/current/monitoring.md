@@ -137,6 +137,62 @@ A visão de detalhes do workflow mostra a linha do tempo durável de uma
 execução: atividades, sinais, temporizadores e workflows filhos na ordem
 em que ocorreram, cada um com entradas, saídas e informações de tempo.
 
+## Execuções travadas {#stuck-runs}
+
+Toda execução aberta tem um `liveness_state` que diz pelo que ela espera e uma frase em `liveness_reason`. Ambos aparecem no detalhe da execução, nas linhas das listas e nas exportações de histórico.
+
+| Estado | Significado |
+| --- | --- |
+| `workflow_task_ready`, `activity_task_ready`, `timer_task_ready` | Uma tarefa está pronta para um worker. |
+| `workflow_task_leased`, `activity_task_leased`, `timer_task_leased` | Um worker está com a tarefa. |
+| `workflow_task_claim_failed`, `activity_task_claim_failed`, `timer_task_claim_failed` | Um worker tentou reivindicar a tarefa e foi recusado, por exemplo por uma verificação de capacidades do backend. |
+| `workflow_task_waiting_for_compatible_worker`, `activity_task_waiting_for_compatible_worker`, `timer_task_waiting_for_compatible_worker` | Nenhum worker registrado é compatível com a execução. |
+| `timer_scheduled` | Aguardando um timer. |
+| `waiting_for_signal`, `waiting_for_condition`, `waiting_for_child` | Aguardando um sinal, uma mudança de condição ou um workflow filho. |
+| `activity_running_without_task` | Uma atividade está em execução sem tarefa aberta. O reparo aguarda para que o trabalho não rode duas vezes. |
+| `workflow_replay_blocked` | A tarefa de workflow não consegue reproduzir o histórico registrado, por exemplo após uma mudança de código incompatível. A execução fica aberta até o código ser corrigido. |
+| `repair_needed` | A execução não tem um caminho confiável para continuar, por exemplo após um lease expirado, um despacho com falha ou uma tarefa ausente. Inclui tarefas de workflow no modo serviço que os workers continuam falhando. |
+| `closed` | A execução está encerrada. |
+
+### Filtro de problemas de tarefa {#task-problem-filter}
+
+Execuções com problemas em tarefas de workflow têm `task_problem = true`. Filtre as listas por `task_problem` (Task Problem no Waterline). `task_problem_badge.code` diz o tipo:
+
+- `replay_blocked` (Task Failure): a tarefa de workflow não consegue ser reproduzida.
+- `active` (Task Problem): trabalho da tarefa de workflow está faltando, sendo repetido ou não pode ser entregue agora.
+- `history` (Task History): a execução precisou antes de reparo da tarefa de workflow ou de recuperação da reprodução.
+
+### Métricas e saúde {#stuck-run-metrics}
+
+As métricas de operador embutidas (`operator_metrics` nas estatísticas do Waterline) contam as execuções abertas em cada estado de problema. Execuções encerradas não são contadas.
+
+| Campo | Significado |
+| --- | --- |
+| `operator_metrics.runs.replay_blocked` | Execuções abertas em `workflow_replay_blocked`. |
+| `operator_metrics.runs.oldest_replay_blocked_at`, `operator_metrics.runs.max_replay_blocked_age_ms` | A última atualização da execução bloqueada mais antiga e sua idade. |
+| `operator_metrics.runs.repair_needed`, `operator_metrics.runs.oldest_repair_needed_at`, `operator_metrics.runs.max_repair_needed_age_ms` | O mesmo para `repair_needed`. |
+
+A verificação de saúde consultiva `replay_blocked_runs` (categoria `correctness`) informa `warning` enquanto houver uma execução aberta bloqueada na reprodução.
+
+O Server nativo informa `repair_needed`, mas ainda não `replay_blocked` nem a verificação `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+
+### Falhas de tarefas de workflow no Server {#workflow-task-failure-metric}
+
+O Server informa tarefas de workflow com falha em `GET /api/system/metrics`, em `metrics.dw_workflow_task_consecutive_failures`:
+
+- `max_consecutive_failures`: o maior número de tentativas entre as tarefas de workflow com falha no namespace. A primeira falha conta como um.
+- `failed_task_count`: quantas tarefas de workflow falharam.
+- `by_workflow_type`: até 20 tipos de workflow, primeiro o maior `max_consecutive_failures`, cada um com seu próprio `max_consecutive_failures` e `failed_task_count`. `suppressed_workflow_type_count` e `suppressed_failed_task_count` cobrem o restante.
+
+Alerte quando `max_consecutive_failures` continuar subindo: uma tarefa de workflow continua falhando nos workers em vez de concluir.
+
+### Reparo {#repair-stuck-runs}
+
+- `workflow_replay_blocked`: implante código de workflow capaz de reproduzir o histórico registrado (veja [Versionamento](./features/versioning.md)) e depois repare a execução.
+- `repair_needed`: repare a execução ou deixe o passe de reparo fazer isso (`workflow:v2:repair-pass` embutido, `dw system:repair-pass` no Server). O Server também aceita `POST /api/workflows/{workflowId}/runs/{runId}/repair`.
+
+Veja [Falhas e recuperação](./failures-and-recovery.md) para saber o que o reparo faz.
+
 ## Implantação e acesso ao Waterline {#waterline-deployment-and-access}
 
 ### Laravel embutido {#embedded-laravel}
