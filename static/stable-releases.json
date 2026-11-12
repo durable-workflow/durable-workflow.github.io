@@ -15,9 +15,9 @@
   "helm_chart": {
     "app_version": "3.7.0",
     "repository": "oci://ghcr.io/durable-workflow/charts/durable-workflow",
-    "oci_manifest_digest": "TODO-GENERAL",
-    "package_digest": "TODO-GENERAL",
-    "source_commit": "TODO-GENERAL",
-    "qualification_url": "TODO-GENERAL"
+    "oci_manifest_digest": "sha256:a09e8363ecd5e5d5381efa8ec473d453a4a932139de123b9eb45b7f9a07b47a6",
+    "package_digest": "sha256:038f1b93cb24ab51bd8220c5fc32141afc5258aceeca471a97da8fd3719407b1",
+    "source_commit": "e26d81cc21c6854eb74cdc3d710ea2c5cf3de34c",
+    "qualification_url": "https://github.com/durable-workflow/server/actions/runs/43215720917"
   }
 }
