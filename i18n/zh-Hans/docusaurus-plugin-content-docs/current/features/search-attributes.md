@@ -68,7 +68,7 @@ $options = StartOptions::rejectDuplicate()
 $workflow->start($orderId, $customer, $options);
 ```
 
-启动时搜索属性与 `upsertSearchAttributes()` 遵循相同验证规则：键须为 1 至 64 个 URL 安全字符，值须为标量或 null，null 值被丢弃，不持久化。
+启动时的搜索属性遵循与 `upsertSearchAttributes()` 相同的键规则和限制。null 值会被丢弃（不持久化）。超出限制的启动会在写入任何内容之前被拒绝。
 
 ### 控制平面 {#control-plane}
 
@@ -85,8 +85,8 @@ $controlPlane->start('orders.process-order', 'order-42', [
 
 `upsertSearchAttributes()` 接受键值对关联数组：
 
-- **键**须为 1 至 64 个 URL 安全字符，即字母、数字、连字符或下划线
-- **值**须为标量（字符串、整数、浮点数、布尔值）或 null；字符串值最多 191 个字符
+- **键**必须是由字母、数字、`.`、`_`、`-` 和 `:` 组成的 1-64 个字符
+- **值**为 string、int、float、bool、字符串列表或 null。大小限制参见[隐私与限制](#privacy-and-limits)
 - 将值设为 `null` 会从搜索属性中删除该键
 
 每次调用：
@@ -186,8 +186,11 @@ php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --
 
 约束：
 
-- 键名：1 至 64 个 URL 安全字符，匹配 `[a-zA-Z0-9_-]`
-- 值：仅限标量类型，即字符串、整数、浮点数或布尔值，字符串最多 191 个字符
+- 键名：由字母、数字、`.`、`_`、`-` 和 `:` 组成的 1-64 个字符。在 Server 上，搜索属性必须先注册，注册名以字母开头，只使用字母、数字和 `_`（最多 128 个字符）。需要在两种模式下通用的键请使用这种形式。
+- 值：最多 2,048 个字符的字符串、最多 255 个字符的 keyword、keyword 列表、int、float、bool 和 datetime。
+- 每个运行：最多 100 个属性，总计 65,536 字节。[`search_attribute_size_bytes`](../constraints/structural-limits.md#search-attribute-size) 限制（默认 40 KiB）可以收紧总量，但不能提高。
+- 超出限制会抛出 `StructuralLimitExceededException`，其 `limitName` 指明是哪项限制。启动会在不写入任何内容的情况下被拒绝，而工作流代码中的 upsert 会使运行以 `structural_limit` 失败结束。
+- 每次 upsert 都会追加一个 `SearchAttributesUpserted` 历史事件，因此在循环中 upsert 会使历史增长。
 - 将值设为 `null` 会删除该键
 
 ## 搜索属性、memo 与可见性标签对比 {#search-attributes-vs-memo-vs-visibility-labels}
@@ -196,7 +199,7 @@ php artisan workflow:v2:repair-search-datetimes RUN_ID --namespace=production --
 |---|---|---|---|
 | **设置时机** | 启动时或执行期间任意时刻 | 启动时或执行期间任意时刻 | 仅启动时 |
 | **可变** | 是，通过 `upsertSearchAttributes()` | 是，通过 `upsertMemo()` | 否 |
-| **值类型** | 仅标量 | 任何可 JSON 序列化类型 | 仅标量 |
+| **值类型** | 标量和字符串列表 | 任何可 JSON 序列化类型 | 仅标量 |
 | **索引** | 是 | 否 | 是 |
 | **可过滤** | 是 | 否 | 是 |
 | **用途** | 动态状态、进度跟踪 | 丰富元数据、备注、上下文 | 静态分类 |

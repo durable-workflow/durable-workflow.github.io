@@ -68,7 +68,7 @@ $workflow->start(
 
 `upsertMemo()` akzeptiert ein assoziatives Array aus Schlüssel-Wert-Paaren:
 
-- **Schlüssel** müssen nicht leere Zeichenfolgen mit bis zu 64 Zeichen sein.
+- **Schlüssel** müssen 1–64 Zeichen aus Buchstaben, Ziffern, `.`, `_`, `-` und `:` haben und dürfen keine Ganzzahl wie `42` sein.
 - **Werte** können beliebige JSON-serialisierbare Daten sein: Skalare, null, Arrays oder verschachtelte Objekte.
 - Der Wert `null` entfernt den jeweiligen Schlüssel aus dem Memo.
 
@@ -144,12 +144,14 @@ upsertMemo([
 ]);
 ```
 
-Für verschachtelte Objekte gelten dieselben Schlüsselbeschränkungen: nicht
-leere Zeichenfolgen mit bis zu 64 Zeichen pro Schlüssel auf jeder Ebene.
+Die Schlüsselregel gilt für Memo-Schlüssel der obersten Ebene. Verschachtelte Werte zählen zur Größengrenze des Memo-Werts.
 
 ## Einschränkungen {#constraints}
 
-- Schlüsselnamen: nicht leere Zeichenfolgen mit bis zu 64 Zeichen pro Verschachtelungsebene.
+- Schlüsselnamen: 1–64 Zeichen aus Buchstaben, Ziffern, `.`, `_`, `-` und `:`, keine Ganzzahl wie `42`. Die Regel gilt für Schlüssel der obersten Ebene.
+- Größe: jeder Wert kodiert bis 10.240 Bytes, höchstens 100 Schlüssel und insgesamt 65.536 Bytes pro Lauf. Die Grenze [`memo_size_bytes`](../constraints/structural-limits.md#memo-size) (Standard 64 KiB) kann die Gesamtgrenze verschärfen, aber nicht anheben.
+- Das Überschreiten einer Grenze löst `StructuralLimitExceededException` aus; `limitName` nennt die Grenze. Ein Start wird ohne Schreibvorgang abgelehnt, und ein Upsert aus Workflow-Code lässt den Lauf mit einem `structural_limit`-Fehler fehlschlagen.
+- Jeder Upsert hängt ein `MemoUpserted`-Verlaufsereignis an, daher vergrößern Upserts in einer Schleife den Verlauf.
 - Werte: jeder JSON-serialisierbare Typ (Skalare, null, Arrays, verschachtelte Objekte).
 - Der Wert `null` entfernt den jeweiligen Schlüssel.
 - Memos sind letztlich konsistente Metadaten, keine Replay-Autorität. Verzweigen Sie Workflow-Logik nicht anhand von Memo-Werten.
@@ -160,7 +162,7 @@ leere Zeichenfolgen mit bis zu 64 Zeichen pro Schlüssel auf jeder Ebene.
 |---|---|---|---|
 | **Setzzeitpunkt** | Beim Start oder jederzeit während der Ausführung | Jederzeit während der Ausführung | Nur beim Start |
 | **Veränderlich** | Ja, über `upsertMemo()` | Ja, über `upsertSearchAttributes()` | Nein |
-| **Werttypen** | Jeder JSON-serialisierbare Typ | Nur Skalare | Nur Skalare |
+| **Werttypen** | Jeder JSON-serialisierbare Typ | Skalare und Listen von Zeichenfolgen | Nur Skalare |
 | **Indexiert** | Nein | Ja | Ja |
 | **Filterbar** | Nein | Ja | Ja |
 | **Anwendungsfall** | Reichhaltige Metadaten, Notizen, Kontext | Dynamischer Status, Fortschrittsverfolgung | Statische Klassifizierung |

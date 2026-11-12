@@ -17,7 +17,7 @@ Structural limits cap the resource consumption of a single workflow run. When an
 | `pending_update_count` | 500 | Unresolved updates pending simultaneously |
 | `command_batch_size` | 1,000 | Items in a single parallel fan-out (`all()`) |
 | `payload_size_bytes` | 2 MiB | Serialized size of a single argument payload |
-| `memo_size_bytes` | 256 KiB | Serialized size of non-indexed memo metadata |
+| `memo_size_bytes` | 64 KiB | Serialized size of non-indexed memo metadata |
 | `search_attribute_size_bytes` | 40 KiB | Serialized size of indexed search-attribute metadata |
 | `history_transaction_size` | 5,000 | History events produced by a single workflow task execution |
 
@@ -60,7 +60,7 @@ Override any limit through `workflows.v2.structural_limits` in your config or vi
         'pending_update_count' => (int) env('DW_V2_LIMIT_PENDING_UPDATES', 500),
         'command_batch_size' => (int) env('DW_V2_LIMIT_COMMAND_BATCH_SIZE', 1000),
         'payload_size_bytes' => (int) env('DW_V2_LIMIT_PAYLOAD_SIZE_BYTES', 2097152),
-        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
+        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 65536),
         'search_attribute_size_bytes' => (int) env('DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
         'warning_threshold_percent' => (int) env('DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
@@ -155,7 +155,11 @@ the reference envelope becomes the payload the limit sees — not the bytes.
 
 ### Memo size
 
-When a workflow upserts memo entries via `upsertMemo()`, the executor merges the new entries into the existing memo map, then JSON-encodes the merged result and checks the byte length against `memo_size_bytes`. If the merged memo exceeds the limit, the run fails before the memo is persisted.
+Memo has fixed caps: each value up to 10,240 bytes when encoded (`memo_value_bytes`), at most 100 keys (`memo_keys`) and 65,536 bytes in total (`memo_total_bytes`). `memo_size_bytes` checks the encoded size of the merged memo map and can tighten the total but not raise it: a larger setting acts as 65,536. Setting it to `0` turns this check off; the fixed caps stay.
+
+Start, `upsertMemo()` and service-worker memo upserts all check the memo that the write would leave on the run before anything is written. Going over a limit raises `StructuralLimitExceededException` with a `limitName`. An upsert from workflow code fails the run, and its `WorkflowFailed` event records `structural_limit_name`.
+
+These rules apply from Workflow 2.25.0. Earlier releases defaulted `memo_size_bytes` to 256 KiB, which the fixed total made unreachable, and raised `InvalidArgumentException` for the fixed caps.
 
 ### History transaction size
 
@@ -180,7 +184,9 @@ The check runs at the top of each iteration of the executor's main loop. Events 
 
 ### Search attribute size
 
-When a workflow upserts search attributes via `upsertSearchAttributes()`, the executor merges the new attributes into the existing set, then JSON-encodes the merged result and checks the byte length against `search_attribute_size_bytes`. If the merged attributes exceed the limit, the run fails before the attributes are persisted.
+Search attributes have fixed caps: strings up to 2,048 characters (`search_attribute_string_characters`), keywords and keyword-list entries up to 255 characters (`search_attribute_keyword_characters`), at most 100 attributes (`search_attribute_count`) and 65,536 bytes in total (`search_attribute_total_bytes`). `search_attribute_size_bytes` checks the JSON size of the merged attribute map and can tighten the total but not raise it. Setting it to `0` turns this check off; the fixed caps stay.
+
+Start, `upsertSearchAttributes()` and service-worker upserts apply the same limits before anything is written, and fail the same way as memo limits.
 
 ## Failure taxonomy
 
@@ -209,7 +215,7 @@ The current structural limits configuration is included in the v2 health check s
     "pending_update_count": 500,
     "command_batch_size": 1000,
     "payload_size_bytes": 2097152,
-    "memo_size_bytes": 262144,
+    "memo_size_bytes": 65536,
     "search_attribute_size_bytes": 40960,
     "history_transaction_size": 5000,
     "warning_threshold_percent": 80

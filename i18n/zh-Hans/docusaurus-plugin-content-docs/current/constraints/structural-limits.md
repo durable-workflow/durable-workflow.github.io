@@ -17,7 +17,7 @@ sidebar_position: 5
 | `pending_update_count` | 500 | 同时未解决的更新数 |
 | `command_batch_size` | 1,000 | 单次并行扇出（`all()`）的项目数 |
 | `payload_size_bytes` | 2 MiB | 单个参数载荷序列化后的大小 |
-| `memo_size_bytes` | 256 KiB | 未索引 memo 元数据序列化后的大小 |
+| `memo_size_bytes` | 64 KiB | 未索引 memo 元数据序列化后的大小 |
 | `search_attribute_size_bytes` | 40 KiB | 已索引搜索属性元数据序列化后的大小 |
 | `history_transaction_size` | 5,000 | 单次工作流任务执行产生的历史事件数 |
 
@@ -60,7 +60,7 @@ DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT=80
         'pending_update_count' => (int) env('DW_V2_LIMIT_PENDING_UPDATES', 500),
         'command_batch_size' => (int) env('DW_V2_LIMIT_COMMAND_BATCH_SIZE', 1000),
         'payload_size_bytes' => (int) env('DW_V2_LIMIT_PAYLOAD_SIZE_BYTES', 2097152),
-        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
+        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 65536),
         'search_attribute_size_bytes' => (int) env('DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
         'warning_threshold_percent' => (int) env('DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
@@ -145,7 +145,11 @@ activity(ProcessDocumentActivity::class, $ref);
 
 ### memo 大小 {#memo-size}
 
-工作流通过 `upsertMemo()` 插入或更新 memo 条目时，执行器会将新条目合并到现有 memo 映射中，再将合并结果编码为 JSON，并按 `memo_size_bytes` 检查字节长度。如果合并后的 memo 超出限制，运行会在持久化 memo 之前失败。
+Memo 有固定上限：每个值编码后最多 10,240 字节（`memo_value_bytes`），最多 100 个键（`memo_keys`），总计 65,536 字节（`memo_total_bytes`）。`memo_size_bytes` 检查合并后 memo 映射的编码大小，可以收紧总量但不能提高：更大的设置按 65,536 处理。设为 `0` 会关闭此检查；固定上限仍然有效。
+
+启动、`upsertMemo()` 和服务 worker 的 memo upsert 都会在写入任何内容之前，检查写入后运行上将保留的 memo。超出限制会抛出带 `limitName` 的 `StructuralLimitExceededException`。工作流代码中的 upsert 会使运行失败，其 `WorkflowFailed` 事件会记录 `structural_limit_name`。
+
+这些规则自 Workflow 2.25.0 起适用。更早的版本将 `memo_size_bytes` 默认设为 256 KiB，而固定总量上限使其无法达到，并且对固定上限抛出 `InvalidArgumentException`。
 
 ### 历史事务大小 {#history-transaction-size}
 
@@ -170,7 +174,9 @@ foreach (array_chunk($items, 500) as $chunk) {
 
 ### 搜索属性大小 {#search-attribute-size}
 
-工作流通过 `upsertSearchAttributes()` 插入或更新搜索属性时，执行器会将新属性合并到现有集合中，再将合并结果编码为 JSON，并按 `search_attribute_size_bytes` 检查字节长度。如果合并后的属性超出限制，运行会在持久化属性之前失败。
+搜索属性有固定上限：字符串最多 2,048 个字符（`search_attribute_string_characters`），keyword 和 keyword 列表元素最多 255 个字符（`search_attribute_keyword_characters`），最多 100 个属性（`search_attribute_count`），总计 65,536 字节（`search_attribute_total_bytes`）。`search_attribute_size_bytes` 检查合并后属性映射的 JSON 大小，可以收紧总量但不能提高。设为 `0` 会关闭此检查；固定上限仍然有效。
+
+启动、`upsertSearchAttributes()` 和服务 worker 的 upsert 在写入任何内容之前应用相同的限制，失败方式与 memo 限制相同。
 
 ## 故障分类 {#failure-taxonomy}
 
@@ -199,7 +205,7 @@ v2 健康检查快照的 `structural_limits` 包含当前结构限制配置，�
     "pending_update_count": 500,
     "command_batch_size": 1000,
     "payload_size_bytes": 2097152,
-    "memo_size_bytes": 262144,
+    "memo_size_bytes": 65536,
     "search_attribute_size_bytes": 40960,
     "history_transaction_size": 5000,
     "warning_threshold_percent": 80

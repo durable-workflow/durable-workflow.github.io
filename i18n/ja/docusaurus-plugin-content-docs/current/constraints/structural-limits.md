@@ -17,7 +17,7 @@ sidebar_position: 5
 | `pending_update_count` | 500 | 同時に未解決の更新数 |
 | `command_batch_size` | 1,000 | 1回の並列 fan-out（`all()`）の項目数 |
 | `payload_size_bytes` | 2 MiB | 単一の引数ペイロードのシリアライズ後のサイズ |
-| `memo_size_bytes` | 256 KiB | 索引のないメモのシリアライズ後のサイズ |
+| `memo_size_bytes` | 64 KiB | 索引のないメモのシリアライズ後のサイズ |
 | `search_attribute_size_bytes` | 40 KiB | 索引付き検索属性のシリアライズ後のサイズ |
 | `history_transaction_size` | 5,000 | 1回のワークフロータスク実行で生成する履歴イベント数 |
 
@@ -60,7 +60,7 @@ DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT=80
         'pending_update_count' => (int) env('DW_V2_LIMIT_PENDING_UPDATES', 500),
         'command_batch_size' => (int) env('DW_V2_LIMIT_COMMAND_BATCH_SIZE', 1000),
         'payload_size_bytes' => (int) env('DW_V2_LIMIT_PAYLOAD_SIZE_BYTES', 2097152),
-        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
+        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 65536),
         'search_attribute_size_bytes' => (int) env('DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
         'warning_threshold_percent' => (int) env('DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
@@ -145,7 +145,11 @@ activity(ProcessDocumentActivity::class, $ref);
 
 ### メモサイズ {#memo-size}
 
-`upsertMemo()` で既存マップに結合し、結果を JSON 化して `memo_size_bytes` と比較します。超過なら保存前に失敗します。
+メモには固定の上限があります。各値はエンコード後最大10,240バイト（`memo_value_bytes`）、最大100キー（`memo_keys`）、合計65,536バイト（`memo_total_bytes`）です。`memo_size_bytes` は結合後のメモマップのエンコードサイズを検査し、合計を厳しくできますが、引き上げることはできません。それより大きい設定は65,536として扱われます。`0` にするとこの検査は無効になりますが、固定の上限は残ります。
+
+開始、`upsertMemo()`、サービスワーカーからのメモ upsert はいずれも、書き込みの結果として実行に残るメモを、何かを書き込む前に検査します。上限を超えると `limitName` 付きの `StructuralLimitExceededException` が発生します。ワークフローコードからの upsert は実行を失敗させ、その `WorkflowFailed` イベントに `structural_limit_name` が記録されます。
+
+これらの規則は Workflow 2.25.0 から適用されます。以前のリリースでは `memo_size_bytes` の既定値が 256 KiB で、固定の合計上限のため到達できず、固定の上限には `InvalidArgumentException` が発生していました。
 
 ### 履歴トランザクションサイズ {#history-transaction-size}
 
@@ -170,7 +174,9 @@ foreach (array_chunk($items, 500) as $chunk) {
 
 ### 検索属性サイズ {#search-attribute-size}
 
-`upsertSearchAttributes()` で既存属性に結合し、結果を JSON 化して `search_attribute_size_bytes` と比較します。超過なら保存前に失敗します。
+検索属性には固定の上限があります。文字列は最大2,048文字（`search_attribute_string_characters`）、keyword と keyword リストの要素は最大255文字（`search_attribute_keyword_characters`）、最大100属性（`search_attribute_count`）、合計65,536バイト（`search_attribute_total_bytes`）です。`search_attribute_size_bytes` は結合後の属性マップの JSON サイズを検査し、合計を厳しくできますが、引き上げることはできません。`0` にするとこの検査は無効になりますが、固定の上限は残ります。
+
+開始、`upsertSearchAttributes()`、サービスワーカーからの upsert は、何かを書き込む前に同じ上限を適用し、メモの上限と同じように失敗します。
 
 ## 失敗の分類 {#failure-taxonomy}
 
@@ -199,7 +205,7 @@ v2 のヘルススナップショットの `structural_limits` に現在の設�
     "pending_update_count": 500,
     "command_batch_size": 1000,
     "payload_size_bytes": 2097152,
-    "memo_size_bytes": 262144,
+    "memo_size_bytes": 65536,
     "search_attribute_size_bytes": 40960,
     "history_transaction_size": 5000,
     "warning_threshold_percent": 80

@@ -68,7 +68,7 @@ $options = StartOptions::rejectDuplicate()
 $workflow->start($orderId, $customer, $options);
 ```
 
-Start-time search attributes follow the same validation rules as `upsertSearchAttributes()`: keys must be 1-64 URL-safe characters, values must be scalar or null, and null values are dropped (not persisted).
+Start-time search attributes follow the same key rules and limits as `upsertSearchAttributes()`. Null values are dropped (not persisted). A start over a limit is refused before anything is written.
 
 ### Control plane
 
@@ -85,8 +85,8 @@ $controlPlane->start('orders.process-order', 'order-42', [
 
 The `upsertSearchAttributes()` function accepts an associative array of key-value pairs:
 
-- **Keys** must be 1-64 characters, URL-safe (letters, digits, hyphens, underscores)
-- **Values** must be scalar (string, int, float, bool) or null; string values are capped at 191 characters
+- **Keys** must be 1-64 characters from letters, digits, `.`, `_`, `-` and `:`
+- **Values** are a string, int, float, bool, list of strings, or null. See [Privacy and Limits](#privacy-and-limits) for size limits
 - Passing `null` as a value removes that key from the search attributes
 
 Each call:
@@ -186,8 +186,11 @@ Search attributes are **plain-text operator metadata** — their values are visi
 
 Constraints:
 
-- Key names: 1-64 characters, URL-safe (`[a-zA-Z0-9_-]`)
-- Values: scalar types only (string, int, float, bool), with string values capped at 191 characters
+- Key names: 1-64 characters from letters, digits, `.`, `_`, `-` and `:`. On Server a search attribute must be registered first, and registered names start with a letter and use only letters, digits and `_` (up to 128 characters). Use that form for keys that work in both modes.
+- Values: strings up to 2,048 characters, keywords up to 255 characters, lists of keywords, ints, floats, bools and datetimes.
+- Per run: at most 100 attributes and 65,536 bytes in total. The [`search_attribute_size_bytes`](../constraints/structural-limits.md#search-attribute-size) limit (default 40 KiB) can tighten the total but not raise it.
+- Going over a limit raises `StructuralLimitExceededException`, whose `limitName` says which limit. A start is refused without writing anything, and an upsert from workflow code fails the run as a `structural_limit` failure.
+- Each upsert appends a `SearchAttributesUpserted` history event, so upserting in a loop grows the run's history.
 - Setting a value to `null` removes that key
 
 ## Search Attributes vs. Memo vs. Visibility Labels
@@ -196,7 +199,7 @@ Constraints:
 |---|---|---|---|
 | **Set when** | Start time or any time during execution | Start time or any time during execution | Start time only |
 | **Mutable** | Yes, via `upsertSearchAttributes()` | Yes, via `upsertMemo()` | No |
-| **Value types** | Scalar only | Any JSON-serializable | Scalar only |
+| **Value types** | Scalars and lists of strings | Any JSON-serializable | Scalar only |
 | **Indexed** | Yes | No | Yes |
 | **Filterable** | Yes | No | Yes |
 | **Use case** | Dynamic status, progress tracking | Rich metadata, notes, context | Static classification |

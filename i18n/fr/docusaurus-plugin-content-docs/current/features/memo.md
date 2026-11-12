@@ -61,7 +61,7 @@ $workflow->start(
 
 La fonction `upsertMemo()` accepte un tableau associatif de paires clé-valeur :
 
-- Les **clés** doivent être des chaînes non vides de 64 caractères maximum
+- Les **clés** doivent compter de 1 à 64 caractères parmi les lettres, chiffres, `.`, `_`, `-` et `:`, et ne peuvent pas être un entier comme `42`
 - Les **valeurs** peuvent être toutes données sérialisables en JSON : scalaires, null, tableaux ou objets imbriqués
 - Passer `null` comme valeur supprime la clé du mémo
 
@@ -129,11 +129,14 @@ upsertMemo([
 ]);
 ```
 
-Les objets imbriqués ont les mêmes contraintes de clés : chaînes non vides de 64 caractères maximum par clé à chaque niveau.
+La règle des clés s’applique aux clés de premier niveau du memo. Les valeurs imbriquées comptent dans la limite de taille d’une valeur de memo.
 
 ## Contraintes {#constraints}
 
-- Noms de clés : chaînes non vides de 64 caractères maximum par niveau d’imbrication
+- Noms de clés : de 1 à 64 caractères parmi les lettres, chiffres, `.`, `_`, `-` et `:`, et pas un entier comme `42`. La règle s’applique aux clés de premier niveau.
+- Taille : chaque valeur jusqu’à 10 240 octets une fois encodée, au plus 100 clés et 65 536 octets au total par exécution. La limite [`memo_size_bytes`](../constraints/structural-limits.md#memo-size) (64 KiB par défaut) peut resserrer le total, sans pouvoir l’augmenter.
+- Dépasser une limite lève `StructuralLimitExceededException`, dont `limitName` indique la limite. Un démarrage est refusé sans rien écrire, et un upsert depuis le code du workflow fait échouer l’exécution avec un échec `structural_limit`.
+- Chaque upsert ajoute un événement d’historique `MemoUpserted` ; des upserts dans une boucle font donc grossir l’historique.
 - Valeurs : tout type sérialisable en JSON (scalaires, null, tableaux, objets imbriqués)
 - Définir une valeur à `null` supprime la clé
 - Les mémos sont des métadonnées à cohérence éventuelle, pas une autorité de relecture. Ne branchez pas la logique du workflow selon leurs valeurs
@@ -144,7 +147,7 @@ Les objets imbriqués ont les mêmes contraintes de clés : chaînes non vides d
 |---|---|---|---|
 | **Définition** | Au démarrage ou pendant l’exécution | Pendant l’exécution | Au démarrage uniquement |
 | **Modifiable** | Oui, via `upsertMemo()` | Oui, via `upsertSearchAttributes()` | Non |
-| **Types de valeurs** | Tout type sérialisable en JSON | Scalaires uniquement | Scalaires uniquement |
+| **Types de valeurs** | Tout type sérialisable en JSON | Scalaires et listes de chaînes | Scalaires uniquement |
 | **Indexé** | Non | Oui | Oui |
 | **Filtrable** | Non | Oui | Oui |
 | **Usage** | Métadonnées riches, notes, contexte | Statut dynamique, suivi de progression | Classification statique |

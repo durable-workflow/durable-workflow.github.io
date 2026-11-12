@@ -17,7 +17,7 @@ Les limites structurelles plafonnent la consommation de ressources d’une exéc
 | `pending_update_count` | 500 | Mises à jour non résolues simultanément en attente |
 | `command_batch_size` | 1 000 | Éléments d’un même groupe parallèle (`all()`) |
 | `payload_size_bytes` | 2 MiB | Taille sérialisée des données utiles d’un ensemble d’arguments |
-| `memo_size_bytes` | 256 KiB | Taille sérialisée des métadonnées de mémo non indexées |
+| `memo_size_bytes` | 64 KiB | Taille sérialisée des métadonnées de mémo non indexées |
 | `search_attribute_size_bytes` | 40 KiB | Taille sérialisée des métadonnées indexées d’attributs de recherche |
 | `history_transaction_size` | 5 000 | Événements d’historique produits par une seule exécution de tâche de workflow |
 
@@ -60,7 +60,7 @@ Remplacez toute limite via `workflows.v2.structural_limits` dans la configuratio
         'pending_update_count' => (int) env('DW_V2_LIMIT_PENDING_UPDATES', 500),
         'command_batch_size' => (int) env('DW_V2_LIMIT_COMMAND_BATCH_SIZE', 1000),
         'payload_size_bytes' => (int) env('DW_V2_LIMIT_PAYLOAD_SIZE_BYTES', 2097152),
-        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
+        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 65536),
         'search_attribute_size_bytes' => (int) env('DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
         'warning_threshold_percent' => (int) env('DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
@@ -152,7 +152,11 @@ référence plutôt qu’aux octets référencés.
 
 ### Taille du mémo {#memo-size}
 
-Lorsqu’un workflow effectue un upsert de mémo via `upsertMemo()`, l’exécuteur fusionne les nouvelles entrées avec le mémo existant, encode le résultat en JSON et compare sa taille en octets à `memo_size_bytes`. Si le mémo fusionné dépasse la limite, l’exécution échoue avant sa persistance.
+Le memo a des plafonds fixes : chaque valeur jusqu’à 10 240 octets une fois encodée (`memo_value_bytes`), au plus 100 clés (`memo_keys`) et 65 536 octets au total (`memo_total_bytes`). `memo_size_bytes` vérifie la taille encodée de la map de memo fusionnée et peut resserrer le total, sans pouvoir l’augmenter : une valeur plus grande vaut 65 536. La valeur `0` désactive cette vérification ; les plafonds fixes restent.
+
+Le démarrage, `upsertMemo()` et les upserts de memo des workers de service vérifient le memo que l’écriture laisserait sur l’exécution avant toute écriture. Dépasser une limite lève `StructuralLimitExceededException` avec `limitName`. Un upsert depuis le code du workflow fait échouer l’exécution, et son événement `WorkflowFailed` enregistre `structural_limit_name`.
+
+Ces règles s’appliquent depuis Workflow 2.25.0. Les versions antérieures fixaient `memo_size_bytes` à 256 KiB par défaut, valeur que le total fixe rendait inatteignable, et levaient `InvalidArgumentException` pour les plafonds fixes.
 
 ### Taille des transactions d’historique {#history-transaction-size}
 
@@ -177,7 +181,9 @@ Le contrôle s’effectue au début de chaque itération de la boucle principale
 
 ### Taille des attributs de recherche {#search-attribute-size}
 
-Lorsqu’un workflow effectue un upsert d’attributs via `upsertSearchAttributes()`, l’exécuteur fusionne les nouveaux attributs avec ceux existants, encode le résultat en JSON et compare sa taille en octets à `search_attribute_size_bytes`. Si les attributs fusionnés dépassent la limite, l’exécution échoue avant leur persistance.
+Les attributs de recherche ont des plafonds fixes : chaînes jusqu’à 2 048 caractères (`search_attribute_string_characters`), keywords et éléments de listes de keywords jusqu’à 255 caractères (`search_attribute_keyword_characters`), au plus 100 attributs (`search_attribute_count`) et 65 536 octets au total (`search_attribute_total_bytes`). `search_attribute_size_bytes` vérifie la taille JSON de la map d’attributs fusionnée et peut resserrer le total, sans pouvoir l’augmenter. La valeur `0` désactive cette vérification ; les plafonds fixes restent.
+
+Le démarrage, `upsertSearchAttributes()` et les upserts des workers de service appliquent les mêmes limites avant toute écriture, et échouent de la même façon que pour les limites du memo.
 
 ## Classification des échecs {#failure-taxonomy}
 
@@ -206,7 +212,7 @@ La configuration actuelle des limites structurelles figure dans l’instantané 
     "pending_update_count": 500,
     "command_batch_size": 1000,
     "payload_size_bytes": 2097152,
-    "memo_size_bytes": 262144,
+    "memo_size_bytes": 65536,
     "search_attribute_size_bytes": 40960,
     "history_transaction_size": 5000,
     "warning_threshold_percent": 80

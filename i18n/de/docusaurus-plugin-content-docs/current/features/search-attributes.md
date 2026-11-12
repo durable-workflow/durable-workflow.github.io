@@ -81,10 +81,7 @@ $options = StartOptions::rejectDuplicate()
 $workflow->start($orderId, $customer, $options);
 ```
 
-Suchattribute beim Start folgen denselben Validierungsregeln wie
-`upsertSearchAttributes()`: Schlüssel müssen 1–64 URL-sichere Zeichen haben,
-Werte müssen skalar oder null sein. Nullwerte werden verworfen und nicht
-gespeichert.
+Suchattribute beim Start folgen denselben Schlüsselregeln und Grenzen wie `upsertSearchAttributes()`. Null-Werte werden verworfen (nicht gespeichert). Ein Start über einer Grenze wird abgelehnt, bevor etwas geschrieben wird.
 
 ### Steuerungsebene {#control-plane}
 
@@ -102,9 +99,9 @@ $controlPlane->start('orders.process-order', 'order-42', [
 `upsertSearchAttributes()` akzeptiert ein assoziatives Array aus
 Schlüssel-Wert-Paaren:
 
-- **Schlüssel** müssen 1–64 URL-sichere Zeichen enthalten (Buchstaben, Ziffern, Bindestriche, Unterstriche).
-- **Werte** müssen skalar (string, int, float, bool) oder null sein. Zeichenfolgen sind auf 191 Zeichen begrenzt.
-- Der Wert `null` entfernt den jeweiligen Schlüssel aus den Suchattributen.
+- **Schlüssel** müssen 1–64 Zeichen aus Buchstaben, Ziffern, `.`, `_`, `-` und `:` haben.
+- **Werte** sind string, int, float, bool, eine Liste von Zeichenfolgen oder null. Größengrenzen siehe [Datenschutz und Grenzen](#privacy-and-limits).
+- `null` als Wert entfernt den Schlüssel aus den Suchattributen.
 
 Bei jedem Aufruf:
 
@@ -210,9 +207,12 @@ Daten (PII) in Suchattributen.
 
 Einschränkungen:
 
-- Schlüsselnamen: 1–64 URL-sichere Zeichen (`[a-zA-Z0-9_-]`).
-- Werte: nur skalare Typen (string, int, float, bool), Zeichenfolgen auf 191 Zeichen begrenzt.
-- Der Wert `null` entfernt den jeweiligen Schlüssel.
+- Schlüsselnamen: 1–64 Zeichen aus Buchstaben, Ziffern, `.`, `_`, `-` und `:`. Im Server muss ein Suchattribut zuerst registriert werden; registrierte Namen beginnen mit einem Buchstaben und enthalten nur Buchstaben, Ziffern und `_` (bis zu 128 Zeichen). Verwenden Sie diese Form für Schlüssel, die in beiden Modi funktionieren.
+- Werte: Zeichenfolgen bis 2.048 Zeichen, Keywords bis 255 Zeichen, Keyword-Listen, int, float, bool und datetime.
+- Pro Lauf: höchstens 100 Attribute und insgesamt 65.536 Bytes. Die Grenze [`search_attribute_size_bytes`](../constraints/structural-limits.md#search-attribute-size) (Standard 40 KiB) kann die Gesamtgrenze verschärfen, aber nicht anheben.
+- Das Überschreiten einer Grenze löst `StructuralLimitExceededException` aus; `limitName` nennt die Grenze. Ein Start wird ohne Schreibvorgang abgelehnt, und ein Upsert aus Workflow-Code lässt den Lauf mit einem `structural_limit`-Fehler fehlschlagen.
+- Jeder Upsert hängt ein `SearchAttributesUpserted`-Verlaufsereignis an, daher vergrößern Upserts in einer Schleife den Verlauf.
+- `null` als Wert entfernt den Schlüssel.
 
 ## Suchattribute, Memo und Sichtbarkeitslabels im Vergleich {#search-attributes-vs-memo-vs-visibility-labels}
 
@@ -220,7 +220,7 @@ Einschränkungen:
 |---|---|---|---|
 | **Setzzeitpunkt** | Beim Start oder jederzeit während der Ausführung | Beim Start oder jederzeit während der Ausführung | Nur beim Start |
 | **Veränderlich** | Ja, über `upsertSearchAttributes()` | Ja, über `upsertMemo()` | Nein |
-| **Werttypen** | Nur Skalare | Jeder JSON-serialisierbare Typ | Nur Skalare |
+| **Werttypen** | Skalare und Listen von Zeichenfolgen | Jeder JSON-serialisierbare Typ | Nur Skalare |
 | **Indexiert** | Ja | Nein | Ja |
 | **Filterbar** | Ja | Nein | Ja |
 | **Anwendungsfall** | Dynamischer Status, Fortschrittsverfolgung | Reichhaltige Metadaten, Notizen, Kontext | Statische Klassifizierung |

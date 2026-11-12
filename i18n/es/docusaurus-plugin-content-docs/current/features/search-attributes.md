@@ -68,7 +68,7 @@ $options = StartOptions::rejectDuplicate()
 $workflow->start($orderId, $customer, $options);
 ```
 
-Se aplican las mismas reglas de validación: claves de 1 a 64 caracteres seguros para URL, valores escalares o null, y descarte de valores null sin guardarlos.
+Los atributos de búsqueda al inicio siguen las mismas reglas de claves y límites que `upsertSearchAttributes()`. Los valores null se descartan (no se guardan). Un inicio que supera un límite se rechaza antes de escribir nada.
 
 ### Plano de control {#control-plane}
 
@@ -85,9 +85,9 @@ $controlPlane->start('orders.process-order', 'order-42', [
 
 `upsertSearchAttributes()` acepta un array asociativo de pares clave-valor:
 
-- Las **claves** deben tener de 1 a 64 caracteres seguros para URL: letras, dígitos, guiones o guiones bajos.
-- Los **valores** deben ser escalares (string, int, float, bool) o null; las cadenas tienen un máximo de 191 caracteres.
-- Pasar `null` elimina esa clave.
+- Las **claves** deben tener de 1 a 64 caracteres entre letras, dígitos, `.`, `_`, `-` y `:`
+- Los **valores** son string, int, float, bool, una lista de cadenas o null. Consulta [Privacidad y límites](#privacy-and-limits) para los límites de tamaño
+- Pasar `null` como valor elimina esa clave de los atributos de búsqueda
 
 Cada llamada:
 
@@ -186,9 +186,12 @@ Son **metadatos de operador en texto plano**: cualquier persona con acceso a Wat
 
 Restricciones:
 
-- Claves: de 1 a 64 caracteres seguros para URL (`[a-zA-Z0-9_-]`).
-- Valores: solo escalares (string, int, float, bool); cadenas de hasta 191 caracteres.
-- Asignar `null` elimina la clave.
+- Nombres de clave: de 1 a 64 caracteres entre letras, dígitos, `.`, `_`, `-` y `:`. En Server un atributo de búsqueda debe registrarse primero, y los nombres registrados empiezan por una letra y solo usan letras, dígitos y `_` (hasta 128 caracteres). Usa esa forma para claves que funcionen en ambos modos.
+- Valores: cadenas de hasta 2.048 caracteres, keywords de hasta 255 caracteres, listas de keywords, int, float, bool y datetime.
+- Por ejecución: como máximo 100 atributos y 65.536 bytes en total. El límite [`search_attribute_size_bytes`](../constraints/structural-limits.md#search-attribute-size) (40 KiB por defecto) puede reducir el total, pero no ampliarlo.
+- Superar un límite lanza `StructuralLimitExceededException`, cuyo `limitName` indica qué límite. Un inicio se rechaza sin escribir nada, y un upsert desde el código del workflow hace fallar la ejecución con un fallo `structural_limit`.
+- Cada upsert añade un evento de historial `SearchAttributesUpserted`, así que hacer upserts en un bucle hace crecer el historial.
+- Asignar `null` a un valor elimina esa clave
 
 ## Atributos de búsqueda, memo y etiquetas de visibilidad {#search-attributes-vs-memo-vs-visibility-labels}
 
@@ -196,7 +199,7 @@ Restricciones:
 |---|---|---|---|
 | **Cuándo se fijan** | Al iniciar o durante la ejecución | Al iniciar o durante la ejecución | Solo al iniciar |
 | **Mutables** | Sí, con `upsertSearchAttributes()` | Sí, con `upsertMemo()` | No |
-| **Tipos de valor** | Solo escalares | Cualquier valor serializable a JSON | Solo escalares |
+| **Tipos de valor** | Escalares y listas de cadenas | Cualquier valor serializable a JSON | Solo escalares |
 | **Indexados** | Sí | No | Sí |
 | **Filtrables** | Sí | No | Sí |
 | **Uso** | Estado dinámico y seguimiento de progreso | Metadatos ricos, notas y contexto | Clasificación estática |

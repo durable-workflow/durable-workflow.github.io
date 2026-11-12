@@ -21,7 +21,7 @@ workflow. Якщо операція перевищила б налаштован
 | `pending_update_count` | 500 | Одночасно очікувані нерозв’язані update |
 | `command_batch_size` | 1,000 | Елементи одного паралельного розгалуження (`all()`) |
 | `payload_size_bytes` | 2 MiB | Серіалізований розмір одного набору аргументів |
-| `memo_size_bytes` | 256 KiB | Серіалізований розмір неіндексованих метаданих memo |
+| `memo_size_bytes` | 64 KiB | Серіалізований розмір неіндексованих метаданих memo |
 | `search_attribute_size_bytes` | 40 KiB | Серіалізований розмір індексованих метаданих атрибутів пошуку |
 | `history_transaction_size` | 5,000 | Події історії за одне виконання завдання workflow |
 
@@ -76,7 +76,7 @@ DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT=80
         'pending_update_count' => (int) env('DW_V2_LIMIT_PENDING_UPDATES', 500),
         'command_batch_size' => (int) env('DW_V2_LIMIT_COMMAND_BATCH_SIZE', 1000),
         'payload_size_bytes' => (int) env('DW_V2_LIMIT_PAYLOAD_SIZE_BYTES', 2097152),
-        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 262144),
+        'memo_size_bytes' => (int) env('DW_V2_LIMIT_MEMO_SIZE_BYTES', 65536),
         'search_attribute_size_bytes' => (int) env('DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES', 40960),
         'history_transaction_size' => (int) env('DW_V2_LIMIT_HISTORY_TRANSACTION_SIZE', 5000),
         'warning_threshold_percent' => (int) env('DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT', 80),
@@ -193,10 +193,11 @@ activity(ProcessDocumentActivity::class, $ref);
 
 ### Розмір memo {#memo-size}
 
-Коли workflow додає чи оновлює записи memo через `upsertMemo()`, виконавець
-об’єднує нові записи з наявною мапою memo, кодує результат у JSON і перевіряє
-довжину в байтах щодо `memo_size_bytes`. Якщо об’єднане memo перевищує межу,
-запуск завершується з помилкою до збереження memo.
+Memo має фіксовані межі: кожне значення до 10 240 байтів у закодованому вигляді (`memo_value_bytes`), щонайбільше 100 ключів (`memo_keys`) і загалом 65 536 байтів (`memo_total_bytes`). `memo_size_bytes` перевіряє закодований розмір об’єднаної мапи memo і може зменшити загальне обмеження, але не збільшити його: більше значення діє як 65 536. Значення `0` вимикає цю перевірку; фіксовані межі лишаються.
+
+Запуск, `upsertMemo()` і upsert memo від сервісних воркерів перевіряють memo, яке запис залишив би на запуску, до будь-якого запису. Перевищення обмеження викидає `StructuralLimitExceededException` з `limitName`. Upsert із коду workflow завершує запуск збоєм, а його подія `WorkflowFailed` записує `structural_limit_name`.
+
+Ці правила діють з Workflow 2.25.0. Попередні версії типово задавали `memo_size_bytes` у 256 KiB, що було недосяжним через фіксоване загальне обмеження, і викидали `InvalidArgumentException` для фіксованих меж.
 
 ### Розмір транзакції історії {#history-transaction-size}
 
@@ -227,10 +228,9 @@ foreach (array_chunk($items, 500) as $chunk) {
 
 ### Розмір атрибутів пошуку {#search-attribute-size}
 
-Коли workflow додає чи оновлює атрибути пошуку через `upsertSearchAttributes()`,
-виконавець об’єднує нові атрибути з наявним набором, кодує результат у JSON і
-перевіряє довжину в байтах щодо `search_attribute_size_bytes`. Якщо об’єднані
-атрибути перевищують межу, запуск завершується з помилкою до їх збереження.
+Атрибути пошуку мають фіксовані межі: рядки до 2 048 символів (`search_attribute_string_characters`), keyword і елементи списків keyword до 255 символів (`search_attribute_keyword_characters`), щонайбільше 100 атрибутів (`search_attribute_count`) і загалом 65 536 байтів (`search_attribute_total_bytes`). `search_attribute_size_bytes` перевіряє JSON-розмір об’єднаної мапи атрибутів і може зменшити загальне обмеження, але не збільшити його. Значення `0` вимикає цю перевірку; фіксовані межі лишаються.
+
+Запуск, `upsertSearchAttributes()` і upsert від сервісних воркерів застосовують ті самі обмеження до будь-якого запису й завершуються збоєм так само, як для обмежень memo.
 
 ## Класифікація помилок {#failure-taxonomy}
 
@@ -262,7 +262,7 @@ foreach (array_chunk($items, 500) as $chunk) {
     "pending_update_count": 500,
     "command_batch_size": 1000,
     "payload_size_bytes": 2097152,
-    "memo_size_bytes": 262144,
+    "memo_size_bytes": 65536,
     "search_attribute_size_bytes": 40960,
     "history_transaction_size": 5000,
     "warning_threshold_percent": 80
