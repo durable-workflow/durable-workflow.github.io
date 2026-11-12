@@ -7,10 +7,8 @@
   margin: 2rem auto;
   padding: 1.25rem 1.5rem;
   border: 1px solid var(--ifm-color-emphasis-300);
-  border-left: 3px solid var(--ifm-color-primary);
   border-radius: 0.5rem;
-  background: var(--ifm-background-surface-color);
-  box-shadow: 0 0.35rem 1.25rem rgb(0 0 0 / 8%);
+  background: var(--dw-surface);
 }
 
 .copy {
@@ -40,8 +38,9 @@
   margin: 0;
   color: var(--ifm-color-primary);
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-family: var(--dw-font-mono);
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 

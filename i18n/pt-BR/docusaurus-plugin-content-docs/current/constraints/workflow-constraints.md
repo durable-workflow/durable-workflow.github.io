@@ -36,6 +36,16 @@ Quando classes de workflow são registradas em `workflows.v2.types.workflows`, o
 
 Configure `DW_V2_GUARDRAILS_BOOT=throw` na CI para reprovar builds que introduzam chamadas inseguras para replay. Mantenha `warn` em produção para que uma ocorrência ainda não identificada não bloqueie uma implantação.
 
+### O que a verificação analisa {#scan-coverage}
+
+A verificação é léxica. Ela lê apenas a classe do workflow, suas classes pai e seus traits, e sinaliza:
+
+- leituras do relógio: `time()`, `date()`, `microtime()`, `hrtime()`, `today()`, chamadas estáticas como `Carbon::now()`, e `new DateTime()`, `new DateTimeImmutable()`, `new Carbon()` ou `new CarbonImmutable()` sem argumento ou com um tempo relativo como `'now'` ou `'+1 day'`. Uma data fixa não é sinalizada.
+- aleatoriedade: `random_int()`, `random_bytes()`, `rand()`, `mt_rand()`, `uniqid()`, `shuffle()`, `array_rand()`, `str_shuffle()` e helpers no estilo de `Str::uuid()`.
+- estado externo: `DB::`, `Cache::`, `Http::`, `Auth::`, `auth()` e `request()`.
+
+Ela não vê chamadas feitas por classes auxiliares ou de serviço, valores que dependem do estado do processo, como propriedades estáticas ou a ordem de dados não ordenados, nem nada decidido em tempo de execução. Uma verificação limpa não prova determinismo. Execute a [verificação de replay](../testing.md) em históricos registrados para detectar o restante.
+
 Na versão inicial, a análise na inicialização é a única verificação de determinismo que pode bloquear a execução. O runtime não repete esse diagnóstico ao adquirir uma tarefa de workflow. Essa escolha é intencional na 2.0: a análise identifica problemas nos workflows PHP registrados localmente antes da implantação, e o Waterline mostra mudanças na impressão digital da definição em execuções longas, sem tornar a aquisição de tarefas entre builds uma nova fonte de falhas de implantação.
 
 Execuções anteriores ao registro de impressões digitais também seguem uma política conservadora. Se uma execução alcançar um novo ramo de `getVersion()` e seu histórico `WorkflowStarted` for anterior ao registro da impressão digital, o runtime mantém essa execução em `WorkflowStub::DEFAULT_VERSION`, sem presumir que a definição atual é segura. Veja [Versionamento](../features/versioning.md).

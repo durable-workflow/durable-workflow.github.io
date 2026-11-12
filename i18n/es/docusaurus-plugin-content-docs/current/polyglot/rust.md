@@ -25,6 +25,12 @@ El SDK oficial de Rust permite crear workflows, además de ofrecer compatibilida
 
 La [página principal de documentación de Rust](https://rust.durable-workflow.com/) ofrece el índice del SDK y los puntos de entrada generales. Para módulos, structs, traits y métodos del crate, continúa en la [referencia generada de la API del SDK de Rust](https://rust.durable-workflow.com/durable_workflow/).
 
+El SDK de Rust 4.12.0 también ofrece [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)
+para herramientas que necesitan llamar a rutas de Server e inspeccionar los
+bytes exactos de la respuesta, sus cabeceras y códigos de estado. Las
+solicitudes raw hacen un intento. Usa los métodos tipados del cliente para
+el código de aplicación.
+
 El SDK estable de Rust admite temporizadores duraderos, workflows hijos, reintentos y tiempos de espera de actividades, actividades locales, sesiones de worker, ejecución sticky, señales, manejadores de consulta mediante reproducción, cancelación y terminación, plazos de workflow exigidos por el servidor, efectos secundarios tipados, marcadores de versión, actualizaciones y fallos tipados terminales y de reproducción. Todavía no ofrece gestión de programaciones. Consulta el [índice de capacidades de 2.0](/docs/capabilities/) en lugar de suponer que todos los SDK tienen el mismo alcance.
 
 ## Probar el entorno local de Sample App {#try-the-local-sample-app-playground}
@@ -38,7 +44,7 @@ scripts/playground rust
 
 El entorno local genera código de workflow y actividad propiedad del usuario, selecciona los artefactos estables actuales e inicia Server y Waterline publicados. Antes de iniciar el workflow, espera un registro de worker cuya identidad, tipo de workflow, tipo de actividad y cola coincidan con el contrato generado. El éxito exige el resultado completado y el historial esperados; después el terminal imprime el enlace local exacto a la ejecución en Waterline y la ruta a la evidencia JSON estructurada.
 
-Esta estructura inicial, pequeña y centrada en el transporte, utiliza `serde_json::Value`; no es el único contrato recomendado para aplicaciones Rust. Continúa con el [ejemplo de entrada/salida tipada](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs), el [ejemplo de políticas de actividad para reintentos, tiempos de espera, latidos y fallos terminales](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs) y el [ejemplo de actividad local](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs) del crate. El paquete, el ejemplo del repositorio y la referencia generada siguen siendo las rutas directas para quienes no quieran Sample App.
+Esta estructura inicial, pequeña y centrada en el transporte, utiliza `serde_json::Value`; no es el único contrato recomendado para aplicaciones Rust. Continúa con el [ejemplo de entrada/salida tipada](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs), el [ejemplo de políticas de actividad para reintentos, tiempos de espera, latidos y fallos terminales](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs) y el [ejemplo de actividad local](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs) del crate. El paquete, el ejemplo del repositorio y la referencia generada siguen siendo las rutas directas para quienes no quieran Sample App.
 
 ## Paquete y código fuente {#package-and-source}
 
@@ -64,6 +70,31 @@ El crate requiere Rust 1.86 o posterior. Sus metadatos registran la versión de 
 Server negocia las cabeceras del protocolo de workers dentro de la versión principal `1`: si anuncia `1.N`, solo acepta una cabecera de worker `1.M` cuando `M <= N`. El SDK de Rust 3.5.0 utiliza por defecto `X-Durable-Workflow-Protocol-Version: 1.20` y exige un servidor que anuncie `1.20` o posterior. Para un Server anterior compatible, selecciona `WorkerProtocolVersion::V119` mediante `worker_protocol_version` en el builder del cliente. El SDK 3.4.x utiliza `1.19` por defecto. El perfil opcional de cancelación cooperativa exige `1.20` y rechaza una selección explícita de `1.19`.
 
 La negociación rechaza las incompatibilidades. Se rechaza una cabecera ausente o malformada, otra versión principal o una versión menor del worker superior a la anunciada por el servidor. Las versiones del SDK y de Server se gestionan por separado. Sus manifiestos de protocolo en runtime determinan la compatibilidad.
+
+## Plazos de espera de condiciones y actualización de workers {#condition-wait-deadlines}
+
+El SDK Rust 4.11.2 mide el timeout de un `wait_condition` fuera de un grupo
+desde su primera apertura. Si un despertar encuentra el predicado todavía
+falso, la espera se vuelve a abrir con el tiempo restante, por lo que las
+señales ajenas no alargan su plazo. Las esperas en grupos `parallel` o
+`select` siguen abriéndose de nuevo con el timeout definido en el código para
+mantener la compatibilidad con PHP Server 2.11.8.
+
+Los workers con la versión 4.11.1 o anterior rechazan los historiales que
+registran un timeout menor al volver a abrir la espera. Mantén esas
+ejecuciones en workers con la versión 4.11.2 o posterior durante los
+despliegues graduales y las reversiones. Consulta las
+[notas de compatibilidad de la etiqueta 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
+El SDK de Rust 4.12.0 también reproduce aperturas repetidas registradas
+mientras una espera de condición seguía abierta, incluidos los grupos de
+condiciones `parallel` o `select` que despierta una sola señal en PHP Server
+2.x. Cada miembro consume su propia reapertura, aunque haya un temporizador
+entre miembros. Un timeout registrado antes de la siguiente apertura sigue
+terminando esa espera lógica. Los workers anteriores pueden rechazar estos
+historiales. Mantén las ejecuciones afectadas en 4.12.0 o posterior y prueba
+la reproducción con el worker anterior previsto antes de revertir. Consulta las
+[notas de compatibilidad de la etiqueta 4.12.0](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120).
 
 ## Listas de workflows e historial completo de una ejecución {#workflow-lists-and-history}
 
@@ -314,7 +345,7 @@ Se admite desde el SDK de Rust 3.4.0 y la base cualificada de Server. Consulta l
 
 ## Preparar el ejemplo publicado del repositorio {#prepare-the-released-repository-example}
 
-El [ejemplo `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs) registra un worker Rust, inicia un workflow, envía una señal, ejecuta una actividad, comunica un latido de actividad y espera el resultado completado. Como ejecuta cliente y worker en un proceso, la ruta sin cuenta siguiente lo conecta a Server autohospedado. Un espacio de nombres aprovisionado de Cloud es un runtime secundario opcional con credenciales separadas por rol.
+El [ejemplo `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs) registra un worker Rust, inicia un workflow, envía una señal, ejecuta una actividad, comunica un latido de actividad y espera el resultado completado. Como ejecuta cliente y worker en un proceso, la ruta sin cuenta siguiente lo conecta a Server autohospedado. Un espacio de nombres aprovisionado de Cloud es un runtime secundario opcional con credenciales separadas por rol.
 
 Para un ejercicio reproducible, obtén el código exacto del crate registrado en la combinación cualificada. El valor siguiente se genera desde esa autoridad legible por máquinas. El directorio del ejemplo es absoluto para que ambas rutas de conexión puedan acceder directamente:
 

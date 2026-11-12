@@ -41,6 +41,11 @@ fornece o índice do SDK e entradas gerais. Para módulos, structs, traits e
 métodos do crate, prossiga para a
 [referência gerada da API do SDK Rust](https://rust.durable-workflow.com/durable_workflow/).
 
+O SDK Rust 4.12.0 também oferece [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)
+para ferramentas que precisam chamar rotas do Server e inspecionar os bytes
+exatos da resposta, seus cabeçalhos e códigos de status. Solicitações raw
+fazem uma tentativa. Use os métodos tipados do cliente no código da aplicação.
+
 O SDK Rust estável suporta temporizadores duráveis, workflows filhos, novas
 tentativas e timeouts de atividades, atividades locais, sessões de worker,
 execução sticky, sinais, handlers de consulta com replay, cancelamento e
@@ -71,8 +76,8 @@ imprime o link local exato da execução no Waterline e o caminho para evidênci
 Esse scaffold intencionalmente pequeno e focado no transporte usa
 `serde_json::Value`; ele não é o único contrato recomendado para aplicações
 Rust. Continue com o
-[exemplo existente de entrada/saída tipada](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
-o [exemplo de política de atividade com novas tentativas, timeout, heartbeat e falha terminal](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)
+[exemplo existente de entrada/saída tipada](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs),
+o [exemplo de política de atividade com novas tentativas, timeout, heartbeat e falha terminal](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)
 e o [exemplo de atividade local](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)
 do crate. O pacote, exemplo do repositório e referência gerada da API abaixo
 continuam sendo os caminhos diretos para quem não deseja a Sample App.
@@ -116,6 +121,30 @@ A negociação rejeita por segurança. Um cabeçalho ausente ou malformado, uma
 major diferente ou uma minor de worker mais nova que a minor anunciada pelo
 servidor é rejeitada. Versões de release do SDK e Server são controladas
 independentemente. Seus manifestos de protocolo em runtime determinam a compatibilidade.
+
+## Prazos de espera de condições e atualização de workers {#condition-wait-deadlines}
+
+O SDK Rust 4.11.2 mede o timeout de um `wait_condition` fora de um grupo
+desde sua primeira abertura. Quando um despertar encontra o predicado ainda
+falso, a espera é reaberta com o tempo restante, de modo que sinais sem
+relação com a condição não prolongam seu prazo. Esperas em grupos `parallel`
+ou `select` continuam sendo reabertas com o timeout definido no código para
+manter a compatibilidade com PHP Server 2.11.8.
+
+Workers na versão 4.11.1 ou anterior recusam históricos que registram um
+timeout menor na reabertura. Mantenha essas execuções em workers com a versão
+4.11.2 ou posterior durante implantações graduais e reversões. Veja as
+[notas de compatibilidade da tag 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
+O SDK Rust 4.12.0 também reproduz aberturas repetidas registradas enquanto
+uma espera por condição ainda estava aberta, incluindo grupos de condições
+`parallel` ou `select` despertados por um único sinal no PHP Server 2.x. Cada
+membro consome sua própria reabertura, mesmo com um temporizador entre os
+membros. Um timeout registrado antes da próxima abertura continua encerrando
+essa espera lógica. Workers anteriores podem recusar esses históricos.
+Mantenha as execuções afetadas em 4.12.0 ou posterior e teste o replay com o
+worker anterior pretendido antes de reverter. Veja as
+[notas de compatibilidade da tag 4.12.0](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120).
 
 ## Listas de workflows e histórico completo de uma execução {#workflow-lists-and-history}
 
@@ -402,7 +431,7 @@ e o [guia de afinidade portátil de workers](./portable-worker-affinity.md).
 
 ## Preparar o exemplo publicado do repositório {#prepare-the-released-repository-example}
 
-O [exemplo `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
+O [exemplo `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)
 registra um worker Rust, inicia um workflow, envia um sinal, executa uma
 atividade, informa um heartbeat de atividade e aguarda o resultado concluído.
 Como esse exemplo executa cliente e worker da aplicação em um processo, o

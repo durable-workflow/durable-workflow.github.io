@@ -140,6 +140,38 @@ POST /webhooks/instances/{workflowId}/runs/{runId}/terminate
 }
 ```
 
+## キャンセル要求後の保護されたクリーンアップ {#protected-cleanup}
+
+`requestCancellation()` は実行をアクティブなままにします。ワークフローのコードは、次の永続的な呼び出しで `Workflow\V2\Exceptions\WorkflowCancellationRequestedException` として要求を受け取ります。`WorkflowCancelledException` と同様に `\Error` を継承するため、`catch (\Exception $e)` では捕捉できません。名前で捕捉するか、`finally` を使ってください。
+
+永続的な呼び出しが必要なクリーンアップは `cancellationShield()` の中で実行します。保護の中では、アクティビティ、タイマー、子ワークフローは要求を再度受け取らずに通常どおり実行されます。
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+要求を再スローするか、通常どおり戻ると、実行は `cancelled` として終了します。保護は `requestCancellation()` で設定したクリーンアップ期限を延長せず、強制終了や実行のタイムアウトは引き続き実行を終了させます。Saga の `compensate()` は自動的に保護の中で実行されます。[Saga](./sagas.md) を参照してください。サービスモードの SDK にも同じ保護があります。[協調的キャンセル](/docs/polyglot/cancellation) と各 SDK のサイトを参照してください。
+
 ## キャンセルを意図せず例外処理に吸収しない {#cancellation-is-not-an-error-you-catch-by-accident}
 
 キャンセルは予期しないアプリエラーではなく明示的なライフサイクル結果です。埋め込みの `Workflow\V2\Exceptions\WorkflowCancelledException` は `\Exception` ではなく `\Error` を継承します。`catch (\Exception $e)` では捕捉せず、`catch (\Throwable $t)` では捕捉します。

@@ -146,7 +146,7 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Compatibles: MySQL 8.0+, PostgreSQL 13+ y SQLite 3.35+. El Server nativo acepta `DB_CONNECTION=sqlite` (su valor predeterminado), `mysql`, `mariadb` o `pgsql`, y espera a que una base de datos MySQL o PostgreSQL que todavía no acepta conexiones esté disponible.
+Las bases declaradas son MySQL 8.0, PostgreSQL 13 y SQLite 3.35. La [tabla de bases de datos](./database-support.md) separa esas declaraciones de compatibilidad de las pruebas de código exactas y la cualificación de imágenes publicadas. El Server nativo acepta `DB_CONNECTION=sqlite` (predeterminado), `mysql`, `mariadb` o `pgsql`, y espera una base MySQL o PostgreSQL que todavía no acepta conexiones.
 
 ### Caché y cola (solo PHP 2.x) {#cache-and-queue-php-2x-only}
 
@@ -377,15 +377,28 @@ curl http://localhost:8080/api/cluster/info \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Devuelve la identidad de la compilación, los indicadores de capacidad, los manifiestos de protocolo, los límites y el descubrimiento del namespace indicado por `X-Namespace` (o por el parámetro de consulta `namespace`; si no, `default`). Salida abreviada de la imagen 3.0.5:
+Devuelve la identidad de la compilación, los indicadores de capacidad, los manifiestos de protocolo, los límites y el descubrimiento del namespace indicado por `X-Namespace` (o por el parámetro de consulta `namespace`; si no, `default`). Salida abreviada de la imagen 3.3.2:
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -393,6 +406,8 @@ Devuelve la identidad de la compilación, los indicadores de capacidad, los mani
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -430,10 +445,11 @@ Devuelve la identidad de la compilación, los indicadores de capacidad, los mani
 Notas sobre los campos clave para el código cliente:
 
 - La versión de la compilación es `version`, no `server_version`. `implementation` es `"rust"` en el Server nativo.
-- Compruebe `control_plane.version` y `worker_protocol.version` antes de llamar a la API. El Server nativo 3.0.5 sirve el plano de control `2` y el protocolo de workers `1.20`, y acepta solicitudes de workers que envíen cualquier versión de protocolo desde `1.0` hasta `1.20`.
+- Compruebe `control_plane.version` y `worker_protocol.version` antes de llamar a la API. El Server nativo 3.3.2 sirve el plano de control `2` y el protocolo de workers `1.20`, y acepta solicitudes de workers que envíen cualquier versión de protocolo desde `1.0` hasta `1.20`.
 - Los comandos de tareas de workflow están en `worker_protocol.server_capabilities.supported_workflow_task_commands`.
 - Un indicador de capacidad con valor `false` designa una función o un contrato publicado que el Server nativo no sirve. `response_compression` está vacío porque el Server nativo envía respuestas sin comprimir.
-- `native_unqualified` enumera cada miembro de la respuesta de PHP 2.x que el Server nativo omite, junto con el motivo. Incluye `topology`, `supported_sdk_versions` y `client_compatibility`.
+- `native_unqualified` enumera cada miembro de la respuesta de PHP 2.x que el Server nativo omite, junto con el motivo. Incluye `topology`.
+- Desde 3.1.0, el Server nativo también sirve `supported_sdk_versions` y `client_compatibility`, que leen `server:info` y `doctor` de la CLI. `client_compatibility.authority` es `"protocol_manifests"`: compruebe los manifiestos de protocolo, no los intervalos de SDK, antes de llamar a la API.
 - El único codec de cargas es Avro: `capabilities.payload_codecs` es exactamente `["avro"]`.
 - `qualified_for_php_takeover` siempre es `false`. Describe el Server en ejecución, que nunca toma el control de una base de datos al arrancar, no si `upgrade-takeover` aceptará la suya.
 - La respuesta también incluye los manifiestos `auth_composition_contract`, `principal_attribution_contract`, `service_catalog_read_contract` y `message_streams_contract`.

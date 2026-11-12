@@ -12,8 +12,15 @@ sidebar_position: 3
 
 ## 必要な環境 {#requirements}
 
-- PHP 8.1 以降
-- Laravel 9 以降
+- PHP 8.x 系の 8.2 以降
+- Laravel 12.x 系の 12.69 以降、または 13.x 系の 13.30 以降
+- Laravel 13 では PHP 8.3 以降
+
+これは現在の組み込みリリースの要件です。古いアプリの Composer を更新する前に、
+[公開済みの対応リリース系列](./compatibility.md#laravel-support)を選んでください。
+サービスモードの基本 PHP SDK には別の要件があります。
+
+組み込みと Server の宣言、正確なテスト構成、検証の限界は[データベースの互換性](./polyglot/database-support.md)を確認してください。
 
 Laravel が対応するキュードライバーを利用できます。**`sync` ドライバーは対象外です。** 例えば次のドライバーを使えます。
 
@@ -34,7 +41,8 @@ Composer でインストールします。
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-互換性のある 2.x 更新を Composer で自動的に受け入れたい場合は、`durable-workflow/workflow:^2.0` を使います。ランタイムとパッケージの互換ルールは[バージョン互換性](/docs/compatibility)を参照してください。
+上のコマンドは公開済みの組み込みリリースを固定します。制約を広げたり古いアプリを更新したりする前に、
+[Laravel のサポートと更新の境界](./compatibility.md#laravel-support)を確認してください。
 
 パッケージはマイグレーションを自動読み込みするため、インストール後は通常のマイグレーションを実行します。
 

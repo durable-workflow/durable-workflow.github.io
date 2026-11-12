@@ -47,7 +47,7 @@ class BookingSagaWorkflow extends Workflow
 
 Quando o workflow captura uma exceção, `$this->compensate()` executa todas as compensações registradas em **ordem inversa**. No exemplo, se `BookRentalCarActivity` falhar, o motor cancela primeiro o hotel e depois o voo, desfazendo a saga a partir da etapa mais recente.
 
-Registre cada compensação depois que sua atividade direta terminar com sucesso. O replay reconstrói essa ordem de registro e reutiliza os resultados de atividade já gravados, incluindo as compensações concluídas.
+Atividades são executadas pelo menos uma vez, então uma chamada de avanço pode ter efeito e ainda assim falhar do ponto de vista do workflow, por exemplo após um tempo limite ou uma conclusão perdida. Registre uma compensação idempotente, com chave baseada em um identificador de negócio estável, antes da chamada de avanço, para que ela seja executada sabendo-se ou não o resultado desse passo. Registrar depois que a chamada de avanço tem sucesso é adequado quando a compensação precisa desse resultado e o passo não tem efeito externo até ter sucesso, como no exemplo acima. O replay reconstrói a ordem de registro e reutiliza os resultados de atividade registrados, incluindo compensações concluídas.
 
 ## Compensação por vencimento do prazo {#deadline-driven-compensation}
 
@@ -111,6 +111,8 @@ WorkflowStub::load('order-123')->signal('confirm');
 Se a espera vencer e a compensação terminar com sucesso, o workflow conclui normalmente com `status: expired` no resultado. Não é uma execução encerrada pelo tempo limite do motor. Se a atividade que libera a reserva falhar, `compensate()` propaga a falha. Se o prazo do motor chegar primeiro, a execução é encerrada e a compensação restante não pode executar. Reserve tempo suficiente para agendamento e novas tentativas, e considere um prazo anterior de execução completa, se houver.
 
 A operação cooperativa independente `requestCancellation()` permite que um chamador solicite limpeza enquanto a execução está ativa. Use sua proteção limitada contra cancelamento para realizar limpeza durável sob essa solicitação. O tempo limite de um workflow não a aciona automaticamente. Consulte [Cancelamento cooperativo](../polyglot/cancellation.md).
+
+O próprio `compensate()` é executado sob uma proteção de cancelamento, então uma solicitação de cancelamento que chega durante a compensação não pula as compensações restantes. Veja [Limpeza protegida](./cancel-and-terminate.md#protected-cleanup).
 
 ## Ordem das compensações {#compensation-ordering}
 

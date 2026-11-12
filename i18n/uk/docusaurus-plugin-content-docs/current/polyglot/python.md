@@ -94,6 +94,22 @@ SDK залежить від [httpx](https://www.python-httpx.org/) для HTTP �
 `fastavro` для кодування Apache Avro єдиного публічного кодека payload v2.
 Підтримка метрик Prometheus необов'язкова.
 
+## Оновлення worker {#upgrading-workers}
+
+Python SDK 2.14.1 виправляє відбитки `wait_condition()`, які змінювалися між
+версіями Python або після перезапуску worker. Оновлюйте разом усі worker, що
+використовують одну чергу завдань. Щойно запуск запише відбиток очікування v2,
+усі worker, які можуть виконувати його replay, мають залишатися на 2.14.1 або
+новішій версії. Не повертайте worker цієї черги до версії SDK нижче 2.14.1.
+
+Застарілі відбитки v1, які більше не збігаються, приймаються як такі, що
+неможливо перевірити, тому цей механізм сумісності не виявляє змін предиката.
+Лямбда-вирази `wait_condition()` з виразами включення `list`, `dict` або `set`,
+розміщені на одному рядку, мають спільний об'єднаний відбиток. У нових
+визначеннях workflow розміщуйте такі предикати на окремих рядках, щоб можна
+було виявити перемикання між ними. Див.
+[примітки щодо сумісності для тегу 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
+
 ## Швидкий початок {#quickstart}
 
 Ця повна програма Python визначає workflow з однією activity,
@@ -1523,6 +1539,8 @@ SDK записує:
 | `durable_workflow_worker_tasks` | Лічильник | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | Гістограма | `task_kind`, `task_queue`, `outcome` |
 
+Окремої гістограми `durable_workflow_worker_task_schedule_to_start_seconds` немає у вибраному стабільному пакеті. Її [вихідний hook SDK](https://github.com/durable-workflow/sdk-python/pull/264) злитий, але не випущений. Публікація Server і перевірка встановленого пакета та експорту очікуються в [#188](https://github.com/durable-workflow/sdk-python/issues/188). Шість метрик вище не дають цього виміру. Поки що використовуйте [сигнали віку черги з посібника оператора](/docs/operator-operating-envelope#worker-and-sdk-telemetry).
+
 ## Розклади {#schedules-1}
 
 Створюйте й керуйте запланованими workflow через клієнт:
@@ -2046,9 +2064,19 @@ activity й повертає Avro результат. Інший тег відх
 | `list` | `ArrayValue` | `array` (список) |
 | `dict[str, ...]` | `MapValue` | `array` (мапа з рядковими ключами) |
 
-Перед передаванням значень workflow чи activity перетворюйте специфічні
-типи Python (dataclass, множини, кортежі, datetime) на канонічні
-рядки, цілі числа, мапи чи списки.
+### Типізовані значення activity {#typed-activity-values}
+
+Вибраний стабільний SDK підтримує dataclass та enum на межах activity. Dataclass надсилається як мапа полів із рядковими ключами, а `Enum` як `.value`. Байти Avro збігаються з явними нейтральними значеннями.
+
+| Межа | Опублікована поведінка з явним увімкненням |
+| --- | --- |
+| Аргументи activity | `@activity.defn(..., typed=True)` декодує позиційні аргументи за анотаціями параметрів. |
+| Результати activity | `ctx.schedule_activity(..., result_type=T)` декодує завершений результат у yield workflow, зокрема в паралельних групах та `ctx.select(...)`. |
+| Значення workflow, дочірніх workflow, client, signal, query, update та validator | Розширені адаптери [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) злиті, але не випущені. На цих межах зберігайте явне перетворення на нейтральні значення. |
+
+Підтримувані анотації отримання: dataclass, `Enum` (також `IntEnum` і `StrEnum`), `Optional[T]` / `T | None`, `list[T]`, `dict[str, T]`, `str`, `int`, `float`, `bool`, `bytes` та `Any`. Інші анотації, зокрема об'єднання двох типів, відмінних від `None`, спричиняють `TypeError` під час оголошення чи виклику. Декодування залишається явним. `result_type` є локальним: його не надсилають, не порівнюють і не записують в історію. [Опублікований довідник SDK](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values) пояснює типові значення, невідомі поля й `TypedValueError`.
+
+Множини, кортежі та об'єкти datetime, UUID, Decimal, pydantic і attrs досі потребують явного адаптера до канонічних рядків, чисел, мап чи списків. Зміна цієї надійно збереженої форми змінює сумісність workflow.
 
 ## Запуск зі спільним Server {#running-against-a-shared-server}
 

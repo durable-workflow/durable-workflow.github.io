@@ -195,6 +195,37 @@ Upgrade-Reihenfolge:
 
 Der native Server prüft sein Schema beim Start. Patch-Veröffentlichungen innerhalb einer nativen Minor-Linie behalten das Schema bei, daher genügt ein Image-Wechsel. Eine Veröffentlichung, deren Hinweise eine Schemaänderung ankündigen, benötigt zusätzlich den Befehl `schema-upgrade` des Images, ausgeführt nach einer Datenbanksicherung, während alle Server gestoppt sind. Die Server-Referenz enthält aktuelle Compose-Befehlsbeispiele unter [Offizielles Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Upgrade von Server 3.0.x auf 3.3.2 {#native-schema-upgrade-3-0-to-3-3}
+
+Server 3.3.2 liegt drei Minor-Veröffentlichungen nach 3.0.x und ändert das native Schema. Auf MySQL, MariaDB und PostgreSQL wechselt es von Version 8 (3.0.x und 3.1.0) über 10 (3.2.0) auf 11 (3.3.0 bis 3.3.2). Auf SQLite wechselt es von 8 auf 10. Ein Server aktualisiert sein Schema nie beim Start: 3.3.2 verweigert auf einer Datenbank mit Version 8 den Start mit `native_schema_upgrade_required`, daher kann der neue Server nicht starten, wenn nur `DW_SERVER_IMAGE` geändert wird. Der Befehl `schema-upgrade` des 3.3.2-Images aktualisiert eine Datenbank mit Version 8 direkt. Die [Upgrade-Hinweise zu 3.3.0](https://github.com/durable-workflow/server/blob/3.3.2/docs/releases/3.3.0.md#upgrade) beschreiben den Schritt, und die [Hinweise zu Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native) des Helm-Charts führen die Schemaschritte und die Laufzeitänderungen von 3.0.5 auf 3.3.2 auf.
+
+Für die Compose-Bereitstellung auf einem einzelnen Knoten:
+
+1. Stoppen Sie den Server und lassen Sie MySQL weiterlaufen:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Sichern Sie MySQL und `server_storage` und halten Sie die aktuelle Image-Referenz fest. Diese Sicherung ist der einzige Weg zurück zu 3.0.x.
+3. Ändern Sie `DW_SERVER_IMAGE` auf das 3.3.2-Image, rufen Sie es ab und führen Sie `schema-upgrade` einmal aus:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   Der Befehl gibt das Backend und die Schemaversionen vorher und nachher aus, zum Beispiel `"from_schema_version":8,"schema_version":11,"status":"upgraded"`. Auf einer bereits aktuellen Datenbank prüft er nur das Schema.
+4. Starten Sie den Server mit `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait` und bestätigen Sie dann `/api/ready`, `/api/cluster/info` (`version` ist `3.3.2`) und die Worker-Registrierung.
+
+- **PostgreSQL:** Die Schritte zu Version 10 und 11 erstellen ihre Indizes mit einem einfachen `CREATE INDEX`, das Schreibzugriffe auf `workflow_tasks` blockiert, bis der Aufbau abgeschlossen ist. Planen Sie bei einer großen Tabelle `workflow_tasks` die Ausfallzeit dafür ein.
+- **MySQL und MariaDB:** DDL wird dort eigenständig committet, daher markiert das Upgrade die Datenbank bis zu seinem Abschluss als im Upgrade befindlich, und jeder Server verweigert sie währenddessen mit `native_schema_upgrade_incomplete`. Wird ein Upgrade unterbrochen, führen Sie `schema-upgrade` erneut aus, um es fortzusetzen.
+- **Ein Rollback erfordert die Sicherung.** Es gibt kein Schema-Downgrade. Ein 3.0.x-Server verweigert eine aktualisierte Datenbank mit `native_schema_newer_than_binary`. Um zurückzuwechseln, stellen Sie die in Schritt 2 erstellte Sicherung wieder her, wodurch alles danach Geschriebene verworfen wird, und starten dann das 3.0.x-Image.
+
+Das Worker-Protokoll bleibt bei `1.20` und die Steuerungsebene bei Version `2`.
+
 ## Kleine Clusterbereitstellungen {#small-clustered-deployments}
 
 :::note Vertrag des PHP-Servers 2.x
@@ -404,6 +435,8 @@ helm install durable-workflow \
 Chart 1.x betreibt standardmäßig den nativen Server (`runtime: native`): ein Server-Deployment ohne Worker, Scheduler, Migrations-Job oder Redis. Ihre Values-Datei muss auf eine externe MySQL-, MariaDB- oder PostgreSQL-Datenbank verweisen, `DW_AUTH_TOKEN` und die rollenbezogenen Tokens über vorhandene Kubernetes Secrets bereitstellen und Ingress/TLS für Ihre Umgebung konfigurieren. Ohne das gemeinsame `DW_AUTH_TOKEN` verweigert das Chart das Rendern, und SQLite lehnt es ab. Eine native Installation läuft standardmäßig mit einem Replikat; mehr als ein Replikat oder Autoscaling erfordert, dass `native.storage.existingClaim` ein ReadWriteMany-Volume für externe Payload-Objekte benennt. Das Chart erstellt weder Persistenz noch vom Anbieter verwaltete Infrastruktur. Fixieren Sie das Server-Image für ein reproduzierbares Deployment per Digest.
 
 Ein bestehender PHP-2.x-Release wechselt bei einem gewöhnlichen Upgrade nicht auf den nativen Server: Das Chart verweigert das Upgrade, bis Sie `runtime` ausdrücklich setzen. Setzen Sie `runtime: php`, um Worker, Scheduler, Bootstrap-Job und Redis von PHP 2.x zu behalten. Um auf `runtime: native` zu wechseln, folgen Sie dem [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%) und behalten `runtime: php` bei, bis die Übernahme abgeschlossen ist. Siehe die [UPGRADING-Hinweise](%%artifact.helmChartUpgradeUrl%%) des Charts.
+
+Chart 1.1.0 ändert das Standard-Image von Server 3.0.5 auf 3.3.2, das das [native Schema-Upgrade](#native-schema-upgrade-3-0-to-3-3) von 8 auf 11 erfordert. Ein gewöhnliches `helm upgrade` von Chart 1.0.x ändert nur das Image, und die neuen Pods verweigern den Start mit `native_schema_upgrade_required`. Folgen Sie den [Schritten zu Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native) des Charts: Skalieren Sie den Server bei ausgeschaltetem Autoscaling auf null, sichern Sie die Datenbank und führen Sie dann das Upgrade auf Chart 1.1.0 mit `native.schemaUpgrade.enabled=true` aus. Sein `pre-upgrade`-Hook führt `schema-upgrade` einmal aus, bevor die neuen Pods starten, und nur, wenn Helms `lookup` zeigt, dass alle Server gestoppt sind. Renderings durch Argo CD, Flux und `helm template` verweigern den Hook; verwenden Sie stattdessen den manuellen Job aus der README des Charts. Ein `helm rollback` auf eine Revision von Chart 1.0.x bringt den Server nicht zurück, weil 3.0.x die aktualisierte Datenbank verweigert: Stellen Sie stattdessen die Sicherung wieder her.
 
 ### Einen Chart-Release auswählen {#helm-chart-selection}
 

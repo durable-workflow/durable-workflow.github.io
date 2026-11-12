@@ -200,7 +200,9 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Supported: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+. The native Server
+Declared baselines are MySQL 8.0, PostgreSQL 13 and SQLite 3.35. The
+[database table](./database-support.md) separates those compatibility declarations
+from exact source tests and published-image qualification. The native Server
 accepts `DB_CONNECTION=sqlite` (its default), `mysql`, `mariadb` or `pgsql`, and
 waits for a MySQL or PostgreSQL database that is not accepting connections yet.
 
@@ -514,15 +516,28 @@ curl http://localhost:8080/api/cluster/info \
 
 Returns the build identity, capability flags, protocol manifests, limits and
 discovery for the namespace named by `X-Namespace` (or the `namespace` query
-parameter, else `default`). Abridged output from the 3.0.5 image:
+parameter, else `default`). Abridged output from the 3.3.2 image:
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -530,6 +545,8 @@ parameter, else `default`). Abridged output from the 3.0.5 image:
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -569,7 +586,7 @@ Key field notes for client code:
 - The build version is `version`, not `server_version`. `implementation` is
   `"rust"` on the native Server.
 - Check `control_plane.version` and `worker_protocol.version` before calling
-  the API. Native 3.0.5 serves control plane `2` and worker protocol `1.20`,
+  the API. Native 3.3.2 serves control plane `2` and worker protocol `1.20`,
   and accepts worker requests that send any protocol version from `1.0` to
   `1.20`.
 - Workflow-task commands live under
@@ -578,8 +595,11 @@ Key field notes for client code:
   native does not serve. `response_compression` is empty because native sends
   uncompressed responses.
 - `native_unqualified` lists each member of the PHP 2.x response that native
-  leaves out, with the reason. It includes `topology`,
-  `supported_sdk_versions` and `client_compatibility`.
+  leaves out, with the reason. It includes `topology`.
+- Since 3.1.0, native also serves `supported_sdk_versions` and
+  `client_compatibility`, which the CLI's `server:info` and `doctor` read.
+  `client_compatibility.authority` is `"protocol_manifests"`: check the
+  protocol manifests, not the SDK ranges, before calling the API.
 - The sole payload codec is Avro: `capabilities.payload_codecs` is exactly
   `["avro"]`.
 - `qualified_for_php_takeover` is always `false`. It describes the running

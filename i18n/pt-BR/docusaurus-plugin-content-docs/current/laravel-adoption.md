@@ -41,9 +41,14 @@ depois de escolher a política de transição aqui.
 | Laravel v1 estável | SDK PHP em modo de serviço | O Laravel deve manter injeção de dependências, configuração, Artisan, logs, eventos e fakes de teste, mas o Cloud ou Server deve ser responsável pelo estado durável. | Instale `durable-workflow/sdk` como uma fronteira separada de cliente/worker de serviço. O histórico v1 e os jobs duráveis das filas Laravel permanecem no runtime v1 até atingirem estado terminal. |
 | Laravel 2.0 integrado | SDK PHP em modo de serviço | A aplicação deve deixar de ser responsável pelo runtime de orquestração ou precisa de uma fronteira de runtime compartilhada/entre linguagens. | Direcione novos inícios ao runtime de serviço depois que seus workers estiverem prontos. Deixe as execuções integradas terminarem onde começaram, ou use o procedimento explícito de importação de execuções elegíveis da v2 integrada para Server sob sua administração. |
 
-A ponte Laravel do SDK PHP e o pacote integrado suportam Laravel 9 a 13 nas
-versões compatíveis de PHP. Assim, uma aplicação v1 suportada pode escolher
-qualquer um dos destinos sem uma atualização não relacionada do Laravel.
+Confira as [linhas publicadas de suporte ao Laravel](./compatibility.md#laravel-support)
+antes de escolher o destino. O pacote embutido atual e, a partir do SDK PHP
+3.10, a ponte Laravel do modo de serviço exigem Laravel 12.69 ou 13.30 e PHP
+compatível. O cliente básico do modo de serviço continua aceitando PHP 8.1. O
+SDK PHP 3.9.x mantém seu contrato anterior da ponte Laravel 10–13 com os patches
+mínimos. Uma aplicação v1 antiga pode precisar atualizar o framework antes de
+migrar para qualquer uma das linhas atuais. Preserve seu runtime v1 e as
+execuções abertas durante essa atualização.
 
 ## Compare a fronteira de responsabilidade {#compare-the-ownership-boundary}
 
@@ -331,8 +336,10 @@ copiado de uma release específica:
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-O Laravel 9 a 13 descobre o provider automaticamente. Publique a configuração
-do pacote e liste as classes de handlers com atributos:
+As versões compatíveis do Laravel descobrem o provider automaticamente. Em uma
+versão do Laravel ou do PHP não suportada ou desconhecida, o provider recusa essa
+versão antes de registrar qualquer configuração, cliente ou worker.
+Publique a configuração do pacote e liste as classes de handlers com atributos:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

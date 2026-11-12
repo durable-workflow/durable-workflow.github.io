@@ -1,0 +1,24 @@
+{
+  "outcome": "pass",
+  "scope": "Local source-prototype CSP compatibility only; no TLS/HSTS or public-rollout acceptance",
+  "browser": "156.0.8078.4",
+  "pages_checked": 54,
+  "inline_hash_representatives": 49,
+  "source_preparation": {
+    "repository": "durable-workflow/sdk-rust",
+    "pull_request": 207,
+    "commit": "9ed50b7633a56ca09d1a17ddb46251d8ed2d8a60",
+    "tree": "cf2529434d01cc5796b3f87c7e0d7a3f955ad06c",
+    "scope": "Local source prototype only. Not a published artifact or live acceptance."
+  },
+  "checks": [
+    "all inventoried inline-script hash representatives",
+    "search",
+    "history back",
+    "direct-entry fallback",
+    "compact navigation",
+    "unapproved inline script refused",
+    "response framing refused"
+  ],
+  "external_requests": "intercepted locally; none sent to production"
+}

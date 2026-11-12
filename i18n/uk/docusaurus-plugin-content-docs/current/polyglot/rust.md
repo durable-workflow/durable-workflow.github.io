@@ -40,6 +40,11 @@ payload із самостійно розгорнутим Server або namespace
 crate наведено у згенерованому
 [довіднику Rust SDK API](https://rust.durable-workflow.com/durable_workflow/).
 
+Rust SDK 4.12.0 також надає [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)
+для інструментів, яким потрібно викликати маршрути Server і перевіряти точні
+байти відповіді, заголовки та коди стану. Raw-запити виконують одну спробу.
+У коді застосунку використовуйте типізовані методи клієнта.
+
 Стабільний Rust SDK підтримує durable timers, дочірні workflows, retries
 і timeouts activity, local activities, worker sessions, sticky execution, signals,
 query handlers з replay, cancellation і termination, серверні deadlines
@@ -70,8 +75,8 @@ scripts/playground rust
 Цей навмисно невеликий транспортний scaffold використовує `serde_json::Value`.
 Він не є єдиним рекомендованим контрактом Rust-застосунку.
 Продовжіть із наявним
-[прикладом типізованих вхідних даних і результатів](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
-[прикладом політики activity з retry, timeout, heartbeat і термінальними помилками](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)
+[прикладом типізованих вхідних даних і результатів](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs),
+[прикладом політики activity з retry, timeout, heartbeat і термінальними помилками](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)
 та [прикладом local activity](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs).
 Пакет, приклад репозиторію та згенерований довідник API нижче залишаються
 прямими шляхами для тих, хто не використовує Sample App.
@@ -117,6 +122,30 @@ Rust SDK 3.5.0 за замовчуванням надсилає
 інший major або worker minor вище оголошеного Server відхиляються.
 Версії випусків SDK та Server відстежуються незалежно. Їхня сумісність
 визначається protocol manifests runtime.
+
+## Строки очікування умови та оновлення worker {#condition-wait-deadlines}
+
+Rust SDK 4.11.2 відлічує тайм-аут для `wait_condition` поза групою від першого
+відкриття очікування. Якщо після пробудження предикат залишається хибним,
+очікування відкривається повторно з часом, що залишився, тому сторонні signal
+не подовжують строк очікування. Очікування в групах `parallel` або `select`
+і далі відкриваються повторно з тайм-аутом, заданим у коді, для сумісності з
+PHP Server 2.11.8.
+
+Worker із версією 4.11.1 або старішою відхиляють історії, у яких записано
+коротший тайм-аут повторного відкриття. Під час поступового розгортання та
+відкочування залишайте такі запуски на worker із версією 4.11.2 або новішою.
+Див. [примітки щодо сумісності для тегу 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
+Rust SDK 4.12.0 також відтворює повторні відкриття, записані, поки очікування
+умови ще було відкритим, зокрема групи умов `parallel` або `select`, які
+пробуджує один signal на PHP Server 2.x. Кожен учасник споживає власне повторне
+відкриття, навіть якщо між учасниками є timer. Тайм-аут, записаний до наступного
+відкриття, і далі завершує це логічне очікування. Старіші worker можуть
+відхиляти такі історії. Залишайте відповідні запуски на 4.12.0 або новішій
+версії та перевіряйте відтворення з цільовим старішим worker перед
+відкочуванням. Див.
+[примітки щодо сумісності для тегу 4.12.0](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120).
 
 ## Списки workflow та повна історія запуску {#workflow-lists-and-history}
 
@@ -408,7 +437,7 @@ Local activities не можуть використовувати session routin
 
 ## Підготовка прикладу опублікованого репозиторію {#prepare-the-released-repository-example}
 
-[Приклад `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
+[Приклад `hello_world`](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)
 репозиторію реєструє Rust worker, починає workflow, надсилає signal,
 виконує activity, повідомляє heartbeat activity й очікує завершеного результату.
 Оскільки приклад запускає клієнт застосунку та worker в одному процесі,

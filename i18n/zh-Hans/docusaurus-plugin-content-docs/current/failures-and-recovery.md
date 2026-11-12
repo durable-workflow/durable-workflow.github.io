@@ -115,6 +115,7 @@ redrive 会在同一工作流实例的新运行中继续一个失败的运行。
 - 已接收并应用其信号的信号等待（`await('name')`）会连同该信号的值一起复用。该信号不会再次投递。
 - 在失败步骤之前已被接受、应用并完成的更新，会在相同位置重新记录。重放会用记录的参数运行更新处理程序，因此工作流状态保持一致。更新不会再次投递。被拒绝的更新，以及在执行前就被失败关闭的更新，会被省略。
 - 复用的工作流代码中的 `outbox()->sendReference()` 和 `inbox()->receive()` 会返回失败运行发送或消费过的消息，不会再次发送或消费。原始调用没有找到任何消息的 receive 在重放时会再次读取 stream。
+- 在 Workflow 2.20.2 及之后的版本中，失败运行上仍待处理的入站 stream 消息会转移到后继运行。Workflow 2.20.1 及之前的版本会把它们留在失败运行上，因此后继运行永远收不到这些消息（[workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)）。
 - 如果运行因活动失败而结束，失败的活动调用会作为新的活动执行被调度，并使用工作流代码中的重试策略。它的尝试次数重新开始计算。
 - 如果运行在工作流代码中失败或因结构限制失败，后继运行会从工作流代码未曾到达的步骤处恢复执行。
 - 失败步骤之后的所有内容都像在新运行中一样执行。
@@ -414,6 +415,12 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Core 时间线摘要上限 {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 及以上**将完整的派生时间线摘要限制为 65,535 个 UTF-8 字节，包括标签、标点、` [truncated]` 标记和回调恢复提示。记录的权威失败、原始类型和不可重试决定保持不变。请检查接收端运行时实际的 `composer.lock`。[正常安装包的验证记录](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577)独立于 SDK 报告上限验证了摘要边界。
+
+SDK 的 62 KiB 报告余量不会修复旧 Core 的摘要写入，也不会消除独立的[权威失败存储上限](https://github.com/durable-workflow/.github/issues/225)。[基于历史的 datetime 修复](./features/search-attributes.md#repair-datetime-search-attributes)同样要求实际安装的 Workflow 2.12.0 及以上。它修复派生搜索行，不修复失败的时间线写入或缺失的权威历史。Server 镜像仍需对其中安装的 Core 和 HTTP/数据库路径独立验证后，才能称为已修复。
 
 ## PHP 服务模式失败报告上限 {#php-failure-report-limits}
 

@@ -63,7 +63,7 @@ ID 不会覆盖[重复启动策略](../configuration/options.md)。默认会拒�
 
 ### ID 是可见元数据 {#ids-are-visible-metadata}
 
-实例 ID 以明文出现在 Waterline、URL、CLI 输出、日志、历史导出和数据库中。载荷编解码器，包括载荷加密，均不覆盖这些标识。请使用不透明引用，避免包含邮箱地址、姓名、访问令牌或其他个人或秘密数据。敏感业务详情应放在受应用数据处理策略保护的载荷字段中。难以猜测的 ID 不能代替授权。
+实例 ID 以明文出现在 Waterline、URL、CLI 输出、日志、历史导出和数据库中。Avro 编码不会加密载荷，也不会保护这些标识。已发布的包尚未提供受支持的客户端载荷加密钩子。[共享 issue #217](https://github.com/durable-workflow/.github/issues/217)跟踪这项功能。请使用不透明引用，避免包含邮箱地址、姓名、访问令牌或其他个人或秘密数据。敏感业务详情应放在受应用数据处理策略保护的载荷字段中。难以猜测的 ID 不能代替授权。
 
 ## 在活动和工作流内部访问 ID {#accessing-ids-inside-activities-and-workflows}
 

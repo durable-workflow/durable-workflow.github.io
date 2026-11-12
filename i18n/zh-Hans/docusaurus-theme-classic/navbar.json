@@ -2,5 +2,8 @@
   "logo.alt": {"message": "Durable Workflow 标志"},
   "item.label.Docs": {"message": "文档"},
   "item.label.Blog": {"message": "博客（英文）"},
-  "item.label.Star on GitHub": {"message": "在 GitHub 上加星"}
+  "item.label.Star on GitHub": {"message": "在 GitHub 上加星"},
+  "item.label.Pricing": {"message": "价格"},
+  "item.label.Status": {"message": "状态"},
+  "item.label.Get started": {"message": "开始使用"}
 }

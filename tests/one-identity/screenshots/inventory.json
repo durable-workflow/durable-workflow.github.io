@@ -1,0 +1,52 @@
+{
+  "sourceRevision": "a274429e2c70594dfda10a979ddb6e455c4ef473",
+  "syntheticStatus": true,
+  "mode": "chrome",
+  "baselineReport": "baseline-report.json",
+  "screenshots": [
+    {
+      "file": "docs-dark-1440.png",
+      "bytes": 198286,
+      "sha256": "2a9b80e9a01c515f64bbc51a313d2663f47d5df9f8b1f5852ba829e5f537427d"
+    },
+    {
+      "file": "docs-dark-390.png",
+      "bytes": 88741,
+      "sha256": "8d607549036ebca8615730032905b0347092146d656869a2d2cdc8c54426ce7e"
+    },
+    {
+      "file": "docs-light-1440.png",
+      "bytes": 198456,
+      "sha256": "4bd71386fb02e8bd5892afce0643cdc6c319b82fe0051004cf985e98db40015d"
+    },
+    {
+      "file": "docs-light-390.png",
+      "bytes": 87744,
+      "sha256": "1243dcf7b48bb1b495fb7c7366ba671f9e2cd04545ea79049f244425f418dd99"
+    },
+    {
+      "file": "home-dark-1440.png",
+      "bytes": 227927,
+      "sha256": "3dcf73635dce42f5548167705e250830be918a83334d3ca6b711c5e2f37b3753"
+    },
+    {
+      "file": "home-dark-390.png",
+      "bytes": 210993,
+      "sha256": "ffb37d761e511f6d47d1b34fca345295fc5eb16cf2d3284cda6a4ddec63ea7ed"
+    },
+    {
+      "file": "home-light-1440.png",
+      "bytes": 224129,
+      "sha256": "a52144dbec1ed23f453a91c14fe459d8e2ef20a14df7cff001371ecd4fe3d19f"
+    },
+    {
+      "file": "home-light-390.png",
+      "bytes": 205496,
+      "sha256": "4974b701030172105af5ffd4178be47dc0ed59337a626e2717dabfed46278530"
+    }
+  ],
+  "laterSourceDelta": {
+    "revision": "f8198fa25998eac2aeb537f3b1655bfe59c841a1",
+    "scope": "Equivalent offset arithmetic extracted to independent statements; 14 status controls pass; no layout or label change."
+  }
+}

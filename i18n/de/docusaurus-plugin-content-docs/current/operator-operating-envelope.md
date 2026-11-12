@@ -278,11 +278,15 @@ Diese Felder sind knotenlokal. Lesen Sie bei gemischtem Rollout jeden betroffene
 
 Verwenden Sie Worker-Metriken, Traces und Protokolle für:
 
-- `schedule_to_start`-Latenz von Workflows und Aktivitäten
+- `schedule_to_start` (nur für ein qualifiziertes Server/SDK-Paar)-Latenz von Workflows und Aktivitäten
 - Poll-Erfolgsrate und synchrone/sofortige Zustellung
 - Sticky-Cache-Größe und Verdrängung
 - CPU-, Speicher-, Thread- und Ereignisschleifendruck
 - Eigene Anwendungsmetriken aus Aktivitäten oder Workern
+
+Der gemeinsame Recordername lautet `durable_workflow_worker_task_schedule_to_start_seconds`, ein Histogramm in Sekunden mit genau den Tags `task_kind` und `task_queue`. Der [Vertrag in Revision 2](https://github.com/durable-workflow/.github/blob/23f9bc3c3798cb6aab6ccf5f9cd210854b820c65/sdk-metrics/README.md#schedule-to-start-observations) verlangt den booleschen Wert `server_capabilities.claimed_task_ready_age: true` und einen gültigen ganzzahligen Wert `task.ready_age_ms`. Bei tatsächlicher Workflow-/Aktivitätsausführung zeichnet das SDK die vom Server gemessene Zeit von Ausführungsbereitschaft bis Lease auf. Zustellung, Verarbeitung, geplante Wartezeit und Retry-Backoff sind ausgeschlossen. Subtrahieren Sie keine Worker- und Serveruhren. Fehlende Fähigkeit, fehlender Wert oder unbekannter Bereitschaftsursprung bedeuten keine Messung, nicht null. Ein gültiger Nullwert bleibt eine Messung.
+
+Pythons [Quellhook](https://github.com/durable-workflow/sdk-python/pull/264) ist zusammengeführt, aber unveröffentlicht. Server-Veröffentlichung und installierte/exportierte Abnahme stehen in [Python #188](https://github.com/durable-workflow/sdk-python/issues/188) aus. Bestehende Anfrage-, Poll- und Verarbeitungsmetriken liefern dieses Histogramm nicht. Alarmieren Sie bis zur Qualifikation des genauen Paars anhand von `operator_metrics.tasks.oldest_ready_due_at` und `operator_metrics.tasks.max_ready_due_age_ms`, sofern verfügbar. Diese aggregierten Rückstandssignale messen keine Latenz einzelner Aufgaben und ersetzen deren Verteilung nicht.
 
 Kennzeichnen Sie synchrone Abfragen, Live-Debugging und andere nichtdauerhafte Steuerungsaufrufe gesondert. Sie gehören nicht zum dauerhaften Rückstand und ändern Waterline-Reparaturzähler nicht.
 
@@ -312,7 +316,7 @@ Alarmschwellen sind bereitstellungsspezifisch. Veröffentlichen Sie Zahlen für 
 | --- | --- | --- | --- | --- |
 | Blockierte Bereitschaft | `workflow:v2:doctor --strict`, `GET /waterline/api/v2/health` | Blockierend | Fehler von `doctor --strict`, `status = error` oder HTTP `503` | Rollout/Verkehrswechsel stoppen, beheben, Bereitschaft/Kompatibilität prüfen |
 | Kompatible Abdeckung | `operator_metrics.workers.*`, `worker_compatibility`, `no_compatible_worker_for_task` | Blockierend | `active_workers_supporting_required = 0` für Namespace oder nötiges `(connection, queue)` | Inkompatible drainen, passende registrieren, `correctness` prüfen |
-| Dauerhafter Queue-Verzug | Waterline, `operator_metrics.backlog.*`, Worker-`schedule_to_start` | Bei Dauer blockierend, kurzzeitig Hinweis | Bereitschaftsalter/Latenz trotz kompatibler Worker über Basis | Kapazität, Zulassung und Scheduler-/Zuordnungsfortschritt prüfen |
+| Dauerhafter Queue-Verzug | Waterline, `operator_metrics.backlog.*`, Worker-`schedule_to_start` (nur für ein qualifiziertes Server/SDK-Paar) | Bei Dauer blockierend, kurzzeitig Hinweis | Bereitschaftsalter/Latenz trotz kompatibler Worker über Basis | Kapazität, Zulassung und Scheduler-/Zuordnungsfortschritt prüfen |
 | Poller-Druck/Sättigung | Queue-Detail, `dw task-queue:describe`, `status`, alte Poller und Raten | `no_active_workers`, `no_slots`, `unavailable` blockieren; geplantes `throttled` Hinweis | `saturated` bei wachsendem Alter/Ratenabstand oder Sperrzustände außerhalb Wartung | Plätze ergänzen, Kohorte herstellen, Limit/Sperre vor blindem Skalieren prüfen |
 | Start-Rückstand | `operator_metrics.starts.*`, Start-/Erstaufgabentelemetrie | Bei Dauer blockierend | `pending_commands`, `ready_tasks`, `max_pending_ms` trotz Kapazität über Basis | Startbefehle, erste dauerhafte Aufgabe und Zustellung prüfen; vom Worker-Lag trennen |
 | Projektion/Reparaturschuld | `run_summary_projection`, `selected_run_projections`, `operator_metrics.repair.*` | Hinweis | Nach Neubaufenster weiter Warnung oder steigendes Kandidatenalter | Vorschau, Reparatur und Rückkehr zum Basisalter prüfen |
@@ -418,8 +422,8 @@ Durable Workflow v2 benennt die für Ihre Umgebung zu messenden Dimensionen. Erf
 | --- | --- | --- |
 | Projektionen | `needs_rebuild = 0`, Neubau nach absichtlicher Drift, Alt-/Waisenbereinigung | `/waterline/api/v2/health`, `/waterline/api/stats`, `workflow:v2:rebuild-projections` |
 | Queue-Druck | Rückstands-/Bereitschaftsalter, sofortige/verzögerte Aufgaben, Zufluss/Versand, Zustellverzug, alte Poller und `accepting`/`saturated`/`throttled`/`no_slots`/`no_active_workers` | Waterline, `operator_metrics.backlog.*`, `operator_metrics.tasks.*` |
-| Startlatenz | Akzeptierte Starts vor erster Aufgabe, ältestes Startalter und Erstabholung | `operator_metrics.starts.*`, `schedule_to_start` |
-| Schedule-to-start | Workflow-/Aktivitätswartezeit von Einreihung bis Start | Worker-SDK-Metriken |
+| Startlatenz | Akzeptierte Starts vor erster Aufgabe, ältestes Startalter und Erstabholung | `operator_metrics.starts.*`, `schedule_to_start` (nur für ein qualifiziertes Server/SDK-Paar) |
+| Schedule-to-start-Latenz | Vom Server gemessene Zeit zwischen Ausführungsbereitschaft und Lease für Workflow-/Aktivitätsaufgaben, ohne geplante Wartezeit und Backoff | Worker-SDK-Histogramm erst nach Qualifikation des genauen Server/SDK-Paars |
 | Timer-Auffächerung | Weckverbreitung und Abstand von Feuerzeit bis Sichtbarkeit bereitstehender Aufgaben | Worker-Telemetrie und Einzelregionskoordination |
 | Reparatursuche | Kandidaten/Auswahl, Höchstalter Kandidat/fehlender Lauf, Scan-Druck | `operator_metrics.repair.*` |
 | Historie | Ereigniszahl, Größe und Continue-as-new-Schwellen | `operator_metrics.history.*` |

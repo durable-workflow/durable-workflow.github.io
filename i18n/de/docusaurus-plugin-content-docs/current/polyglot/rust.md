@@ -40,6 +40,11 @@ Die [Rust-Dokumentationsstartseite](https://rust.durable-workflow.com/) bietet
 SDK-Index und allgemeine Einstiegspunkte. Crate-Module, Structs, Traits und
 Methoden stehen in der generierten [Rust-SDK-API-Referenz](https://rust.durable-workflow.com/durable_workflow/).
 
+Rust SDK 4.12.0 bietet außerdem [`RawRequest`](https://rust.durable-workflow.com/durable_workflow/struct.RawRequest.html)
+für Werkzeuge, die Server-Routen aufrufen und die exakten Antwortbytes,
+Header und Statuscodes prüfen müssen. Raw-Anfragen führen einen Versuch aus.
+Verwenden Sie typisierte Client-Methoden für Anwendungscode.
+
 Das stabile Rust SDK unterstützt dauerhafte Timer, Kind-Workflows,
 Aktivitätswiederholungen und -Timeouts, lokale Aktivitäten, Worker-Sitzungen,
 Sticky-Ausführung, Signale, Abfrage-Handler mit Replay, Abbruch und Terminierung,
@@ -71,8 +76,8 @@ JSON-Nachweis aus.
 
 Dieses bewusst kleine, auf Transport ausgerichtete Gerüst verwendet
 `serde_json::Value`. Es ist nicht der einzige empfohlene Rust-Anwendungsvertrag.
-Fahren Sie mit dem vorhandenen [Beispiel für typisierte Ein-/Ausgaben](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs),
-dem [Aktivitätsrichtlinienbeispiel für Wiederholung, Timeout, Heartbeat und terminale Fehler](https://github.com/durable-workflow/sdk-rust/blob/main/examples/activity_options.rs)
+Fahren Sie mit dem vorhandenen [Beispiel für typisierte Ein-/Ausgaben](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs),
+dem [Aktivitätsrichtlinienbeispiel für Wiederholung, Timeout, Heartbeat und terminale Fehler](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/activity_options.rs)
 und dem [Beispiel lokaler Aktivitäten](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)
 fort. Paket, Repository-Beispiel und generierte API-Referenz unten bleiben die
 direkten Wege ohne Sample App.
@@ -117,6 +122,31 @@ Die Aushandlung lehnt Unsicherheit strikt ab. Fehlende oder ungültige Header,
 eine andere Hauptversion oder eine höhere Worker-Nebenversion als die vom
 Server gemeldete werden abgelehnt. SDK- und Server-Release-Versionen werden
 unabhängig geführt. Ihre Laufzeit-Protokollmanifeste bestimmen die Kompatibilität.
+
+## Fristen für Bedingungswarteoperationen und Worker-Upgrades {#condition-wait-deadlines}
+
+Rust SDK 4.11.2 misst das Timeout eines nicht gruppierten `wait_condition`
+ab dem ersten Öffnen. Ist das Prädikat beim Aufwachen weiterhin falsch, wird
+die Warteoperation mit der verbleibenden Zeit erneut geöffnet. Unabhängige
+Signale verlängern ihre Frist daher nicht. Warteoperationen in `parallel`-
+oder `select`-Gruppen werden für die Kompatibilität mit PHP Server 2.11.8
+weiterhin mit dem im Code angegebenen Timeout erneut geöffnet.
+
+Worker mit Version 4.11.1 oder älter lehnen Verläufe ab, die beim erneuten
+Öffnen ein kürzeres Timeout aufzeichnen. Halte diese Läufe bei schrittweisen
+Deployments und Rollbacks auf Workern mit Version 4.11.2 oder neuer. Siehe die
+[Kompatibilitätshinweise zum Tag 4.11.2](https://github.com/durable-workflow/sdk-rust/blob/4.11.2/CHANGELOG.md#4112).
+
+Rust SDK 4.12.0 spielt außerdem wiederholte Öffnungen nach, die aufgezeichnet
+wurden, während eine Bedingungswarteoperation noch offen war. Dazu gehören
+`parallel`- oder `select`-Bedingungsgruppen, die ein Signal auf PHP Server 2.x
+aufweckt. Jedes Mitglied verbraucht seine eigene erneute Öffnung, auch wenn
+zwischen Mitgliedern ein Timer liegt. Ein vor der nächsten Öffnung
+aufgezeichnetes Timeout beendet diese logische Warteoperation weiterhin.
+Ältere Worker können solche Verläufe ablehnen. Lassen Sie betroffene Läufe auf
+Version 4.12.0 oder neuer und testen Sie das Replay mit dem vorgesehenen
+älteren Worker vor einem Rollback. Siehe die
+[Kompatibilitätshinweise zum Tag 4.12.0](https://github.com/durable-workflow/sdk-rust/blob/4.12.0/CHANGELOG.md#4120).
 
 ## Workflow-Listen und vollständiger Laufverlauf {#workflow-lists-and-history}
 
@@ -406,7 +436,7 @@ und [Leitfaden für portable Worker-Affinität](./portable-worker-affinity.md).
 
 ## Das veröffentlichte Repository-Beispiel vorbereiten {#prepare-the-released-repository-example}
 
-Das [`hello_world`-Beispiel](https://github.com/durable-workflow/sdk-rust/blob/main/examples/hello_world.rs)
+Das [`hello_world`-Beispiel](https://github.com/durable-workflow/sdk-rust/blob/4b2440a5618ccc1c98960ea2e1e62127042c3590/examples/hello_world.rs)
 registriert einen Rust-Worker, startet einen Workflow, sendet ein Signal,
 führt eine Aktivität aus, meldet einen Aktivitäts-Heartbeat und wartet auf das
 abgeschlossene Ergebnis. Da Anwendungsclient und Worker in einem Prozess laufen,

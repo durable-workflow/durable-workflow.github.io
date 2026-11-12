@@ -1,0 +1,17 @@
+{
+  "home": "https://durable-workflow.com/",
+  "docs": "https://durable-workflow.com/docs/introduction/",
+  "python": "https://python.durable-workflow.com/",
+  "rust": "https://rust.durable-workflow.com/",
+  "php": "https://php.durable-workflow.com/",
+  "server": "https://durable-workflow.com/docs/polyglot/server/",
+  "cloud": "https://cloud.durable-workflow.com/",
+  "pricing": "https://cloud.durable-workflow.com/pricing",
+  "status": "https://status.durable-workflow.com/",
+  "github": "https://github.com/durable-workflow",
+  "compatibility": "https://durable-workflow.com/docs/compatibility/",
+  "catalog": "https://cloud.durable-workflow.com/early-access",
+  "terms": "https://cloud.durable-workflow.com/terms",
+  "privacy": "https://cloud.durable-workflow.com/privacy",
+  "statusApi": "https://status.durable-workflow.com/api/current.json"
+}

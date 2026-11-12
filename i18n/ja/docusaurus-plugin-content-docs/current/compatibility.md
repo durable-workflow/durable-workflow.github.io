@@ -59,6 +59,48 @@ SDK、Server マニフェスト、CI ゲートが一つの正しい情報源に�
 
 必須の全プラットフォームプロトコルカタログエントリは `published` です。呼び出し可能キャリアのエントリは `in_progress` のままです。利用可能な各エントリは、公開 OpenAPI、AsyncAPI、JSON Schema ドキュメントへ直接リンクします。[`cluster_info_envelope`](/docs/platform-protocol-specs#cluster-info-envelope-notes) スキーマは、他の全エントリに到達できる検出インターフェースを固定します。
 
+## 公開済み Laravel サポート {#laravel-support}
+
+PHP と Laravel の要件を比較する前にパッケージのリリースを選びます。
+組み込みパッケージとサービスモード SDK のサポート契約は別です。
+
+| パッケージ系列 | PHP | Laravel |
+| --- | --- | --- |
+| 現在の組み込み Workflow 2.22 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| 組み込み Workflow 2.20.5 | PHP `^8.1`。Laravel 自身の最低要件も適用 | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
+| 公開済み PHP SDK 3.11 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| PHP SDK 3.9.5 | 基本 SDK は PHP `^8.1`。Laravel ブリッジはフレームワークの最低要件にも従う | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
+
+[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+と各リリースの `composer.json` がパッケージの根拠です。現在の組み込みリリースは
+Laravel 12/PHP 8.2～8.4 と Laravel 13/PHP 8.3～8.4 で検証されています。
+PHP 8.1 と Laravel 10/11 のサポートは終了しました。
+[従来の安定版 v1 ガイド](/docs/1.x/installation/)と
+[PHP SDK 独自の要件](https://php.durable-workflow.com/)は別に維持されます。
+
+まず PHP と Laravel を対応する組み合わせへ更新してください。移行がまだできない場合、
+`~2.20.5` は Composer を 2.20 のパッチ系列内に保ちますが、無期限の保守を約束するものではありません。
+`^2.0` はプラットフォームが許可すれば後のマイナーを選ぶ場合があります。
+未完了 v1 実行の元のランタイムを保持し、ドレインまたは共存の手順は
+[Laravel 導入ガイド](/docs/laravel-adoption)に従ってください。
+Composer 制約の変更で永続履歴は移行されません。
+
+PHP SDK 3.10 では、Laravel サービスモードブリッジの PHP と Laravel の最低要件が
+Workflow 2.21 と同じになり、Laravel 10/11 のサポートが削除されました。3.11 もこれを維持します。
+provider は、未対応または不明なフレームワークと PHP のバージョンを、設定、クライアント、
+Worker を登録する前に拒否します。既存の SDK 3.9.x アプリケーションは、プラットフォームの
+更新中も従来の契約を維持します。
+[PHP SDK のアップグレードに関する注意事項](./polyglot/php.md#upgrade-to-3-10-and-3-11)を参照してください。
+
+Workflow 2.22 にはデータベースマイグレーションがなく、2.21 のサポート下限を維持します。
+組み込み Worker プロトコルは `1.22` を通知し、引き続き `1.20` のリクエストも受け付けます。
+`1.22` では、外部の呼び出し元が条件待機に対して要求できるオプトインの発生期限
+（occurrence deadline）が追加されました。組み込みランナーは既存の待機動作を維持します。
+いずれかのワークフローがそのポリシーを使用した後に以前の Workflow リリースへロールバックする場合は、
+アップグレード前に取得したバックアップを復元する方法に限ってください。古いリリースはポリシーを破棄して
+待機チェーンを混在させる場合があり、再度アップグレードしてもその履歴は修復されません。
+[2.22.0 の変更履歴](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md)を参照してください。
+
 ## 安定性レベル {#stability-levels}
 
 Durable Workflow の各公開インターフェースは、次の安定性レベルを厳密に一つ持ちます。分類は明示的です。未分類のインターフェースは公開ではありません。

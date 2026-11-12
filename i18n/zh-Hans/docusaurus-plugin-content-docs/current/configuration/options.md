@@ -90,6 +90,18 @@ $result = activity(
 
 `ActivityOptions` 中的路由覆盖项在调度新的活动执行时生效，不会移动已记录在历史中的活动。更换工作器池前，请参阅[已记录的活动队列](../polyglot/task-matching-dispatch.md#recorded-activity-queues)。
 
+重试和超时字段仅在本次调用中覆盖活动类的设置：
+
+- `maxAttempts`：总尝试次数，包括第一次。必须至少为 1。以 0 或更小的值调度新活动会使运行失败。省略该字段则使用类的 `$tries`，其中 `0` 表示无限重试。
+- `backoff`：每次重试前等待的秒数，可以是列表或单个值。它覆盖类的 `backoff()`。
+- `nonRetryableErrorTypes`：不再尝试、直接使活动失败的错误类型或类名。
+- `startToCloseTimeout`：单次尝试的最长秒数。
+- `scheduleToStartTimeout`：活动开始前等待工作器的最长秒数。
+- `scheduleToCloseTimeout`：从调度到完成（包括所有尝试）的最长秒数。
+- `heartbeatTimeout`：两次心跳之间的最长秒数，超过后该尝试被视为无响应。
+
+`LocalActivityOptions` 接受相同的重试字段，以及 `startToCloseTimeout`、`scheduleToCloseTimeout` 和 `heartbeatTimeout`。它没有路由字段，也没有 `scheduleToStartTimeout`。
+
 ## 连接 {#connection}
 
 `$connection` 指定工作流或活动发送到哪个队列连接。默认不设置 `$connection`，即使用默认连接。可通过设置工作流或活动类的 `$connection` 属性覆盖。
@@ -102,7 +114,7 @@ $result = activity(
 
 ## 重试 {#retries}
 
-`$tries` 控制活动被判定为失败前允许的总尝试次数。默认 `$tries` 为 `1`，即只尝试一次，不自动重试。将 `$tries` 设为大于 `1` 的值以允许重试，设为 `0` 则无限重试。可通过 `ActivityOptions::$maxAttempts` 逐调用覆盖。
+`$tries` 控制活动被判定为失败前允许的总尝试次数。默认 `$tries` 为 `1`，即只尝试一次，不自动重试。将 `$tries` 设为大于 `1` 的值以允许重试，设为 `0` 则无限重试。可通过 `ActivityOptions::$maxAttempts` 逐调用覆盖。`maxAttempts` 包括第一次尝试，且必须至少为 1。
 
 ## 超时 {#timeout}
 

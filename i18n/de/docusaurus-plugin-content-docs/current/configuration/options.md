@@ -110,6 +110,18 @@ $result = activity(
 
 Routing-Überschreibungen in `ActivityOptions` gelten beim Planen einer neuen Aktivitätsausführung. Sie verschieben keine bereits im Verlauf gespeicherte Aktivität. Lies vor dem Wechsel eines Worker-Pools den Abschnitt zu [gespeicherten Aktivitätsqueues](../polyglot/task-matching-dispatch.md#recorded-activity-queues).
 
+Wiederholungs- und Timeout-Felder überschreiben die Aktivitätsklasse nur für diesen Aufruf:
+
+- `maxAttempts`: Gesamtzahl der Versuche, einschließlich des ersten. Der Wert muss mindestens 1 sein. Eine neue Aktivität, die mit 0 oder weniger geplant wird, lässt den Lauf fehlschlagen. Lassen Sie das Feld weg, um `$tries` der Klasse zu verwenden, wobei `0` unbegrenzt wiederholt.
+- `backoff`: Sekunden Wartezeit vor jeder Wiederholung, als Liste oder Einzelwert. Überschreibt `backoff()` der Klasse.
+- `nonRetryableErrorTypes`: Fehlertyp- oder Klassennamen, die die Aktivität ohne weiteren Versuch fehlschlagen lassen.
+- `startToCloseTimeout`: maximale Sekunden für einen Versuch.
+- `scheduleToStartTimeout`: maximale Sekunden, die eine Aktivität vor dem Start auf einen Worker warten darf.
+- `scheduleToCloseTimeout`: maximale Sekunden von der Planung bis zum Abschluss über alle Versuche.
+- `heartbeatTimeout`: maximale Sekunden zwischen Heartbeats, bevor ein Versuch als nicht reagierend gilt.
+
+`LocalActivityOptions` akzeptiert dieselben Wiederholungsfelder sowie `startToCloseTimeout`, `scheduleToCloseTimeout` und `heartbeatTimeout`. Routing-Felder und `scheduleToStartTimeout` gibt es dort nicht.
+
 ## Verbindung {#connection}
 
 Die Einstellung `$connection` legt fest, an welche Queue-Verbindung der Workflow
@@ -133,7 +145,7 @@ bevor sie als fehlgeschlagen gilt. Standardmäßig ist `$tries` gleich `1`
 (ein einzelner Versuch ohne automatische Wiederholung). Setzen Sie `$tries`
 auf einen Wert größer als `1`, um Wiederholungen zu erlauben, oder auf `0`, um
 unbegrenzt zu wiederholen. Pro Aufruf lässt sich dies über
-`ActivityOptions::$maxAttempts` überschreiben.
+`ActivityOptions::$maxAttempts` überschreiben. `maxAttempts` zählt den ersten Versuch mit und muss mindestens 1 sein.
 
 ## Timeout {#timeout}
 

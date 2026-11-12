@@ -115,6 +115,7 @@ Der Nachfolger spielt den Workflow-Code von Anfang an erneut ab:
 - Eine Signalwarteoperation (`await('name')`), die ihr Signal empfangen und angewendet hat, wird mit dem Wert des Signals wiederverwendet. Das Signal wird nicht erneut zugestellt.
 - Ein Update, das vor dem fehlgeschlagenen Schritt angenommen, angewendet und abgeschlossen wurde, wird an derselben Stelle erneut aufgezeichnet. Das Replay führt den Update-Handler mit den aufgezeichneten Argumenten aus, sodass der Zustand des Workflows übereinstimmt. Das Update wird nicht erneut zugestellt. Ein abgelehntes Update und eines, das der Fehler vor seiner Ausführung geschlossen hat, werden ausgelassen.
 - `outbox()->sendReference()` und `inbox()->receive()` in wiederverwendetem Workflow-Code geben die Nachricht zurück, die der fehlgeschlagene Lauf gesendet oder konsumiert hat. Sie senden oder konsumieren sie nicht erneut. Ein Receive im Replay, dessen ursprünglicher Aufruf nichts gefunden hat, liest den Stream erneut.
+- In Workflow 2.20.2 und später gehen eingehende Stream-Nachrichten, die auf dem fehlgeschlagenen Lauf noch ausstehen, auf den Nachfolger über. Workflow 2.20.1 und früher ließen sie auf dem fehlgeschlagenen Lauf, sodass der Nachfolger sie nie erhielt ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Wenn ein Aktivitätsfehler den Lauf beendet hat, wird der fehlgeschlagene Aktivitätsaufruf als neue Aktivitätsausführung mit der Wiederholungsrichtlinie aus dem Workflow-Code eingeplant. Seine Versuche beginnen von vorn.
 - Wenn der Lauf im Workflow-Code oder an einem strukturellen Limit fehlgeschlagen ist, setzt der Nachfolger an dem Schritt fort, den der Workflow-Code nie erreicht hat.
 - Alles nach dem fehlgeschlagenen Schritt läuft wie in einem neuen Lauf.
@@ -418,6 +419,12 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Grenzen für Core-Zeitleistenzusammenfassungen {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 oder neuer** begrenzt die vollständige abgeleitete Zeitleistenzusammenfassung auf 65.535 UTF-8-Bytes, einschließlich Bezeichnungen, Satzzeichen, des Markers ` [truncated]` und eines Hinweises zur Callback-Wiederherstellung. Maßgeblicher aufgezeichneter Fehler, ursprünglicher Typ und Nicht-Wiederholbarkeitsentscheidung bleiben erhalten. Prüfen Sie die tatsächliche `composer.lock` des empfangenden Runtimes. Der [Nachweis mit normal installiertem Paket](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) prüft die Zusammenfassungsgrenzen unabhängig von SDK-Berichtsgrenzen.
+
+Die 62-KiB-Berichtsreserve der SDKs korrigiert weder einen älteren Core-Zusammenfassungsschreiber noch die separaten [Speichergrenzen kanonischer Fehler](https://github.com/durable-workflow/.github/issues/225). Auch die [historiengestützte Datetime-Reparatur](./features/search-attributes.md#repair-datetime-search-attributes) erfordert installiertes Workflow 2.12.0 oder neuer. Sie repariert abgeleitete Suchzeilen, keine fehlgeschlagenen Zeitleistenschreibvorgänge oder fehlende maßgebliche Historie. Ein Server-Image braucht eigene Abnahme des installierten Core und der HTTP-/Datenbankpfade, bevor es als korrigiert gilt.
 
 ## Limits für PHP-Fehlerberichte im Service-Modus {#php-failure-report-limits}
 

@@ -96,6 +96,23 @@ Le SDK dépend de [httpx](https://www.python-httpx.org/) pour HTTP et du paquet
 Python `fastavro` pour encoder le format Apache Avro du seul codec public v2.
 Les métriques Prometheus sont facultatives.
 
+## Mettre les workers à niveau {#upgrading-workers}
+
+Le SDK Python 2.14.1 corrige les empreintes de `wait_condition()` qui changeaient
+entre versions de Python ou après le redémarrage d'un worker. Mettez à niveau
+ensemble tous les workers qui partagent une file de tâches. Dès qu'une
+exécution enregistre une empreinte d'attente v2, gardez tous les workers
+susceptibles de la relire en version 2.14.1 ou ultérieure. Ne redéployez pas de
+SDK antérieur à 2.14.1 sur les workers de cette file.
+
+Les anciennes empreintes v1 qui ne correspondent plus sont acceptées comme
+invérifiables, si bien que cette voie de compatibilité ne détecte pas les
+changements du prédicat. Les lambdas de `wait_condition()` situées sur une même
+ligne et contenant des compréhensions de `list`, `dict` ou `set` partagent une
+empreinte combinée. Dans les nouvelles définitions de workflow, placez ces
+prédicats sur des lignes distinctes pour détecter le passage de l'un à l'autre.
+Consultez les [notes de compatibilité du tag 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
+
 ## Démarrage rapide {#quickstart}
 
 Ce programme Python complet définit un workflow avec une activité, le démarre
@@ -1543,6 +1560,8 @@ Le SDK enregistre :
 | `durable_workflow_worker_tasks` | Compteur | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | Histogramme | `task_kind`, `task_queue`, `outcome` |
 
+L’histogramme distinct `durable_workflow_worker_task_schedule_to_start_seconds` ne figure pas dans le paquet stable sélectionné. Son [hook source SDK](https://github.com/durable-workflow/sdk-python/pull/264) est intégré mais non publié. La publication du Server et l’acceptation installée/exportée restent en attente dans [#188](https://github.com/durable-workflow/sdk-python/issues/188). Les six métriques ci-dessus ne fournissent pas cette mesure. Utilisez provisoirement les [signaux d’âge de file du guide opérateur](/docs/operator-operating-envelope#worker-and-sdk-telemetry).
+
 ## Planifications {#schedules-1}
 
 Créez et gérez des workflows planifiés via le client :
@@ -2074,9 +2093,19 @@ Le worker ne tente jamais de détecter ou deviner le format.
 | `list` | `ArrayValue` | `array` (liste) |
 | `dict[str, ...]` | `MapValue` | `array` (table à clés de chaîne) |
 
-Adaptez les types Python spécifiques, dataclasses, ensembles, tuples et objets
-datetime, en chaînes canoniques, entiers, tables ou listes avant leur usage
-comme valeurs de workflow ou d'activité.
+### Valeurs typées des activités {#typed-activity-values}
+
+Le SDK stable sélectionné prend en charge les dataclasses et enums aux frontières des activités. Il envoie une dataclass comme table de ses champs à clés de chaîne et un `Enum` comme `.value`, avec les mêmes octets Avro que des valeurs neutres explicites.
+
+| Frontière | Comportement publié sur activation explicite |
+| --- | --- |
+| Arguments d’activité | `@activity.defn(..., typed=True)` décode les arguments positionnels selon les annotations des paramètres. |
+| Résultats d’activité | `ctx.schedule_activity(..., result_type=T)` décode le résultat terminé au yield du workflow, y compris dans les groupes parallèles et `ctx.select(...)`. |
+| Valeurs de workflow, enfant, client, signal, requête, mise à jour et validateur | Les adaptateurs étendus de [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) sont intégrés mais non publiés. Conservez une conversion explicite en valeurs neutres à ces frontières. |
+
+Les annotations de réception prises en charge sont les dataclasses, `Enum` (dont `IntEnum` et `StrEnum`), `Optional[T]` / `T | None`, `list[T]`, `dict[str, T]`, `str`, `int`, `float`, `bool`, `bytes` et `Any`. Toute autre annotation, dont une union de deux types autres que `None`, lève `TypeError` à la déclaration ou à l’appel. Le décodage reste explicite. `result_type` est local : jamais envoyé, comparé ou inscrit dans l’historique. La [référence publiée du SDK](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values) détaille les valeurs par défaut, champs inconnus et erreurs `TypedValueError`.
+
+Les ensembles, tuples et objets datetime, UUID, Decimal, pydantic et attrs nécessitent encore un adaptateur explicite vers des chaînes, nombres, tables ou listes canoniques. Modifier cette forme durable change la compatibilité du workflow.
 
 ## Utiliser un serveur partagé {#running-against-a-shared-server}
 

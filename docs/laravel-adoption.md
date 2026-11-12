@@ -41,9 +41,13 @@ choosing the transition policy here.
 | Stable v1 Laravel | PHP SDK service mode | Laravel should keep dependency injection, configuration, Artisan, logging, events, and test fakes, but Cloud or Server should own durable state. | Install `durable-workflow/sdk` as a separate service client/worker boundary. v1 history and durable Laravel queue jobs stay on the v1 runtime until terminal. |
 | 2.0 embedded Laravel | PHP SDK service mode | The application should stop owning the orchestration runtime or needs a shared/polyglot runtime boundary. | Route new starts to the service runtime after its workers are ready. Drain embedded runs where they started, or use the explicit eligible embedded-v2 import procedure for self-hosted Server. |
 
-The PHP SDK bridge and the embedded package support Laravel 9 through 13 on
-their compatible PHP versions. A supported v1 application can therefore choose
-either destination without an unrelated Laravel upgrade.
+Check the [published Laravel support lines](./compatibility.md#laravel-support)
+before choosing a destination. The current embedded package and, from PHP SDK
+3.10, the service-mode Laravel bridge both require Laravel 12.69 or 13.30 and
+compatible PHP. The bare service-mode client keeps PHP 8.1 support. PHP SDK
+3.9.x keeps its earlier patched Laravel 10–13 bridge contract. An older v1
+application may need a framework upgrade before moving to either current line.
+Preserve its v1 runtime and open runs during that upgrade.
 
 ## Compare the ownership boundary
 
@@ -328,8 +332,10 @@ the published PHP SDK artifact authority, not copied from a point release:
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9 through 13 auto-discover the provider. Publish the package
-configuration and list the attributed handler classes:
+Supported Laravel versions auto-discover the provider. On an unsupported or
+unknown Laravel or PHP version, the provider refuses before registering any
+configuration, clients or workers. Publish the package configuration and list
+the attributed handler classes:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

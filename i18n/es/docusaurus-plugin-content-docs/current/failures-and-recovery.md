@@ -119,6 +119,7 @@ La sucesora vuelve a reproducir el código del workflow desde el principio:
 - Una espera de señal (`await('name')`) que recibió y aplicó su señal se reutiliza con el valor de la señal. La señal no se vuelve a entregar.
 - Un update que se aceptó, se aplicó y se completó antes del paso fallido se vuelve a registrar en la misma posición. El replay ejecuta el handler del update con sus argumentos registrados, así que el estado del workflow coincide. El update no se vuelve a entregar. Un update rechazado, y uno que el fallo cerró antes de ejecutarse, se omiten.
 - `outbox()->sendReference()` e `inbox()->receive()` en el código de workflow reutilizado devuelven el mensaje que la ejecución fallida envió o consumió. No lo vuelven a enviar ni a consumir. Un receive en replay cuya llamada original no encontró nada vuelve a leer el stream.
+- En Workflow 2.20.2 y versiones posteriores, los mensajes entrantes del stream que siguen pendientes en la ejecución fallida pasan a la sucesora. Workflow 2.20.1 y versiones anteriores los dejaban en la ejecución fallida, así que la sucesora nunca los recibía ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Si un fallo de actividad terminó la ejecución, la llamada de actividad fallida se programa como una ejecución de actividad nueva, con la política de reintentos del código del workflow. Sus intentos empiezan de nuevo.
 - Si la ejecución falló en el código del workflow o por un límite estructural, la sucesora se reanuda en el paso que el código del workflow nunca alcanzó.
 - Todo lo que sigue al paso fallido se ejecuta como en una ejecución nueva.
@@ -475,6 +476,12 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Límites del resumen de timeline de Core {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 o posterior** limita el resumen derivado completo del timeline a 65.535 bytes UTF-8, incluidas etiquetas, puntuación, el marcador ` [truncated]` y cualquier aviso de recuperación de callback. Conserva el fallo registrado autoritativo, su tipo original y la decisión de no reintentar. Compruebe el `composer.lock` real del runtime receptor. El [recibo con paquete instalado normalmente](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) verifica los límites del resumen independientemente de los límites de reporte del SDK.
+
+El margen de 62 KiB de los SDK no corrige un escritor de resúmenes de Core antiguo ni elimina los [límites separados de almacenamiento canónico de fallos](https://github.com/durable-workflow/.github/issues/225). La [reparación de datetime basada en historial](./features/search-attributes.md#repair-datetime-search-attributes) también exige Workflow 2.12.0 o posterior realmente instalado. Repara filas de búsqueda derivadas, no escrituras fallidas del timeline ni historial autoritativo ausente. Una imagen Server necesita su propia aceptación del Core instalado y de HTTP/base de datos antes de considerarse corregida.
 
 ## Límites de los informes de error de PHP en modo servicio {#php-failure-report-limits}
 

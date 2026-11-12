@@ -63,6 +63,22 @@ pip install %%artifact.pythonPackagePin%%
 
 SDK は HTTP に [httpx](https://www.python-httpx.org/)、唯一の公開 v2 ペイロードコーデックが使う Apache Avro ワイヤー形式のエンコードに `fastavro` Python パッケージへ依存します。Prometheus メトリクス対応は任意です。
 
+## Worker のアップグレード {#upgrading-workers}
+
+Python SDK 2.14.1 は、Python のバージョンや Worker の再起動によって
+`wait_condition()` のフィンガープリントが変わる問題を修正します。同じタスク
+キューを共有するすべての Worker をまとめてアップグレードしてください。
+実行が v2 の待機フィンガープリントを記録した後は、その実行をリプレイする
+可能性のあるすべての Worker を 2.14.1 以降に保ってください。そのキューの
+Worker を SDK 2.14.1 より前のバージョンに戻さないでください。
+
+一致しなくなった従来の v1 フィンガープリントは検証不能として受け入れられる
+ため、この互換経路では述語の変更を検出できません。同じ行にあり、`list`、
+`dict`、`set` の内包表記を含む `wait_condition()` の lambda は、結合された
+フィンガープリントを共有します。新しいワークフロー定義では、これらの述語を
+別々の行に置き、切り替えを検出できるようにしてください。
+[2.14.1 タグの互換性に関する注記](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04)を参照してください。
+
 ## クイックスタート {#quickstart}
 
 次は、アクティビティを1つ持つワークフローを定義し、ローカルの Durable Workflow Server に対して開始して結果を待つ完全な Python プログラムです。
@@ -1322,6 +1338,8 @@ SDK は次を記録します。
 | `durable_workflow_worker_tasks` | カウンター | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | ヒストグラム | `task_kind`, `task_queue`, `outcome` |
 
+別のヒストグラム `durable_workflow_worker_task_schedule_to_start_seconds` は、選択中の安定版パッケージには含まれません。[SDK ソースフック](https://github.com/durable-workflow/sdk-python/pull/264)はマージ済みですが未公開で、Server の公開とインストール済み・エクスポート済みの検証は [#188](https://github.com/durable-workflow/sdk-python/issues/188) で未完了です。上記 6 指標からこの値は得られません。当面は[運用ガイドのキュー経過時間シグナル](/docs/operator-operating-envelope#worker-and-sdk-telemetry)を使ってください。
+
 ## スケジュール {#schedules-1}
 
 クライアントでスケジュールされたワークフローを作成・管理します。
@@ -1784,7 +1802,19 @@ SDK は共有 `durable_workflow.protocol.Value` スキーマ内の名前付き�
 | `list` | `ArrayValue` | `array`（リスト） |
 | `dict[str, ...]` | `MapValue` | `array`（文字列キーのマップ） |
 
-dataclass、集合、タプル、datetime オブジェクトなど Python 固有の型は、ワークフローやアクティビティの値に使う前に正規の文字列、整数、マップ、リストへ変換します。
+### 型付きアクティビティ値 {#typed-activity-values}
+
+選択中の安定版 SDK は、アクティビティ境界で dataclass と enum をサポートします。dataclass はフィールドの文字列キーマップ、`Enum` は `.value` として送信され、明示的な中立値と同じ Avro バイト列になります。
+
+| 境界 | 公開済みの明示的な有効化 |
+| --- | --- |
+| アクティビティ引数 | `@activity.defn(..., typed=True)` がパラメーターの型注釈に従って位置引数をデコードします。 |
+| アクティビティ結果 | `ctx.schedule_activity(..., result_type=T)` がワークフローの yield で完了結果をデコードします。並列グループと `ctx.select(...)` も対象です。 |
+| ワークフロー、子、クライアント、シグナル、クエリ、更新、バリデーターの値 | [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) の拡張アダプターはマージ済みですが未公開です。これらの境界では中立値への明示的な変換を続けてください。 |
+
+受信時に使える型注釈は dataclass、`Enum`（`IntEnum`、`StrEnum` を含む）、`Optional[T]` / `T | None`、`list[T]`、`dict[str, T]`、`str`、`int`、`float`、`bool`、`bytes`、`Any` です。`None` 以外の 2 型の Union など、他の注釈は宣言時または呼び出し時に `TypeError` になります。デコードは明示的に有効化します。`result_type` はローカルで、送信、比較、履歴保存の対象になりません。既定値、未知のフィールド、`TypedValueError` の扱いは[公開済み SDK リファレンス](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values)を参照してください。
+
+集合、タプル、datetime、UUID、Decimal、pydantic、attrs のオブジェクトには、引き続き正規の文字列、数値、マップ、リストへの明示的なアダプターが必要です。この永続値の形を変えると、ワークフローの互換性が変わります。
 
 ## 共有 Server に対して実行する {#running-against-a-shared-server}
 

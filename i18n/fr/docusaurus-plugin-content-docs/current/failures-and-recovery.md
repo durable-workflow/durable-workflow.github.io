@@ -123,6 +123,7 @@ Le successeur rejoue le code du workflow depuis le début :
 - Une attente de signal (`await('name')`) qui a reçu et appliqué son signal est réutilisée avec la valeur du signal. Le signal n’est pas remis à nouveau.
 - Un update accepté, appliqué et terminé avant l’étape échouée est enregistré de nouveau à la même position. Le replay exécute le handler de l’update avec ses arguments enregistrés, si bien que l’état du workflow correspond. L’update n’est pas livré de nouveau. Un update rejeté, et un update que l’échec a fermé avant son exécution, sont laissés de côté.
 - `outbox()->sendReference()` et `inbox()->receive()` dans le code de workflow réutilisé renvoient le message que l’exécution échouée a envoyé ou consommé. Ils ne l’envoient ni ne le consomment de nouveau. Un receive rejoué dont l’appel d’origine n’a rien trouvé relit le stream.
+- Dans Workflow 2.20.2 et les versions ultérieures, les messages entrants du stream encore en attente sur l’exécution échouée passent au successeur. Workflow 2.20.1 et les versions antérieures les laissaient sur l’exécution échouée, si bien que le successeur ne les recevait jamais ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - Si un échec d’activité a mis fin à l’exécution, l’appel d’activité échoué est planifié comme une nouvelle exécution d’activité, avec la politique de nouvelles tentatives du code du workflow. Ses tentatives repartent de zéro.
 - Si l’exécution a échoué dans le code du workflow ou sur une limite structurelle, le successeur reprend à l’étape que le code du workflow n’a jamais atteinte.
 - Tout ce qui suit l’étape échouée s’exécute comme dans une nouvelle exécution.
@@ -508,6 +509,12 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Limites des résumés de chronologie Core {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 ou ultérieur** limite le résumé dérivé complet de la chronologie à 65 535 octets UTF-8, libellés, ponctuation, marqueur ` [truncated]` et éventuel avis de récupération de callback compris. L’échec enregistré faisant autorité, son type initial et la décision de non-reprise restent intacts. Vérifiez le `composer.lock` réel du runtime récepteur. Le [reçu du paquet installé normalement](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) vérifie les limites du résumé indépendamment des limites de rapport SDK.
+
+La marge de rapport de 62 KiB des SDK ne corrige pas un ancien rédacteur de résumés Core et ne supprime pas les [limites distinctes du stockage canonique des échecs](https://github.com/durable-workflow/.github/issues/225). La [réparation datetime fondée sur l’historique](./features/search-attributes.md#repair-datetime-search-attributes) exige aussi Workflow 2.12.0 ou ultérieur réellement installé. Elle répare des lignes de recherche dérivées, pas des écritures de chronologie échouées ni un historique faisant autorité manquant. Une image Server nécessite sa propre acceptation du Core installé et des chemins HTTP/base de données avant d’être déclarée corrigée.
 
 ## Limites des rapports d’échec PHP en mode service {#php-failure-report-limits}
 

@@ -74,6 +74,8 @@ Fällt ein Worker aus, gibt ein Ersatz denselben Zustellungspunkt und die bereit
 abgeschlossenen Bereinigungsaufrufe wieder, bevor er fortfährt. Fristablauf oder
 Terminierung entziehen die verbleibende Ausführungsberechtigung.
 
+Eingebettete Laravel-Workflows verwenden `cancellationShield()`. Siehe [Geschützte Bereinigung](../features/cancel-and-terminate.md#protected-cleanup). Saga-Kompensation im eingebetteten Modus und in den PHP- und Python-SDKs läuft automatisch unter einem Schutz.
+
 Ein alter Aktivitätsversuch kann nach seiner Sperrung kein Ergebnis mehr
 veröffentlichen. Bereits angenommene externe Seiteneffekte erfordern weiterhin
 Idempotenz oder einen Abgleich durch die Anwendung.

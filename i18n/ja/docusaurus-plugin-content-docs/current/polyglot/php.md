@@ -45,7 +45,8 @@ Cloud の利用者は、プロビジョニングで返されたランタイム U
 
 ## 要件 {#requirements}
 
-- PHP 8.1 以降
+- フレームワーク非依存の SDK は PHP 8.1 以降
+- PHP SDK 3.10 以降の Laravel サービスモードブリッジは、PHP 8.2 以降と 12.x の Laravel 12.69 以降、または PHP 8.3 以降と 13.x の Laravel 13.30 以降
 - 到達可能な[セルフホスト Server](/docs/polyglot/server/)、またはプロビジョニング済みの [Cloud 名前空間ランタイム](/docs/polyglot/cloud-control-plane)
 
 ## インストール {#install}
@@ -186,6 +187,17 @@ Worker は `workflow_entry_arguments_validation` を自動的に通知します�
 
 これらのブリッジは、`durable-workflow/workflow` によって Laravel アプリケーション自体が永続状態を所有し Laravel キューで実行する[組み込み Laravel ワークフロー](/docs/installation/)とは別です。ドレインとロールバックを含め、v1、v2 組み込み、同梱サービスモードブリッジで同じ代表的な Laravel ユースケースを比較するには、[Laravel の採用とランタイム移行](/docs/laravel-adoption/)を参照してください。より広いランタイム境界の比較には[デプロイモード](/docs/polyglot/deployment-modes/)を使います。
 
+## PHP SDK 3.10 と 3.11 へのアップグレード {#upgrade-to-3-10-and-3-11}
+
+デプロイ前に [PHP SDK アップグレードガイド](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)を読んでください。待機系やオートスケーリングのプールを含め、タスクキューから処理を受け取る可能性のあるすべての Worker をまとめてアップグレードします。
+
+- **Laravel ブリッジ。** 3.10 以降、Laravel サービスモードブリッジは Workflow 2.21 に合わせ、PHP `^8.2` とパッチ適用済みの Laravel `^12.69.0|^13.30.0` が必要です。Laravel 10 と 11 はサポート対象外になりました。provider は、未対応または不明なフレームワークと PHP のバージョンを、何かを登録する前に拒否します。基本 SDK は PHP `^8.1` と Symfony 6.4/7/8 のサポートを維持します。
+- **条件フィンガープリント。** 3.10 以降、新しい条件待機は v2（`dwphp2:sha256:`）の述語フィンガープリントを記録します。古い Worker はこれを拒否するため、v2 の待機が存在する状態で Worker を 3.10 未満へロールバックするとリプレイが失敗する場合があります。置き換え後の Worker が起動する前に古い Worker を停止またはドレインし、PHP ソースをアトミックにデプロイして、OPcache を使う Worker を含むすべての長時間稼働 Worker を再起動してください。v2 の待機をリプレイする Worker には PHP の tokenizer が必要です。既存の v1 の待機では、引き続きソース行の完全一致が必要です。
+- **静的資格情報。** 3.10 以降、静的資格情報は与えられたとおりに検証されます。不正な UTF-8、前後端の Unicode 空白、埋め込まれた制御文字は、トリムや無視をされずにエラーになります。アップグレード前に、共有、クライアント、Worker、フレームワークのプロセス間受け渡しの各値を確認してください。
+- **発生期限（occurrence deadline）。** 3.11 では、Server が `condition_wait_occurrence_deadline` を通知する場合（ネイティブ Server 3.3.0 以降）、新しいトップレベルの条件待機は誤った起床（false wake）をまたいで最初の期限を維持します。この機能がない場合、Worker は従来と同じコマンドを送信します。グループ化された条件待機はまだオプトインしません。古い Server では、Server をアップグレードする前に、そのキューのすべての Worker を 3.11 にアップグレードしてください。すでにこの機能を通知している Server では、3.11 の Worker がキューを消費する前に、古い Worker をすべてドレインまたは停止してください。期限が固定された待機が存在するようになったら、そのキューの Worker を 3.11 未満へロールバックしないでください。
+
+PHP SDK 3.10 では `WorkflowContext::startChildWorkflow()` も追加されました。これは子ワークフローの開始がコミットされた時点で `ChildWorkflowHandle` を返し、`child_workflow_start_turn` を通知するランタイムが必要です。その他の追加点は、`ActivityContext::activityExecutionId`、`upsertSearchAttributes()` の任意の型付き宣言、遅延評価されるワークフロー一覧と履歴のイテレーター、既定値が `false` の Worker オプション `enableCompletionPipelining` です。完了に相乗りするポーリングは、ランタイムがそれを通知する場合にのみ使われます。完全な一覧は [3.11.0 の変更履歴](https://github.com/durable-workflow/sdk-php/blob/3.11.0/CHANGELOG.md)を参照してください。
+
 ## プロトコルとリリースの境界 {#protocol-and-release-boundary}
 
 SDK は、対応する Server 範囲、Worker プロトコルバージョン、コントロールプレーンバージョン、ペイロードコーデックを Composer メタデータで宣言します。Server も `GET /api/cluster/info` から受け入れるプロトコルとコーデックの集合を公開します。Server のパッチバージョンから互換性を推測せず、デプロイ時にランタイムディスカバリーを確認してください。
@@ -205,7 +217,9 @@ PHP SDK は Laravel パッケージとは独立にバージョン管理します
 
 ## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
 
-公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)が現在の引数を定義しており、新たな自動イテレーターの提供を意味しません。
+公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)がページの引数を定義しています。
+
+PHP SDK 3.10.0 以降では `Client::iterateWorkflows()` と `Client::iterateWorkflowHistory()` も提供されます。これらは、不透明なカーソル、namespace、フィルターを維持しながら、ワークフロー一覧全体または特定の実行の履歴全体を 1 ページずつ遅延して読み取ります。後続ページのエラーは呼び出し元へ伝播し、不正な継続 token や token の循環は、途中で切り詰めたりループしたりせずに拒否されます。[公開 PHP 3.11.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php)を参照してください。
 
 ## 障害レポートのサイズ制限 {#bounded-failure-reports}
 

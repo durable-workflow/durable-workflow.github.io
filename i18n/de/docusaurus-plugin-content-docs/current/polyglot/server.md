@@ -157,9 +157,7 @@ DB_USERNAME=workflow
 DB_PASSWORD=secret
 ```
 
-Unterstützt: MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+. Der native Server
-akzeptiert `DB_CONNECTION=sqlite` (seinen Standard), `mysql`, `mariadb` oder `pgsql` und
-wartet auf eine MySQL- oder PostgreSQL-Datenbank, die noch keine Verbindungen annimmt.
+Erklärte Basisversionen sind MySQL 8.0, PostgreSQL 13 und SQLite 3.35. Die [Datenbanktabelle](./database-support.md) trennt diese Kompatibilitätsangaben von genauen Quelltests und der Qualifikation veröffentlichter Images. Der native Server akzeptiert `DB_CONNECTION=sqlite` (Standard), `mysql`, `mariadb` oder `pgsql` und wartet auf eine MySQL- oder PostgreSQL-Datenbank, die noch keine Verbindungen annimmt.
 
 ### Cache und Queue (nur PHP 2.x) {#cache-and-queue-php-2x-only}
 
@@ -414,15 +412,28 @@ curl http://localhost:8080/api/cluster/info \
 
 Liefert Build-Identität, Fähigkeitsflags, Protokollmanifeste, Limits und
 Erkennungsdaten für den Namespace aus `X-Namespace` (oder dem Abfrageparameter
-`namespace`, sonst `default`). Gekürzte Ausgabe des Images 3.0.5:
+`namespace`, sonst `default`). Gekürzte Ausgabe des Images 3.3.2:
 
 ```json
 {
-  "version": "3.0.5",
+  "version": "3.3.2",
   "implementation": "rust",
   "development": false,
   "server_id": "2145ce2abb12",
   "default_namespace": "default",
+  "supported_sdk_versions": {
+    "php": ">=3.8.1,<4.0.0",
+    "python": ">=2.13.0,<3.0.0",
+    "rust": ">=4.10.3,<5.0.0",
+    "cli": ">=2.0.0,<3.0.0"
+  },
+  "client_compatibility": {
+    "schema": "durable-workflow.v2.client-compatibility",
+    "version": 2,
+    "authority": "protocol_manifests",
+    "fail_closed": true,
+    "...": "..."
+  },
   "capabilities": {
     "workflow_tasks": true,
     "activity_tasks": true,
@@ -430,6 +441,8 @@ Erkennungsdaten für den Namespace aus `X-Namespace` (oder dem Abfrageparameter
     "queries": true,
     "updates": true,
     "schedules": true,
+    "child_workflow_start_turn": true,
+    "condition_wait_occurrence_deadline": true,
     "timer_runtime_contract": false,
     "payload_codecs": ["avro"],
     "response_compression": []
@@ -469,7 +482,7 @@ Wichtige Feldhinweise für Client-Code:
 - Die Build-Version steht in `version`, nicht in `server_version`.
   `implementation` ist auf dem nativen Server `"rust"`.
 - Prüfen Sie `control_plane.version` und `worker_protocol.version`, bevor Sie die
-  API aufrufen. Der native Server 3.0.5 bedient Steuerungsebene `2` und Worker-Protokoll
+  API aufrufen. Der native Server 3.3.2 bedient Steuerungsebene `2` und Worker-Protokoll
   `1.20` und akzeptiert Worker-Anfragen mit jeder Protokollversion von `1.0` bis
   `1.20`.
 - Workflow-Aufgabenbefehle stehen unter
@@ -479,8 +492,11 @@ Wichtige Feldhinweise für Client-Code:
   `response_compression` ist leer, weil der native Server Antworten
   unkomprimiert sendet.
 - `native_unqualified` listet jedes Element der PHP-2.x-Antwort, das der native
-  Server auslässt, jeweils mit Begründung. Dazu gehören `topology`,
-  `supported_sdk_versions` und `client_compatibility`.
+  Server auslässt, jeweils mit Begründung. Dazu gehört `topology`.
+- Seit 3.1.0 bedient der native Server auch `supported_sdk_versions` und
+  `client_compatibility`, die `server:info` und `doctor` der CLI lesen.
+  `client_compatibility.authority` ist `"protocol_manifests"`: Prüfen Sie die
+  Protokollmanifeste, nicht die SDK-Bereiche, bevor Sie die API aufrufen.
 - Der einzige Payload-Codec ist Avro: `capabilities.payload_codecs` ist genau
   `["avro"]`.
 - `qualified_for_php_takeover` ist immer `false`. Das Feld beschreibt den

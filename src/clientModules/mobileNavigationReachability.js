@@ -4,7 +4,7 @@ let observer;
 function syncNavigationIsolation() {
   const drawerOpen = Boolean(document.querySelector('.navbar-sidebar--show .navbar-sidebar'));
   const backgroundSurfaces = document.querySelectorAll(
-    '.navbar__inner, main, footer',
+    '.navbar__inner, .dw-docs-toolbar, .theme-announcement-bar, a[class^="skipToContent"], main, footer',
   );
 
   for (const surface of backgroundSurfaces) {
@@ -20,12 +20,22 @@ function syncNavigationIsolation() {
   }
 }
 
+function closeNavigationOnEscape(event) {
+  if (event.key !== 'Escape' || event.defaultPrevented) return;
+  const closeButton = document.querySelector('.navbar-sidebar--show .navbar-sidebar__close');
+  if (!closeButton) return;
+  event.preventDefault();
+  closeButton.click();
+  requestAnimationFrame(() => document.querySelector('.navbar__toggle')?.focus());
+}
+
 function observeNavigationDrawer() {
   if (observer || !document.body) {
     return;
   }
 
   syncNavigationIsolation();
+  document.addEventListener('keydown', closeNavigationOnEscape);
   observer = new MutationObserver(syncNavigationIsolation);
   observer.observe(document.body, {
     attributes: true,

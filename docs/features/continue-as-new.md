@@ -165,8 +165,8 @@ class PollingWorkflow extends Workflow
 
 For long-lived human-input or assistant loops, prefer the first-class
 `$this->inbox()` / `$this->outbox()` [Message Streams](./message-streams.md)
-facade. The cursor position moves to the continued run, while consumed messages
-remain on the original run as history evidence. In Workflow releases through
-2.20.1, stream messages still pending at continue-as-new stay on the closed run
-([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018)); see
-[Message Streams](./message-streams.md#continue-as-new).
+facade. Pending stream messages and the cursor position move to the continued
+run, while consumed messages remain on the original run as history evidence.
+Workflow 2.20.1 and earlier left pending stream messages on the closed run
+([workflow#1018](https://github.com/durable-workflow/workflow/issues/1018),
+fixed in 2.20.2); see [Message Streams](./message-streams.md#continue-as-new).

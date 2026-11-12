@@ -59,6 +59,39 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 每个必需的平台协议目录条目都标记为 `published`；可调用载体条目仍是 `in_progress`。每个可用条目直接链接公开 OpenAPI、AsyncAPI 或 JSON Schema 文档。[`cluster_info_envelope`](/docs/platform-protocol-specs#cluster-info-envelope-notes) schema 固定了发现接口，其他所有目录条目均可从中到达。
 
+## 已发布的 Laravel 支持范围 {#laravel-support}
+
+先选择包版本，再比较 PHP 和 Laravel 要求。嵌入式包与服务模式 SDK 有独立的支持契约。
+
+| 包版本线 | PHP | Laravel |
+| --- | --- | --- |
+| 当前嵌入式 Workflow 2.22 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| 嵌入式 Workflow 2.20.5 | PHP `^8.1`，并满足框架自身最低要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
+| 已发布 PHP SDK 3.11 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| PHP SDK 3.9.5 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接还需满足框架的 PHP 要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
+
+包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+及各版本的 `composer.json`。当前嵌入式版本已验证 Laravel 12/PHP 8.2–8.4 与 Laravel 13/PHP 8.3–8.4，
+不再支持 PHP 8.1 和 Laravel 10/11。[历史稳定 v1 安装指南](/docs/1.x/installation/)与
+[PHP SDK 的独立要求](https://php.durable-workflow.com/)保持独立。
+
+先将 PHP 和 Laravel 升级到受支持的组合。若暂时无法迁移，`~2.20.5` 可将 Composer 保持在 2.20 补丁线，
+但不代表无限期维护。平台条件允许时，`^2.0` 可选中后续次要版本。
+保留未完成 v1 运行的原运行时，并按 [Laravel 采用指南](/docs/laravel-adoption)执行排空或共存。
+修改 Composer 约束不会迁移持久历史。
+
+PHP SDK 3.10 将 Laravel 服务模式桥接的 PHP 和 Laravel 最低版本调整为与 Workflow 2.21 相同，
+并移除了 Laravel 10/11 支持；3.11 保持这些要求不变。其服务提供者会在注册配置、客户端或 Worker 之前，
+拒绝不受支持或未知的框架与 PHP 版本。现有 SDK 3.9.x 应用在平台升级期间保留其自身的契约。
+参见 [PHP SDK 升级说明](/docs/polyglot/php#upgrade-to-3-10-and-3-11)。
+
+Workflow 2.22 不新增数据库迁移，并保持 2.21 的最低支持版本。其嵌入式 Worker 协议声明 `1.22`，
+同时仍接受 `1.20` 请求。`1.22` 新增了一项可选的单次出现截止时间（occurrence deadline），
+外部调用方可为条件等待请求该策略；嵌入式运行器保持原有的等待行为。
+一旦有任何工作流使用过该策略，回滚到更早的 Workflow 版本只能通过恢复升级前创建的备份来完成。
+较旧版本可能丢弃该策略并混淆等待链，再次升级也无法修复这段历史。参见
+[2.22.0 变更日志](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md)。
+
 ## 稳定性级别 {#stability-levels}
 
 Durable Workflow 中每个公开接口恰好具有以下一个稳定性级别。级别必须明确；未分类的接口不是公开接口。

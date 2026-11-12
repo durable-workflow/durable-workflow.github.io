@@ -41,9 +41,14 @@ Laravel-застосунки мають два офіційні режими Dur
 | Стабільний Laravel v1 | PHP SDK service mode | Laravel має зберігати dependency injection, конфігурацію, Artisan, логування, events і test fakes, а Cloud чи Server — відповідати за durable-стан. | Установіть `durable-workflow/sdk` як окрему межу service client/worker. Історія v1 та durable Laravel queue jobs залишаються на runtime v1 до термінального стану. |
 | Laravel embedded 2.0 | PHP SDK service mode | Застосунок має передати orchestration runtime або потребує спільної/polyglot межі runtime. | Спрямовуйте нові запуски до service runtime після готовності його workers. Завершіть embedded runs там, де вони почалися, або використайте явний import допустимих embedded-v2 runs для власного Server. |
 
-PHP SDK bridge та embedded-пакет підтримують Laravel 9–13
-на сумісних версіях PHP. Тому підтримуваний застосунок v1 може
-вибрати будь-який кінцевий режим без окремого оновлення Laravel.
+Перед вибором режиму перевірте [опубліковані лінійки підтримки Laravel](./compatibility.md#laravel-support).
+Поточний вбудований пакет і, починаючи з PHP SDK 3.10, міст Laravel сервісного
+режиму вимагають Laravel 12.69 або 13.30 та сумісного PHP. Базовий клієнт
+сервісного режиму зберігає підтримку PHP 8.1. PHP SDK 3.9.x зберігає свій
+попередній контракт мосту для Laravel 10–13 із мінімальними виправленнями.
+Старому застосунку v1 може знадобитися оновлення фреймворку перед переходом на
+будь-яку з поточних лінійок. Збережіть його середовище v1 та незавершені виконання
+під час цього оновлення.
 
 ## Порівняння відповідальності {#compare-the-ownership-boundary}
 
@@ -335,8 +340,10 @@ WorkflowStub::assertDispatched(
 composer require %%artifact.publishedPhpSdkComposerPackage%%
 ```
 
-Laravel 9–13 автоматично знаходять provider.
-Опублікуйте конфігурацію пакета та перелічіть класи обробників з атрибутами:
+Підтримувані версії Laravel автоматично знаходять provider. На непідтримуваній
+або невідомій версії Laravel чи PHP provider відмовляє ще до реєстрації будь-якої
+конфігурації, клієнтів чи workers. Опублікуйте конфігурацію пакета та перелічіть
+класи обробників з атрибутами:
 
 <!-- docs-example id="laravel.adoption.service.config" -->
 ```php

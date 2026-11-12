@@ -1,32 +1,25 @@
-/**
- * CSS files with the .module.css suffix will be treated as CSS modules
- * and scoped locally.
- */
-
-.heroBanner {
-  padding: 4rem 0;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+.heroBanner { padding: 6rem 0 5rem; }
+.heroGrid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 5rem; align-items: center; }
+.heroBanner h1 { max-width: 12ch; font-size: clamp(3.5rem, 5.2vw, 4.5rem); line-height: 1.05; letter-spacing: -.03em; margin: 1.25rem 0; }
+.lede { font-size: 1.25rem; color: var(--dw-ink); margin-bottom: 1rem; }
+.description { max-width: 36rem; color: var(--dw-ink-2); }
+.buttons { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+.startCard { min-width: 0; padding: 2rem; background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: 8px; }
+.startCard h2 { font-size: 1.75rem; margin: .75rem 0 1.5rem; }
+.startLink { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 76px; padding: 1rem 0; border-top: 1px solid var(--dw-line); color: var(--dw-ink); }
+.startLink:hover { text-decoration: none; color: var(--dw-action); }
+.startLink strong { font-weight: 600; }
+.startLink small { display: block; color: var(--dw-muted); margin-top: .25rem; font-size: .8125rem; }
+.cardNote { margin: 1rem 0 0; color: var(--dw-muted); font-size: .8125rem; }
+.cloudSection { padding-top: 2rem; padding-bottom: 5rem; }
+@media (max-width: 996px) {
+  .heroBanner { padding: 3.5rem 0; }
+  .heroGrid { gap: 2rem; grid-template-columns: 1.1fr 1fr; }
 }
-
-@media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem;
-  }
-}
-
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.supportingLine {
-  margin: 1rem auto 0;
-  max-width: 52rem;
-  font-size: 1.1rem;
-  line-height: 1.6;
+@media (max-width: 700px) {
+  .heroGrid { grid-template-columns: 1fr; }
+  .heroBanner h1 { font-size: clamp(2.75rem, 11vw, 3.5rem); }
+  .startCard { padding: 1.5rem; }
+  .buttons { flex-direction: column; align-items: stretch; }
+  .cloudSection { padding-bottom: 3rem; }
 }

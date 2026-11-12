@@ -93,6 +93,51 @@ directamente un documento público OpenAPI, AsyncAPI o JSON Schema. El esquema
 [`cluster_info_envelope`](/docs/platform-protocol-specs#cluster-info-envelope-notes)
 fija la interfaz de descubrimiento desde la que se alcanza el resto del catálogo.
 
+## Compatibilidad de Laravel publicada {#laravel-support}
+
+Elige la versión del paquete antes de comparar los requisitos de PHP y Laravel.
+El paquete integrado y el SDK de modo servicio tienen contratos distintos.
+
+| Línea del paquete | PHP | Laravel |
+| --- | --- | --- |
+| Workflow integrado 2.22 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
+| Workflow integrado 2.20.5 | PHP `^8.1`, sujeto al mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
+| SDK PHP 3.11 publicado | SDK básico PHP `^8.1`; el puente Laravel necesita PHP `^8.2`, y PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
+| SDK PHP 3.9.5 | SDK básico PHP `^8.1`; el puente Laravel también exige el mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
+
+Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.22.0/resources/laravel-embedded-upgrade-contract.json)
+y el `composer.json` de cada versión. La versión integrada actual se verificó
+con Laravel 12/PHP 8.2–8.4 y Laravel 13/PHP 8.3–8.4. Retira PHP 8.1 y Laravel
+10/11. No cambia la [guía histórica de v1 estable](/docs/1.x/installation/)
+ni los [requisitos independientes del SDK PHP](https://php.durable-workflow.com/).
+
+Actualiza primero PHP y Laravel a una combinación compatible. Si aún no puedes,
+`~2.20.5` mantiene Composer en los parches 2.20, sin prometer mantenimiento
+indefinido. `^2.0` puede seleccionar un minor posterior cuando la plataforma lo
+permita. Conserva el runtime original de las ejecuciones v1 abiertas y sigue la
+[guía de adopción](/docs/laravel-adoption) para drenar o coexistir. Cambiar la
+restricción Composer no migra el historial durable.
+
+El SDK PHP 3.10 llevó el puente Laravel de modo servicio a los mismos mínimos
+de PHP y Laravel que Workflow 2.21 y retiró el soporte para Laravel 10/11; 3.11
+los mantiene. Su proveedor rechaza versiones del framework y de PHP no
+compatibles o desconocidas antes de registrar configuración, clientes o workers.
+Las aplicaciones existentes con el SDK 3.9.x conservan su propio contrato
+mientras se actualiza la plataforma. Consulta las
+[notas de actualización del SDK PHP](./polyglot/php.md#upgrade-to-3-10-and-3-11).
+
+Workflow 2.22 no añade ninguna migración de base de datos y mantiene los
+mínimos de soporte de 2.21. Su protocolo de workers integrado anuncia `1.22` y
+sigue aceptando solicitudes `1.20`. `1.22` añade un plazo por ocurrencia
+opcional que los llamantes externos pueden solicitar para las esperas de
+condición; el ejecutor integrado mantiene su comportamiento de espera actual.
+Después de que cualquier workflow haya usado esa política, revierte a una
+versión anterior de Workflow solo restaurando una copia de seguridad tomada
+antes de la actualización. Las versiones anteriores pueden descartar la
+política y mezclar la cadena de espera, y volver a actualizar no repara ese
+historial. Consulta el
+[registro de cambios de 2.22.0](https://github.com/durable-workflow/workflow/blob/2.22.0/CHANGELOG.md).
+
 ## Niveles de estabilidad {#stability-levels}
 
 Cada interfaz pública tiene exactamente uno de estos niveles de estabilidad.

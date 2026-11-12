@@ -63,6 +63,19 @@ pip install %%artifact.pythonPackagePin%%
 
 SDK 使用 [httpx](https://www.python-httpx.org/) 进行 HTTP 通信，使用 `fastavro` Python 包编码唯一公开 v2 负载编解码器所采用的 Apache Avro 线格式。Prometheus 指标支持为可选项。
 
+## 升级 Worker {#upgrading-workers}
+
+Python SDK 2.14.1 修复了 `wait_condition()` 指纹在不同 Python 版本之间或
+Worker 重启后发生变化的问题。请一起升级共享同一任务队列的所有 Worker。
+运行一旦记录了 v2 等待指纹，所有可能重放它的 Worker 都必须使用 2.14.1
+或更高版本。不要将该队列中 Worker 使用的 SDK 回退到 2.14.1 以下的版本。
+
+不再匹配的旧版 v1 指纹会以无法验证的状态被接受，因此这条兼容路径无法检测
+谓词变更。在同一行定义、且包含 `list`、`dict` 或 `set` 推导式的
+`wait_condition()` lambda 共用一个组合指纹。在新的工作流定义中，请将这些
+谓词放在不同的行上，以便检测它们之间的切换。参阅
+[2.14.1 标签中的兼容性说明](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04)。
+
 ## 快速入门 {#quickstart}
 
 下面的完整 Python 程序定义带一个活动的工作流，在本地 Durable Workflow Server 上启动并等待结果：
@@ -1299,6 +1312,8 @@ SDK 记录：
 | `durable_workflow_worker_tasks` | 计数器 | `task_kind`, `task_queue`, `outcome` |
 | `durable_workflow_worker_task_duration_seconds` | 直方图 | `task_kind`, `task_queue`, `outcome` |
 
+独立直方图 `durable_workflow_worker_task_schedule_to_start_seconds` 不在当前选定的稳定包中。其 [SDK 源码钩子](https://github.com/durable-workflow/sdk-python/pull/264)已合并但尚未发布，Server 发布以及安装包与导出验证仍在 [#188](https://github.com/durable-workflow/sdk-python/issues/188) 中等待完成。上面的六项指标不提供该测量。期间请使用[运维指南中的队列年龄信号](/docs/operator-operating-envelope#worker-and-sdk-telemetry)。
+
 ## 计划 {#schedules-1}
 
 通过客户端创建和管理计划工作流：
@@ -1759,7 +1774,19 @@ SDK 在共享的 `durable_workflow.protocol.Value` 模式中显式选择具名�
 | `list` | `ArrayValue` | `array`（列表） |
 | `dict[str, ...]` | `MapValue` | `array`（字符串键映射） |
 
-将数据类、集合、元组和 datetime 对象等 Python 专属类型适配为规范字符串、整数、映射或列表，再用作工作流或活动值。
+### 活动的类型化值 {#typed-activity-values}
+
+当前选定的稳定版 SDK 支持活动边界上的数据类和枚举。数据类按字段的字符串键映射发送，`Enum` 按 `.value` 发送，Avro 字节与显式中立值一致。
+
+| 边界 | 已发布的显式启用行为 |
+| --- | --- |
+| 活动参数 | `@activity.defn(..., typed=True)` 按参数类型注解解码位置参数。 |
+| 活动结果 | `ctx.schedule_activity(..., result_type=T)` 在工作流的 yield 处解码已完成结果，也适用于并行组和 `ctx.select(...)`。 |
+| 工作流、子工作流、客户端、信号、查询、更新及验证器的值 | [SDK #255](https://github.com/durable-workflow/sdk-python/pull/255) 的扩展适配器已合并但尚未发布。这些边界仍需显式转换为中立值。 |
+
+接收时支持的注解为数据类、`Enum`（含 `IntEnum`、`StrEnum`）、`Optional[T]` / `T | None`、`list[T]`、`dict[str, T]`、`str`、`int`、`float`、`bool`、`bytes` 和 `Any`。其他注解，包括两个非 `None` 类型的联合，会在声明或调用时引发 `TypeError`。解码仍需显式启用。`result_type` 仅在本地使用，不发送、不比较，也不写入历史。默认值、未知字段和 `TypedValueError` 的处理见[已发布 SDK 参考](https://github.com/durable-workflow/sdk-python/blob/2.14.1/docs/sdk-reference.md#typed-activity-values)。
+
+集合、元组及 datetime、UUID、Decimal、pydantic、attrs 对象仍需显式适配为规范字符串、数值、映射或列表。更改这种持久化值结构会改变工作流兼容性。
 
 ## 连接共享 Server 运行 {#running-against-a-shared-server}
 

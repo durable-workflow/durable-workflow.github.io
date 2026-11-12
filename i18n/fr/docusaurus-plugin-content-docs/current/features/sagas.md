@@ -47,7 +47,7 @@ class BookingSagaWorkflow extends Workflow
 
 Lorsque le workflow intercepte une exception, `$this->compensate()` exécute chaque compensation enregistrée dans l’**ordre inverse**. Dans cet exemple, si `BookRentalCarActivity` échoue, le moteur annule d’abord l’hôtel, puis le vol, en remontant les étapes de la saga depuis la plus récente.
 
-Enregistrez chaque compensation après la réussite de l’activité correspondante. La relecture reconstruit cet ordre et réutilise les résultats d’activité enregistrés, y compris les compensations terminées.
+Les activités s’exécutent au moins une fois : un appel d’avancement peut donc produire son effet tout en échouant du point de vue du workflow, par exemple après un délai dépassé ou une fin perdue. Enregistrez une compensation idempotente, associée à un identifiant métier stable, avant l’appel d’avancement, afin qu’elle s’exécute que le résultat de cette étape soit connu ou non. L’enregistrer après la réussite de l’appel convient lorsque la compensation a besoin de ce résultat et que l’étape n’a aucun effet externe avant de réussir, comme dans l’exemple ci-dessus. La relecture reconstruit l’ordre d’enregistrement et réutilise les résultats d’activité enregistrés, y compris les compensations terminées.
 
 ## Compensation déclenchée par une échéance {#deadline-driven-compensation}
 
@@ -111,6 +111,8 @@ WorkflowStub::load('order-123')->signal('confirm');
 Une attente expirée avec compensation réussie se termine normalement avec `status: expired` dans le résultat. Ce n’est pas un run expiré par le moteur. Si l’activité de libération échoue, `compensate()` propage cet échec. Si l’échéance moteur arrive d’abord, le run ferme et les compensations restantes ne peuvent plus s’exécuter. Prévoyez suffisamment de temps pour la planification et les nouvelles tentatives, en tenant compte d’une éventuelle échéance d’exécution globale plus proche.
 
 L’opération coopérative distincte `requestCancellation()` permet un nettoyage demandé par l’appelant pendant qu’un run est actif. Utilisez son bouclier d’annulation borné pour effectuer un nettoyage durable sous une demande d’annulation. Elle n’est pas déclenchée automatiquement par l’expiration d’un workflow. Voir [Annulation coopérative](../polyglot/cancellation.md).
+
+`compensate()` s’exécute lui-même sous un bouclier d’annulation : une demande d’annulation qui arrive pendant la compensation ne fait pas sauter les compensations restantes. Voir [Nettoyage protégé](./cancel-and-terminate.md#protected-cleanup).
 
 ## Ordre des compensations {#compensation-ordering}
 

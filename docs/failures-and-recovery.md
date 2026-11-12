@@ -118,6 +118,7 @@ The successor replays workflow code from the start:
 - A signal wait (`await('name')`) that received and applied its signal is reused with the signal's value. The signal is not delivered again.
 - An update that was accepted, applied and completed before the failed step is recorded again at the same position. Replay runs the update handler from its recorded arguments, so the workflow's state matches. The update is not delivered again. A rejected update, and one the failure closed before it ran, are left out.
 - `outbox()->sendReference()` and `inbox()->receive()` in reused workflow code return the message the failed run sent or consumed. They don't send or consume it again. A replayed receive whose original call found nothing reads the stream again.
+- In Workflow 2.20.2 and later, inbound stream messages still pending on the failed run move to the successor. Workflow 2.20.1 and earlier left them on the failed run, so the successor never received them ([workflow#1013](https://github.com/durable-workflow/workflow/issues/1013)).
 - If an activity failure ended the run, the failed activity call is scheduled as a new activity execution, using the retry policy in the workflow code. Its attempts start again.
 - If the run failed in workflow code or on a structural limit, the successor resumes at the step the workflow code never reached.
 - Everything after the failed step runs as it would in a new run.
@@ -425,6 +426,12 @@ class RetryableWorkflow extends Workflow
     }
 }
 ```
+
+## Core timeline summary bounds {#core-timeline-summary-bounds}
+
+Workflow **2.12.0 or newer** bounds the complete derived timeline summary to 65,535 UTF-8 bytes, including labels, punctuation, the ` [truncated]` marker and any callback-recovery notice. It preserves the authoritative recorded failure, original type and non-retryable decision. Check the receiving runtime's actual `composer.lock`. The [normal installed-package receipt](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577) verifies the summary boundaries independently of SDK reporting limits.
+
+The SDKs' 62 KiB reporting headroom does not fix an older Core summary writer or remove the separate [canonical failure-storage limits](https://github.com/durable-workflow/.github/issues/225). The [history-backed datetime repair](./features/search-attributes.md#repair-datetime-search-attributes) also requires installed Workflow 2.12.0 or newer. It repairs derived search rows, not failed timeline writes or missing authoritative history. A Server image needs its own installed-Core and HTTP/database acceptance before it can be called fixed.
 
 ## PHP service-mode failure report limits {#php-failure-report-limits}
 

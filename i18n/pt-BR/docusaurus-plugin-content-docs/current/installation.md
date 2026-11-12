@@ -20,8 +20,15 @@ trata do Laravel integrado.
 
 ## Requisitos {#requirements}
 
-- PHP 8.1 ou superior
-- Laravel 9 ou superior
+- PHP 8.2 ou superior na linha 8.x
+- Laravel 12.69 ou superior na linha 12.x, ou Laravel 13.30 ou superior na linha 13.x
+- PHP 8.3 ou superior para Laravel 13
+
+Estes requisitos se aplicam à versão embutida atual. Antes de atualizar Composer
+em uma aplicação antiga, escolha a [linha publicada compatível](./compatibility.md#laravel-support).
+O SDK PHP básico do modo de serviço tem requisitos próprios.
+
+Confira [Compatibilidade de bancos de dados](./polyglot/database-support.md) para declarações do modo embutido e Server, configurações exatas testadas e limites de qualificação.
 
 O Durable Workflow pode usar qualquer driver de fila compatível com Laravel,
 exceto `sync`, incluindo:
@@ -45,9 +52,9 @@ Instale o pacote pelo Composer:
 composer require %%artifact.workflowComposerPackage%%
 ```
 
-Use `durable-workflow/workflow:^2.0` para aceitar automaticamente atualizações
-compatíveis de 2.x. Consulte [Compatibilidade de versões](/docs/compatibility)
-para conhecer as regras do ambiente e dos pacotes.
+O comando acima fixa a versão embutida publicada. Confira o
+[limite de suporte e atualização do Laravel](./compatibility.md#laravel-support)
+antes de ampliar a restrição ou atualizar uma aplicação Laravel antiga.
 
 O pacote carrega suas migrations automaticamente. Após a instalação, basta
 executar a migração normal:

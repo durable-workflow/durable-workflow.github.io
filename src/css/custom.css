@@ -1,3 +1,6 @@
+@import url('../../static/identity/tokens.css');
+@import url('../../static/identity/fonts.css');
+
 /**
  * Any CSS included here will be global. The classic template
  * bundles Infima by default. Infima is a CSS framework designed to
@@ -717,3 +720,146 @@ a[class^='skipToContent']:focus {
     margin-right: 2.75rem;
   }
 }
+
+/* One Identity: bridge shared role tokens into the existing Docusaurus shell. */
+:root, html[data-theme='light'], html[data-theme='dark'] {
+  --ifm-color-primary: var(--dw-action);
+  --ifm-color-primary-dark: var(--dw-action);
+  --ifm-color-primary-darker: var(--dw-action);
+  --ifm-color-primary-darkest: var(--dw-action);
+  --ifm-color-primary-light: var(--dw-action);
+  --ifm-color-primary-lighter: var(--dw-action);
+  --ifm-color-primary-lightest: var(--dw-action);
+  --ifm-background-color: var(--dw-paper);
+  --ifm-background-surface-color: var(--dw-surface);
+  --ifm-font-color-base: var(--dw-ink-2);
+  --ifm-color-content: var(--dw-ink);
+  --ifm-color-content-secondary: var(--dw-muted);
+  --ifm-heading-color: var(--dw-ink);
+  --ifm-color-emphasis-200: var(--dw-line);
+  --ifm-color-emphasis-300: var(--dw-line);
+  --ifm-color-emphasis-600: var(--dw-muted);
+  --ifm-color-emphasis-700: var(--dw-ink-2);
+  --ifm-font-family-base: var(--dw-font-body);
+  --ifm-font-family-monospace: var(--dw-font-mono);
+  --ifm-heading-font-family: var(--dw-font-display);
+  --ifm-heading-font-weight: 600;
+  --ifm-font-weight-semibold: 600;
+  --ifm-line-height-base: 1.5;
+  --ifm-navbar-height: 7.75rem;
+  --ifm-navbar-background-color: var(--dw-surface);
+  --ifm-navbar-link-color: var(--dw-ink-2);
+  --ifm-navbar-shadow: none;
+  --ifm-navbar-search-input-background-color: var(--dw-paper);
+  --ifm-navbar-search-input-color: var(--dw-ink);
+  --ifm-navbar-search-input-placeholder-color: var(--dw-muted);
+  --ifm-menu-color: var(--dw-ink-2);
+  --ifm-menu-color-active: var(--dw-action);
+  --ifm-menu-color-background-active: var(--dw-tint);
+  --ifm-menu-color-background-hover: var(--dw-tint);
+  --ifm-code-background: var(--dw-tint);
+  --ifm-code-font-size: .875rem;
+  --ifm-global-radius: 8px;
+  --ifm-button-border-radius: 6px;
+  --ifm-table-border-color: var(--dw-line);
+  --docusaurus-highlighted-code-line-bg: #123b2a;
+}
+html, body { background: var(--dw-paper); }
+h1, h2 { letter-spacing: -.03em; }
+h3 { font-size: 1.25rem; }
+.markdown h1 { font-size: clamp(2.25rem, 4vw, 3.5rem); line-height: 1.12; }
+.markdown h2 { font-size: clamp(1.75rem, 3vw, 2.25rem); }
+.markdown p, .markdown li { line-height: 1.65; }
+.markdown pre, div[class*='codeBlockContainer'] { background: var(--dw-code-background); color: var(--dw-code-foreground); border-radius: 8px; }
+pre code { color: var(--dw-code-foreground); background: transparent; font-size: .8125rem; }
+div[class*='codeBlockTitle'] { border-color: #2e3934; color: var(--dw-code-muted); }
+div[class*='codeBlockContainer'] button { color: #e8edea; background: #172019; border-color: #5e6964; }
+.button { min-height: 44px; display: inline-flex; justify-content: center; align-items: center; gap: .4rem; font-size: .875rem; font-weight: 600; padding: .65rem 1.1rem; }
+.button--primary, .button--primary:hover { color: var(--dw-on-action); background: var(--dw-action); border-color: var(--dw-action); }
+.button.button--secondary, .button.button--secondary:hover { color: var(--dw-ink); background: var(--dw-surface); border-color: var(--dw-line); }
+.button:hover { filter: brightness(.94); }
+:where(a, button, input, select, summary):focus-visible { outline: 2px solid var(--dw-action); outline-offset: 4px; }
+.dw-eyebrow { font: 500 .75rem/1.5 var(--dw-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dw-action); margin: 0; }
+.navbar { display: block; padding: 0; border-bottom: 1px solid var(--dw-line); }
+.dw-global-navigation { max-width: 1440px; height: 76px; margin: 0 auto; padding: 0 2.5rem; flex-wrap: nowrap; }
+.navbar__brand { flex-shrink: 0; margin-right: 1.5rem; gap: .625rem; }
+.dw-wordmark { font: 600 1.125rem/1.2 var(--dw-font-display); color: var(--dw-ink); }
+.dw-surface-label { font: 500 .8125rem/1.5 var(--dw-font-mono); color: var(--dw-action); white-space: nowrap; }
+.dw-surface-label span { color: var(--dw-muted); margin-right: .25rem; }
+.dw-logo-chip { flex: 0 0 auto; display: inline-flex; padding: 4px; border-radius: 8px; }
+[data-theme='dark'] .dw-logo-chip { background: var(--dw-logo-paper); }
+.dw-logo-chip img { display: block; }
+.navbar__link { font-size: .875rem; font-weight: 400; padding: .5rem .65rem; }
+.navbar__link--active { color: var(--dw-ink); font-weight: 600; }
+.dw-nav-cta { margin: 0 .75rem; }
+.dw-docs-toolbar { height: 48px; border-top: 1px solid var(--dw-line); padding: 0 2.5rem; display: flex; align-items: center; gap: 1rem; background: var(--dw-paper); }
+.dw-docs-toolbar-label { font: 500 .75rem var(--dw-font-mono); color: var(--dw-muted); }
+.dw-docs-controls { display: flex; align-items: center; gap: .5rem; }
+.dw-docs-controls .navbar__item { display: inline-flex; }
+.dw-docs-search { margin-left: auto; min-width: 0; }
+.dw-docs-search .navbar__search { margin-left: 0; }
+.navbar__search-input { border: 1px solid var(--dw-line); border-radius: 6px; font-family: var(--dw-font-body); }
+.dropdown__menu { background: var(--dw-surface); border: 1px solid var(--dw-line); box-shadow: none; }
+.dw-sdk-switcher { position: relative; }
+.dw-sdk-switcher > button { background: transparent; border: 0; font-family: inherit; cursor: pointer; color: var(--dw-ink-2); }
+.dw-sdk-links { list-style: none; margin: 0; padding: .5rem; position: absolute; top: 100%; left: 0; min-width: 160px; background: var(--dw-surface); border: 1px solid var(--dw-line); border-radius: 8px; z-index: 10; }
+.dw-sdk-links[hidden] { display: none; }
+.dw-sdk-links a { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: .5rem .75rem; color: var(--dw-ink); border-radius: 6px; }
+.dw-sdk-links a:hover { background: var(--dw-tint); text-decoration: none; }
+.dw-sdk-switcher-mobile .dw-sdk-links { position: static; margin: .5rem 0; }
+.dw-sdk-switcher-mobile > button { width: 100%; }
+.dw-footer { background: var(--dw-surface); border-top: 1px solid var(--dw-line); padding: 4rem 0 2rem; font-size: .875rem; color: var(--dw-ink-2); }
+.dw-footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 3rem; }
+.dw-footer-brand { display: inline-flex; gap: .625rem; align-items: center; color: var(--dw-ink); font-family: var(--dw-font-display); font-weight: 600; margin-bottom: 1rem; }
+.dw-footer-brand + p { max-width: 18rem; }
+.dw-footer h2 { font: 500 .75rem var(--dw-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--dw-muted); margin-bottom: 1rem; }
+.dw-footer ul { padding: 0; list-style: none; }
+.dw-footer li { margin: .4rem 0; }
+.dw-footer li a { color: var(--dw-ink-2); display: inline-block; padding: .15rem 0; }
+.dw-footer a:hover { color: var(--dw-action); }
+.dw-footer-bottom { border-top: 1px solid var(--dw-line); padding-top: 1.5rem; margin-top: 2rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; color: var(--dw-muted); font-size: .8125rem; }
+.dw-status-pill { display: inline-flex; align-items: center; gap: .5rem; min-height: 36px; border-radius: 999px; padding: .4rem .85rem; color: var(--dw-muted); background: var(--dw-paper); font: 500 .75rem/1.5 var(--dw-font-mono); }
+.dw-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+@media (max-width: 1200px) and (min-width: 997px) {
+  .dw-global-navigation { padding: 0 1rem; }
+  .navbar__brand { margin-right: .5rem; }
+  .dw-wordmark { font-size: 1rem; }
+  .navbar__link { padding: .5rem; }
+}
+@media (max-width: 996px) {
+  :root, html[data-theme='dark'], html[data-theme='light'] { --ifm-navbar-height: 7.25rem; }
+  .dw-global-navigation { height: 64px; padding: 0 1rem; }
+  .dw-global-navigation .navbar__items--right { flex: 0 0 auto; }
+  .dw-docs-toolbar { height: 52px; padding: 0 1rem; gap: .5rem; }
+  .dw-docs-toolbar-label { display: none; }
+  .dw-docs-controls a[href*='/blog'] { display: none; }
+  .dw-docs-controls .navbar__link { font-size: .8125rem; padding: .5rem; }
+  .navbar-sidebar__brand { height: 64px; padding: .5rem; }
+  .navbar-sidebar__items { height: calc(100% - 65px); }
+  .dw-footer-grid { gap: 2rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .dw-wordmark { max-width: 9rem; font-size: 1rem; }
+  .dw-surface-label { font-size: .75rem; }
+  .navbar__brand { gap: .35rem; margin-right: .25rem; }
+  .dw-docs-search .navbar__search-input { width: 8rem; padding-right: .5rem; }
+  .dw-docs-search kbd, .dw-docs-search [class*='searchHintContainer'] { display: none; }
+  .dw-docs-search .navbar__search { position: relative; right: auto; }
+  .dw-footer { padding: 2.5rem 0 2rem; }
+  .dw-footer-grid { gap: 1.5rem; }
+  .dw-footer-grid > :first-child { grid-column: 1 / -1; }
+  .dw-footer .dw-footer-brand + p { max-width: 100%; }
+}
+.dw-status-pill[data-status='operational'] { color: var(--dw-action); background: var(--dw-tint); }
+.dw-status-pill[data-status='degraded'] { color: #7a4405; background: #fcefd9; }
+.dw-status-pill[data-status='incident'], .dw-status-pill[data-status='unavailable'] { color: #8e1b12; background: #fbe4e1; }
+.dw-status-pill[data-status='maintenance'] { color: #2f3e78; background: #e6eaf5; }
+[data-theme='dark'] .dw-status-pill[data-status='degraded'] { color: #f5c575; background: #352b19; }
+[data-theme='dark'] .dw-status-pill[data-status='incident'], [data-theme='dark'] .dw-status-pill[data-status='unavailable'] { color: #ffb4ab; background: #3b2423; }
+[data-theme='dark'] .dw-status-pill[data-status='maintenance'] { color: #becbfa; background: #232c43; }
+@media (max-width: 360px) {
+  .dw-global-navigation, .dw-docs-toolbar { padding-left: .75rem; padding-right: .75rem; }
+  .dw-docs-search .navbar__search-input { width: 7rem; }
+}
+/* Global product navigation uses the same plain labels as the SDK shells. */
+.dw-global-navigation .navbar__link svg[class*='iconExternalLink'] { display: none; }

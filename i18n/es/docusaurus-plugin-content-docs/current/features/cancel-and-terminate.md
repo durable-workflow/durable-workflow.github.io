@@ -140,6 +140,38 @@ La respuesta incluye el resultado del comando, id público de instancia y motivo
 }
 ```
 
+## Limpieza protegida tras una solicitud de cancelación {#protected-cleanup}
+
+`requestCancellation()` mantiene activa la ejecución. El código del workflow recibe la solicitud en su siguiente llamada durable como `Workflow\V2\Exceptions\WorkflowCancellationRequestedException`. Igual que `WorkflowCancelledException`, extiende `\Error`, por lo que `catch (\Exception $e)` no la captura. Captúrala por su nombre o usa `finally`.
+
+Ejecuta dentro de `cancellationShield()` la limpieza que necesite llamadas durables. Dentro del escudo, las actividades, los temporizadores y los workflows hijos se ejecutan con normalidad en lugar de recibir otra vez la solicitud:
+
+```php
+use function Workflow\V2\{activity, cancellationShield};
+use Workflow\V2\Exceptions\WorkflowCancellationRequestedException;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $reservationId = activity(ReserveStockActivity::class, $orderId);
+
+        try {
+            activity(ShipOrderActivity::class, $orderId);
+        } catch (WorkflowCancellationRequestedException $request) {
+            cancellationShield(fn () => activity(ReleaseStockActivity::class, $reservationId));
+
+            throw $request;
+        }
+
+        return 'shipped';
+    }
+}
+```
+
+Volver a lanzar la solicitud, o retornar con normalidad, cierra la ejecución como `cancelled`. El escudo no amplía el plazo de limpieza fijado por `requestCancellation()`, y la terminación y los tiempos límite de ejecución siguen cerrando la ejecución. `compensate()` de una saga se ejecuta bajo un escudo automáticamente. Consulta [Sagas](./sagas.md). Los SDK en modo servicio tienen el mismo escudo. Consulta [Cancelación cooperativa](/docs/polyglot/cancellation) y el sitio de cada SDK.
+
 ## La cancelación no es un error que se capture por accidente {#cancellation-is-not-an-error-you-catch-by-accident}
 
 La cancelación es un resultado explícito del ciclo de vida, no un error inesperado de la aplicación. `Workflow\V2\Exceptions\WorkflowCancelledException` extiende `\Error`, no `\Exception`. Un bloque `catch (\Exception $e)` no la captura; `catch (\Throwable $t)` sí.

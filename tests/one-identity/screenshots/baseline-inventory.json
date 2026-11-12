@@ -1,0 +1,47 @@
+{
+  "sourceRevision": "aee4a1fd1645fc94f60e42cc442ae496576c481f",
+  "syntheticStatus": true,
+  "screenshots": [
+    {
+      "file": "docs-dark-1440.png",
+      "bytes": 198409,
+      "sha256": "85f180598470280fa4b54da43667b3f0b43174a7e7f578c2e6d9706d8ebbaa29"
+    },
+    {
+      "file": "docs-dark-390.png",
+      "bytes": 88736,
+      "sha256": "71d92976d0a9760af543f763b63b70b98ca5382c1e12cb4e7dbd98847adb308f"
+    },
+    {
+      "file": "docs-light-1440.png",
+      "bytes": 198626,
+      "sha256": "fbe6dc76cf174bb17578c61909a5857a6a695323819f227c9f667e8329d6eb22"
+    },
+    {
+      "file": "docs-light-390.png",
+      "bytes": 87744,
+      "sha256": "1243dcf7b48bb1b495fb7c7366ba671f9e2cd04545ea79049f244425f418dd99"
+    },
+    {
+      "file": "home-dark-1440.png",
+      "bytes": 228042,
+      "sha256": "6caa0032e7a49f7880d26dc7f46da70e9c8ef7e110339845971694dc05a9704b"
+    },
+    {
+      "file": "home-dark-390.png",
+      "bytes": 210993,
+      "sha256": "ffb37d761e511f6d47d1b34fca345295fc5eb16cf2d3284cda6a4ddec63ea7ed"
+    },
+    {
+      "file": "home-light-1440.png",
+      "bytes": 224335,
+      "sha256": "ffe95d74297a9a3d6f9785ec6ce0defbcd130ce39ac96865ca1bb6003e0c4e10"
+    },
+    {
+      "file": "home-light-390.png",
+      "bytes": 205496,
+      "sha256": "4974b701030172105af5ffd4178be47dc0ed59337a626e2717dabfed46278530"
+    }
+  ],
+  "screenshotEvidenceCommit": "f4bbb6a00ccabb6490e3e072c9bfbfb6d45982b4"
+}
