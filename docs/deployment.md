@@ -268,6 +268,80 @@ command-level Compose examples in the
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)
 section.
 
+### Upgrading to Server 3.8.0 {#native-schema-upgrade-3-8}
+
+Server 3.8.0 needs a native schema upgrade on every backend. It adds one
+native-only table, `dw_task_queue_pauses`, which is created empty:
+
+| Backend    | Schema  |
+|------------|---------|
+| SQLite     | 11 → 12 |
+| PostgreSQL | 12 → 13 |
+| MariaDB    | 12 → 13 |
+| MySQL      | 13 → 14 |
+
+The step only creates the table; it rewrites no rows and takes seconds. A
+Server never upgrades its schema at startup: a 3.8.0 Server started on the
+earlier schema refuses with `native_schema_upgrade_required`. For the
+single-node Compose deployment:
+
+1. Stop the Server and leave MySQL running:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Back up MySQL and `server_storage`, and record the current image
+   reference. This backup is the only way back to 3.7.x.
+3. Change `DW_SERVER_IMAGE` to the 3.8.0 image, pull it and run
+   `schema-upgrade` once:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   From 3.7.x on MySQL it reports
+   `"from_schema_version":13,"schema_version":14,"status":"upgraded"`. Run
+   again on a current database, it reports `"status":"current"`.
+4. Start the Server with
+   `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`,
+   then confirm `/api/ready`, `/api/cluster/info` (`version` is `3.8.0`) and
+   worker registration.
+
+With several Servers on one database, stop every one of them before step 3
+and start them all on 3.8.0 afterwards. On MySQL and MariaDB an interrupted
+upgrade resumes when you run `schema-upgrade` again; SQLite and PostgreSQL
+upgrade in one transaction. Rolling back to 3.7.x needs the backup: a 3.7.0
+Server refuses the upgraded database with `native_schema_newer_than_binary`.
+The worker protocol stays at `1.20` and the control plane at version `2`.
+
+From an earlier release, the 3.8.0 image's `schema-upgrade` applies every
+earlier step in the same run. On MySQL from 3.5.x or 3.6.x (schema 12), that
+includes the [3.7.0 JSON rebuild](#native-schema-upgrade-3-7), with its
+downtime of about 2 minutes per million history rows. From 3.4.x or earlier,
+it includes the [3.5.0 schema step](#native-schema-upgrade-3-5).
+
+On MySQL, MariaDB and PostgreSQL, each pool connection now caches up to 200
+prepared statements. On MySQL, every client's prepared statements count toward
+the server-wide `max_prepared_stmt_count` (default 16382). A native node has 4
+pool connections, so keep `nodes × 4 × 200` plus other clients' statements
+within that limit; a default MySQL server fits about 20 native nodes. For more,
+raise `max_prepared_stmt_count` or lower the cache with
+`DW_NATIVE_DB_STATEMENT_CACHE_CAPACITY` (or `statement-cache-capacity` in
+`DB_URL`), a whole number from 0 to 4095. A Server given an invalid value, or
+two different values, refuses to start. `Prepared_stmt_count` in
+`SHOW GLOBAL STATUS` reports current use.
+
+Server 3.8.0 also lets an operator pause and resume activity dispatch on one
+task queue, advertised as `capabilities.task_queue_activity_dispatch_pause`
+(see the
+[3.8.0 release](https://github.com/durable-workflow/server/releases/tag/3.8.0)).
+Native redrive now reuses side effects and version markers recorded before the
+failed step, with their original payloads and times.
+
 ### Upgrading to Server 3.7.0 {#native-schema-upgrade-3-7}
 
 Server 3.7.0 stores MySQL JSON documents as exact text, so doubles keep every
@@ -742,6 +816,17 @@ Going back to chart 1.4.0 on MySQL means restoring that backup. On MariaDB and
 PostgreSQL a plain `helm upgrade` is enough, and going back is an image change.
 See the chart's
 [Chart 1.5.0 / Server 3.7.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-150--server-370-native).
+Chart 1.6.0 moves the default image to Server 3.8.0, which needs the
+[schema upgrade](#native-schema-upgrade-3-8) on every backend: scale the
+Server to zero, back up the database, and run `helm upgrade` with
+`native.schemaUpgrade.enabled=true` (or the manual Job), then scale back up.
+Going back to chart 1.5.0 means restoring that backup. The chart pins the
+image by tag. For change-controlled installs, also set `image.digest` to the
+3.8.0 multi-arch index,
+`sha256:7988a23525d9e50e997a9f6f02e801300ed4f626de3cf6977033657ae7e9f58e`,
+which both `durableworkflow/server:3.8.0` and
+`ghcr.io/durable-workflow/server:3.8.0` resolve to. See the chart's
+[Chart 1.6.0 / Server 3.8.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-160--server-380-native).
 
 ### Choosing a chart release {#helm-chart-selection}
 
