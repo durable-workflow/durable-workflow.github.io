@@ -268,6 +268,62 @@ command-level Compose examples in the
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)
 section.
 
+### Upgrading to Server 3.7.0 {#native-schema-upgrade-3-7}
+
+Server 3.7.0 stores MySQL JSON documents as exact text, so doubles keep every
+digit. Only MySQL changes: its native schema moves from 12 to 13, and its 75
+`json` columns in 36 tables become `LONGTEXT` (`utf8mb4_bin`) with an enforced
+`json_valid` check, one `ALTER TABLE` per table. Documents already stored keep
+MySQL's earlier rendering. A 3.7.0 Server started on MySQL schema 12 refuses
+with `native_schema_upgrade_required`.
+
+MariaDB and PostgreSQL stay at schema 12 and SQLite at 11, so a 3.5.0 or 3.6.0
+database on them runs on 3.7.0 as it is: change only `DW_SERVER_IMAGE` and
+follow the upgrade order above. Rolling back to 3.6.0 is an image change. From
+3.4.x or earlier, every database also needs the
+[3.5.0 schema step](#native-schema-upgrade-3-5); run it with the 3.7.0 image,
+whose `schema-upgrade` applies the earlier steps too.
+
+On MySQL the Server is down for the whole upgrade. Measured on MySQL 8.0 with
+2 CPUs and the default buffer pool, it takes about 2 minutes per million
+history rows. For the single-node Compose deployment:
+
+1. Stop the Server and leave MySQL running:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Back up MySQL and `server_storage`, and record the current image
+   reference. This backup is the only way back to 3.6.0 on MySQL.
+3. Change `DW_SERVER_IMAGE` to the 3.7.0 image, pull it and run
+   `schema-upgrade` once:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   On MySQL it prints the schema versions before and after, for example
+   `"from_schema_version":12,"schema_version":13,"status":"upgraded"`. Run
+   again on a current database, it reports `"status":"current"`.
+4. Start the Server with
+   `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`,
+   then confirm `/api/ready`, `/api/cluster/info` (`version` is `3.7.0`) and
+   worker registration.
+
+An interrupted upgrade resumes table by table when you run `schema-upgrade`
+again. Rolling back to 3.6.0 on MySQL needs the backup: a 3.6.0 Server refuses
+the upgraded database with `native_schema_newer_than_binary`. The worker
+protocol stays at `1.20` and the control plane at version `2`.
+
+Server 3.7.0 also changes native redrive (see the
+[3.7.0 release](https://github.com/durable-workflow/server/releases/tag/3.7.0)):
+memos and search attributes set at start carry to the successor, and
+`describe` reports `actions.can_redrive` and `actions.redrive_blocked_reason`.
+
 ### Upgrading to Server 3.5.0 {#native-schema-upgrade-3-5}
 
 Server 3.5.0 adds one native-only table, `dw_run_command_contracts`. The
@@ -678,6 +734,14 @@ Chart 1.4.0 moves the default image to Server 3.6.0 with no schema change, so
 a plain `helm upgrade` from chart 1.3.0 is enough, and going back to 1.3.0 is an
 image change. See the chart's
 [Chart 1.4.0 / Server 3.6.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-140--server-360-native).
+Chart 1.5.0 moves the default image to Server 3.7.0. On MySQL it needs the
+[schema upgrade from 12 to 13](#native-schema-upgrade-3-7): scale the Server
+to zero, back up the database, and run `helm upgrade` with
+`native.schemaUpgrade.enabled=true` (or the manual Job), then scale back up.
+Going back to chart 1.4.0 on MySQL means restoring that backup. On MariaDB and
+PostgreSQL a plain `helm upgrade` is enough, and going back is an image change.
+See the chart's
+[Chart 1.5.0 / Server 3.7.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-150--server-370-native).
 
 ### Choosing a chart release {#helm-chart-selection}
 

@@ -275,6 +275,42 @@ todos os Servers parados. A referência do Server mantém os exemplos mais
 recentes de comandos Compose na seção
 [Imagem oficial + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Atualizar para o Server 3.7.0 {#native-schema-upgrade-3-7}
+
+O Server 3.7.0 armazena os documentos JSON do MySQL como texto exato, então os números double mantêm todos os dígitos. Só o MySQL muda: seu esquema native passa de 12 para 13, e suas 75 colunas `json` em 36 tabelas viram `LONGTEXT` (`utf8mb4_bin`) com uma verificação `json_valid` obrigatória, um `ALTER TABLE` por tabela. Os documentos já armazenados mantêm a representação anterior do MySQL. Um Server 3.7.0 iniciado no esquema 12 do MySQL se recusa a iniciar com `native_schema_upgrade_required`.
+
+O MariaDB e o PostgreSQL continuam no esquema 12 e o SQLite no 11, então um banco 3.5.0 ou 3.6.0 nesses sistemas roda no 3.7.0 como está: altere apenas `DW_SERVER_IMAGE` e siga a ordem de atualização acima. Voltar para o 3.6.0 é só uma troca de imagem. A partir do 3.4.x ou anterior, todo banco também precisa da [etapa de esquema do 3.5.0](#native-schema-upgrade-3-5); execute-a com a imagem 3.7.0, cujo `schema-upgrade` também aplica as etapas anteriores.
+
+No MySQL, o Server fica fora do ar durante toda a atualização. Medida no MySQL 8.0 com 2 CPUs e o buffer pool padrão, ela leva cerca de 2 minutos por milhão de linhas de histórico. Para a implantação Compose em nó único:
+
+1. Pare o Server e deixe o MySQL em execução:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml stop server
+   ```
+2. Faça backup do MySQL e do `server_storage` e registre a referência da
+   imagem atual. Esse backup é o único caminho de volta para o 3.6.0 no MySQL.
+3. Altere `DW_SERVER_IMAGE` para a imagem 3.7.0, baixe-a e execute
+   `schema-upgrade` uma vez:
+
+   ```bash
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml pull server
+   docker compose --env-file durable-workflow.prod.env \
+     -f docker-compose.published.yml run --rm --no-deps server schema-upgrade
+   ```
+
+   No MySQL, ele mostra as versões do esquema antes e depois, por exemplo `"from_schema_version":12,"schema_version":13,"status":"upgraded"`. Executado de novo em um banco atual, ele informa `"status":"current"`.
+4. Inicie o Server com
+   `docker compose --env-file durable-workflow.prod.env -f docker-compose.published.yml up -d --wait`,
+   depois confirme `/api/ready`, `/api/cluster/info` (`version` é `3.7.0`) e o
+   registro de workers.
+
+Uma atualização interrompida é retomada tabela por tabela quando você executa `schema-upgrade` de novo. Voltar para o 3.6.0 no MySQL exige o backup: um Server 3.6.0 recusa o banco atualizado com `native_schema_newer_than_binary`. O protocolo de workers continua em `1.20` e o plano de controle na versão `2`.
+
+O Server 3.7.0 também muda o redrive native (veja a [versão 3.7.0](https://github.com/durable-workflow/server/releases/tag/3.7.0)): memos e atributos de busca definidos no início passam para a execução sucessora, e `describe` informa `actions.can_redrive` e `actions.redrive_blocked_reason`.
+
 ### Atualizar para o Server 3.5.0 {#native-schema-upgrade-3-5}
 
 O Server 3.5.0 adiciona uma tabela exclusiva do native, `dw_run_command_contracts`. O esquema native passa de 11 para 12 no MySQL, MariaDB e PostgreSQL, e de 10 para 11 no SQLite. A atualização cria a tabela e seu índice e não reescreve nenhuma linha. O Server 3.4.x tem o mesmo esquema do 3.3.x, então esta é a única etapa de esquema a partir do 3.3.x ou 3.4.x. Um Server 3.5.0 iniciado no esquema anterior se recusa a iniciar com `native_schema_upgrade_required`.
@@ -637,7 +673,7 @@ Uma release PHP 2.x existente não passa para o modo nativo em uma atualização
 
 O chart 1.1.0 muda a imagem padrão do Server 3.0.5 para o 3.3.2, que exige a [atualização do schema nativo](#native-schema-upgrade-3-0-to-3-3) da versão 8 para a 11. Um `helm upgrade` comum a partir do chart 1.0.x altera apenas a imagem, e os novos pods se recusam a iniciar com `native_schema_upgrade_required`. Siga as [etapas Chart 1.1.0 / Server 3.3.2](%%artifact.helmChartUpgradeUrl%%#chart-110--server-332-native) do chart: reduza o Server a zero réplicas com o escalonamento automático desativado, faça backup do banco de dados e então atualize para o chart 1.1.0 com `native.schemaUpgrade.enabled=true`. O hook `pre-upgrade` do chart executa `schema-upgrade` uma vez antes de os novos pods iniciarem, e somente quando o `lookup` do Helm mostra todos os Servers parados. Renderizações do Argo CD, do Flux e do `helm template` recusam o hook; nesses casos, use o Job manual do README do chart. Um `helm rollback` para uma revisão do chart 1.0.x não traz o Server de volta, porque a 3.0.x recusa o banco de dados atualizado: em vez disso, restaure o backup.
 
-O chart 1.2.0 muda a imagem padrão para o Server 3.4.0 sem mudança de esquema, então a partir do chart 1.1.0 basta um `helm upgrade` comum. Os pods native também ganham uma pausa `preStop` (`native.preStopSleepSeconds`, padrão 5) e um período de carência de encerramento de 70 segundos. O chart 1.3.0 muda a imagem padrão para o Server 3.5.0, que precisa da [atualização de esquema de 11 para 12](#native-schema-upgrade-3-5): escale o Server para zero, faça backup do banco e execute `helm upgrade` com `native.schemaUpgrade.enabled=true` (ou o Job manual), depois escale de volta. Veja as [notas do Chart 1.3.0 / Server 3.5.0](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native) do chart. Voltar para o chart 1.2.0 significa restaurar esse backup. O chart 1.4.0 muda a imagem padrão para o Server 3.6.0 sem mudança de esquema, então um `helm upgrade` simples a partir do chart 1.3.0 basta, e voltar para o 1.3.0 é só uma troca de imagem. Veja as [notas do Chart 1.4.0 / Server 3.6.0](%%artifact.helmChartUpgradeUrl%%#chart-140--server-360-native) do chart.
+O chart 1.2.0 muda a imagem padrão para o Server 3.4.0 sem mudança de esquema, então a partir do chart 1.1.0 basta um `helm upgrade` comum. Os pods native também ganham uma pausa `preStop` (`native.preStopSleepSeconds`, padrão 5) e um período de carência de encerramento de 70 segundos. O chart 1.3.0 muda a imagem padrão para o Server 3.5.0, que precisa da [atualização de esquema de 11 para 12](#native-schema-upgrade-3-5): escale o Server para zero, faça backup do banco e execute `helm upgrade` com `native.schemaUpgrade.enabled=true` (ou o Job manual), depois escale de volta. Veja as [notas do Chart 1.3.0 / Server 3.5.0](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native) do chart. Voltar para o chart 1.2.0 significa restaurar esse backup. O chart 1.4.0 muda a imagem padrão para o Server 3.6.0 sem mudança de esquema, então um `helm upgrade` simples a partir do chart 1.3.0 basta, e voltar para o 1.3.0 é só uma troca de imagem. Veja as [notas do Chart 1.4.0 / Server 3.6.0](%%artifact.helmChartUpgradeUrl%%#chart-140--server-360-native) do chart. O chart 1.5.0 muda a imagem padrão para o Server 3.7.0. No MySQL, ele precisa da [atualização de esquema de 12 para 13](#native-schema-upgrade-3-7): escale o Server para zero, faça backup do banco e execute `helm upgrade` com `native.schemaUpgrade.enabled=true` (ou o Job manual), depois escale de volta. Voltar para o chart 1.4.0 no MySQL significa restaurar esse backup. No MariaDB e no PostgreSQL, basta um `helm upgrade` simples, e voltar é só uma troca de imagem. Veja as [notas do Chart 1.5.0 / Server 3.7.0](%%artifact.helmChartUpgradeUrl%%#chart-150--server-370-native) do chart.
 
 ### Escolher uma versão do chart {#helm-chart-selection}
 
