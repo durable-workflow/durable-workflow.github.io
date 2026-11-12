@@ -173,7 +173,7 @@ Embedded operator metrics (`operator_metrics` in Waterline stats) count open run
 
 The advisory `replay_blocked_runs` health check (category `correctness`) reports `warning` while any open run is replay-blocked.
 
-Native Server reports `repair_needed` but not yet `replay_blocked` or the `replay_blocked_runs` check ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+Native Server reports `replay_blocked` and the `replay_blocked_runs` check from 3.6.0.
 
 ### Server workflow-task failures
 

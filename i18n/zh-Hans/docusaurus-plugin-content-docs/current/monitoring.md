@@ -130,7 +130,7 @@ trace、run、activity、attempt 和 request ID 保持独立。baggage 使用默
 
 建议性健康检查 `replay_blocked_runs`（类别 `correctness`）在有任何打开运行重放受阻时报告 `warning`。
 
-原生 Server 会报告 `repair_needed`，但尚未报告 `replay_blocked` 或 `replay_blocked_runs` 检查（[server#1154](https://github.com/durable-workflow/server/issues/1154)）。
+原生 Server 从 3.6.0 起会报告 `replay_blocked` 和 `replay_blocked_runs` 检查。
 
 ### Server 工作流任务失败 {#workflow-task-failure-metric}
 

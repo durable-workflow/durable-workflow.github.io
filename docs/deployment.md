@@ -674,6 +674,10 @@ scale the Server to zero, back up the database, and run `helm upgrade` with
 See the chart's
 [Chart 1.3.0 / Server 3.5.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-130--server-350-native).
 Going back to chart 1.2.0 means restoring that backup.
+Chart 1.4.0 moves the default image to Server 3.6.0 with no schema change, so
+a plain `helm upgrade` from chart 1.3.0 is enough, and going back to 1.3.0 is an
+image change. See the chart's
+[Chart 1.4.0 / Server 3.6.0 notes](%%artifact.helmChartUpgradeUrl%%#chart-140--server-360-native).
 
 ### Choosing a chart release {#helm-chart-selection}
 
