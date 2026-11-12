@@ -277,7 +277,7 @@ Réappliquer une définition inchangée n’enregistre rien ; vous pouvez donc l
 
 Les identifiants de planification ne sont pas réutilisables. Une planification supprimée, y compris une planification supprimée quand son `max_runs` est épuisé, conserve son identifiant. Créer une planification avec cet identifiant lève `ScheduleAlreadyExistsException` avec `existingStatus` `deleted`. Utilisez un nouvel identifiant.
 
-Le Server natif applique la même règle : créer une planification avec un identifiant pris renvoie `409 schedule_already_exists`. Le Server natif enregistre encore un événement `ScheduleUpdated` et recalcule `next_fire_at` à chaque modification, même inchangée ([server#1147](https://github.com/durable-workflow/server/issues/1147)).
+Le Server natif applique la même règle : créer une planification avec un identifiant pris renvoie `409 schedule_already_exists`. Depuis le Server natif 3.6.0, réappliquer une planification inchangée n'a pas non plus d'effet : aucun événement `ScheduleUpdated` n'est enregistré et `next_fire_at` est conservé. Le résultat de la réponse reste `updated`. Les versions du Server natif antérieures à 3.6.0 enregistrent `ScheduleUpdated` et recalculent `next_fire_at` à chaque modification, même inchangée.
 
 ### Décrire {#describe}
 

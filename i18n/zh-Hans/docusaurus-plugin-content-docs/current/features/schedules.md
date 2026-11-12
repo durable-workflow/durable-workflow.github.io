@@ -262,7 +262,7 @@ try {
 
 调度 ID 不可重用。已删除的调度，包括因 `max_runs` 用尽而删除的调度，会保留其 ID。用该 ID 创建调度会抛出 `existingStatus` 为 `deleted` 的 `ScheduleAlreadyExistsException`。请改用新的 ID。
 
-原生 Server 采用相同的 ID 规则：用已占用的 ID 创建调度会返回 `409 schedule_already_exists`。原生 Server 目前仍会在每次更新（包括未更改的更新）时记录 `ScheduleUpdated` 事件并重新计算 `next_fire_at`（[server#1147](https://github.com/durable-workflow/server/issues/1147)）。
+原生 Server 采用相同的 ID 规则：用已占用的 ID 创建调度会返回 `409 schedule_already_exists`。从原生 Server 3.6.0 起，重新应用未更改的调度同样不会产生任何效果：不会记录 `ScheduleUpdated` 事件，并保留 `next_fire_at`。响应的结果仍为 `updated`。3.6.0 之前的原生 Server 版本会在每次更新（包括未更改的更新）时记录 `ScheduleUpdated` 并重新计算 `next_fire_at`。
 
 ### 描述 {#describe}
 
