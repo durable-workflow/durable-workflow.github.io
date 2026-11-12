@@ -134,7 +134,7 @@ Eingebettete Operator-Metriken (`operator_metrics` in den Waterline-Statistiken)
 
 Die beratende Health-Prüfung `replay_blocked_runs` (Kategorie `correctness`) meldet `warning`, solange ein offener Lauf wiedergabeblockiert ist.
 
-Der native Server meldet `repair_needed`, aber noch nicht `replay_blocked` oder die Prüfung `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+Der native Server meldet `replay_blocked` und die Prüfung `replay_blocked_runs` ab 3.6.0.
 
 ### Fehlgeschlagene Workflow-Tasks im Server {#workflow-task-failure-metric}
 

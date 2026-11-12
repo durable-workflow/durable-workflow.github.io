@@ -173,7 +173,7 @@ Les métriques opérateur embarquées (`operator_metrics` dans les statistiques 
 
 La vérification de santé consultative `replay_blocked_runs` (catégorie `correctness`) signale `warning` tant qu’une exécution ouverte est bloquée au rejeu.
 
-Le Server natif signale `repair_needed`, mais pas encore `replay_blocked` ni la vérification `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+Le Server natif signale `replay_blocked` et la vérification `replay_blocked_runs` depuis la 3.6.0.
 
 ### Échecs de tâches de workflow côté Server {#workflow-task-failure-metric}
 

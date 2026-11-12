@@ -132,7 +132,7 @@ trace、run、activity、attempt、request の ID は別々です。baggage は�
 
 助言用のヘルスチェック `replay_blocked_runs`（カテゴリ `correctness`）は、リプレイ停止中の開いている実行がある間 `warning` を報告します。
 
-ネイティブ Server は `repair_needed` を報告しますが、`replay_blocked` と `replay_blocked_runs` チェックはまだ報告しません（[server#1154](https://github.com/durable-workflow/server/issues/1154)）。
+ネイティブ Server は 3.6.0 から `replay_blocked` と `replay_blocked_runs` チェックを報告します。
 
 ### Server のワークフロータスク失敗 {#workflow-task-failure-metric}
 

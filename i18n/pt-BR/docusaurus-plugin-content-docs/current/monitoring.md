@@ -174,7 +174,7 @@ As métricas de operador embutidas (`operator_metrics` nas estatísticas do Wate
 
 A verificação de saúde consultiva `replay_blocked_runs` (categoria `correctness`) informa `warning` enquanto houver uma execução aberta bloqueada na reprodução.
 
-O Server nativo informa `repair_needed`, mas ainda não `replay_blocked` nem a verificação `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+O Server nativo informa `replay_blocked` e a verificação `replay_blocked_runs` a partir da 3.6.0.
 
 ### Falhas de tarefas de workflow no Server {#workflow-task-failure-metric}
 

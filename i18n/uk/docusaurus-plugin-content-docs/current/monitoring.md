@@ -171,7 +171,7 @@ signal, timer і дочірні workflow в порядку подій, коже�
 
 Дорадча перевірка стану `replay_blocked_runs` (категорія `correctness`) повідомляє `warning`, доки будь-який відкритий запуск заблоковано на відтворенні.
 
-Нативний Server повідомляє `repair_needed`, але ще не `replay_blocked` і не перевірку `replay_blocked_runs` ([server#1154](https://github.com/durable-workflow/server/issues/1154)).
+Нативний Server повідомляє `replay_blocked` і перевірку `replay_blocked_runs` починаючи з 3.6.0.
 
 ### Збої завдань workflow у Server {#workflow-task-failure-metric}
 
