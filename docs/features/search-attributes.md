@@ -99,6 +99,16 @@ Each call:
 
 On replay, recorded search attribute events are reused without re-executing the upsert, preserving determinism.
 
+## Registering attributes {#registering-attributes}
+
+On the Server you can register a search attribute with a type through `POST /api/search-attributes`. A registered key must then carry a value of its type, and a start or upsert with the wrong type is refused.
+
+Registration only constrains the keys you register. From native Server 3.5.0, a key that is not registered is still accepted and its type is inferred, as in a namespace with no registered attributes. Registering one attribute does not break running workflows that upsert other keys. PHP Server 2.x and native Server before 3.5.0 refuse every unregistered key once any attribute is registered, so register all the keys your workflows use before registering the first one there.
+
+Deleting a registration stops checking that key. Stored values and running workflows are not changed, and later upserts of the key are inferred again.
+
+To change an attribute's type, register a new attribute name with the new type, update your workflows to write it, and filter on the new name once existing runs have caught up. Deleting and re-registering the same name with a different type leaves earlier values in the old type.
+
 ## Merging Behavior
 
 Search attributes merge across multiple upserts within the same run. Each upsert overlays new keys on top of existing ones:
