@@ -54,8 +54,15 @@ case "$uname_m" in
     *) err "unsupported architecture: $uname_m" ;;
 esac
 
+# Intel macOS binaries start with 2.5.0 (cli#135). An explicit older tag has
+# no dw-macos-x86_64 asset, so say so instead of failing on a missing download.
 if [ "$os" = "macos" ] && [ "$arch" = "x86_64" ]; then
-    err "macos-x86_64 binaries are not currently published. Use the PHAR with a system PHP instead."
+    case "${VERSION#v}" in
+        latest|stable|supported) ;;
+        0.*|1.*|2.[0-4]|2.[0-4].*|2.[0-4]-*)
+            err "dw-macos-x86_64 is published from 2.5.0; ${VERSION} has no Intel macOS binary. Install 2.5.0 or later." ;;
+        *) ;;
+    esac
 fi
 
 asset="dw-${os}-${arch}"

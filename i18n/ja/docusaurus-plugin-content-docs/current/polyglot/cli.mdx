@@ -50,8 +50,6 @@ dw --version
 - `DURABLE_WORKFLOW_INSTALL_DIR` — インストール先（既定 `~/.local/bin`）。
 - `DURABLE_WORKFLOW_BIN_NAME` — インストールする実行ファイル名（既定 `dw`）。
 
-シェルインストーラーは Intel 版 macOS バイナリをまだインストールしません。Intel Mac では、[`dw.phar` からの移行](#moving-from-dwphar) の検証付きダウンロードを `dw-macos-x86_64` で使用してください。
-
 GitHub Actions の例:
 
 ```yaml
@@ -113,7 +111,7 @@ Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
 
 2.x の PHAR インストールでは、`dw upgrade` は引き続き "Download the matching PHAR manually" と応答します。このメッセージは旧リリースに由来し変更できないため、代わりに上記のコマンドを使ってください。単独バイナリのインストールは、通常どおり `dw upgrade` で更新できます。
 
-Intel Mac では、上記の検証付きダウンロードを `dw-macos-x86_64` で使用してください。公開済みの 2.x の `dw upgrade` には移行先の Intel 版 macOS アーティファクトがなく、シェルインストーラーもまだこれをインストールしません。
+Intel Mac では、シェルインストーラーで 2.x から移行してください。公開済みの 2.x の `dw upgrade` には移行先の Intel 版 macOS アーティファクトがありません。
 
 ### インストール済みバイナリの更新 {#update-an-installed-binary}
 

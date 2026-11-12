@@ -1,10 +1,10 @@
 {
   "source_repository": "durable-workflow/cli",
-  "source_commit": "277df0c409f1ca403e97cf4dc725f15a3a26056b",
+  "source_commit": "4130ab182630a01e0abb9e7bf0c6693ba3f9a059",
   "files": {
     "static/install.sh": {
       "source_path": "scripts/install.sh",
-      "sha256": "1df33fbcd705dc67a4c9ebfc8a3487345c173d5801971028a280255e877648d0"
+      "sha256": "2835709cf6cd818f7782b670a19f8404a109d93507a397966e0209aec25fd2f5"
     },
     "static/install.ps1": {
       "source_path": "scripts/install.ps1",
