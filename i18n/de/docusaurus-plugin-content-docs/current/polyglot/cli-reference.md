@@ -62,7 +62,7 @@ weiterhin das kanonische Array `input` erhält.
 | `dw debug workflow <workflow-id>` | Diagnose eines festhängenden Workflow-Laufs erfassen: Zustand, ausstehende Tasks, Warteschlangenangaben, Fehler und Kompatibilitätsmetadaten. | `--run-id`, globale Optionen, `--json` |
 | `dw server:start-dev` | HTTP-Anwendung eines bestehenden konfigurierten Laravel-Projekts bereitstellen. Benötigt externes PHP. | `--port`, `--host` (Standard `127.0.0.1`), `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | Workflow bis zum terminalen Zustand oder bis zur konfigurierten Abfragegrenze beobachten. | `--run-id`, `--interval`, `--max-polls`, globale Optionen |
-| `dw upgrade` | Laufende eigenständige `dw`-Binärdatei durch ein neueres oder festgelegtes Release ersetzen. Verweigert das Überschreiben von Composer-vendor-, Homebrew-cellar- und PHAR-Installationen. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
+| `dw upgrade` | Laufende eigenständige `dw`-Binärdatei durch ein neueres oder festgelegtes Release ersetzen. Verweigert das Überschreiben von Composer-vendor- und Homebrew-cellar-Installationen. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 Verwenden Sie `server:info` zur Vertragsprüfung, `doctor` zur Erklärung von
 CLI-Verbindungsproblemen und `debug workflow`, wenn Support eine maschinenlesbare
@@ -86,9 +86,8 @@ Compose-Dienste des Projekts namens `mysql` beziehungsweise `pgsql` sowie
 ungleich null. Compose-Dienste laufen nach Ende des HTTP-Prozesses weiter.
 
 Native POSIX-Binärdateien leiten SIGINT und SIGTERM an das aktive Kind weiter
-und warten bis zu fünf Sekunden auf das Ende seiner Prozessgruppe.
-Quellcode- und PHAR-Installationen benötigen dafür PHPs Erweiterungen `pcntl`
-und `posix`. Windows verwendet sein Konsolen-Unterbrechungsverhalten.
+und warten bis zu fünf Sekunden auf das Ende seiner Prozessgruppe. Windows
+verwendet sein Konsolen-Unterbrechungsverhalten.
 
 Für einen eigenständigen Durable Workflow Server mit veröffentlichten Images
 folgen Sie dem [Service-Schnellstart](/docs/quickstart).
@@ -193,13 +192,14 @@ Prosaauswertung:
 | `upgraded` | Binärdatei durch `target_version` ersetzt. |
 | `noop` | `current_version` entspricht bereits `target_version`; `--force` umgeht dies. |
 | `dry-run` | `--dry-run` hat `target_version`, `asset_url` und `checksum_url` ohne Download aufgelöst. |
-| `refused` | Installation ist keine eigenständige Release-Binärdatei (Composer vendor, Homebrew cellar oder PHAR), oder für die Plattform ist kein Artefakt veröffentlicht. |
+| `refused` | Installation ist keine eigenständige Release-Binärdatei (Composer vendor oder Homebrew cellar), oder für die Plattform ist kein Artefakt veröffentlicht. |
 | `permission-denied` | Installationsverzeichnis nicht beschreibbar; die Nutzlast enthält einen `hint` mit empfohlenem nächsten Schritt. |
 | `error` | Fehler beim Abruf des Release-Katalogs, abweichende Prüfsumme oder Dateisystemfehler. |
 
 Bei Ablehnungen benennt `installation.kind` das verwaltende Werkzeug
-(`composer-vendor`, `homebrew`, `phar` oder `binary`) und `reason` den richtigen
-zuständigen Weg. Für öffentliche Automatisierung ohne Quellcode installieren
+(`composer-vendor`, `homebrew`, `binary` oder `unknown`) und `reason` den richtigen
+zuständigen Weg. Nur ein 2.x-PHAR, das seinen eigenen 2.x-Code ausführt, meldet
+`phar`. Für öffentliche Automatisierung ohne Quellcode installieren
 Sie ein festgelegtes Release über `https://durable-workflow.com/install.sh`
 erneut. Für Tap-verwaltete Homebrew-Installationen verwenden Sie
 `brew upgrade durable-workflow/tap/dw`.

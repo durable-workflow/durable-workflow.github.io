@@ -68,6 +68,10 @@ préversion. Variables d'environnement supplémentaires :
 - `DURABLE_WORKFLOW_INSTALL_DIR` : emplacement d'installation (`~/.local/bin` par défaut).
 - `DURABLE_WORKFLOW_BIN_NAME` : nom de l'exécutable installé (`dw` par défaut).
 
+Le script d'installation shell n'installe pas encore le binaire macOS Intel.
+Sur un Mac Intel, utilisez le téléchargement vérifié décrit dans [Migrer depuis
+`dw.phar`](#moving-from-dwphar) avec `dw-macos-x86_64`.
+
 Exemple GitHub Actions :
 
 ```yaml
@@ -92,26 +96,60 @@ dw --version
 L'installateur écrit `dw.exe` dans `%USERPROFILE%\.durable-workflow\bin` et
 ajoute ce répertoire au `PATH` de l'utilisateur.
 
+Définissez d'abord `$env:DURABLE_WORKFLOW_INSTALL_NO_PATH_UPDATE = '1'` pour
+laisser le `PATH` utilisateur inchangé, par exemple lors d'une installation CI
+temporaire.
+
 </details>
 
-<details>
-<summary><b>PHAR</b> (portable, nécessite PHP 8.2+)</summary>
+### Migrer depuis `dw.phar` {#moving-from-dwphar}
+
+À partir de la CLI 2.5.0, les versions ne fournissent plus de PHAR. Si vous
+exécutez `php dw.phar`, passez au binaire autonome, qui ne nécessite pas PHP,
+avec l'installateur shell ou PowerShell ci-dessus. Supprimez ensuite `dw.phar`.
+Les installateurs vérifient le binaire avec le `SHA256SUMS` de la version avant
+de l'installer.
+
+Le PHAR de la série 2.3.x reçoit des correctifs de sécurité uniquement jusqu'au
+2027-02-28. Il n'est plus pris en charge après cette date.
+
+Si vous ne redirigez pas de scripts vers un shell, téléchargez la version et
+vérifiez-la d'abord. Choisissez l'artefact de votre plateforme :
+`dw-linux-x86_64`, `dw-linux-aarch64`, `dw-macos-aarch64`, `dw-macos-x86_64` ou `dw-windows-x86_64.exe`.
 
 ```bash
-VERSION=<release-tag>
-curl -fsSL -o dw.phar \
-  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/dw.phar"
-curl -fsSL -o SHA256SUMS \
-  "https://github.com/durable-workflow/cli/releases/download/${VERSION}/SHA256SUMS"
-sha256sum --check --ignore-missing SHA256SUMS
-chmod +x dw.phar
-./dw.phar --version
+mkdir release
+gh release download %%artifact.cliVersion%% --repo durable-workflow/cli --dir release
+sh release/verify-release.sh --attest release/
+install -m 0755 release/dw-linux-x86_64 ~/.local/bin/dw
 ```
 
-Le PHAR fonctionne partout où PHP 8.2 ou ultérieur est déjà disponible.
-C'est l'artefact recommandé pour les runners CI partagés qui fournissent déjà PHP.
+Sous Windows, téléchargez, vérifiez et copiez sans exécuter de script :
 
-</details>
+```powershell
+New-Item -ItemType Directory -Force release | Out-Null
+gh release download %%artifact.cliVersion%% --repo durable-workflow/cli --dir release
+if ($LASTEXITCODE -ne 0) { throw 'gh release download failed' }
+$expected = ((Select-String -Path release\SHA256SUMS -Pattern ' dw-windows-x86_64\.exe$').Line -split '\s+')[0]
+$actual = (Get-FileHash release\dw-windows-x86_64.exe -Algorithm SHA256).Hash.ToLower()
+if ($actual -ne $expected) { throw 'dw-windows-x86_64.exe does not match SHA256SUMS' }
+gh attestation verify release\dw-windows-x86_64.exe --repo durable-workflow/cli --signer-workflow durable-workflow/cli/.github/workflows/release-rust.yml --deny-self-hosted-runners
+if ($LASTEXITCODE -ne 0) { throw 'dw-windows-x86_64.exe failed attestation verification' }
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Programs\dw" | Out-Null
+Copy-Item release\dw-windows-x86_64.exe "$env:LOCALAPPDATA\Programs\dw\dw.exe"
+```
+
+Ajoutez `%LOCALAPPDATA%\Programs\dw` à votre `PATH` s'il n'y figure pas déjà.
+
+Dans une installation PHAR 2.x, `dw upgrade` répond toujours « Download the
+matching PHAR manually ». Ce message provient de l'ancienne version et ne peut
+pas être modifié ; utilisez donc les commandes ci-dessus. Les installations du
+binaire autonome se mettent à jour normalement avec `dw upgrade`.
+
+Sur un Mac Intel, utilisez le téléchargement vérifié ci-dessus avec
+`dw-macos-x86_64`. La commande `dw upgrade` publiée en 2.x n'a aucun artefact
+macOS Intel vers lequel migrer, et le script d'installation shell ne l'installe
+pas encore.
 
 ### Mettre à jour un binaire installé {#update-an-installed-binary}
 
@@ -126,8 +164,8 @@ dw upgrade --tag=<release-tag>     # pin to a specific release tag
 dw upgrade --dry-run       # resolve the target release without downloading
 ```
 
-`dw upgrade` refuse de réécrire les installations Composer vendor, Homebrew
-cellar et PHAR, car ces chemins appartiennent à un autre outil. Réinstallez
+`dw upgrade` refuse de réécrire les installations Composer vendor et Homebrew
+cellar, car ces chemins appartiennent à un autre outil. Réinstallez
 une version publique épinglée avec l'installateur, mettez à jour via le
 gestionnaire de paquets responsable ou utilisez
 `brew upgrade durable-workflow/tap/dw` pour les installations Homebrew gérées

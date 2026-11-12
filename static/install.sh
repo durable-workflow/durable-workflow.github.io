@@ -64,6 +64,7 @@ command -v curl >/dev/null 2>&1 || err "curl is required"
 case "$VERSION" in
     supported) VERSION=stable ;;
     prerelease) err "pass an explicit prerelease tag with VERSION=..." ;;
+    *) ;;
 esac
 
 if [ "$VERSION" = "latest" ] || [ "$VERSION" = "stable" ]; then
@@ -161,6 +162,7 @@ if resolved_path=$(command -v "$BIN_NAME" 2>/dev/null); then
                 pre_install_path="$canonical_pre_install_dir/$pre_install_name"
             fi
             ;;
+        *) ;;
     esac
 fi
 
@@ -222,6 +224,7 @@ if resolved_path=$(command -v "$BIN_NAME" 2>/dev/null); then
                 active_path="$canonical_active_dir/$active_name"
             fi
             ;;
+        *) ;;
     esac
 fi
 
@@ -269,6 +272,7 @@ if [ -n "${PPID:-}" ] && parent_command=$(ps -p "$PPID" -o comm= 2>/dev/null); t
         bash|dash|sh|ash|ksh|ksh93|mksh|pdksh|zsh|fish)
             parent_shell_name="$parent_command"
             ;;
+        *) ;;
     esac
 fi
 

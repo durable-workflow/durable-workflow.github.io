@@ -63,7 +63,7 @@ argument positionnel pour que le serveur reçoive toujours le tableau `input` ca
 | `dw debug workflow <workflow-id>` | Capturer les diagnostics d'une exécution bloquée : état, tâches en attente, informations de file, échecs et métadonnées de compatibilité. | `--run-id`, options globales, `--json` |
 | `dw server:start-dev` | Servir l'application HTTP d'un projet Laravel existant et configuré. Nécessite un PHP externe. | `--port`, `--host` (`127.0.0.1` par défaut), `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | Interroger un workflow jusqu'à un état terminal ou à la limite d'interrogations configurée. | `--run-id`, `--interval`, `--max-polls`, options globales |
-| `dw upgrade` | Remplacer le binaire autonome `dw` en cours par une version plus récente ou épinglée. Refuse de réécrire les installations Composer vendor, Homebrew cellar et PHAR. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
+| `dw upgrade` | Remplacer le binaire autonome `dw` en cours par une version plus récente ou épinglée. Refuse de réécrire les installations Composer vendor et Homebrew cellar. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 Utilisez `server:info` pour valider la forme du contrat, `doctor` pour
 expliquer pourquoi une CLI ne peut pas joindre un serveur et `debug workflow`
@@ -88,9 +88,8 @@ HTTP renvoie un code non nul. Les services Compose restent actifs à la fin du
 processus HTTP.
 
 Les binaires natifs POSIX transmettent SIGINT et SIGTERM à l'enfant actif et
-attendent jusqu'à cinq secondes l'arrêt de son groupe de processus. Les
-installations source et PHAR nécessitent les extensions PHP `pcntl` et `posix`
-pour cette transmission. Windows utilise son comportement d'interruption de console.
+attendent jusqu'à cinq secondes l'arrêt de son groupe de processus. Windows
+utilise son comportement d'interruption de console.
 
 Pour un Durable Workflow Server autonome utilisant les images publiées,
 suivez le [démarrage rapide du mode service](/docs/quickstart).
@@ -200,13 +199,13 @@ de prose :
 | `upgraded` | Binaire remplacé par `target_version`. |
 | `noop` | `current_version` correspond déjà à `target_version` ; `--force` contourne ce cas. |
 | `dry-run` | `--dry-run` a résolu `target_version`, `asset_url` et `checksum_url` sans téléchargement. |
-| `refused` | L'installation n'est pas un binaire de version autonome (Composer vendor, Homebrew cellar ou PHAR), ou la plateforme n'a pas d'artefact publié. |
+| `refused` | L'installation n'est pas un binaire de version autonome (Composer vendor ou Homebrew cellar), ou la plateforme n'a pas d'artefact publié. |
 | `permission-denied` | Le répertoire d'installation n'est pas accessible en écriture ; la charge utile inclut un `hint` proposant la prochaine étape. |
 | `error` | Échec de récupération du catalogue des versions, somme de contrôle différente ou erreur du système de fichiers. |
 
 En cas de refus, `installation.kind` identifie l'outil responsable
-(`composer-vendor`, `homebrew`, `phar` ou `binary`) et `reason` nomme celui à
-utiliser. Pour une automatisation publique sans sources, réinstallez une
+(`composer-vendor`, `homebrew`, `binary` ou `unknown`) et `reason` nomme celui à
+utiliser. Seul un PHAR 2.x, exécutant son propre code 2.x, signale `phar`. Pour une automatisation publique sans sources, réinstallez une
 version épinglée via `https://durable-workflow.com/install.sh` ; pour Homebrew
 géré par le tap, utilisez `brew upgrade durable-workflow/tap/dw`.
 

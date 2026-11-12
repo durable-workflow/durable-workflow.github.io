@@ -62,7 +62,7 @@ canonical `input` array.
 | `dw debug workflow <workflow-id>` | Capture stuck-run diagnostics for one workflow: state, pending tasks, queue facts, failures, and compatibility metadata. | `--run-id`, global options, `--json` |
 | `dw server:start-dev` | Serve an existing, configured Laravel project's HTTP application. Requires external PHP. | `--port`, `--host` (default `127.0.0.1`), `--db=sqlite\|mysql\|pgsql` |
 | `dw watch workflow <workflow-id>` | Poll a workflow until terminal or until a configured polling limit. | `--run-id`, `--interval`, `--max-polls`, global options |
-| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor, Homebrew cellar, and PHAR installs. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
+| `dw upgrade` | Replace the running standalone `dw` binary with a newer (or pinned) release. Refuses to rewrite Composer vendor and Homebrew cellar installs. | `--tag`, `--dry-run`, `--force`, `--output=table\|json` |
 
 Use `server:info` when validating contract shape, `doctor` when explaining why
 a CLI cannot talk to a server, and `debug workflow` when support needs one
@@ -84,9 +84,8 @@ interfaces. MySQL and PostgreSQL modes require project Compose services named
 return nonzero. Compose services remain running when the HTTP process ends.
 
 POSIX native binaries forward SIGINT and SIGTERM to the active child and wait
-up to five seconds for its process group to stop. Source and PHAR installs
-require PHP's `pcntl` and `posix` extensions for this forwarding. Windows uses
-its console interruption behavior.
+up to five seconds for its process group to stop. Windows uses its console
+interruption behavior.
 
 For a standalone Durable Workflow Server using published images, follow the
 [service quickstart](/docs/quickstart).
@@ -197,13 +196,14 @@ prose:
 | `upgraded` | Binary replaced with `target_version`. |
 | `noop` | `current_version` already matches `target_version`; `--force` bypasses this. |
 | `dry-run` | `--dry-run` resolved `target_version`, `asset_url`, and `checksum_url` without downloading. |
-| `refused` | Install kind is not a standalone release binary (Composer vendor, Homebrew cellar, or PHAR), or the platform has no published asset. |
+| `refused` | Install kind is not a standalone release binary (Composer vendor or Homebrew cellar), or the platform has no published asset. |
 | `permission-denied` | The install directory is not writable; the payload includes a `hint` with the recommended next step. |
 | `error` | Release catalog fetch, checksum mismatch, or filesystem error. |
 
 For refusals, the JSON payload's `installation.kind` identifies the managing
-tool (`composer-vendor`, `homebrew`, `phar`, or `binary`) and `reason` names
-the right owner to use instead. For public, source-free automation, reinstall
+tool (`composer-vendor`, `homebrew`, `binary`, or `unknown`) and `reason` names
+the right owner to use instead. Only a 2.x PHAR, running its own 2.x code,
+reports `phar`. For public, source-free automation, reinstall
 a pinned release through `https://durable-workflow.com/install.sh`; for
 tap-managed Homebrew installs, use `brew upgrade durable-workflow/tap/dw`.
 
