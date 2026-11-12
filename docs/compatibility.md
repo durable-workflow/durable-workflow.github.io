@@ -101,7 +101,7 @@ The embedded package and the service-mode SDK have separate support contracts.
 | --- | --- | --- |
 | Current embedded Workflow 2.24 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | Embedded Workflow 2.20.5 | PHP `^8.1`, subject to Laravel's own minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
-| Published PHP SDK 3.11 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Published PHP SDK 3.14 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | PHP SDK 3.9.5 | Bare SDK PHP `^8.1`; the Laravel bridge also follows Laravel's PHP minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 
 The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
@@ -120,7 +120,7 @@ Preserve the original runtime for open v1 runs, and follow the
 Changing a Composer requirement does not migrate durable history.
 
 PHP SDK 3.10 moved the Laravel service-mode bridge to the same PHP and Laravel
-floors as Workflow 2.21 and removed Laravel 10/11 support; 3.11 keeps them.
+floors as Workflow 2.21 and removed Laravel 10/11 support; 3.11 through 3.14 keep them.
 Its provider refuses unsupported or unknown framework and PHP versions before
 registering configuration, clients or workers. Existing SDK 3.9.x applications
 keep their own contract while the platform is upgraded. See the

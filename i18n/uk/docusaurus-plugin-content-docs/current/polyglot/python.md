@@ -110,6 +110,16 @@ Python SDK 2.14.1 виправляє відбитки `wait_condition()`, які
 було виявити перемикання між ними. Див.
 [примітки щодо сумісності для тегу 2.14.1](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
 
+Python SDK 2.15 і 2.16 додають:
+
+- **Sticky-суфікси історії (2.16).** Workers зі sticky-кешем (`sticky_cache_capacity > 0`) оголошують `sticky_history_suffix`. На Server 3.5.0 або новішому sticky-влучання отримує лише історію після закешованої послідовності. Суфікс, що не продовжує закешовану історію точно, відкидається, і завантажується повна історія.
+- **Типізовані значення workflow (2.15).** `@workflow.defn(..., typed=True)` декодує аргументи `run` і handlers за їхніми анотаціями, а `result_type=` декодує результати дочірніх workflows і клієнта. Нетипізовані workflows, як і раніше, отримують прості значення, тож поточні історії відтворюються без змін.
+- **Ліниві сторінки (2.15).** `Client.iter_workflows`, `Client.iter_history` і `WorkflowHandle.iter_history` переходять за токенами сторінок, тримаючи лише одну сторінку.
+- **Активності запуску (2.15).** `Client.get_run_activities` і `WorkflowHandle.get_activities` повертають типізовані метадані активностей і спроб, а `ActivityInfo.activity_execution_id` надає логічну ідентичність активності.
+- **Backoff локальних активностей (2.15.1).** Повторні спроби після кінця списку backoff повторюють останній запис замість негайної повторної спроби.
+
+Повний перелік див. у [журналі змін 2.16.0](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md).
+
 ## Швидкий початок {#quickstart}
 
 Ця повна програма Python визначає workflow з однією activity,

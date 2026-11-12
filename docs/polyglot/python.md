@@ -108,6 +108,29 @@ share one combined fingerprint. Put those predicates on separate lines in new
 workflow definitions to detect switching between them. See the
 [tagged 2.14.1 compatibility notes](https://github.com/durable-workflow/sdk-python/blob/2.14.1/CHANGELOG.md#2141---2026-11-04).
 
+Python SDK 2.15 and 2.16 add:
+
+- **Sticky history suffixes (2.16).** Workers with a sticky cache
+  (`sticky_cache_capacity > 0`) advertise `sticky_history_suffix`. On Server
+  3.5.0 or later, a sticky hit receives only the history after the sequence the
+  worker cached. A suffix that doesn't continue the cached history exactly is
+  dropped and the full history is fetched.
+- **Typed workflow values (2.15).** `@workflow.defn(..., typed=True)` decodes
+  `run` and handler arguments to their annotations, and `result_type=` decodes
+  child and client results. Untyped workflows receive plain values as before,
+  so in-flight histories replay unchanged.
+- **Lazy pages (2.15).** `Client.iter_workflows`, `Client.iter_history` and
+  `WorkflowHandle.iter_history` follow page tokens while holding one page.
+- **Run activities (2.15).** `Client.get_run_activities` and
+  `WorkflowHandle.get_activities` return typed activity and attempt metadata,
+  and `ActivityInfo.activity_execution_id` exposes the logical activity
+  identity.
+- **Local activity backoff (2.15.1).** Retries past the end of the backoff list
+  repeat the final entry instead of retrying immediately.
+
+See the [2.16.0 changelog](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md)
+for the complete list.
+
 ## Quickstart
 
 Here is a complete Python program that defines a workflow with one activity, starts it against a local Durable Workflow server, and waits for the result:

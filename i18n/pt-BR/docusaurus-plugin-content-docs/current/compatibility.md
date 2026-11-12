@@ -103,7 +103,7 @@ O pacote embutido e o SDK de modo de serviço têm contratos separados.
 | --- | --- | --- |
 | Workflow embutido 2.24 atual | PHP 8.2+ da linha 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | Workflow embutido 2.20.5 | PHP `^8.1`, respeitando o mínimo do framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
-| SDK PHP 3.11 publicado | SDK básico PHP `^8.1`; a ponte Laravel exige PHP `^8.2`, e PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| SDK PHP 3.14 publicado | SDK básico PHP `^8.1`; a ponte Laravel exige PHP `^8.2`, e PHP 8.3+ para Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.9.5 | SDK básico PHP `^8.1`; a ponte Laravel também segue o mínimo do framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 
 As autoridades são o [contrato embutido publicado](https://github.com/durable-workflow/workflow/blob/2.24.0/resources/laravel-embedded-upgrade-contract.json)
@@ -120,8 +120,8 @@ siga o [guia de adoção](/docs/laravel-adoption) para drenagem ou coexistência
 Alterar a restrição Composer não migra o histórico durável.
 
 O SDK PHP 3.10 levou a ponte Laravel do modo de serviço aos mesmos mínimos de
-PHP e Laravel do Workflow 2.21 e removeu o suporte a Laravel 10/11; a 3.11 os
-mantém. Seu provider recusa versões de framework e PHP não suportadas ou
+PHP e Laravel do Workflow 2.21 e removeu o suporte a Laravel 10/11; da 3.11 à 3.14 os
+mantêm. Seu provider recusa versões de framework e PHP não suportadas ou
 desconhecidas antes de registrar configuração, clientes ou workers. Aplicações
 existentes com o SDK 3.9.x mantêm o próprio contrato enquanto a plataforma é
 atualizada. Consulte as

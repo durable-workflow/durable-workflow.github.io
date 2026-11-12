@@ -184,6 +184,23 @@ Worker 会自动声明 `workflow_entry_arguments_validation`。在配套 Server 
 
 这些桥接不同于[嵌入式 Laravel 工作流](/docs/installation/)；后者通过 `durable-workflow/workflow` 使 Laravel 应用自身管理持久状态并通过 Laravel 队列执行。参见 [Laravel 采用与运行时迁移](/docs/laravel-adoption/)，了解同一个典型 Laravel 用例如何使用 v1、v2 嵌入式及已提供的服务模式桥接，包括排空和回滚。更全面的运行时边界比较见[部署模式](/docs/polyglot/deployment-modes/)。
 
+## 升级到 PHP SDK 3.12 至 3.14 {#upgrade-to-3-12-through-3-14}
+
+PHP `^8.1`、Laravel 桥接的下限、worker 协议 `1.20` 和控制平面 `2` 与 3.11 相同。部署前请检查以下行为变化：
+
+- **超出等待时间的 update。** 自 3.13 起，当 `waitFor: 'completed'` 的等待在 update 完成前结束时，`Client::updateWorkflow()` 和 `WorkflowHandle::update()` 会抛出 `UpdateStillPending`。之前的版本会把 Server 回执当作 update 的结果返回。如需继续等待，请使用 `$pending->requestId` 再次调用该 update，这不会重复应用 update。
+- **过期的 worker 注册。** 自 3.13 起，`Worker::run()` 在遇到 `stale_worker_registration` 后会重新注册，而不是停止。被隔离的 worker 持有的任务会被丢弃且不完成，由 Server 重新投递。每次恢复都会记录 `worker.reregistered` 日志并递增 `durable_workflow_worker_reregistrations`。传入 `stopOnStaleRegistration: true` 可保留旧行为。
+- **本地活动的退避。** 自 3.13 起，重试次数多于 `backoff_seconds` 条目的本地活动会重复最后一个延迟，而不是立即重试，与 Server 调度的活动一致。
+- **原生 Server 上分组内的条件等待。** 原生 Server 目前还不接受 `all()` 或 `parallel()` 中的条件或信号等待。自 3.13.1 起，worker 会以 `grouped_condition_wait_unsupported` 使该工作流任务失败并继续运行，而不是退出。请在分组之外等待条件。
+
+这些版本的新功能：
+
+- **Sticky 历史后缀（3.14）。** Worker 声明 `sticky_history_suffix`。在 Server 3.5.0 或更高版本上，已持有某个运行历史的 worker 只接收其缓存序列之后的事件。不能精确接续缓存历史的后缀会被丢弃，并重新获取完整历史。旧版 Server 仍发送完整历史。
+- **计划来源（3.13）。** `WorkflowContext::scheduleOrigin()` 返回启动该运行的计划触发的计划 id、发生时间和触发编号；普通启动返回 `null`。重放时该值相同。自 Server 3.5.0 起，以 continue-as-new 继续的运行会保留其计划来源。
+- **活动续接（3.12）。** 当 Server 声明 `activity_workflow_continuation`（原生 Server 3.4.0 或更高版本）时，向 `Worker` 构造函数传入 `enableActivityContinuation: true`，即可把下一批工作流命令与成功的活动结果一起提交。默认值为 `false`。如果启用，请使用 3.12.1 或更高版本，并在降级 Server 或加入旧版 Server 节点之前排空或停用这些 worker。
+
+完整列表请参见 [3.14.0 变更日志](https://github.com/durable-workflow/sdk-php/blob/3.14.0/CHANGELOG.md)。
+
 ## 升级到 PHP SDK 3.10 和 3.11 {#upgrade-to-3-10-and-3-11}
 
 部署前请阅读 [PHP SDK 升级指南](https://github.com/durable-workflow/sdk-php/blob/3.11.0/docs/portal/operate/upgrading.md)。可从同一任务队列接收工作的所有 Worker 须一并升级，包括备用池和自动扩缩容池。
