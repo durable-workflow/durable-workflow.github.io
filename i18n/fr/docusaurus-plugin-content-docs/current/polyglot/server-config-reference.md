@@ -246,7 +246,7 @@ Ces paramètres limitent les requêtes et la croissance de l’état. Si une app
 | `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | Nombre maximal de séries de workflows de `/api/system/prometheus-metrics` avant regroupement des séries excédentaires. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | Nombre maximal de séries d’activités de `/api/system/prometheus-metrics` avant regroupement des séries excédentaires. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | Nombre maximal de séries de runtime par file dans `/api/system/prometheus-metrics` avant regroupement des séries excédentaires. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
-| `DW_MAX_HISTORY_EVENTS` | `50000` | Nombre maximal d’événements d’historique par exécution avant l’application de continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
+| `DW_MAX_HISTORY_EVENTS` | `50000` | Sans effet. Aucune version du Server ne la lit et l’historique par exécution n’est pas plafonné. Limitez les historiques longs avec continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Nombre de jours de conservation par défaut de l’historique d’un run fermé, sauf surcharge du namespace. | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | Nombre maximal d’octets sérialisés d’un payload. | `WORKFLOW_MAX_PAYLOAD_BYTES` |
 | `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | Taille encodée maximale, en octets (64 MiB), acceptée par le transport authentifié de dépôt et de récupération des payloads externes. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |

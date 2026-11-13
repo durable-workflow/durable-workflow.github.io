@@ -246,7 +246,7 @@ Sticky 実行には Server イメージ専用の環境変数はありません�
 | `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | `/api/system/prometheus-metrics` が報告するワークフロー系列数の上限。超過分は集約します。 | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | `/api/system/prometheus-metrics` が報告するアクティビティ系列数の上限。超過分は集約します。 | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | `/api/system/prometheus-metrics` が報告するタスクキュー実行時系列数の上限。超過分は集約します。 | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
-| `DW_MAX_HISTORY_EVENTS` | `50000` | continue-as-new を適用するまでの、ワークフロー実行ごとの履歴イベント数の上限。 | `WORKFLOW_MAX_HISTORY_EVENTS` |
+| `DW_MAX_HISTORY_EVENTS` | `50000` | 効果はありません。どの Server リリースもこの変数を読み取らず、実行ごとの履歴に上限はありません。長い履歴は continue-as-new で抑えてください。 | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Namespace に上書きがない場合、閉じた実行の履歴を保持する既定日数。 | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | 一つのペイロードのシリアライズ済みバイト数の上限。 | `WORKFLOW_MAX_PAYLOAD_BYTES` |
 | `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | 認証付き外部ペイロードのアップロード・取得で受け付けるエンコード済みサイズの上限（64 MiB）。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |

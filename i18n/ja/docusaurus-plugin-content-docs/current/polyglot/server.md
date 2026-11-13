@@ -439,7 +439,7 @@ curl http://localhost:8080/api/cluster/info \
 
 - ビルドバージョンは `server_version` ではなく `version` です。ネイティブ Server では `implementation` が `"rust"` です。
 - API を呼び出す前に `control_plane.version` と `worker_protocol.version` を確認してください。ネイティブ 3.5.0 はコントロールプレーン `2` と Worker プロトコル `1.20` を提供し、`1.0` から `1.20` までの任意のプロトコルバージョンを送る Worker 要求を受け付けます。
-- 3.5.0 以降、`worker_protocol.server_capabilities` は `sticky_execution` と `sticky_history_suffix` を示します。3.4.0 以降は `activity_workflow_continuation` も示しますが、ワーカーが使うのは自身でオプトインした場合だけです。
+- 3.5.0 以降、`worker_protocol.server_capabilities` は `sticky_execution` と `sticky_history_suffix` を示します。3.4.0 以降は `activity_workflow_continuation` も示しますが、ワーカーが使うのは自身でオプトインした場合だけです。現在は有効にするとスループットが下がります。ベンチマークでは負荷時の実行が 24〜49% 遅くなりました（[測定結果](https://github.com/durable-workflow/server/issues/1078)）。
 - ワークフロータスクのコマンドは `worker_protocol.server_capabilities.supported_workflow_task_commands` にあります。
 - `false` の能力フラグは、ネイティブが提供しない機能や公開契約を示します。ネイティブは圧縮しない応答を送るため、`response_compression` は空です。
 - `native_unqualified` は、PHP 2.x の応答のうちネイティブが含めない各メンバーを理由とともに列挙します。`topology` が含まれます。
