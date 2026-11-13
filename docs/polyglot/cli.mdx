@@ -414,6 +414,7 @@ from there.
 | `5` | `NOT_FOUND` | Resource not found. Returned for HTTP `404`. |
 | `6` | `SERVER` | Server error. Returned for HTTP `5xx`. |
 | `7` | `TIMEOUT` | Request timed out before the server responded. Also returned for HTTP `408`. |
+| `8` | `COMPATIBILITY` | Compatibility failure. The CLI and Server cannot safely run the command, for example because the Server does not advertise a capability it needs, so the command refused before sending the request. |
 
 Example:
 

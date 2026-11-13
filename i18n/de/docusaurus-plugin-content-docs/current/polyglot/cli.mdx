@@ -428,6 +428,7 @@ und werden darüber hinaus erweitert.
 | `5` | `NOT_FOUND` | Ressource nicht gefunden. Für HTTP `404`. |
 | `6` | `SERVER` | Serverfehler. Für HTTP `5xx`. |
 | `7` | `TIMEOUT` | Anfrage lief vor der Server-Antwort ab. Auch für HTTP `408`. |
+| `8` | `COMPATIBILITY` | Kompatibilitätsfehler. CLI und Server können den Befehl nicht sicher ausführen, zum Beispiel weil der Server eine benötigte Fähigkeit nicht meldet; der Befehl hat daher abgelehnt, bevor die Anfrage gesendet wurde. |
 
 Beispiel:
 

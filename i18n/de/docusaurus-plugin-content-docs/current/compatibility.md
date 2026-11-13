@@ -66,12 +66,12 @@ Das eingebettete Paket und das Service-Modus-SDK haben eigene Supportverträge.
 
 | Paketlinie | PHP | Laravel |
 | --- | --- | --- |
-| Aktuelles eingebettetes Workflow 2.26 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
+| Aktuelles eingebettetes Workflow 2.28 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
 | Eingebettetes Workflow 2.20.5 | PHP `^8.1`, zusätzlich gilt das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 | Veröffentlichtes PHP-SDK 3.14 | Reines SDK PHP `^8.1`; die Laravel-Bridge benötigt PHP `^8.2` und für Laravel 13 PHP 8.3+ | `^12.69.0` oder `^13.30.0` |
 | PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 
-Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
 und die jeweilige `composer.json`. Das aktuelle eingebettete Release wurde mit
 Laravel 12/PHP 8.2–8.4 und Laravel 13/PHP 8.3–8.4 geprüft. Es entfernt PHP 8.1
 und Laravel 10/11. Die [historische stabile v1-Anleitung](/docs/1.x/installation/)
@@ -123,6 +123,19 @@ Workflow 2.25 und 2.26 behalten die Mindestanforderungen von 2.21 und das eingeb
 - Ab 2.25 löst das Überschreiten einer festen Obergrenze für Memos oder Suchattribute `StructuralLimitExceededException` statt `InvalidArgumentException` aus, und der Standardwert von `memo_size_bytes` ist 65.536. Siehe [Strukturelle Grenzen](./constraints/structural-limits.md).
 
 Siehe die Versionshinweise zu [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) und [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
+
+Workflow 2.27 behält die Mindestanforderungen von 2.21 und das eingebettete Worker-Protokoll `1.22` bei und fügt keine Datenbankmigration hinzu. Vor dem Upgrade zu prüfende Änderungen:
+
+- Ab 2.27 repariert und führt eine eingebettete App Arbeit nur in ihren eigenen Namespaces aus. Startet, plant oder signalisiert die App Workflows in anderen Namespaces als `DW_V2_NAMESPACE`, führen Sie alle in `DW_V2_NAMESPACES` auf. Ein Prozess, der jeden Namespace bedient, setzt `DW_V2_ALL_NAMESPACES=true`. Siehe [Welche Namespaces eine App ausführt](./configuration/options.md#namespace-allowlist).
+- Ab 2.27 kostet der Abschluss eines Kindes den Elternworkflow gleich viel Arbeit, egal wie viele Geschwister es gibt. Siehe [Kosten breiter Verzweigungen](./features/child-workflows.md#fan-out-cost).
+
+Siehe die [Versionshinweise zu 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
+
+Workflow 2.28 behält die Mindestanforderungen von 2.21 und das eingebettete Worker-Protokoll `1.22` bei und fügt keine Datenbankmigration hinzu. Vor dem Upgrade zu prüfende Verhaltensänderung:
+
+- Ab 2.28 bricht ein Lauf, der abgeschlossen wird, fehlschlägt oder mit Continue-as-new fortgesetzt wird, die Aktivitäten und Timer, auf die er nie gewartet hat, etwa `select()`-Verlierer, in derselben Transaktion ab, statt sie weiterlaufen zu lassen. Ein verspätetes Ergebnis einer solchen Aktivität wird mit `run_closed` abgelehnt. Braucht ein Workflow die Wirkung eines Verlierers, warten Sie vor der Rückgabe auf ihn. Siehe [Verlierer beim Schließen des Laufs](./features/concurrency.md#selection-losers-at-close).
+
+Siehe die [Versionshinweise zu 2.28.0](https://github.com/durable-workflow/workflow/releases/tag/2.28.0).
 
 ## Stabilitätsstufen {#stability-levels}
 

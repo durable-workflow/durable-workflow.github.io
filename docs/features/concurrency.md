@@ -149,6 +149,12 @@ idempotent. Concurrent inputs are ordered by their committed durable history;
 an input that arrives while an activity runs is visible on the next workflow
 task, and a late or duplicate input cannot replace an already recorded winner.
 
+### Losers when the run closes {#selection-losers-at-close}
+
+From Workflow 2.28, if the run closes while a non-winning member is still open, the close cancels it in the same transaction. This applies when the run completes, fails or continues as new. An open activity gets `ActivityCancelled` with `cancellation_reason: run_closed`, and a pending timer gets `TimerCancelled`, both recorded before the terminal event. Nothing is appended after the terminal event, and a late result from the cancelled activity is refused. Replay ignores these cancellations, because the workflow never saw them.
+
+If the workflow needs a loser's effect, await the loser before returning. In service mode, an activity scheduled with `cancellation_policy: abandon` keeps running instead. The terminal event lists it under `abandoned_activities`, and its outcome is never recorded on the closed run. Child workflows follow their parent-close policy.
+
 ## Nested Barriers
 
 Nested `all([...])` groups let one workflow step express a tree of durable fan-out and fan-in work. The runtime schedules every activity or child workflow as a durable leaf sequence, records the leaf's full `parallel_group_path`, waits until every enclosing barrier can make progress, and then rebuilds the original nested result shape before resuming the workflow body. During replay, an activity or child leaf from an `all([...])` step must still match that recorded group path; typed leaf history that has no group metadata is treated as incompatible older preview history instead of being guessed into the current barrier.

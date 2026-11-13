@@ -426,6 +426,7 @@ réussite/échec/usage, puis les étendent.
 | `5` | `NOT_FOUND` | Ressource introuvable. Renvoyé pour HTTP `404`. |
 | `6` | `SERVER` | Erreur serveur. Renvoyé pour HTTP `5xx`. |
 | `7` | `TIMEOUT` | Délai de requête dépassé avant la réponse du serveur. Également renvoyé pour HTTP `408`. |
+| `8` | `COMPATIBILITY` | Échec de compatibilité. La CLI et le serveur ne peuvent pas exécuter la commande en sécurité, par exemple parce que le serveur n'annonce pas une capacité nécessaire ; la commande a donc refusé avant d'envoyer la requête. |
 
 Exemple :
 

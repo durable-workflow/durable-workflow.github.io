@@ -134,6 +134,8 @@ trace、run、activity、attempt、request の ID は別々です。baggage は�
 
 ネイティブ Server は 3.6.0 から `replay_blocked` と `replay_blocked_runs` チェックを報告します。
 
+Workflow 2.27 以降、`operator_metrics.namespace_scope_refusals` は、アプリの[名前空間の許可リスト](./configuration/options.md#namespace-allowlist)が過去 15 分間に拒否した作業を名前空間とパスごとに数えます。`job` はスキップされたキュー済みジョブを数えます。`repair`、`timeout`、`schedule_tick` は、許可リスト外の名前空間に 2 分を超えて残った修復候補、期限切れ、実行予定のスケジュールを数えます。助言的なヘルスチェック `namespace_scope_refusals` は拒否が続く間は警告し、最後の拒否から 15 分後に解除されます。カウントは既定のキャッシュストアに保存されるため、ヘルスを返す Web プロセスがワーカーのカウントを参照できるよう、共有ストア（Redis、データベース、Memcached）を使用してください。
+
 ### Server のワークフロータスク失敗 {#workflow-task-failure-metric}
 
 Server は失敗したワークフロータスクを `GET /api/system/metrics` の `metrics.dw_workflow_task_consecutive_failures` で報告します。

@@ -267,7 +267,8 @@ When using the standalone server, a separate set of caps is enforced at the HTTP
 
 | Limit | Default | Config key | What it caps |
 |---|---|---|---|
-| Body size | 2 MiB | `server.limits.max_payload_bytes` | Total HTTP request body bytes |
+| Body size | 2 MiB | `server.limits.max_payload_bytes` | Total HTTP request body bytes, except a workflow-task completion on native Server 3.6.0 or later (next row) |
+| Workflow-task completion size | 32 MiB (16 × body size) | derived from `server.limits.max_payload_bytes` | Native Server 3.6.0 or later: a request that completes a workflow task with commands. Each command's arguments still meet the per-payload limit |
 | Memo size | 256 KiB | `server.limits.max_memo_bytes` | Serialized memo on `POST /workflows` and `POST /schedules` |
 | Search-attribute count | 100 | `server.limits.max_search_attributes` | Registered custom search attributes per namespace |
 | Search-attribute key length | 128 bytes | `server.limits.max_search_attribute_key_length` | Length of a single SA key on start |
@@ -298,3 +299,31 @@ The currently-configured values are published under `limits` on the `GET /api/cl
 ```
 
 Validation errors are returned in the standard control-plane error envelope with `reason: "validation_failed"` and a `validation_errors` map keyed by the offending field (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, and so on). Payload-size rejections use `reason: "payload_too_large"` and the `413` status code.
+
+### Workflow-task completion size {#workflow-task-completion-size}
+
+On native Server 3.6.0 and later, a request that completes a workflow task
+with commands (`POST /api/worker/workflow-tasks/{id}/complete` and
+`POST /api/worker/activity-tasks/{id}/continuation/complete`) may be up to 16
+times `max_payload_bytes`: 32 MiB with the default 2 MiB. It follows
+`DW_MAX_PAYLOAD_BYTES` and has no setting of its own. Each command's arguments
+still meet the per-payload limit inside the completion. PHP Server 2.x and
+earlier native releases cap a completion at one payload limit, like any other
+request.
+
+A larger completion is refused with `413 payload_too_large` and
+`limit_kind: workflow_task_completion_bytes` before anything is recorded.
+Replaying the task produces the same commands, so sending the completion again
+gets the same refusal. PHP SDK 3.17.0 and later never resend it: the worker
+fails the run once with a `fail_workflow` command whose message starts
+`Structural limit exceeded: workflow_task_completion_bytes:` and names both
+sizes, and the Server records the failure with
+`failure_category = structural_limit`. The Python and Rust SDKs will do the
+same in their next releases.
+
+To keep a completion within the limit:
+
+- Split a large fan-out into smaller batches across workflow tasks.
+- Move work into child workflows, or continue as new.
+- Store large arguments with external payload storage, so the completion
+  carries references instead of the payloads.

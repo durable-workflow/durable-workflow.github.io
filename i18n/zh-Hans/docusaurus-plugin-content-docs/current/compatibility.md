@@ -65,12 +65,12 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 | 包版本线 | PHP | Laravel |
 | --- | --- | --- |
-| 当前嵌入式 Workflow 2.26 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| 当前嵌入式 Workflow 2.28 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | 嵌入式 Workflow 2.20.5 | PHP `^8.1`，并满足框架自身最低要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 | 已发布 PHP SDK 3.14 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | PHP SDK 3.9.5 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接还需满足框架的 PHP 要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 
-包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
 及各版本的 `composer.json`。当前嵌入式版本已验证 Laravel 12/PHP 8.2–8.4 与 Laravel 13/PHP 8.3–8.4，
 不再支持 PHP 8.1 和 Laravel 10/11。[历史稳定 v1 安装指南](/docs/1.x/installation/)与
 [PHP SDK 的独立要求](https://php.durable-workflow.com/)保持独立。
@@ -110,6 +110,19 @@ Workflow 2.25 和 2.26 保留 2.21 的支持下限和嵌入式 worker 协议 `1.
 - 自 2.25 起，超过固定的备忘录或搜索属性上限会抛出 `StructuralLimitExceededException`，而不是 `InvalidArgumentException`，且 `memo_size_bytes` 的默认值为 65,536。参见[结构限制](./constraints/structural-limits.md)。
 
 参见 [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) 和 [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0) 的发布说明。
+
+Workflow 2.27 保持 2.21 的支持下限和嵌入式 worker 协议 `1.22`，不新增数据库迁移。升级前需要检查的变更：
+
+- 从 2.27 起，嵌入式应用只修复和运行自己命名空间中的工作。如果应用在 `DW_V2_NAMESPACE` 以外的命名空间中启动、调度工作流或向其发送信号，请把它们全部列入 `DW_V2_NAMESPACES`。服务所有命名空间的进程应设置 `DW_V2_ALL_NAMESPACES=true`。参见[应用运行哪些命名空间](./configuration/options.md#namespace-allowlist)。
+- 从 2.27 起，无论有多少兄弟子工作流，关闭一个子工作流给父工作流带来的工作量都相同。参见[大规模扇出的开销](./features/child-workflows.md#fan-out-cost)。
+
+参见 [2.27.0 发布说明](https://github.com/durable-workflow/workflow/releases/tag/2.27.0)。
+
+Workflow 2.28 保持 2.21 的支持下限和嵌入式 worker 协议 `1.22`，不新增数据库迁移。升级前需要检查的行为变更：
+
+- 从 2.28 起，完成、失败或 continue-as-new 的运行会在同一事务中取消它从未等待的活动和计时器（例如 `select()` 的落选成员），而不是让它们继续运行。此类活动的迟到结果会以 `run_closed` 被拒绝。如果工作流需要某个落选成员的效果，请在返回之前等待它。参见[运行关闭时的落选成员](./features/concurrency.md#selection-losers-at-close)。
+
+参见 [2.28.0 发布说明](https://github.com/durable-workflow/workflow/releases/tag/2.28.0)。
 
 ## 稳定性级别 {#stability-levels}
 

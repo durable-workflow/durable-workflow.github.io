@@ -224,6 +224,21 @@ Beobachter schließt diese Ausführungen nicht ein. Konfigurationsänderungen
 weisen vorhandene Instanzen nicht neu zu. Der Start einer vorhandenen Instanz
 über einen anderen Namespace wird abgelehnt.
 
+### Welche Namespaces eine App ausführt {#namespace-allowlist}
+
+Ab Workflow 2.27 repariert und führt eine eingebettete App Arbeit nur in den Namespaces aus, die sie bedient. Das betrifft den Watchdog, die Task-Reparatur, Lauf- und Aktivitätsfristen, `workflow:v2:schedule-tick` sowie die eingereihten Workflow-, Aktivitäts-, Timer- und Service-Call-Jobs. Ein eingereihter Job für einen anderen Namespace wird übersprungen, bevor er etwas bewirkt, und eine Warnung wird protokolliert.
+
+```env
+DW_V2_NAMESPACE=production
+DW_V2_NAMESPACES=production,billing
+```
+
+- Ist `DW_V2_NAMESPACES` nicht gesetzt, bedient die App genau `DW_V2_NAMESPACE`. Eine App mit einem einzigen Namespace muss also nichts ändern.
+- Ist die Variable gesetzt, bedient die App genau die aufgeführten Namespaces. Nehmen Sie daher auch `DW_V2_NAMESPACE` selbst auf. `default` bezeichnet den Namespace ohne Zuordnung. Ein leerer Wert bedient keinen, und `*` wird abgelehnt.
+- Ein Prozess, der jeden Namespace der Datenbank repariert oder tickt, etwa ein eigenständiger Server, setzt stattdessen `DW_V2_ALL_NAMESPACES=true`.
+
+Führen Sie jeden Namespace auf, in dem die App Workflows startet, plant oder signalisiert. Andernfalls warten deren Tasks und Zeitpläne auf eine App, die sie bedient. Die Allowlist verhindert, dass eine App die Arbeit einer anderen mit falschem Code oder falschen Zugangsdaten ausführt. Sie ist keine Mandantenisolation: Apps, die sich eine Datenbank teilen, können weiterhin die Zeilen der anderen lesen. Abgelehnte Arbeit wird in `namespace_scope_refusals` gezählt, siehe [Monitoring](../monitoring.md#stuck-run-metrics).
+
 ### Namespace-Beschränkung in Waterline {#waterline-namespace-scoping}
 
 Wenn Waterline auf einer gemeinsamen Datenbank mit mehreren Namespaces

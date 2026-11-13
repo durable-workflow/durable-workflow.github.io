@@ -371,6 +371,9 @@ Tokens belong to the namespace and filter selection. Start again without a token
 | `dw task-queue:build-ids <queue>` | Inspect per-build-id cohort state and rollout status for one queue. | `--json` |
 | `dw task-queue:drain <queue>` | Mark a build-id cohort as draining so it stops claiming new tasks. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Clear a previous drain so the cohort can claim new tasks again. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | Hold new activity dispatch on one task queue until it is resumed. | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | Resume activity dispatch on a paused task queue. | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | Show whether activity dispatch is paused, and who paused or resumed it, when and why. | `--json` |
 
 The task queue commands are the preferred operator view for throttling,
 capacity, and no-worker diagnoses. See
@@ -385,6 +388,34 @@ target the cohort of workers registered without a `build_id`. Combining the
 two fails fast with an invalid-option error. Both commands are idempotent:
 repeated drains do not shift the recorded `drained_at` timestamp, and
 resuming an already-active cohort is a no-op.
+
+`dw task-queue:pause-activities`, `dw task-queue:resume-activities` and
+`dw task-queue:activity-dispatch` (CLI 2.7.0 and later) pause, resume and show
+activity dispatch on one task queue of the selected namespace, for example
+during a downstream outage:
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+While a queue is paused, no activity task on it is leased. Ready tasks stay
+ready and keep their attempt count, activities already running finish, and
+activity deadlines keep running, so a schedule-to-start or schedule-to-close
+timeout still fires. Workflow tasks, signals, queries and updates are
+delivered as before. `--reason` takes up to 1000 characters. Pause and resume
+are idempotent: `--json` returns the Server's `outcome` (`paused`,
+`already_paused`, `resumed` or `not_paused`) with the `activity_dispatch`
+state. A pause is not a build-id drain: to stop one build's workers, use
+`dw task-queue:drain`.
+
+The three commands need a Server that advertises
+`capabilities.task_queue_activity_dispatch_pause` (native Server 3.8.0 or
+later). On any other Server, including published PHP Server 2.x, `dw` exits
+with code `8` before sending the request. `dw task-queue:describe` and
+`dw task-queue:list` show the activity dispatch state when the Server reports
+it.
 
 ## Worker Protocol Commands
 
@@ -558,6 +589,7 @@ All commands use the stable exit-code policy documented in the
 | `5` | Resource not found. |
 | `6` | Server-side `5xx` failure. |
 | `7` | Timeout. |
+| `8` | Compatibility failure: the command refused before sending the request. |
 
 For support bundles, collect `dw doctor --output=json`, `dw server:info
 --output=json`, and `dw debug workflow <workflow-id> --output=json`.

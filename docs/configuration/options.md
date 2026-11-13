@@ -167,6 +167,21 @@ $controlPlane->start('order-processing', 'order-12345', [
 
 When no namespace is configured and none is passed explicitly, new instances retain a `null` namespace. A namespace-scoped observer does not include those runs. Changing configuration does not reassign existing instances. Starting an existing instance through a different namespace is rejected.
 
+### Which namespaces an app runs {#namespace-allowlist}
+
+From Workflow 2.27, an embedded app repairs and runs work only in the namespaces it serves. This covers the watchdog, task repair, run and activity deadlines, `workflow:v2:schedule-tick`, and the queued workflow, activity, timer and service-call jobs. A queued job for another namespace is skipped before it has any effect, and a warning is logged.
+
+```env
+DW_V2_NAMESPACE=production
+DW_V2_NAMESPACES=production,billing
+```
+
+- When `DW_V2_NAMESPACES` is unset, the app serves exactly `DW_V2_NAMESPACE`, so a single-namespace app needs no change.
+- When it is set, the app serves exactly the listed namespaces, so include `DW_V2_NAMESPACE` itself. `default` names the unscoped namespace. An empty value serves none, and `*` is refused.
+- A process that repairs or ticks every namespace in the database, such as a standalone server, sets `DW_V2_ALL_NAMESPACES=true` instead.
+
+List every namespace the app starts, schedules or signals workflows in. Otherwise their tasks and schedules wait for an app that serves them. The allowlist keeps one app from running another app's work with the wrong code or credentials. It isn't tenant isolation: apps that share a database can still read each other's rows. Refused work is counted in `namespace_scope_refusals`; see [Monitoring](../monitoring.md#stuck-run-metrics).
+
 ### Waterline namespace scoping
 
 When Waterline is deployed against a shared database with multiple namespaces, set `WATERLINE_NAMESPACE` to restrict all list views to one namespace:

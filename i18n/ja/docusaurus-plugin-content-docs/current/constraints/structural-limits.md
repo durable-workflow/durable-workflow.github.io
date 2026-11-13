@@ -252,7 +252,8 @@ v2 のヘルススナップショットの `structural_limits` に現在の設�
 
 | 制限 | 既定値 | 設定キー | 制限するもの |
 |---|---|---|---|
-| 本文サイズ | 2 MiB | `server.limits.max_payload_bytes` | HTTP 本文の総バイト数 |
+| 本文サイズ | 2 MiB | `server.limits.max_payload_bytes` | HTTP 本文の総バイト数。ただし native Server 3.6.0 以降のワークフロータスク完了を除く（次の行） |
+| ワークフロータスク完了サイズ | 32 MiB（本文サイズの 16 倍） | `server.limits.max_payload_bytes` から算出 | native Server 3.6.0 以降：コマンド付きでワークフロータスクを完了するリクエスト。各コマンドの引数には引き続きペイロードごとの上限が適用される |
 | メモサイズ | 256 KiB | `server.limits.max_memo_bytes` | `POST /workflows` と `POST /schedules` のシリアライズ済みメモ |
 | 検索属性数 | 100 | `server.limits.max_search_attributes` | 名前空間の登録済みカスタム属性数 |
 | 検索属性キー長 | 128バイト | `server.limits.max_search_attribute_key_length` | 開始時の単一 SA キー長 |
@@ -283,3 +284,15 @@ v2 のヘルススナップショットの `structural_limits` に現在の設�
 ```
 
 検証エラーは標準形式で `reason: "validation_failed"` と、該当フィールド（`signal_name`、`update_name`、`query_name`、`search_attributes`、`memo` など）をキーにした `validation_errors` を返します。サイズ拒否は `reason: "payload_too_large"` と `413` です。
+
+### ワークフロータスク完了サイズ {#workflow-task-completion-size}
+
+native Server 3.6.0 以降では、コマンド付きでワークフロータスクを完了するリクエスト（`POST /api/worker/workflow-tasks/{id}/complete` と `POST /api/worker/activity-tasks/{id}/continuation/complete`）は `max_payload_bytes` の 16 倍まで許可されます。既定の 2 MiB なら 32 MiB です。この上限は `DW_MAX_PAYLOAD_BYTES` に従い、専用の設定はありません。完了の中でも、各コマンドの引数には引き続きペイロードごとの上限が適用されます。PHP Server 2.x と以前の native リリースは、他のリクエストと同じく完了を 1 ペイロード分の上限に制限します。
+
+それより大きい完了は、何も記録される前に `413 payload_too_large` と `limit_kind: workflow_task_completion_bytes` で拒否されます。タスクをリプレイしても同じコマンドが生成されるため、完了を再送しても同じ拒否になります。PHP SDK 3.17.0 以降はこれを再送しません。Worker は `Structural limit exceeded: workflow_task_completion_bytes:` で始まり両方のサイズを示すメッセージの `fail_workflow` コマンドで実行を一度だけ失敗させ、Server はその失敗を `failure_category = structural_limit` として記録します。Python と Rust の SDK も次のリリースで同じ動作になります。
+
+完了を上限内に収めるには：
+
+- 大きなファンアウトを、複数のワークフロータスクにまたがる小さなバッチに分割します。
+- 処理を子ワークフローに移すか、continue-as-new を使います。
+- 大きな引数は外部ペイロードストレージに保存し、完了にはペイロードではなく参照を含めます。
