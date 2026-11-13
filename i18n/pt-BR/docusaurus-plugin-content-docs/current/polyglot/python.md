@@ -418,12 +418,19 @@ o procedimento completo; os equivalentes CLI são `dw task-queue:build-ids`,
 | `await client.export_history(workflow_id, run_id)` | payload de histórico de arquivo decodificado | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, erros de autenticação/servidor |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | resultado de consulta decodificado | `QueryFailed`, `WorkflowNotFound`, erros de autenticação/servidor |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | resultado de atualização decodificado | `UpdateRejected`, `WorkflowNotFound`, erros de autenticação/servidor |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | recibo de atualização (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | saída decodificada do workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`update_workflow` usa `wait_for="accepted"` por padrão. Seu recibo pode conter
+`update_status="accepted"` e `result=None`. Com `wait_for="completed"`,
+`wait_timeout_seconds` limita a espera. Quando ela expira, o recibo continua
+aceito e define `wait_timed_out=True`. Somente `update_status="completed"`
+identifica um resultado concluído, inclusive `None`. Guarde `update_id` para
+[ler o resultado mais tarde](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
 
 `start_workflow` aceita `workflow_type`, `task_queue`, `workflow_id` opcional,
 `input` opcional, `duplicate_policy`, `memo`, `search_attributes`,

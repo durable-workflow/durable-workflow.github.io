@@ -412,12 +412,20 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 | `await client.export_history(workflow_id, run_id)` | декодований архівний payload історії | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, помилки автентифікації/Server |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | декодований результат query | `QueryFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | декодований результат update | `UpdateRejected`, `WorkflowNotFound`, помилки автентифікації/Server |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | підтвердження update (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | декодований результат workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`update_workflow` за замовчуванням використовує `wait_for="accepted"`.
+Підтвердження може містити `update_status="accepted"` і `result=None`. З
+`wait_for="completed"` параметр `wait_timeout_seconds` обмежує час очікування.
+Після його спливу підтвердження залишається прийнятим і встановлює
+`wait_timed_out=True`. Лише `update_status="completed"` означає завершений
+результат, зокрема `None`. Збережіть `update_id`, щоб
+[прочитати результат пізніше](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
 
 `start_workflow` приймає `workflow_type`, `task_queue`, необов'язкові
 `workflow_id`, `input`, `duplicate_policy`, `memo`, `search_attributes`,

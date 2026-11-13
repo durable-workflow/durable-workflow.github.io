@@ -345,12 +345,14 @@ driver = external_storage_driver_from_policy(
 | `await client.export_history(workflow_id, run_id)` | デコード済みアーカイブ履歴ペイロード | `WorkflowNotFound`、認証・Server エラー |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`、`InvalidArgument`、認証・Server エラー |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | デコード済みクエリ結果 | `QueryFailed`、`WorkflowNotFound`、認証・Server エラー |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | デコード済み更新結果 | `UpdateRejected`、`WorkflowNotFound`、認証・Server エラー |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | 更新レシート（`dict`） | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`、`WorkflowNotFound`、認証・Server エラー |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | デコード済みワークフロー出力 | `WorkflowFailed`、`WorkflowCancelled`、`WorkflowTerminated`、`TimeoutError` |
+
+`update_workflow` の既定は `wait_for="accepted"` です。レシートは `update_status="accepted"` と `result=None` を含む場合があります。`wait_for="completed"` では、`wait_timeout_seconds` が待機時間を制限します。期限が切れると、レシートは受け付け済みのまま `wait_timed_out=True` を設定します。`None` を含む完了した結果は、`update_status="completed"` でのみ識別できます。`update_id` を保持し、[後から結果を読み取ってください](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 
 `start_workflow` は `workflow_type`、`task_queue`、任意の `workflow_id`、`input`、`duplicate_policy`、`memo`、`search_attributes`、`business_key`、`execution_timeout_seconds`、`run_timeout_seconds` を受け入れます。呼び出し元のすべてのペイロードは HTTP 境界を越える前に Avro エンベロープ化します。
 

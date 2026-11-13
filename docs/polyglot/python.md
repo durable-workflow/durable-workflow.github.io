@@ -463,12 +463,19 @@ end-to-end rollout walkthrough; the CLI mirrors of these methods are
 | `await client.export_history(workflow_id, run_id)` | decoded archival history payload | `WorkflowNotFound`, auth/server errors |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, auth/server errors |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | decoded query result | `QueryFailed`, `WorkflowNotFound`, auth/server errors |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | decoded update result | `UpdateRejected`, `WorkflowNotFound`, auth/server errors |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | update receipt (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, auth/server errors |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, auth/server errors |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, auth/server errors |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, auth/server errors |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, auth/server errors |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | decoded workflow output | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`update_workflow` defaults to `wait_for="accepted"`. Its receipt can have
+`update_status="accepted"` and `result=None`. With `wait_for="completed"`,
+`wait_timeout_seconds` bounds the wait. On expiry, the receipt stays accepted
+and sets `wait_timed_out=True`. Only `update_status="completed"` identifies a
+finished result, including `None`. Keep `update_id` for
+[later outcome reads](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
 
 `start_workflow` accepts `workflow_type`, `task_queue`, optional
 `workflow_id`, optional `input`, `duplicate_policy`, `memo`,
