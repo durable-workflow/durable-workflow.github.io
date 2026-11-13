@@ -142,6 +142,10 @@ Ein abgeschlossenes null-Ergebnis ist `Ok(Value::Null)`. Ergebnisbestätigungen
 erhalten den expliziten `update_status`. Die Rust-Schnittstelle steht in der
 [Client-API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
 
+Rust SDK 4.15.0 wendet die gewöhnliche Payload-Grenze weiterhin auf den ganzen
+Befehlsbatch an. Beachten Sie die [bekannte Planergrenze](./server-config-reference.md#rust-completion-planning),
+bevor Sie einen großen Fan-out ohne externen Payload-Speicher ausführen.
+
 ## Fristen für Bedingungswarteoperationen und Worker-Upgrades {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 misst das Timeout eines nicht gruppierten `wait_condition`

@@ -141,6 +141,10 @@ resultado null concluído é `Ok(Value::Null)`. Os recibos preservam o
 `update_status` explícito. Veja a [API de Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
 para a interface de Rust.
 
+O Rust SDK 4.15.0 ainda aplica o teto comum de payload ao lote inteiro de
+comandos. Veja o [limite conhecido do planejador](./server-config-reference.md#rust-completion-planning)
+antes de um fan-out grande sem armazenamento externo de payloads.
+
 ## Prazos de espera de condições e atualização de workers {#condition-wait-deadlines}
 
 O SDK Rust 4.11.2 mede o timeout de um `wait_condition` fora de um grupo

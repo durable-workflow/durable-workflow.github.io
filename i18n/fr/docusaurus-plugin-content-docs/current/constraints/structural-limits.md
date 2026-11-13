@@ -260,61 +260,10 @@ Le contrat complet figure dans la section `structural_limits` de la réponse des
 
 Waterline affiche les échecs de limite structurelle dans la table des exceptions avec la catégorie `structural_limit`. Les détails d’échec de la chronologie incluent le type de limite, la valeur courante et le plafond configuré.
 
-## Limites à l’entrée des requêtes Server {#server-request-boundary-limits}
+## Limites du mode service {#server-request-boundary-limits}
 
-Avec le serveur autonome, un ensemble distinct de limites s’applique à l’entrée des requêtes HTTP, avant qu’une tâche de workflow, un signal, une mise à jour ou une requête de lecture atteigne le plan de contrôle. Ces contrôles renvoient immédiatement `422 validation_failed`, ou `413 payload_too_large` pour la taille du corps entier. Le client connaît ainsi le motif du refus sans qu’aucune ligne soit écrite en base.
-
-| Limite | Valeur par défaut | Clé de configuration | Ce qu’elle plafonne |
-|---|---|---|---|
-| Taille du corps | 2 MiB | `server.limits.max_payload_bytes` | Nombre total d’octets du corps HTTP, sauf pour un achèvement de tâche de workflow sur Server natif 3.6.0 ou ultérieur (ligne suivante) |
-| Taille d’un achèvement de tâche de workflow | 32 MiB (16 × taille du corps) | dérivée de `server.limits.max_payload_bytes` | Server natif 3.6.0 ou ultérieur : une requête qui achève une tâche de workflow avec des commandes. Les arguments de chaque commande respectent toujours la limite par payload |
-| Taille du mémo | 256 KiB | `server.limits.max_memo_bytes` | Mémo sérialisé sur `POST /workflows` et `POST /schedules` |
-| Nombre d’attributs de recherche | 100 | `server.limits.max_search_attributes` | Attributs personnalisés enregistrés par espace de noms |
-| Longueur de clé d’attribut de recherche | 128 octets | `server.limits.max_search_attribute_key_length` | Longueur d’une clé d’attribut au démarrage |
-| Taille de valeur d’attribut de recherche | 2 KiB | `server.limits.max_search_attribute_value_bytes` | Chaque valeur chaîne et chaque élément d’un tableau au démarrage |
-| Nom de signal / mise à jour / requête de lecture | 256 octets | `server.limits.max_operation_name_length` | Segment d’URL des noms de signal, mise à jour ou requête de lecture |
-| Longueur de `workflow_id` | 128 caractères | validateur du contrôleur | Identifiant du workflow sur `POST /workflows` |
-| `workflow_type` / `task_queue` / `business_key` | 255 caractères | validateur du contrôleur | Champs chaîne sur `POST /workflows` |
-| `request_id` | 255 caractères | validateur du contrôleur | Jeton de déduplication des signaux/mises à jour/annulations/arrêts forcés |
-| `reason` | 1 000 caractères | validateur du contrôleur | Motif des annulations/arrêts forcés/archivages |
-
-Chaque limite se configure individuellement via des variables d’environnement `DW_*`. Consultez `config/dw-contract.php` pour le contrat complet. La valeur `0` désactive le contrôle de cette limite précise, sans désactiver les autres.
-
-Les valeurs actuellement configurées sont publiées sous `limits` dans la réponse de `GET /api/cluster/info`, pour permettre leur découverte par les clients :
-
-```json
-{
-  "limits": {
-    "max_payload_bytes": 2097152,
-    "max_memo_bytes": 262144,
-    "max_search_attributes": 100,
-    "max_search_attribute_key_length": 128,
-    "max_search_attribute_value_bytes": 2048,
-    "max_operation_name_length": 256,
-    "max_pending_activities": 2000,
-    "max_pending_children": 2000
-  }
-}
-```
-
-Les erreurs de validation utilisent l’enveloppe d’erreur standard du plan de contrôle avec `reason: "validation_failed"` et une table `validation_errors` indexée par champ en cause (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, etc.). Les refus de taille utilisent `reason: "payload_too_large"` et le code `413`.
+Les limites HTTP de Server et Cloud sont distinctes de ces contrôles Laravel embarqués. Consultez la [référence des requêtes du Server](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
 ### Taille d’un achèvement de tâche de workflow {#workflow-task-completion-size}
 
-Sur Server natif 3.6.0 et ultérieur, une requête qui achève une tâche de workflow avec des commandes (`POST /api/worker/workflow-tasks/{id}/complete` et `POST /api/worker/activity-tasks/{id}/continuation/complete`) peut atteindre 16 fois `max_payload_bytes` : 32 MiB avec la valeur par défaut de 2 MiB. Elle suit `DW_MAX_PAYLOAD_BYTES` et n’a pas de réglage propre. Les arguments de chaque commande respectent toujours la limite par payload à l’intérieur de l’achèvement. Server PHP 2.x et les versions natives antérieures limitent un achèvement à une limite de payload, comme toute autre requête.
-
-Un achèvement plus grand est refusé avec `413 payload_too_large` et `limit_kind: workflow_task_completion_bytes` avant tout enregistrement. Rejouer la tâche produit les mêmes commandes : renvoyer l’achèvement obtient donc le même refus. Lorsque PHP SDK 3.17.0 ou ultérieur reçoit ce refus typé, il ne renvoie pas cet achèvement : le worker fait échouer l’exécution une seule fois avec une commande `fail_workflow` dont le message commence par `Structural limit exceeded: workflow_task_completion_bytes:` et indique les deux tailles, et le Server enregistre l’échec avec `failure_category = structural_limit`.
-
-Python SDK 2.17 et Rust SDK 4.15 gèrent le refus typé. Sur Server 3.8.0, une
-complétion trop volumineuse peut échouer au niveau du transport avant que le
-worker reçoive HTTP 413. Dans le test avec le SDK Python publié,
-`httpx.ReadError` a laissé le workflow en attente au lieu d'un échec pour limite
-structurelle. La qualification des requêtes surdimensionnées sur le Server
-publié reste ouverte dans la [correction de la réponse du Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
-Réduisez les complétions jusqu'à la qualification de ce chemin.
-
-Pour garder un achèvement sous la limite :
-
-- Découpez un fan-out important en lots plus petits répartis sur plusieurs tâches de workflow.
-- Déplacez du travail dans des workflows enfants, ou utilisez continue-as-new.
-- Stockez les arguments volumineux dans le stockage externe des payloads, afin que l’achèvement transporte des références au lieu des payloads.
+Les limites de complétion et le traitement des refus des SDK en mode service figurent dans la [référence du Server](../polyglot/server-config-reference.md#workflow-task-completion-size).

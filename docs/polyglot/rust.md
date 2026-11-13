@@ -148,6 +148,10 @@ is `Ok(Value::Null)`. Receipt reads preserve the explicit `update_status`.
 See the [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
 for the Rust interface.
 
+Rust SDK 4.15.0 still applies the ordinary payload ceiling to the whole
+command batch. See the [known planner limit](./server-config-reference.md#rust-completion-planning)
+before running a large fan-out without external payload storage.
+
 ## Condition wait deadlines and worker upgrades {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 measures an ungrouped `wait_condition` timeout from its first

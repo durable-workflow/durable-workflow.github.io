@@ -83,6 +83,8 @@ Server はメジャー `1` 内で Worker プロトコルヘッダーをネゴシ
 
 Rust SDK 4.15 では、受け付け済みの更新を ID で読み取り、再送信を避ける `Client::update_outcome` と `Client::update_outcome_receipt` が追加されました。これらには `capabilities.update_outcome_reads`（native Server 3.6.0 以降）が必要です。`update_outcome` は未完了の更新に対して `Error::UpdateStillPending` を返します。完了した null の結果は `Ok(Value::Null)` です。レシートは明示的な `update_status` を保持します。Rust のインターフェースは [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome) を参照してください。
 
+Rust SDK 4.15.0 は、通常のペイロード上限をコマンドバッチ全体に適用します。外部ペイロードストレージなしで大きなファンアウトを実行する前に、[既知の計画上限](./server-config-reference.md#rust-completion-planning)を確認してください。
+
 ## 条件待機の期限と Worker のアップグレード {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 は、グループに含まれない `wait_condition` のタイムアウトを

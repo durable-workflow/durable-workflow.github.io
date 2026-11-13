@@ -141,6 +141,10 @@ Rust SDK 4.15 додає `Client::update_outcome` і
 null має вигляд `Ok(Value::Null)`. Підтвердження зберігають явний `update_status`.
 Інтерфейс Rust описано в [API Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
 
+Rust SDK 4.15.0 ще застосовує звичайну межу payload до всього пакета команд.
+Див. [відоме обмеження планувальника](./server-config-reference.md#rust-completion-planning)
+перед великим fan-out без зовнішнього сховища payload.
+
 ## Строки очікування умови та оновлення worker {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 відлічує тайм-аут для `wait_condition` поза групою від першого

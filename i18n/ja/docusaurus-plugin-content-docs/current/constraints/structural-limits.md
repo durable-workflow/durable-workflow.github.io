@@ -246,55 +246,10 @@ v2 のヘルススナップショットの `structural_limits` に現在の設�
 
 例外テーブルに失敗分類 `structural_limit` を表示します。タイムラインの詳細は制限種別、現在値、設定上限を含みます。
 
-## Server のリクエスト境界の制限 {#server-request-boundary-limits}
+## Service Mode の上限 {#server-request-boundary-limits}
 
-独立 Server は、タスク、シグナル、更新、クエリがコントロールプレーンに達する前に HTTP 境界で別の上限を適用します。データベース行を書かずに `422 validation_failed`（本文全体は `413 payload_too_large`）で直ちに拒否し、原因を知らせます。
-
-| 制限 | 既定値 | 設定キー | 制限するもの |
-|---|---|---|---|
-| 本文サイズ | 2 MiB | `server.limits.max_payload_bytes` | HTTP 本文の総バイト数。ただし native Server 3.6.0 以降のワークフロータスク完了を除く（次の行） |
-| ワークフロータスク完了サイズ | 32 MiB（本文サイズの 16 倍） | `server.limits.max_payload_bytes` から算出 | native Server 3.6.0 以降：コマンド付きでワークフロータスクを完了するリクエスト。各コマンドの引数には引き続きペイロードごとの上限が適用される |
-| メモサイズ | 256 KiB | `server.limits.max_memo_bytes` | `POST /workflows` と `POST /schedules` のシリアライズ済みメモ |
-| 検索属性数 | 100 | `server.limits.max_search_attributes` | 名前空間の登録済みカスタム属性数 |
-| 検索属性キー長 | 128バイト | `server.limits.max_search_attribute_key_length` | 開始時の単一 SA キー長 |
-| 検索属性値サイズ | 2 KiB | `server.limits.max_search_attribute_value_bytes` | 開始時の各文字列（配列は各要素） |
-| シグナル・更新・クエリ名 | 256バイト | `server.limits.max_operation_name_length` | 名前の URL パスセグメント |
-| `workflow_id` 長 | 128文字 | コントローラーの検証 | `POST /workflows` の ID |
-| `workflow_type` / `task_queue` / `business_key` | 255文字 | コントローラーの検証 | `POST /workflows` の文字列 |
-| `request_id` | 255文字 | コントローラーの検証 | シグナル・更新・キャンセル・強制終了の重複排除トークン |
-| `reason` | 1,000文字 | コントローラーの検証 | キャンセル・強制終了・アーカイブの理由 |
-
-各上限は `DW_*` 環境変数で個別に設定できます（全契約は `config/dw-contract.php`）。`0` はその制限のみ無効にし、他は維持します。
-
-`GET /api/cluster/info` の `limits` に現在値を公開し、クライアントが実行時に確認できます。
-
-```json
-{
-  "limits": {
-    "max_payload_bytes": 2097152,
-    "max_memo_bytes": 262144,
-    "max_search_attributes": 100,
-    "max_search_attribute_key_length": 128,
-    "max_search_attribute_value_bytes": 2048,
-    "max_operation_name_length": 256,
-    "max_pending_activities": 2000,
-    "max_pending_children": 2000
-  }
-}
-```
-
-検証エラーは標準形式で `reason: "validation_failed"` と、該当フィールド（`signal_name`、`update_name`、`query_name`、`search_attributes`、`memo` など）をキーにした `validation_errors` を返します。サイズ拒否は `reason: "payload_too_large"` と `413` です。
+Server と Cloud の HTTP リクエスト上限は、ここで説明する組み込み Laravel の制御とは別です。[Server のリクエストリファレンス](../polyglot/server-config-reference.md#server-request-boundary-limits)を参照してください。
 
 ### ワークフロータスク完了サイズ {#workflow-task-completion-size}
 
-native Server 3.6.0 以降では、コマンド付きでワークフロータスクを完了するリクエスト（`POST /api/worker/workflow-tasks/{id}/complete` と `POST /api/worker/activity-tasks/{id}/continuation/complete`）は `max_payload_bytes` の 16 倍まで許可されます。既定の 2 MiB なら 32 MiB です。この上限は `DW_MAX_PAYLOAD_BYTES` に従い、専用の設定はありません。完了の中でも、各コマンドの引数には引き続きペイロードごとの上限が適用されます。PHP Server 2.x と以前の native リリースは、他のリクエストと同じく完了を 1 ペイロード分の上限に制限します。
-
-それより大きい完了は、何も記録される前に `413 payload_too_large` と `limit_kind: workflow_task_completion_bytes` で拒否されます。タスクをリプレイしても同じコマンドが生成されるため、完了を再送しても同じ拒否になります。PHP SDK 3.17.0 以降は、この型付き拒否を受信した場合、完了リクエストを再送しません。Worker は `Structural limit exceeded: workflow_task_completion_bytes:` で始まり両方のサイズを示すメッセージの `fail_workflow` コマンドで実行を一度だけ失敗させ、Server はその失敗を `failure_category = structural_limit` として記録します。
-
-Python SDK 2.17 と Rust SDK 4.15 は型付き拒否の処理に対応しています。Server 3.8.0 では、大きすぎる完了リクエストが、Worker に HTTP 413 が届く前にトランスポート層で失敗することがあります。公開済み Python SDK のテストでは、`httpx.ReadError` により、ワークフローは構造上限による失敗にならず、保留中のままでした。公開済み Server での上限超過リクエストの受け入れ検証は、[Server の応答修正](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)で引き続き対応中です。この経路の適格性が確認されるまでは、完了リクエストを小さくしてください。
-
-完了を上限内に収めるには：
-
-- 大きなファンアウトを、複数のワークフロータスクにまたがる小さなバッチに分割します。
-- 処理を子ワークフローに移すか、continue-as-new を使います。
-- 大きな引数は外部ペイロードストレージに保存し、完了にはペイロードではなく参照を含めます。
+Service Mode の完了上限と SDK による拒否処理は、[Server リファレンス](../polyglot/server-config-reference.md#workflow-task-completion-size)で説明しています。

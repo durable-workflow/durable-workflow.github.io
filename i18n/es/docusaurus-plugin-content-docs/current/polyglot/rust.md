@@ -90,6 +90,10 @@ si la actualización no ha terminado. Un resultado null completado es
 la [API de Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
 para conocer la interfaz de Rust.
 
+Rust SDK 4.15.0 aún aplica el límite habitual de carga a todo el lote de
+comandos. Consulte el [límite conocido del planificador](./server-config-reference.md#rust-completion-planning)
+antes de ejecutar un fan-out grande sin almacenamiento externo de cargas.
+
 ## Plazos de espera de condiciones y actualización de workers {#condition-wait-deadlines}
 
 El SDK Rust 4.11.2 mide el timeout de un `wait_condition` fuera de un grupo
