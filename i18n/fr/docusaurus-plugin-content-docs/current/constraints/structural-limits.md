@@ -266,7 +266,8 @@ Avec le serveur autonome, un ensemble distinct de limites s’applique à l’en
 
 | Limite | Valeur par défaut | Clé de configuration | Ce qu’elle plafonne |
 |---|---|---|---|
-| Taille du corps | 2 MiB | `server.limits.max_payload_bytes` | Nombre total d’octets du corps HTTP |
+| Taille du corps | 2 MiB | `server.limits.max_payload_bytes` | Nombre total d’octets du corps HTTP, sauf pour un achèvement de tâche de workflow sur Server natif 3.6.0 ou ultérieur (ligne suivante) |
+| Taille d’un achèvement de tâche de workflow | 32 MiB (16 × taille du corps) | dérivée de `server.limits.max_payload_bytes` | Server natif 3.6.0 ou ultérieur : une requête qui achève une tâche de workflow avec des commandes. Les arguments de chaque commande respectent toujours la limite par payload |
 | Taille du mémo | 256 KiB | `server.limits.max_memo_bytes` | Mémo sérialisé sur `POST /workflows` et `POST /schedules` |
 | Nombre d’attributs de recherche | 100 | `server.limits.max_search_attributes` | Attributs personnalisés enregistrés par espace de noms |
 | Longueur de clé d’attribut de recherche | 128 octets | `server.limits.max_search_attribute_key_length` | Longueur d’une clé d’attribut au démarrage |
@@ -297,3 +298,15 @@ Les valeurs actuellement configurées sont publiées sous `limits` dans la répo
 ```
 
 Les erreurs de validation utilisent l’enveloppe d’erreur standard du plan de contrôle avec `reason: "validation_failed"` et une table `validation_errors` indexée par champ en cause (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, etc.). Les refus de taille utilisent `reason: "payload_too_large"` et le code `413`.
+
+### Taille d’un achèvement de tâche de workflow {#workflow-task-completion-size}
+
+Sur Server natif 3.6.0 et ultérieur, une requête qui achève une tâche de workflow avec des commandes (`POST /api/worker/workflow-tasks/{id}/complete` et `POST /api/worker/activity-tasks/{id}/continuation/complete`) peut atteindre 16 fois `max_payload_bytes` : 32 MiB avec la valeur par défaut de 2 MiB. Elle suit `DW_MAX_PAYLOAD_BYTES` et n’a pas de réglage propre. Les arguments de chaque commande respectent toujours la limite par payload à l’intérieur de l’achèvement. Server PHP 2.x et les versions natives antérieures limitent un achèvement à une limite de payload, comme toute autre requête.
+
+Un achèvement plus grand est refusé avec `413 payload_too_large` et `limit_kind: workflow_task_completion_bytes` avant tout enregistrement. Rejouer la tâche produit les mêmes commandes : renvoyer l’achèvement obtient donc le même refus. PHP SDK 3.17.0 et ultérieur ne le renvoient jamais : le worker fait échouer l’exécution une seule fois avec une commande `fail_workflow` dont le message commence par `Structural limit exceeded: workflow_task_completion_bytes:` et indique les deux tailles, et le Server enregistre l’échec avec `failure_category = structural_limit`. Les SDK Python et Rust feront de même dans leurs prochaines versions.
+
+Pour garder un achèvement sous la limite :
+
+- Découpez un fan-out important en lots plus petits répartis sur plusieurs tâches de workflow.
+- Déplacez du travail dans des workflows enfants, ou utilisez continue-as-new.
+- Stockez les arguments volumineux dans le stockage externe des payloads, afin que l’achèvement transporte des références au lieu des payloads.

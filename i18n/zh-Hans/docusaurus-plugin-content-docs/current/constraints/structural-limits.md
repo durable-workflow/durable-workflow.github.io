@@ -252,7 +252,8 @@ Waterline 在异常表中以 `structural_limit` 故障类别展示结构限制�
 
 | 限制 | 默认值 | 配置键 | 约束对象 |
 |---|---|---|---|
-| 请求体大小 | 2 MiB | `server.limits.max_payload_bytes` | HTTP 请求体的总字节数 |
+| 请求体大小 | 2 MiB | `server.limits.max_payload_bytes` | HTTP 请求体的总字节数；原生 Server 3.6.0 及以上的工作流任务完成请求除外（见下一行） |
+| 工作流任务完成大小 | 32 MiB（请求体大小的 16 倍） | 由 `server.limits.max_payload_bytes` 推导 | 原生 Server 3.6.0 及以上：带命令完成工作流任务的请求。每个命令的参数仍须符合单个载荷上限 |
 | memo 大小 | 256 KiB | `server.limits.max_memo_bytes` | `POST /workflows` 和 `POST /schedules` 中序列化的 memo |
 | 搜索属性数量 | 100 | `server.limits.max_search_attributes` | 每个命名空间注册的自定义搜索属性数 |
 | 搜索属性键长度 | 128 字节 | `server.limits.max_search_attribute_key_length` | 启动时单个搜索属性键的长度 |
@@ -283,3 +284,15 @@ Waterline 在异常表中以 `structural_limit` 故障类别展示结构限制�
 ```
 
 验证错误通过标准控制平面错误信封返回，包含 `reason: "validation_failed"` 和以出错字段（`signal_name`、`update_name`、`query_name`、`search_attributes`、`memo` 等）为键的 `validation_errors` 映射。载荷大小超限使用 `reason: "payload_too_large"` 和 `413` 状态码。
+
+### 工作流任务完成大小 {#workflow-task-completion-size}
+
+在原生 Server 3.6.0 及以上，带命令完成工作流任务的请求（`POST /api/worker/workflow-tasks/{id}/complete` 和 `POST /api/worker/activity-tasks/{id}/continuation/complete`）最多可达 `max_payload_bytes` 的 16 倍：默认 2 MiB 时为 32 MiB。该上限跟随 `DW_MAX_PAYLOAD_BYTES`，没有单独的设置。完成请求中每个命令的参数仍须符合单个载荷上限。PHP Server 2.x 和更早的原生版本与其他请求一样，将完成请求限制为一个载荷上限。
+
+更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上从不重新发送：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。Python 和 Rust SDK 将在下一个版本中采取相同做法。
+
+要让完成请求保持在上限之内：
+
+- 将大型扇出拆分为分布在多个工作流任务中的较小批次。
+- 将工作移到子工作流中，或使用 continue-as-new。
+- 将大型参数存入外部载荷存储，使完成请求携带引用而不是载荷本身。

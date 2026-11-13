@@ -337,7 +337,8 @@ eine Datenbankzeile schreibt.
 
 | Grenze | Standard | Konfigurationsschlüssel | Was sie begrenzt |
 |---|---|---|---|
-| Anfragetextgröße | 2 MiB | `server.limits.max_payload_bytes` | Gesamtzahl der Bytes im HTTP-Anfragetext |
+| Anfragetextgröße | 2 MiB | `server.limits.max_payload_bytes` | Gesamtzahl der Bytes im HTTP-Anfragetext, außer bei einem Workflow-Task-Abschluss auf nativem Server 3.6.0 oder neuer (nächste Zeile) |
+| Größe eines Workflow-Task-Abschlusses | 32 MiB (16 × Anfragetextgröße) | abgeleitet von `server.limits.max_payload_bytes` | Nativer Server 3.6.0 oder neuer: eine Anfrage, die einen Workflow-Task mit Befehlen abschließt. Die Argumente jedes Befehls müssen weiterhin die Grenze pro Payload einhalten |
 | Memo-Größe | 256 KiB | `server.limits.max_memo_bytes` | Serialisiertes Memo auf `POST /workflows` und `POST /schedules` |
 | Anzahl der Suchattribute | 100 | `server.limits.max_search_attributes` | Registrierte eigene Suchattribute pro Namespace |
 | Suchattribut-Schlüssellänge | 128 Bytes | `server.limits.max_search_attribute_key_length` | Länge eines einzelnen SA-Schlüssels beim Start |
@@ -376,3 +377,15 @@ Validierungsfehler werden im Standard-Fehlerumschlag der Steuerungsebene mit
 zurückgegeben. Deren Schlüssel sind die betroffenen Felder (`signal_name`,
 `update_name`, `query_name`, `search_attributes`, `memo` usw.). Ablehnungen wegen
 der Payload-Größe verwenden `reason: "payload_too_large"` und Statuscode `413`.
+
+### Größe eines Workflow-Task-Abschlusses {#workflow-task-completion-size}
+
+Auf nativem Server 3.6.0 und neuer darf eine Anfrage, die einen Workflow-Task mit Befehlen abschließt (`POST /api/worker/workflow-tasks/{id}/complete` und `POST /api/worker/activity-tasks/{id}/continuation/complete`), bis zum 16-Fachen von `max_payload_bytes` groß sein: 32 MiB beim Standardwert von 2 MiB. Sie folgt `DW_MAX_PAYLOAD_BYTES` und hat keine eigene Einstellung. Die Argumente jedes Befehls müssen innerhalb des Abschlusses weiterhin die Grenze pro Payload einhalten. PHP-Server 2.x und frühere native Versionen begrenzen einen Abschluss wie jede andere Anfrage auf eine Payload-Grenze.
+
+Ein größerer Abschluss wird mit `413 payload_too_large` und `limit_kind: workflow_task_completion_bytes` abgelehnt, bevor etwas aufgezeichnet wird. Eine erneute Ausführung des Tasks erzeugt dieselben Befehle, daher führt erneutes Senden zur selben Ablehnung. PHP SDK 3.17.0 und neuer senden ihn nie erneut: Der Worker lässt den Lauf einmal mit einem `fail_workflow`-Befehl fehlschlagen, dessen Nachricht mit `Structural limit exceeded: workflow_task_completion_bytes:` beginnt und beide Größen nennt, und der Server zeichnet den Fehler mit `failure_category = structural_limit` auf. Die Python- und Rust-SDKs tun dasselbe in ihren nächsten Versionen.
+
+So bleibt ein Abschluss innerhalb der Grenze:
+
+- Teilen Sie ein großes Fan-out in kleinere Stapel über mehrere Workflow-Tasks auf.
+- Verlagern Sie Arbeit in Child-Workflows, oder verwenden Sie Continue-as-New.
+- Speichern Sie große Argumente im externen Payload-Speicher, sodass der Abschluss Referenzen statt der Payloads enthält.
