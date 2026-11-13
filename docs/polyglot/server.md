@@ -175,6 +175,8 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 The stack is the native Server and MySQL. Compose refuses to start until
 `DW_AUTH_TOKEN` is set. The [deployment guide](/docs/deployment#single-node-production)
 covers the production env file, backups and upgrades.
+Upgrades from native 3.8.x or earlier to 3.9.1 require the
+[explicit schema upgrade](../deployment.md#native-schema-upgrade-3-9) before restart.
 
 ### Ports
 

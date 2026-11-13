@@ -403,7 +403,7 @@ limit; child-call fields have stricter bounds than other commands.
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
 
-Native 3.8.0 and the corrected source also retain UTF-8 byte checks.
+Native 3.8.0 and 3.9.1 also retain UTF-8 byte checks.
 `activity_type`, `open_signal_wait.signal_name`, an explicit
 `schedule_activity.queue`, and `continue_as_new.workflow_type` / `queue`
 use a 255-byte parser ceiling (`422 invalid_request`). Child `workflow_type`
@@ -412,15 +412,14 @@ and `queue` have an additional 191-byte guard that can return
 128 copies of `é` is 256 bytes and is refused despite having only 128
 characters. The new character checks do not remove these byte guards.
 
-Native Server 3.8.0 does not consistently validate these command-name bounds
-before writes. SQLite can silently store over-long names; other backends can
-return database errors. The [source correction](https://github.com/durable-workflow/server/pull/1186)
-adds field-specific `422` refusals before writes, such as
-`commands.0.activity_type`, but awaits a qualified published Server release.
-The selected stable remains 3.8.0. Review existing activity types and signal
-waits longer than 191 characters before upgrading to that corrected release:
-new commands using those names will be refused. The remaining identifier
-sweep is tracked in [Server #607](https://github.com/durable-workflow/server/issues/607).
+Native Server 3.9.1 includes the [published correction](https://github.com/durable-workflow/server/releases/tag/3.9.1#other-changes):
+field-specific `422 validation_failed` refusals, such as
+`commands.0.activity_type`, before writes. Native 3.8.0 did not consistently
+validate these character bounds; SQLite could silently store over-long names
+while other backends could return database errors. Review existing activity
+types and signal waits longer than 191 characters before upgrading: new
+commands using those names are now refused. The remaining identifier sweep is
+tracked in [Server #607](https://github.com/durable-workflow/server/issues/607).
 The 256-byte HTTP operation-name ceiling above is a separate boundary.
 
 ### Workflow-task completion size {#workflow-task-completion-size}
@@ -434,6 +433,14 @@ still meet the per-payload limit inside the completion. PHP Server 2.x and
 earlier native releases cap a completion at one payload limit, like any other
 request.
 
+Native 3.9.1 advertises the actual positive integer budget as
+`limits.max_workflow_task_completion_bytes` in cluster info. It measures the
+complete encoded JSON request body, including envelopes, metadata and commands,
+for both completion routes. Use that advertised value rather than inferring a
+multiplier from the Server version or summing decoded arguments. Per-value and
+ordinary-route limits remain unchanged. The field grants no additional external
+payload upload or reference-placement authority.
+
 A larger completion is refused with `413 payload_too_large` and
 `limit_kind: workflow_task_completion_bytes` before anything is recorded.
 Replaying the task produces the same commands, so sending the completion again
@@ -444,19 +451,22 @@ sizes, and the Server records the failure with
 `failure_category = structural_limit`.
 
 Python SDK 2.17 and Rust SDK 4.15 include handling for the typed refusal.
-On Server 3.8.0, an oversized completion can fail at the transport before the
-worker receives HTTP 413. In the published Python test, `httpx.ReadError` left
-the workflow pending instead of failing structurally. Published-Server
-over-limit acceptance remains open under the
-[Server response fix](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
-Reduce completion sizes until that path is qualified.
+On Server 3.8.0, a published Python control hit `httpx.ReadError` before receiving
+HTTP 413 and left the workflow pending. Native 3.9.1 corrects that response
+path with bounded request discard: at most 64 MiB of remaining upload data for
+at most two seconds before returning the original refusal and closing the
+connection. Uploads beyond either bound may still encounter transport errors.
+Actual installed-SDK within-cap, over-cap and same-worker follow-up acceptance
+remains separately tracked in [shared #228](https://github.com/durable-workflow/.github/issues/228).
+Server publication alone does not qualify those SDK paths.
 
 To keep a completion within the limit:
 
 - Split a large fan-out into smaller batches across workflow tasks.
 - Move work into child workflows, or continue as new.
-- Store large arguments with external payload storage, so the completion
-  carries references instead of the payloads.
+- Use external payload storage only for supported payload placements.
+  Activity-continuation command arguments remain inline; an activity/result
+  upload allowance does not authorize references in those command arguments.
 
 #### Rust command planning {#rust-completion-planning}
 
