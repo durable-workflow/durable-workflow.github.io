@@ -49,7 +49,9 @@ class BookingSagaWorkflow extends Workflow
 
 ## 期限に応じた補償処理 {#deadline-driven-compensation}
 
-エンジンの[ワークフロータイムアウト](./timeouts.md#timeout-outcome-and-cleanup)は、ワークフローコードが補償を実行する前に実行を閉じます。`catch` や `finally` はこの動作を変えません。即時の `cancel()` と `terminate()` にもクリーンアップ猶予はありません。
+既定のハードタイムアウトの方針では、エンジンの[ワークフロータイムアウト](./timeouts.md#timeout-outcome-and-cleanup)は、ワークフローコードが補償を実行する前に実行を閉じます。`catch` や `finally` はこの動作を変えません。即時の `cancel()` と `terminate()` にもクリーンアップ猶予はありません。
+
+別の[実験的なタイムアウトクリーンアップオプション](./timeouts.md#timeout-cleanup)は、元のハード上限内に、割り込みで起動する補償ハンドラーの時間を予約できます。embedded queue worker 向けで、公開とインストール済みパッケージの検証はまだです。補償を自動化したり、worker 不在時の効果を保証したりするものではありません。
 
 タイムアウト時に完了済み作業を取り消したい場合は、アプリケーション側に早い期限を設けます。この組み込みワークフローはリソースを予約し、確認シグナルを最大 30 秒待ちます。待機が期限切れになるとコードが再開し、予約を解放してから業務結果 `expired` を返します。
 

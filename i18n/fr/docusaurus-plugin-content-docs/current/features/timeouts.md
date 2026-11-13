@@ -127,13 +127,56 @@ La ligne d’échec conserve `Workflow\V2\Exceptions\WorkflowTimeoutException` c
 
 ### État final et nettoyage après expiration {#timeout-outcome-and-cleanup}
 
-Une échéance de workflow ferme le run avec l’état `failed` et `closed_reason = timed_out`. `WorkflowTimedOut` est l’événement terminal. Le runtime enregistre `WorkflowTimeoutException` comme donnée d’échec. Il ne lève **pas** cette exception dans le corps du workflow et ne reprend pas son code pour le nettoyage. Les blocs `catch` et `finally`, ainsi que les compensations saga enregistrées, ne sont pas exécutés quand le moteur applique cette échéance.
+Avec la politique par défaut d’expiration stricte : Une échéance de workflow ferme le run avec l’état `failed` et `closed_reason = timed_out`. `WorkflowTimedOut` est l’événement terminal. Le runtime enregistre `WorkflowTimeoutException` comme donnée d’échec. Il ne lève **pas** cette exception dans le corps du workflow et ne reprend pas son code pour le nettoyage. Les blocs `catch` et `finally`, ainsi que les compensations saga enregistrées, ne sont pas exécutés quand le moteur applique cette échéance.
 
 Annuler l’exécution durable d’une activité n’annule pas un effet externe et ne prouve pas que son callback s’est arrêté. Utilisez des opérations idempotentes et une réconciliation gérée par l’application pour les effets qui ont peut-être déjà été validés.
 
 Si le nettoyage doit suivre une échéance applicative, utilisez un timer durable plus court ou une attente avec délai qui permet au workflow d’exécuter la [compensation avant la fermeture](./sagas.md#deadline-driven-compensation). Réservez du temps aux nouvelles tentatives d’activité, à la planification des workers et au nettoyage avant l’échéance du run ou l’échéance globale. Le délai moteur reste le dernier recours. Un worker retardé peut atteindre cette limite avant la fin de la compensation.
 
 Les commandes immédiates `cancel()` et `terminate()` ferment aussi le run sans fenêtre de nettoyage. L’opération coopérative distincte `requestCancellation()` peut accorder un nettoyage borné à un worker compatible tant que le run est actif. Un délai de workflow n’est pas automatiquement transformé en demande d’annulation coopérative, et un bouclier d’annulation ne prolonge aucune échéance globale ou de run. Voir [Annuler et terminer](./cancel-and-terminate.md) et [Annulation coopérative](../polyglot/cancellation.md).
+
+## Nettoyage expérimental déclenché par une échéance {#timeout-cleanup}
+
+**Prise en charge intégrée expérimentale non publiée.** Ce parcours vise Workflow 2.29.0 ; publication et qualification du paquet installé restent en attente. La version stable sélectionnée conserve le timeout strict par défaut décrit ci-dessus.
+
+Avant d’activer l’option, installez la version qualifiée, exécutez les migrations de l’application et déployez des workers de file intégrés compatibles. La nouvelle migration ajoute `workflow_runs.timeout_cleanup_work_deadline_at` ; elle n’active pas l’option sur les runs existants. Attendez la fin de la migration avant activation.
+
+```bash
+php artisan migrate
+```
+
+Réservez une partie finie du timeout strict existant au démarrage d’un run :
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
+    $orderId,
+    StartOptions::rejectDuplicate()
+        ->withExecutionTimeout(70)
+        ->withTimeoutCleanup(10),
+);
+```
+
+`timeoutCleanupSeconds:` est l’alternative du constructeur. La réserve doit être de 1–86400 secondes, nécessite un timeout d’exécution ou de run et doit être inférieure à chaque timeout strict configuré. `null` conserve la politique par défaut.
+
+Dans l’exemple, le travail ordinaire dispose de 60 secondes et le nettoyage peut utiliser les 10 dernières dans le plafond strict original de 70 secondes. La réserve n’ajoute jamais de temps après ce plafond. Si les deux échéances strictes s’appliquent, la première borne le nettoyage. Détection tardive, reprises, remplacement de worker et renouvellement de lease ne déplacent aucune échéance. Continue-as-new et redrive conservent la réserve admise et les horloges d’exécution originales ; chaque run dérive ses propres horloges.
+
+À l’échéance de travail, le run entre une fois en nettoyage et enregistre `WorkflowTimeoutCleanupStarted`. Le code compatible reçoit `WorkflowTimeoutCleanupRequested`, sous-type de `WorkflowCancellationRequestedException` avec `cause: timeout`. Traitez cette interruption pour exécuter les compensations de saga enregistrées ou le nettoyage protégé ; `compensate()` utilise son bouclier d’annulation. Ce bouclier ne prolonge pas le plafond strict. Voir [Sagas](./sagas.md#deadline-driven-compensation).
+
+Le nettoyage a un `timeout_cleanup.outcome` distinct :
+
+| Résultat | Signification |
+|---|---|
+| `completed` | Le nettoyage a renvoyé ou relancé l’interruption de timeout avant son échéance. La valeur renvoyée ne devient pas le résultat métier. |
+| `failed` | Le nettoyage a levé une autre exception ; `failure_id` relie son échec. |
+| `expired` | Le plafond strict est arrivé avant la fin, y compris lorsqu’aucun worker n’a pu exécuter le nettoyage. |
+| `preempted` | Un `cancel()` ou `terminate()` immédiat a interrompu le nettoyage ; le résultat d’annulation/terminaison correspondant reste terminal. |
+
+Un nettoyage terminé, échoué ou expiré laisse le statut métier `failed`, `closed_reason = timed_out` et `WorkflowTimedOut`. Une compensation réussie ne transforme pas le timeout en succès du workflow. Consultez describe, le détail du run et l’historique retenu pour les deux résultats. Des workers absents ou retardés ne garantissent pas l’effet externe du nettoyage ; gardez les compensations idempotentes et réconciliez les effets incertains dans l’application.
+
+Cet incrément ne prend en charge que les workers de file intégrés. Les démarrages poll et service refusent l’option ; les workers bridge ne peuvent pas acquérir un run intégré ayant opté pour elle. L’admission native et la livraison d’exécution par les SDK restent suivies dans [Server #1201](https://github.com/durable-workflow/server/issues/1201) ; le support du parser seul n’implémente pas le nettoyage après timeout.
 
 ## Bail d’une tâche de workflow {#workflow-task-lease}
 

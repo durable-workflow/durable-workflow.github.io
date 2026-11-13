@@ -51,7 +51,9 @@ Atividades são executadas pelo menos uma vez, então uma chamada de avanço pod
 
 ## Compensação por vencimento do prazo {#deadline-driven-compensation}
 
-Um [tempo limite de workflow](./timeouts.md#timeout-outcome-and-cleanup) aplicado pelo motor encerra a execução antes que seu código possa compensar. Um bloco `catch` ou `finally` não muda esse comportamento. Os comandos imediatos `cancel()` e `terminate()` também não dão tempo para a limpeza.
+Na política padrão de timeout rígido: Um [tempo limite de workflow](./timeouts.md#timeout-outcome-and-cleanup) aplicado pelo motor encerra a execução antes que seu código possa compensar. Um bloco `catch` ou `finally` não muda esse comportamento. Os comandos imediatos `cancel()` e `terminate()` também não dão tempo para a limpeza.
+
+A [opção experimental de limpeza por timeout](./timeouts.md#timeout-cleanup) pode reservar tempo dentro do limite rígido original para um handler de compensação acionado por interrupção. É suporte para workers de fila embutidos, com publicação e qualificação instalada ainda pendentes; não torna a compensação automática nem garante efeitos sem workers disponíveis.
 
 Use um prazo anterior da aplicação quando quiser desfazer o trabalho concluído ao esgotar o tempo. Este workflow incorporado reserva um recurso e espera até 30 segundos por um sinal de confirmação. Ao vencer, o código do workflow retoma, libera a reserva e retorna o resultado de negócio `expired`:
 

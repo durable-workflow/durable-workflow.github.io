@@ -51,7 +51,9 @@ Las actividades se ejecutan al menos una vez, así que una llamada de avance pue
 
 ## Compensación por vencimiento del plazo {#deadline-driven-compensation}
 
-Un [tiempo de espera de workflow](./timeouts.md#timeout-outcome-and-cleanup) aplicado por el motor cierra la ejecución antes de que su código pueda compensar. Un bloque `catch` o `finally` no cambia ese comportamiento. Las órdenes inmediatas `cancel()` y `terminate()` tampoco dan tiempo para la limpieza.
+Con la política predeterminada de timeout estricto: Un [tiempo de espera de workflow](./timeouts.md#timeout-outcome-and-cleanup) aplicado por el motor cierra la ejecución antes de que su código pueda compensar. Un bloque `catch` o `finally` no cambia ese comportamiento. Las órdenes inmediatas `cancel()` y `terminate()` tampoco dan tiempo para la limpieza.
+
+La [opción experimental de limpieza por timeout](./timeouts.md#timeout-cleanup) puede reservar tiempo dentro del límite estricto original para un manejador de compensación activado por una interrupción. Es soporte para workers de cola embebidos con publicación y cualificación instalada aún pendientes; no hace automática la compensación ni garantiza efectos sin workers disponibles.
 
 Use un plazo anterior de la aplicación cuando quiera revertir el trabajo completado al agotarse el tiempo. Este workflow integrado reserva un recurso y espera hasta 30 segundos una señal de confirmación. Al vencer, el código del workflow se reanuda, libera la reserva y devuelve el resultado de negocio `expired`:
 

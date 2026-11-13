@@ -181,7 +181,7 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 ```
 
 `timeoutCleanupSeconds:` is the constructor alternative. The allowance must be
-1–86,400 seconds, requires an execution or run timeout, and must be smaller than
+1–86400 seconds, requires an execution or run timeout, and must be smaller than
 every configured hard timeout. Passing `null` leaves the default policy.
 
 In this example, ordinary work gets 60 seconds and cleanup may use the last

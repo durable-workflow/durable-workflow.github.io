@@ -125,13 +125,56 @@ $description['run']['run_deadline_at'];       // ISO 8601 timestamp
 
 ### 超时结果与清理 {#timeout-outcome-and-cleanup}
 
-工作流到达截止时间后，以 `failed` 状态和 `closed_reason = timed_out` 关闭。终态历史事件为 `WorkflowTimedOut`。运行时将 `WorkflowTimeoutException` 记录为失败数据，**不会**将异常抛入工作流主体，也不会为清理而恢复工作流代码。因此，引擎强制执行截止时间时，工作流的 `catch`、`finally` 和已注册的 saga 补偿都不会运行。
+默认硬超时策略下，工作流到达截止时间后，以 `failed` 状态和 `closed_reason = timed_out` 关闭。终态历史事件为 `WorkflowTimedOut`。运行时将 `WorkflowTimeoutException` 记录为失败数据，**不会**将异常抛入工作流主体，也不会为清理而恢复工作流代码。因此，引擎强制执行截止时间时，工作流的 `catch`、`finally` 和已注册的 saga 补偿都不会运行。
 
 取消活动的持久化执行并不会撤销外部副作用，也不能证明回调已停止。对于可能已提交的效果，应使用幂等操作与应用负责的核对恢复。
 
 如果应用截止时间到达后必须清理，请使用更短的持久定时器或带超时的等待，让工作流代码在[关闭前执行补偿](./sagas.md#deadline-driven-compensation)。在运行或执行截止时间之前，为活动重试、Worker 调度和清理预留时间。引擎超时仍是最终兜底，Worker 延迟可能使补偿尚未完成就触及该上限。
 
 立即执行的 `cancel()` 和 `terminate()` 也会关闭运行，不提供工作流清理窗口。独立的协作式 `requestCancellation()` 可在运行仍活动时，由兼容 Worker 执行有界清理。工作流超时不会自动转为协作式取消请求，取消屏蔽也不会延长执行或运行截止时间。参阅[取消与终止](./cancel-and-terminate.md)及[协作式取消](../polyglot/cancellation.md)。
+
+## 截止时间触发的实验性清理 {#timeout-cleanup}
+
+**尚未发布的实验性嵌入式支持。** 此流程面向 Workflow 2.29.0；发布和安装后验证仍在等待中。当前选定的稳定版继续使用上述默认硬超时行为。
+
+启用前，先安装经过验证的版本，运行应用 migration，并部署兼容的嵌入式队列 worker。新 migration 添加 `workflow_runs.timeout_cleanup_work_deadline_at`，不会为已有运行启用选项。migration 完成前不要启用。
+
+```bash
+php artisan migrate
+```
+
+启动运行时，从现有硬超时中预留有限的一部分：
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
+    $orderId,
+    StartOptions::rejectDuplicate()
+        ->withExecutionTimeout(70)
+        ->withTimeoutCleanup(10),
+);
+```
+
+构造函数也可使用 `timeoutCleanupSeconds:`。预留范围为 1–86400 秒，必须设置 execution 或 run timeout，且必须小于每一个配置的硬超时。`null` 保持默认策略。
+
+本例为普通工作提供 60 秒，清理可使用原始 70 秒硬上限内的最后 10 秒。预留绝不在硬上限后增加时间。若两个硬截止时间都适用，较早的一个限制清理。延迟检测、重试、worker 替换和 lease 续期都不重置任何截止时间。continue-as-new 和 redrive 保留已接纳的预留及原始 execution 时钟；每个 run 推导自己的时钟。
+
+达到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。兼容代码收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
+
+清理具有独立的 `timeout_cleanup.outcome`：
+
+| 结果 | 含义 |
+|---|---|
+| `completed` | 清理在截止时间前返回或重新抛出超时中断。返回值不会成为业务结果。 |
+| `failed` | 清理抛出其他异常；`failure_id` 链接清理失败。 |
+| `expired` | 硬上限先于清理完成到达，包括没有 worker 能运行清理的情况。 |
+| `preempted` | 立即 `cancel()` 或 `terminate()` 中断清理；对应的取消/终止结果仍为终态。 |
+
+清理完成、失败或过期后，业务状态仍是 `failed`、`closed_reason = timed_out` 和 `WorkflowTimedOut`。补偿成功不会把超时变为 workflow 成功。应查看 describe/run detail 和保留历史中的业务与清理结果。不可用或延迟的 worker 无法保证外部清理效果；补偿必须幂等，并由应用核对不确定的效果。
+
+本增量仅支持嵌入式队列 worker。poll 和 service 启动会拒绝此选项；bridge worker 无法 claim 已启用的嵌入式运行。原生接纳及 SDK runtime 交付仍由 [Server #1201](https://github.com/durable-workflow/server/issues/1201) 跟踪；仅有 parser 支持不代表实现超时清理。
 
 ## 工作流任务租约 {#workflow-task-lease}
 
