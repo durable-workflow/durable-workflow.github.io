@@ -5,7 +5,7 @@
   "artifacts": {
     "cli": "2.7.0",
     "helm-chart": "1.6.0",
-    "sdk-php": "3.16.0",
+    "sdk-php": "3.17.0",
     "sdk-python": "2.16.0",
     "sdk-rust": "4.14.0",
     "server": "3.8.0",
