@@ -69,7 +69,6 @@ Native refuses these settings unless they keep the listed value:
 | Native has no namespace durable-state limits | `DW_NAMESPACE_DURABLE_HARD_LIMITS`: unset or `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`: unset or `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`: unset or `{}` |
 | Native has no namespace request admission limits | `DW_NAMESPACE_ADMISSION_OVERRIDES`: unset or `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`: unset or empty<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`: unset or empty<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`: unset or empty<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`: unset or empty |
 | Native has no service boundary policy | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`: unset or `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`: unset or empty<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`: unset or empty<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`: unset or empty<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`: unset or empty<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`: unset or `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`: unset or empty<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`: unset or empty |
-| Native has no storage admission file | `DW_STORAGE_ADMISSION_FILE`: unset or empty<br />`DW_STORAGE_ADMISSION_SOURCE`: unset or empty |
 | Native has no task admission limits | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: unset, empty or not a positive number<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: unset, empty or not a positive number<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`: unset, empty or not a positive number<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: unset, empty or not a positive number<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`: unset or `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: unset, empty or not a positive number<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: unset, empty or not a positive number<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`: unset, empty or not a positive number<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: unset, empty or not a positive number |
 | Native implements one worker protocol version | `DW_WORKER_PROTOCOL_VERSION`: unset or `1.20` |
 | Native never trusts forwarded attribution headers | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`: unset or `false` |
@@ -80,7 +79,21 @@ Native refuses these settings unless they keep the listed value:
 | Native stores external payloads only on its local disk | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`: unset or empty |
 | Native supports only its token authentication | `DW_AUTH_BACKWARD_COMPATIBLE`: unset or `true`<br />`DW_AUTH_PROVIDER`: unset or empty<br />`DW_PRINCIPAL_TOKENS`: unset or empty |
 
-Native accepts but ignores: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
+Native accepts but ignores: `DW_ADMIN_SIGNATURE_KEY`, `DW_AUTH_METHOD_HEADER`, `DW_AUTH_STATUS_HEADER`, `DW_BOOTSTRAP_DELAY_SECONDS`, `DW_BOOTSTRAP_RETRIES`, `DW_CALLER_LABEL_HEADER`, `DW_CALLER_TYPE_HEADER`, `DW_COMPRESSION_ENABLED`, `DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`, `DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`, `DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`, `DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`, `DW_EXTERNAL_PAYLOAD_S3_REGION`, `DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`, `DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`, `DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`, `DW_MAX_HISTORY_EVENTS`, `DW_MAX_TASKS_PER_POLL`, `DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`, `DW_OBSERVABILITY_CONTEXT_ENABLED`, `DW_OPERATOR_SIGNATURE_KEY`, `DW_PACKAGE_PROVENANCE_PATH`, `DW_POLLING_CACHE_PATH`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT`, `DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_SIGNATURE_KEY`, `DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`, `DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`, `DW_V2_CACHE_VALIDATION_MODE`, `DW_V2_GUARDRAILS_BOOT`, `DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`, `DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`, `DW_V2_MATCHING_ROLE_QUEUE_WAKE`, `DW_V2_TASK_DISPATCH_MODE`, `DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`, `DW_V2_TENANCY_ENVIRONMENT`, `DW_V2_TENANCY_ORGANIZATION`, `DW_V2_TENANCY_PROJECT`, `DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`, `DW_V2_VALIDATE_CACHE_BACKEND`, `DW_WAKE_SIGNAL_TTL_SECONDS`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT`, `DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`, `DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`, `DW_WORKER_POLL_INTERVAL_MS`, `DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`, `DW_WORKER_SIGNATURE_KEY`.
+
+Native 3.9.1 supports opt-in storage admission from an operator-published local
+observation. Set `DW_STORAGE_ADMISSION_FILE` to its absolute path and
+`DW_STORAGE_ADMISSION_SOURCE` to the expected source identity;
+`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` defaults to 15 (allowed range 1–300).
+With both path and source unset it is disabled. Missing, invalid or stale
+observations refuse new work with `503 storage_admission_unavailable`;
+`draining` or `fenced` observations refuse it with `503 storage_pressure`.
+Readiness also returns 503 while database health can remain 200. The
+[published 3.9.1 file-consumer controls](https://github.com/durable-workflow/server/issues/951#issuecomment-6853859351)
+verify these cases and recovery after atomic file replacement. They do not
+qualify physical quota measurement or a production Cloud mapping. This is
+admission control, not a write fence or byte reservation. Owner-UID hardening
+and draining completion-upload work remain separate from this published scope.
 
 Native has no server-side task-queue lease or dispatch caps, budget groups,
 namespace request admission, namespace durable-state quotas or held-poll caps,
@@ -472,9 +485,14 @@ Published Python SDK 2.17.1 with qualified native Server 3.9.1
 [actual installed-worker controls](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512):
 300 × 10 KB within-cap fan-out, one typed 413 and one structural failure with
 zero partial activities for an oversized completion, then a successful task on
-the same worker. This qualifies that exact Python/Server tuple. PHP requires its own installed
-acceptance; Rust 4.16 is qualified below. Shared #228 remains open. Request-key
-acceptance under shared #216 is separate.
+the same worker. This qualifies that exact Python/Server tuple.
+
+[Published PHP SDK 3.18.1 / native Server 3.9.1 controls](https://github.com/durable-workflow/.github/issues/228#issuecomment-6855610551)
+(PHP 8.3.36, linux/amd64, SQLite) also pass 300 × 10 KB without external storage,
+one typed 413 and one structural failure with zero partial activities for a
+60 × 450 KB completion, then fresh work on the same Worker. This qualifies that
+exact PHP/Server tuple; Rust 4.16 is qualified below. Cross-product closure under
+shared #228 and request-key acceptance under shared #216 remain separate.
 
 To keep a completion within the limit:
 
