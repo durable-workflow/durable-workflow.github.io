@@ -78,6 +78,17 @@ Cette forme réservée aux enfants est utile si chaque membre parallèle est un 
 
 Pour combiner workflows enfants et activités dans une même étape de regroupement, utilisez une barrière `all([...])` mixte. Les attentes d’enfants et d’activités partagent le même `parallel_group_id`, et Waterline indique `parallel_group_kind = mixed`. Si un sous-groupe mixte ou réservé aux enfants est imbriqué dans un `all([...])` plus grand, le groupe le plus interne détermine toujours `parallel_group_id`, tandis que `parallel_group_path` conserve le chemin complet de l’extérieur vers l’intérieur.
 
+### Coût d’un large éventail d’enfants {#fan-out-cost}
+
+Chaque clôture d’un enfant verrouille l’exécution parente pendant qu’elle enregistre le résultat de l’enfant, vérifie la barrière du groupe et met à jour les projections du parent. Depuis Workflow 2.27, ce travail ne croît plus avec le nombre de frères et sœurs : une clôture ne lit l’historique d’aucun autre enfant et exécute un nombre fixe de requêtes. Les clôtures des enfants d’un même parent passent toujours chacune leur tour sur le verrou du parent, et le parent ne peut pas exécuter sa propre tâche de workflow tant qu’une clôture le détient.
+
+Avant 2.27, chaque clôture relisait aussi l’historique et l’exécution de chaque frère ou sœur. Clôturer tous les enfants d’un large éventail coûtait donc un travail qui croissait avec le carré du nombre d’enfants.
+
+Pour des éventails de plusieurs centaines d’enfants, ou proches de la limite par défaut de 1 000 enfants en attente (`pending_child_count`, voir [Limites structurelles](../constraints/structural-limits.md)), découpez le travail :
+
+- **Lots :** démarrez un groupe d’enfants, attendez-le avec `all([...])`, puis démarrez le groupe suivant.
+- **Un arbre :** laissez chaque enfant démarrer ses propres enfants, afin qu’aucun parent ne supervise plus de quelques centaines d’enfants à la fois.
+
 ## Contrat d’identité {#identity-contract}
 
 - `child()->id()` et le `target_name` de Waterline désignent l’identifiant d’instance enfant, stable dans toute sa chaîne d’exécutions.

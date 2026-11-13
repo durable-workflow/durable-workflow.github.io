@@ -132,6 +132,8 @@ trace、run、activity、attempt 和 request ID 保持独立。baggage 使用默
 
 原生 Server 从 3.6.0 起会报告 `replay_blocked` 和 `replay_blocked_runs` 检查。
 
+从 Workflow 2.27 起，`operator_metrics.namespace_scope_refusals` 按命名空间和路径统计应用的[命名空间允许列表](./configuration/options.md#namespace-allowlist)在过去 15 分钟内拒绝的工作。`job` 统计被跳过的排队作业。`repair`、`timeout` 和 `schedule_tick` 统计在允许列表之外的命名空间中滞留超过两分钟的修复候选、已过期的截止时间和到期的调度。建议性健康检查 `namespace_scope_refusals` 在拒绝持续出现时发出警告，并在最后一次拒绝 15 分钟后清除。计数保存在默认缓存存储中，因此请使用共享存储（Redis、数据库或 Memcached），让提供健康检查的 Web 进程能看到 worker 的计数。
+
 ### Server 工作流任务失败 {#workflow-task-failure-metric}
 
 Server 在 `GET /api/system/metrics` 的 `metrics.dw_workflow_task_consecutive_failures` 下报告失败的工作流任务：

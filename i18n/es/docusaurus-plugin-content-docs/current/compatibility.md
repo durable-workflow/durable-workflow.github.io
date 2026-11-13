@@ -100,12 +100,12 @@ El paquete integrado y el SDK de modo servicio tienen contratos distintos.
 
 | Línea del paquete | PHP | Laravel |
 | --- | --- | --- |
-| Workflow integrado 2.26 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
+| Workflow integrado 2.27 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | Workflow integrado 2.20.5 | PHP `^8.1`, sujeto al mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.14 publicado | SDK básico PHP `^8.1`; el puente Laravel necesita PHP `^8.2`, y PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.9.5 | SDK básico PHP `^8.1`; el puente Laravel también exige el mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 
-Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.27.0/resources/laravel-embedded-upgrade-contract.json)
 y el `composer.json` de cada versión. La versión integrada actual se verificó
 con Laravel 12/PHP 8.2–8.4 y Laravel 13/PHP 8.3–8.4. Retira PHP 8.1 y Laravel
 10/11. No cambia la [guía histórica de v1 estable](/docs/1.x/installation/)
@@ -156,6 +156,13 @@ Workflow 2.25 y 2.26 mantienen los mínimos de soporte de 2.21 y el protocolo de
 - Desde 2.25, superar un límite fijo de memo o de atributo de búsqueda lanza `StructuralLimitExceededException` en lugar de `InvalidArgumentException`, y el valor predeterminado de `memo_size_bytes` es 65.536. Consulte [Límites estructurales](./constraints/structural-limits.md).
 
 Consulte las notas de versión de [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) y [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
+
+Workflow 2.27 mantiene los mínimos de soporte de 2.21 y el protocolo de workers integrado `1.22`, y no añade ninguna migración de base de datos. Cambios que conviene revisar antes de actualizar:
+
+- Desde 2.27, una aplicación integrada repara y ejecuta trabajo solo en sus propios espacios de nombres. Si la aplicación inicia, programa o envía señales a workflows en espacios de nombres distintos de `DW_V2_NAMESPACE`, inclúyalos todos en `DW_V2_NAMESPACES`. Un proceso que atiende todos los espacios de nombres define `DW_V2_ALL_NAMESPACES=true`. Consulte [Qué espacios de nombres ejecuta una aplicación](./configuration/options.md#namespace-allowlist).
+- Desde 2.27, cerrar un hijo le cuesta al padre el mismo trabajo sin importar cuántos hermanos tenga. Consulte [Coste de una ramificación amplia](./features/child-workflows.md#fan-out-cost).
+
+Consulte las [notas de la versión 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
 
 ## Niveles de estabilidad {#stability-levels}
 

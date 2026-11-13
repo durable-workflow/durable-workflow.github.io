@@ -173,6 +173,8 @@ signal, timer і дочірні workflow в порядку подій, коже�
 
 Нативний Server повідомляє `replay_blocked` і перевірку `replay_blocked_runs` починаючи з 3.6.0.
 
+Починаючи з Workflow 2.27, `operator_metrics.namespace_scope_refusals` рахує роботу, яку [список дозволених просторів імен](./configuration/options.md#namespace-allowlist) застосунку відхилив за останні 15 хвилин, за простором імен і шляхом. `job` рахує пропущені завдання в черзі. `repair`, `timeout` і `schedule_tick` рахують кандидатів на відновлення, прострочені дедлайни й розклади до виконання, що понад дві хвилини лишалися в просторі імен поза списком. Рекомендаційна перевірка стану `namespace_scope_refusals` попереджає, поки відмови надходять, і скидається через 15 хвилин після останньої. Лічильники зберігаються в типовому сховищі кешу, тож використовуйте спільне сховище (Redis, базу даних або Memcached), щоб вебпроцес, який віддає стан, бачив лічильники worker-процесів.
+
 ### Збої завдань workflow у Server {#workflow-task-failure-metric}
 
 Server повідомляє про невдалі завдання workflow у `GET /api/system/metrics`, у полі `metrics.dw_workflow_task_consecutive_failures`:
