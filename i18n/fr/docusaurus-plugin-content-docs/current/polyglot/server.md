@@ -449,7 +449,7 @@ Points clés pour le code client :
 
 - La version du build est `version`, pas `server_version`. `implementation` vaut `"rust"` sur le Server natif.
 - Vérifiez `control_plane.version` et `worker_protocol.version` avant d’appeler l’API. Le natif 3.5.0 sert le plan de contrôle `2` et le protocole worker `1.20`, et accepte les requêtes worker annonçant toute version de protocole de `1.0` à `1.20`.
-- Depuis 3.5.0, `worker_protocol.server_capabilities` annonce `sticky_execution` et `sticky_history_suffix`. Depuis 3.4.0, il annonce `activity_workflow_continuation`, qu'un worker n'utilise qu'après sa propre activation.
+- Depuis 3.5.0, `worker_protocol.server_capabilities` annonce `sticky_execution` et `sticky_history_suffix`. Depuis 3.4.0, il annonce `activity_workflow_continuation`, qu'un worker n'utilise qu'après sa propre activation. L'activer réduit aujourd'hui le débit : dans notre benchmark, les exécutions étaient 24 à 49 % plus lentes sous charge ([mesure](https://github.com/durable-workflow/server/issues/1078)).
 - Les commandes de tâche workflow se trouvent sous `worker_protocol.server_capabilities.supported_workflow_task_commands`.
 - Un indicateur de capacité à `false` désigne une fonctionnalité ou un contrat publié que le natif ne sert pas. `response_compression` est vide, car le natif envoie des réponses non compressées.
 - `native_unqualified` liste chaque membre de la réponse PHP 2.x que le natif omet, avec la raison. On y trouve `topology`.
