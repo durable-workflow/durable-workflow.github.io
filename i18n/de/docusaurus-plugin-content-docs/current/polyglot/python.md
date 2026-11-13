@@ -120,6 +120,17 @@ Python-SDK 2.15 und 2.16 ergänzen:
 
 Die vollständige Liste steht im [Changelog zu 2.16.0](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md).
 
+Python SDK 2.17 ergänzt `Client.update_outcome` und
+`Client.update_outcome_receipt`, um ein angenommenes Update später zu lesen,
+ohne es erneut einzureichen. Diese Methoden erfordern
+`capabilities.update_outcome_reads` (native Server ab 3.6.0).
+`update_outcome` wartet standardmäßig auf den Abschluss und wirft
+`UpdateStillPending`, wenn das Update noch nicht fertig ist. Ein zurückgegebenes
+`None` ist ein abgeschlossenes null-Ergebnis. `update_outcome_receipt` verwendet
+standardmäßig die Annahmephase und erhält den expliziten `update_status`.
+Sprachspezifische Beispiele stehen in der
+[Python-SDK-Anleitung](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
+
 ## Schnellstart {#quickstart}
 
 Dieses vollständige Python-Programm definiert einen Workflow mit einer Aktivität, startet ihn gegen einen lokalen Durable Workflow Server und wartet auf das Ergebnis:

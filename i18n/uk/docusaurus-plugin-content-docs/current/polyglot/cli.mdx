@@ -285,6 +285,11 @@ dw workflow:history <workflow-id> <run-id>                 # Show run history
 Стандартно JSON. Raw та base64 input передаються як один
 позиційний аргумент workflow.
 
+Використовуйте `dw workflow:update-outcome`, щоб пізніше прочитати прийнятий
+update без повторного надсилання. Очікування відрізняється від завершення з
+результатом null. Див. [читання результату update](./cli-reference.md#read-update-outcome)
+щодо потрібної можливості Server і параметрів очікування.
+
 ### Адаптери інтеграцій {#bridge-adapters}
 
 ```bash

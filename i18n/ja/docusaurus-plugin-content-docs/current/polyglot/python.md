@@ -89,6 +89,8 @@ Python SDK 2.15 と 2.16 では次が追加されています。
 
 完全な一覧は [2.16.0 の変更履歴](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md) を参照してください。
 
+Python SDK 2.17 では、受け付け済みの更新を再送信せずに後から読み取る `Client.update_outcome` と `Client.update_outcome_receipt` が追加されました。これらには `capabilities.update_outcome_reads`（native Server 3.6.0 以降）が必要です。`update_outcome` は既定で完了を待ち、未完了なら `UpdateStillPending` を送出します。返された `None` は、完了した null の結果です。`update_outcome_receipt` は既定で受け付け段階を使い、明示的な `update_status` を保持します。言語固有の例は [Python SDK のガイド](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)を参照してください。
+
 ## クイックスタート {#quickstart}
 
 次は、アクティビティを1つ持つワークフローを定義し、ローカルの Durable Workflow Server に対して開始して結果を待つ完全な Python プログラムです。

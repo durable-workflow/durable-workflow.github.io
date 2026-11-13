@@ -289,7 +289,9 @@ Waterline 在异常表中以 `structural_limit` 故障类别展示结构限制�
 
 在原生 Server 3.6.0 及以上，带命令完成工作流任务的请求（`POST /api/worker/workflow-tasks/{id}/complete` 和 `POST /api/worker/activity-tasks/{id}/continuation/complete`）最多可达 `max_payload_bytes` 的 16 倍：默认 2 MiB 时为 32 MiB。该上限跟随 `DW_MAX_PAYLOAD_BYTES`，没有单独的设置。完成请求中每个命令的参数仍须符合单个载荷上限。PHP Server 2.x 和更早的原生版本与其他请求一样，将完成请求限制为一个载荷上限。
 
-更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上从不重新发送：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。Python 和 Rust SDK 将在下一个版本中采取相同做法。
+更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上从不重新发送：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。
+
+Python SDK 2.17 包含对类型化拒绝的处理，但向 Server 3.8.0 发送过大的完成请求时，Worker 可能在收到 HTTP 413 之前遇到 `httpx.ReadError`。在使用已发布制品的测试中，工作流仍处于待处理状态，而没有因结构限制而失败。在 [Server 响应修复](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)完成之前，请减小完成请求的大小。Rust SDK 的同等处理仍在等待经过资格验证的发布。
 
 要让完成请求保持在上限之内：
 

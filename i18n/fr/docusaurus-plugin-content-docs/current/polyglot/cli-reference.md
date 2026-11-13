@@ -240,6 +240,7 @@ l'environnement du runtime plutôt que dans le fichier de profil.
 | `dw workflow:signal <workflow-id> <signal-name>` | Envoyer un signal. | `--run-id`, options d'entrée, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Exécuter une requête de lecture de workflow. | `--run-id`, options d'entrée, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Soumettre ou exécuter une mise à jour de workflow. | `--wait=accepted\|completed`, `--run-id`, options d'entrée, `--json` |
+| `dw workflow:update-outcome <workflow-id> <update-id>` | Lire le résultat conservé d'une mise à jour sans la soumettre de nouveau. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Fermer un workflow ou un lot sélectionné comme annulé ; aucun nettoyage du code de workflow n'est exécuté. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Forcer la terminaison d'un workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Demander au serveur de réparer une exécution bloquée ou réessayable. | `--json` |
@@ -263,6 +264,29 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` et `workflow:update`
 valident les champs canoniques avec le contrat de requête publié par le
 serveur. Les anciens alias non canoniques sont rejetés avant l'envoi.
+
+### Lire le résultat d'une mise à jour {#read-update-outcome}
+
+CLI 2.8 et les versions suivantes peuvent lire une mise à jour acceptée par son
+`update_id` si le Server annonce `capabilities.update_outcome_reads` (natif
+3.6.0 ou ultérieur). Utilisez l'ID de l'accusé d'acceptation :
+
+```bash
+dw workflow:update-outcome order-123 "$UPDATE_ID"
+dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeout=30
+```
+
+La valeur par défaut `--wait=accepted` répond immédiatement. Une mise à jour
+acceptée mais inachevée reste en attente, même quand le délai d'attente expire.
+Une mise à jour terminée peut avoir un résultat null. `--json` renvoie l'accusé
+validé. Utilisez son `update_status` pour distinguer ces cas. Chaque invocation
+lit le résultat une fois et ne soumet jamais de nouveau la mise à jour.
+
+`--wait-timeout` exige `--wait=completed` et un nombre entier d'au moins une
+seconde. Une mise à jour échouée se termine avec le code 2. Un ID inconnu ou
+supprimé donne le code 5, ce qui ne prouve pas que la mise à jour n'a jamais été
+acceptée. Un Server sans cette capacité, dont PHP Server 2.x, donne le code 8
+avant l'envoi d'une requête de résultat.
 
 ## Inspection des appels de service {#service-call-inspection}
 

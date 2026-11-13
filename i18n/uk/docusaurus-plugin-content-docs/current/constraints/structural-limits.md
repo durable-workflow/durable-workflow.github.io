@@ -372,7 +372,14 @@ HTTP-запиту до того, як завдання workflow, signal, update 
 
 У нативному Server 3.6.0 і новіших запит, що завершує завдання workflow з командами (`POST /api/worker/workflow-tasks/{id}/complete` і `POST /api/worker/activity-tasks/{id}/continuation/complete`), може мати розмір до 16 × `max_payload_bytes`: 32 MiB за типового значення 2 MiB. Ліміт іде за `DW_MAX_PAYLOAD_BYTES` і не має власного параметра. Аргументи кожної команди всередині завершення й далі мають вкладатися в ліміт на один payload. PHP Server 2.x і попередні нативні випуски обмежують завершення одним лімітом payload, як і будь-який інший запит.
 
-Більше завершення відхиляється з `413 payload_too_large` і `limit_kind: workflow_task_completion_bytes` ще до того, як щось буде записано. Повторне відтворення завдання дає ті самі команди, тож повторне надсилання завершення отримає ту саму відмову. PHP SDK 3.17.0 і новіші ніколи не надсилають його повторно: worker один раз завершує запуск помилкою через команду `fail_workflow`, повідомлення якої починається з `Structural limit exceeded: workflow_task_completion_bytes:` і називає обидва розміри, а Server записує помилку з `failure_category = structural_limit`. SDK для Python і Rust робитимуть те саме в наступних випусках.
+Більше завершення відхиляється з `413 payload_too_large` і `limit_kind: workflow_task_completion_bytes` ще до того, як щось буде записано. Повторне відтворення завдання дає ті самі команди, тож повторне надсилання завершення отримає ту саму відмову. PHP SDK 3.17.0 і новіші ніколи не надсилають його повторно: worker один раз завершує запуск помилкою через команду `fail_workflow`, повідомлення якої починається з `Structural limit exceeded: workflow_task_completion_bytes:` і називає обидва розміри, а Server записує помилку з `failure_category = structural_limit`.
+
+Python SDK 2.17 обробляє типізовану відмову, але завеликий запит завершення на
+Server 3.8.0 може завершитися з `httpx.ReadError` до отримання worker відповіді
+HTTP 413. У тесті з опублікованими артефактами workflow залишився в очікуванні,
+замість структурної помилки. Зменшуйте розмір запиту завершення, поки очікується
+[виправлення відповіді Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
+Еквівалентна обробка в Rust SDK ще очікує кваліфікованого випуску.
 
 Щоб завершення вкладалося в ліміт:
 

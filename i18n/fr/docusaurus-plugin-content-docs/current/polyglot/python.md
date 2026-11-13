@@ -123,6 +123,17 @@ Les versions 2.15 et 2.16 du SDK Python ajoutent :
 
 Voir le [journal des modifications 2.16.0](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md) pour la liste complète.
 
+Python SDK 2.17 ajoute `Client.update_outcome` et
+`Client.update_outcome_receipt` pour lire plus tard une mise à jour acceptée
+sans la soumettre de nouveau. Ces méthodes exigent
+`capabilities.update_outcome_reads` (Server natif 3.6.0 ou ultérieur).
+`update_outcome` attend la fin par défaut et lève `UpdateStillPending` si la mise
+à jour n'est pas terminée. Un `None` renvoyé est un résultat null terminé.
+`update_outcome_receipt` utilise par défaut l'étape d'acceptation et conserve
+le `update_status` explicite. Consultez le
+[guide du SDK Python](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)
+pour les exemples propres au langage.
+
 ## Démarrage rapide {#quickstart}
 
 Ce programme Python complet définit un workflow avec une activité, le démarre

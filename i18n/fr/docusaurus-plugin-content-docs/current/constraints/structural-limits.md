@@ -303,7 +303,14 @@ Les erreurs de validation utilisent l’enveloppe d’erreur standard du plan de
 
 Sur Server natif 3.6.0 et ultérieur, une requête qui achève une tâche de workflow avec des commandes (`POST /api/worker/workflow-tasks/{id}/complete` et `POST /api/worker/activity-tasks/{id}/continuation/complete`) peut atteindre 16 fois `max_payload_bytes` : 32 MiB avec la valeur par défaut de 2 MiB. Elle suit `DW_MAX_PAYLOAD_BYTES` et n’a pas de réglage propre. Les arguments de chaque commande respectent toujours la limite par payload à l’intérieur de l’achèvement. Server PHP 2.x et les versions natives antérieures limitent un achèvement à une limite de payload, comme toute autre requête.
 
-Un achèvement plus grand est refusé avec `413 payload_too_large` et `limit_kind: workflow_task_completion_bytes` avant tout enregistrement. Rejouer la tâche produit les mêmes commandes : renvoyer l’achèvement obtient donc le même refus. PHP SDK 3.17.0 et ultérieur ne le renvoient jamais : le worker fait échouer l’exécution une seule fois avec une commande `fail_workflow` dont le message commence par `Structural limit exceeded: workflow_task_completion_bytes:` et indique les deux tailles, et le Server enregistre l’échec avec `failure_category = structural_limit`. Les SDK Python et Rust feront de même dans leurs prochaines versions.
+Un achèvement plus grand est refusé avec `413 payload_too_large` et `limit_kind: workflow_task_completion_bytes` avant tout enregistrement. Rejouer la tâche produit les mêmes commandes : renvoyer l’achèvement obtient donc le même refus. PHP SDK 3.17.0 et ultérieur ne le renvoient jamais : le worker fait échouer l’exécution une seule fois avec une commande `fail_workflow` dont le message commence par `Structural limit exceeded: workflow_task_completion_bytes:` et indique les deux tailles, et le Server enregistre l’échec avec `failure_category = structural_limit`.
+
+Python SDK 2.17 gère le refus typé, mais une complétion trop volumineuse sur
+Server 3.8.0 peut échouer avec `httpx.ReadError` avant que le worker reçoive
+HTTP 413. Dans le test avec les artefacts publiés, le workflow est resté en
+attente au lieu d'échouer pour une limite structurelle. Réduisez la taille de
+la complétion en attendant la [correction de la réponse du Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
+Le traitement équivalent du SDK Rust attend encore une version qualifiée.
 
 Pour garder un achèvement sous la limite :
 

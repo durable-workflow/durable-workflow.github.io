@@ -152,6 +152,7 @@ dw server:info --output=json \
 | `dw workflow:signal <workflow-id> <signal-name>` | シグナルを送信。 | `--run-id`、入力オプション、`--json` |
 | `dw workflow:query <workflow-id> <query-name>` | 読み取り専用クエリを実行。 | `--run-id`、入力オプション、`--json` |
 | `dw workflow:update <workflow-id> <update-name>` | 更新を送信または実行。 | `--wait=accepted\|completed`, `--run-id`、入力オプション、`--json` |
+| `dw workflow:update-outcome <workflow-id> <update-id>` | 更新を再送信せずに、保持された更新結果を読み取ります。 | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | 1ワークフローまたは選択したバッチをキャンセルとして閉じる。コードのクリーンアップは動かない。 | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | ワークフローを強制終了。 | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | 停滞または再試行可能な実行の修復を Server に要求。 | `--json` |
@@ -173,6 +174,19 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 ```
 
 `workflow:start`、`workflow:signal`、`workflow:query`、`workflow:update` は、Server が公開する要求契約に照らして正規フィールドを検証します。正規でない旧別名は要求送信前に拒否します。
+
+### 更新の結果を読み取る {#read-update-outcome}
+
+CLI 2.8 以降では、Server が `capabilities.update_outcome_reads` を公開している場合（native 3.6.0 以降）、受け付け済みの更新を `update_id` で読み取れます。受け付け時のレシートにある ID を使ってください。
+
+```bash
+dw workflow:update-outcome order-123 "$UPDATE_ID"
+dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeout=30
+```
+
+既定の `--wait=accepted` はすぐに応答します。受け付け済みでも完了していない更新は、完了待ちがタイムアウトした場合も保留中です。完了した更新の結果が null の場合もあります。`--json` は検証済みのレシートを返すので、`update_status` で区別してください。各実行は結果を一度読み取るだけで、更新を再送信しません。
+
+`--wait-timeout` には `--wait=completed` と 1 秒以上の整数が必要です。失敗した更新は終了コード 2 を返します。不明または削除済みの更新 ID は 5 を返しますが、更新が一度も受け付けられなかったことを意味しません。PHP Server 2.x など、この機能を持たない Server では、結果のリクエストを送る前に 8 で終了します。
 
 ## サービス呼び出しの検査 {#service-call-inspection}
 
