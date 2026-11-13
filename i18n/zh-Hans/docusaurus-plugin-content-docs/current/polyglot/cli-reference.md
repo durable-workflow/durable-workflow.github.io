@@ -267,10 +267,25 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 | `dw task-queue:build-ids <queue>` | 检查一个队列各构建 ID 群组状态及发布状态。 | `--json` |
 | `dw task-queue:drain <queue>` | 将构建 ID 群组标记为排空，使其停止认领新任务。 | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | 清除之前的排空，使群组能再次认领新任务。 | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | 在一个任务队列上暂停新的活动派发，直到恢复。 | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | 恢复已暂停任务队列上的活动派发。 | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | 显示活动派发是否已暂停，以及由谁、在何时、因何暂停或恢复。 | `--json` |
 
 任务队列命令是诊断限流、容量和缺少 Worker 的首选运维视图。这些字段背后的 Server 策略见[任务队列准入](/docs/polyglot/task-queue-admission)，完整的无版本到有版本切换、金丝雀、排空和回滚生命周期见 [Worker 构建 ID 发布](/docs/polyglot/worker-build-id-rollout)。
 
 `dw task-queue:drain` 和 `dw task-queue:resume` 都要求用 `--build-id <value>` 定位特定构建群组，或用 `--unversioned` 定位未注册 `build_id` 的 Worker 群组。组合两者会立即返回无效选项错误。两个命令都幂等：重复排空不会移动已记录的 `drained_at` 时间戳，恢复已活动群组则无操作。
+
+`dw task-queue:pause-activities`、`dw task-queue:resume-activities` 和 `dw task-queue:activity-dispatch`（CLI 2.7.0 及以后）用于暂停、恢复和查看所选 namespace 中一个任务队列的活动派发，例如在下游服务故障期间：
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+队列暂停期间，该队列上的活动任务都不会被租用。就绪任务保持就绪并保留尝试次数，正在运行的活动会运行完成，活动截止时间继续计时，因此 schedule-to-start 或 schedule-to-close 超时仍会触发。工作流任务、信号、查询和更新照常投递。`--reason` 最多 1000 个字符。暂停和恢复都幂等：`--json` 返回 Server 的 `outcome`（`paused`、`already_paused`、`resumed` 或 `not_paused`）以及 `activity_dispatch` 状态。暂停不是构建 ID 排空：要停止某个构建的 Worker，请使用 `dw task-queue:drain`。
+
+这三个命令需要声明 `capabilities.task_queue_activity_dispatch_pause` 的 Server（原生 Server 3.8.0 或更高版本）。对于其他任何 Server，包括已发布的 PHP Server 2.x，`dw` 会在发送请求之前以退出码 `8` 退出。当 Server 报告活动派发状态时，`dw task-queue:describe` 和 `dw task-queue:list` 会显示该状态。
 
 ## Worker 协议命令 {#worker-protocol-commands}
 
@@ -399,6 +414,7 @@ AI 客户端或 CI 任务需要当前控制平面、响应或输出契约且不�
 | `5` | 资源不存在。 |
 | `6` | Server 端 `5xx` 失败。 |
 | `7` | 超时。 |
+| `8` | 兼容性失败：命令在发送请求之前拒绝。 |
 
 支持资料包应收集 `dw doctor --output=json`、`dw server:info --output=json` 和 `dw debug workflow <workflow-id> --output=json`。
 

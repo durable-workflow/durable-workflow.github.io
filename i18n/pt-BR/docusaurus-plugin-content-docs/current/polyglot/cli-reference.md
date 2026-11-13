@@ -363,6 +363,9 @@ Os tokens pertencem ao namespace e à seleção de filtros. Reinicie sem token a
 | `dw task-queue:build-ids <queue>` | Inspeciona estado das coortes por build id e status de rollout de uma fila. | `--json` |
 | `dw task-queue:drain <queue>` | Marca uma coorte como drenando para parar de reservar novas tarefas. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Limpa uma drenagem anterior para voltar a reservar trabalho. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | Retém o despacho de novas atividades em uma fila de tarefas até que seja retomado. | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | Retoma o despacho de atividades em uma fila de tarefas pausada. | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | Mostra se o despacho de atividades está pausado, e quem o pausou ou retomou, quando e por quê. | `--json` |
 
 Os comandos de fila são a visão operacional preferida para diagnósticos de
 limitação, capacidade e ausência de workers. Veja
@@ -376,6 +379,35 @@ para uma coorte específica ou `--unversioned` para workers registrados sem
 `build_id`. Combinar ambos falha rapidamente com erro de opção inválida.
 Ambos são idempotentes: drenagens repetidas não alteram `drained_at`, e
 retomar uma coorte já ativa não faz nada.
+
+`dw task-queue:pause-activities`, `dw task-queue:resume-activities` e
+`dw task-queue:activity-dispatch` (CLI 2.7.0 e posteriores) pausam, retomam e
+mostram o despacho de atividades em uma fila de tarefas do namespace
+selecionado, por exemplo durante uma queda de um serviço externo:
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+Enquanto uma fila está pausada, nenhuma tarefa de atividade nela recebe lease.
+Tarefas prontas continuam prontas e mantêm a contagem de tentativas,
+atividades já em execução terminam e os prazos de atividade continuam
+correndo, então um timeout schedule-to-start ou schedule-to-close ainda
+dispara. Tarefas de workflow, sinais, queries e updates são entregues como
+antes. `--reason` aceita até 1000 caracteres. Pausar e retomar são
+idempotentes: `--json` retorna o `outcome` do Server (`paused`,
+`already_paused`, `resumed` ou `not_paused`) com o estado `activity_dispatch`.
+Uma pausa não é uma drenagem de build-id: para parar os workers de um build,
+use `dw task-queue:drain`.
+
+Os três comandos exigem um Server que anuncie
+`capabilities.task_queue_activity_dispatch_pause` (Server nativo 3.8.0 ou
+posterior). Em qualquer outro Server, incluindo o Server PHP 2.x publicado, o
+`dw` sai com o código `8` antes de enviar a requisição.
+`dw task-queue:describe` e `dw task-queue:list` mostram o estado do despacho
+de atividades quando o Server o informa.
 
 ## Comandos do protocolo de workers {#worker-protocol-commands}
 
@@ -549,6 +581,7 @@ Todos os comandos usam a política estável documentada no
 | `5` | Recurso não encontrado. |
 | `6` | Falha `5xx` no servidor. |
 | `7` | Timeout. |
+| `8` | Falha de compatibilidade: o comando recusou antes de enviar a requisição. |
 
 Para pacotes de suporte, colete `dw doctor --output=json`,
 `dw server:info --output=json` e `dw debug workflow <workflow-id> --output=json`.

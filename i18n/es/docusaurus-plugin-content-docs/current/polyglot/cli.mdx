@@ -346,6 +346,7 @@ La CLI utiliza una política estable de códigos de salida para que scripts y CI
 | `5` | `NOT_FOUND` | Recurso no encontrado. Para HTTP `404`. |
 | `6` | `SERVER` | Error del servidor. Para HTTP `5xx`. |
 | `7` | `TIMEOUT` | La solicitud agotó su espera antes de responder el servidor. También para HTTP `408`. |
+| `8` | `COMPATIBILITY` | Fallo de compatibilidad. La CLI y el Server no pueden ejecutar el comando con seguridad, por ejemplo porque el Server no anuncia una capacidad que necesita, así que el comando se negó antes de enviar la solicitud. |
 
 Ejemplo:
 
