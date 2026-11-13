@@ -100,12 +100,12 @@ El paquete integrado y el SDK de modo servicio tienen contratos distintos.
 
 | Línea del paquete | PHP | Laravel |
 | --- | --- | --- |
-| Workflow integrado 2.27 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
+| Workflow integrado 2.28 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | Workflow integrado 2.20.5 | PHP `^8.1`, sujeto al mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.14 publicado | SDK básico PHP `^8.1`; el puente Laravel necesita PHP `^8.2`, y PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.9.5 | SDK básico PHP `^8.1`; el puente Laravel también exige el mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 
-Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.27.0/resources/laravel-embedded-upgrade-contract.json)
+Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
 y el `composer.json` de cada versión. La versión integrada actual se verificó
 con Laravel 12/PHP 8.2–8.4 y Laravel 13/PHP 8.3–8.4. Retira PHP 8.1 y Laravel
 10/11. No cambia la [guía histórica de v1 estable](/docs/1.x/installation/)
@@ -163,6 +163,12 @@ Workflow 2.27 mantiene los mínimos de soporte de 2.21 y el protocolo de workers
 - Desde 2.27, cerrar un hijo le cuesta al padre el mismo trabajo sin importar cuántos hermanos tenga. Consulte [Coste de una ramificación amplia](./features/child-workflows.md#fan-out-cost).
 
 Consulte las [notas de la versión 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
+
+Workflow 2.28 mantiene los mínimos de soporte de 2.21 y el protocolo de workers integrado `1.22`, y no añade ninguna migración de base de datos. Cambio de comportamiento que conviene revisar antes de actualizar:
+
+- Desde 2.28, una ejecución que se completa, falla o continúa como nueva cancela en la misma transacción las actividades y los temporizadores que nunca esperó, como los perdedores de `select()`, en lugar de dejarlos en ejecución. Un resultado tardío de esa actividad se rechaza con `run_closed`. Si un workflow necesita el efecto de un perdedor, espérelo antes de retornar. Consulte [Perdedores cuando se cierra la ejecución](./features/concurrency.md#selection-losers-at-close).
+
+Consulte las [notas de la versión 2.28.0](https://github.com/durable-workflow/workflow/releases/tag/2.28.0).
 
 ## Niveles de estabilidad {#stability-levels}
 

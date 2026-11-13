@@ -77,6 +77,8 @@ explicitly on the predecessor.
 
 Long-lived loops can shed history without inventing a new public workflow id every time the run rolls forward.
 
+From Workflow 2.28, activities and timers the closing run never awaited are cancelled when it continues as new; children are handed to the continued run instead. See [Losers when the run closes](./concurrency.md#selection-losers-at-close).
+
 ## History Budget {#history-budget}
 
 Workflow code can observe its current history length and a continue-as-new suggestion flag through explicit runtime context. This lets long-lived loops hand off deliberately before they hit history-budget cliffs.

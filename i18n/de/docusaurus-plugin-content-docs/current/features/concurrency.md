@@ -165,6 +165,12 @@ eintreffende Eingabe wird in der nächsten Workflow-Aufgabe sichtbar. Eine
 späte oder doppelte Eingabe kann keinen bereits aufgezeichneten Gewinner
 ersetzen.
 
+### Verlierer beim Schließen des Laufs {#selection-losers-at-close}
+
+Ab Workflow 2.28 bricht das Schließen eines Laufs ein noch offenes, nicht gewinnendes Mitglied in derselben Transaktion ab. Das gilt, wenn der Lauf abgeschlossen wird, fehlschlägt oder mit Continue-as-new fortgesetzt wird. Eine offene Aktivität erhält `ActivityCancelled` mit `cancellation_reason: run_closed` und ein ausstehender Timer `TimerCancelled`, beide vor dem Abschlussereignis aufgezeichnet. Nach dem Abschlussereignis wird nichts mehr angehängt, und ein verspätetes Ergebnis der abgebrochenen Aktivität wird abgelehnt. Das Replay ignoriert diese Abbrüche, weil der Workflow sie nie gesehen hat.
+
+Braucht der Workflow die Wirkung eines Verlierers, warten Sie vor der Rückgabe auf ihn. Im Service-Modus läuft eine Aktivität, die mit `cancellation_policy: abandon` geplant wurde, stattdessen weiter. Das Abschlussereignis führt sie unter `abandoned_activities` auf, und ihr Ergebnis wird nie auf dem geschlossenen Lauf aufgezeichnet. Untergeordnete Workflows folgen ihrer Parent-close-Richtlinie.
+
 ## Verschachtelte Barrieren {#nested-barriers}
 
 Verschachtelte `all([...])`-Gruppen lassen einen Workflow-Schritt einen Baum
