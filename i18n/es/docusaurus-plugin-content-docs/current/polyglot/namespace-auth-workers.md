@@ -75,6 +75,29 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 `DW_AUTH_DRIVER=none` es exclusivo del desarrollo local. Elimina el límite de
 autenticación de todas las rutas y nunca debe exponerse fuera de una red local de confianza.
 
+### Token rechazado por espacios en blanco {#token-whitespace}
+
+Native Server 3.5.0 y posteriores no arrancan si `DW_AUTH_TOKEN`,
+`DW_WORKER_TOKEN`, `DW_OPERATOR_TOKEN`, `DW_ADMIN_TOKEN` o una opción de token
+heredada contiene espacios en blanco al principio o al final, o un carácter de
+control. El diagnóstico nombra la opción y dice `has leading or trailing whitespace or a control character`.
+No incluye el valor del token.
+
+Una causa habitual es un Secret de Kubernetes creado desde un archivo con un
+salto de línea final, o con `echo` sin `-n`. Cree un Secret nuevo con el valor
+previsto del token, sin espacios en blanco ni un salto de línea añadido:
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` no elimina los espacios en blanco que ya contiene la variable.
+Corrija primero el valor de origen si es incorrecto. Para un Secret existente,
+actualícelo mediante su proceso de despliegue y reinicie los procesos de Server
+y worker afectados para que carguen el valor corregido. Ambos lados deben usar
+los mismos bytes del token.
+
 ## Autorización y atribución de señales {#signal-authorization-and-attribution}
 
 Antes de admitir una señal, Server autentica la solicitud y exige la política

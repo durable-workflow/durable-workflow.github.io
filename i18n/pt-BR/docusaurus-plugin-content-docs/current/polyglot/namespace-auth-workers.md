@@ -75,6 +75,30 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 o limite de autenticação de todas as rotas e nunca deve ser exposto fora de
 uma rede local confiável.
 
+### Token recusado por espaços em branco {#token-whitespace}
+
+O Native Server 3.5.0 e versões posteriores recusam a inicialização se
+`DW_AUTH_TOKEN`, `DW_WORKER_TOKEN`, `DW_OPERATOR_TOKEN`, `DW_ADMIN_TOKEN` ou uma
+configuração legada de token contiver espaços em branco no início ou no fim,
+ou um caractere de controle. O diagnóstico identifica a configuração e informa
+`has leading or trailing whitespace or a control character`. Ele não inclui o
+valor do token.
+
+Uma causa comum é um Secret do Kubernetes criado a partir de um arquivo com
+uma quebra de linha no final, ou com `echo` sem `-n`. Crie um novo Secret com o
+valor pretendido do token, sem espaços em branco nem uma quebra de linha extra:
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` não remove espaços em branco que já estejam na variável. Corrija
+primeiro o valor de origem se estiver incorreto. Para um Secret existente,
+atualize-o pelo seu processo de implantação e reinicie os processos afetados do
+Server e dos workers para que carreguem o valor corrigido. Ambos os lados devem
+usar os mesmos bytes do token.
+
 ## Autorização e atribuição de sinais {#signal-authorization-and-attribution}
 
 Antes de admitir um sinal, o Server autentica a requisição e aplica a política
