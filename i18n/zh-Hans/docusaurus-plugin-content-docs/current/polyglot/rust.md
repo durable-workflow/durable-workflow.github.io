@@ -77,6 +77,10 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 参见 [4.13.0 变更日志](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md)。
 
+## 读取保留的更新结果 {#read-update-outcome}
+
+Rust SDK 4.15 新增 `Client::update_outcome` 和 `Client::update_outcome_receipt`，用于按 ID 读取已接受的更新，不重新提交。这些方法要求 `capabilities.update_outcome_reads`（native Server 3.6.0 及更高版本）。`update_outcome` 对尚未完成的更新返回 `Error::UpdateStillPending`。已完成的 null 结果为 `Ok(Value::Null)`。回执保留明确的 `update_status`。Rust 接口见 [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)。
+
 ## 条件等待期限与 Worker 升级 {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 从未分组的 `wait_condition` 首次打开时开始计算超时。

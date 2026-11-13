@@ -289,9 +289,9 @@ v2 のヘルススナップショットの `structural_limits` に現在の設�
 
 native Server 3.6.0 以降では、コマンド付きでワークフロータスクを完了するリクエスト（`POST /api/worker/workflow-tasks/{id}/complete` と `POST /api/worker/activity-tasks/{id}/continuation/complete`）は `max_payload_bytes` の 16 倍まで許可されます。既定の 2 MiB なら 32 MiB です。この上限は `DW_MAX_PAYLOAD_BYTES` に従い、専用の設定はありません。完了の中でも、各コマンドの引数には引き続きペイロードごとの上限が適用されます。PHP Server 2.x と以前の native リリースは、他のリクエストと同じく完了を 1 ペイロード分の上限に制限します。
 
-それより大きい完了は、何も記録される前に `413 payload_too_large` と `limit_kind: workflow_task_completion_bytes` で拒否されます。タスクをリプレイしても同じコマンドが生成されるため、完了を再送しても同じ拒否になります。PHP SDK 3.17.0 以降はこれを再送しません。Worker は `Structural limit exceeded: workflow_task_completion_bytes:` で始まり両方のサイズを示すメッセージの `fail_workflow` コマンドで実行を一度だけ失敗させ、Server はその失敗を `failure_category = structural_limit` として記録します。
+それより大きい完了は、何も記録される前に `413 payload_too_large` と `limit_kind: workflow_task_completion_bytes` で拒否されます。タスクをリプレイしても同じコマンドが生成されるため、完了を再送しても同じ拒否になります。PHP SDK 3.17.0 以降は、この型付き拒否を受信した場合、完了リクエストを再送しません。Worker は `Structural limit exceeded: workflow_task_completion_bytes:` で始まり両方のサイズを示すメッセージの `fail_workflow` コマンドで実行を一度だけ失敗させ、Server はその失敗を `failure_category = structural_limit` として記録します。
 
-Python SDK 2.17 は型付きの拒否に対応していますが、Server 3.8.0 への大きすぎる完了リクエストは、Worker が HTTP 413 を受け取る前に `httpx.ReadError` で失敗することがあります。公開済みアーティファクトを使ったテストでは、ワークフローは構造上限による失敗にならず、保留中のままでした。[Server の応答修正](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)が完了するまでは、完了リクエストのサイズを減らしてください。Rust SDK の同等の処理は、適格性確認済みのリリースを待っています。
+Python SDK 2.17 と Rust SDK 4.15 は型付き拒否の処理に対応しています。Server 3.8.0 では、大きすぎる完了リクエストが、Worker に HTTP 413 が届く前にトランスポート層で失敗することがあります。公開済み Python SDK のテストでは、`httpx.ReadError` により、ワークフローは構造上限による失敗にならず、保留中のままでした。公開済み Server での上限超過リクエストの受け入れ検証は、[Server の応答修正](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)で引き続き対応中です。この経路の適格性が確認されるまでは、完了リクエストを小さくしてください。
 
 完了を上限内に収めるには：
 

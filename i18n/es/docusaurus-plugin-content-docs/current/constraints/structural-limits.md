@@ -304,14 +304,15 @@ Los errores de validación se devuelven en el sobre de error estándar del plano
 
 En el Server nativo 3.6.0 y posteriores, una solicitud que finaliza una tarea de workflow con comandos (`POST /api/worker/workflow-tasks/{id}/complete` y `POST /api/worker/activity-tasks/{id}/continuation/complete`) puede ocupar hasta 16 veces `max_payload_bytes`: 32 MiB con el valor predeterminado de 2 MiB. Sigue a `DW_MAX_PAYLOAD_BYTES` y no tiene un ajuste propio. Los argumentos de cada comando siguen respetando el límite por carga útil dentro de la finalización. El Server PHP 2.x y las versiones nativas anteriores limitan una finalización a un límite de carga útil, como cualquier otra solicitud.
 
-Una finalización mayor se rechaza con `413 payload_too_large` y `limit_kind: workflow_task_completion_bytes` antes de registrar nada. Reproducir la tarea genera los mismos comandos, así que reenviar la finalización recibe el mismo rechazo. PHP SDK 3.17.0 y posteriores nunca la reenvían: el worker hace fallar la ejecución una sola vez con un comando `fail_workflow` cuyo mensaje empieza por `Structural limit exceeded: workflow_task_completion_bytes:` e indica ambos tamaños, y el Server registra el fallo con `failure_category = structural_limit`.
+Una finalización mayor se rechaza con `413 payload_too_large` y `limit_kind: workflow_task_completion_bytes` antes de registrar nada. Reproducir la tarea genera los mismos comandos, así que reenviar la finalización recibe el mismo rechazo. Cuando PHP SDK 3.17.0 o posterior recibe este rechazo tipado, no reenvía la finalización: el worker hace fallar la ejecución una sola vez con un comando `fail_workflow` cuyo mensaje empieza por `Structural limit exceeded: workflow_task_completion_bytes:` e indica ambos tamaños, y el Server registra el fallo con `failure_category = structural_limit`.
 
-Python SDK 2.17 gestiona el rechazo tipado, pero una finalización demasiado
-grande en Server 3.8.0 puede fallar con `httpx.ReadError` antes de que el worker
-reciba HTTP 413. En la prueba con artefactos publicados, el workflow siguió
-pendiente en lugar de fallar por un límite estructural. Reduzca el tamaño de la
-finalización mientras esté pendiente la [corrección de la respuesta del Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
-La gestión equivalente en el SDK de Rust aún espera una versión cualificada.
+Python SDK 2.17 y Rust SDK 4.15 gestionan el rechazo tipado. En Server 3.8.0,
+una finalización demasiado grande puede fallar en el transporte antes de que el
+worker reciba HTTP 413. En la prueba con el SDK de Python publicado,
+`httpx.ReadError` dejó el workflow pendiente en lugar de fallar por un límite
+estructural. La aceptación de solicitudes sobredimensionadas en el Server
+publicado sigue abierta en la [corrección de la respuesta del Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
+Reduzca las finalizaciones hasta que esa ruta esté cualificada.
 
 Para mantener una finalización dentro del límite:
 

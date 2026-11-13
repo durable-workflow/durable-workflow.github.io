@@ -314,18 +314,19 @@ request.
 A larger completion is refused with `413 payload_too_large` and
 `limit_kind: workflow_task_completion_bytes` before anything is recorded.
 Replaying the task produces the same commands, so sending the completion again
-gets the same refusal. PHP SDK 3.17.0 and later never resend it: the worker
-fails the run once with a `fail_workflow` command whose message starts
+gets the same refusal. When PHP SDK 3.17.0 or later receives this typed refusal, it does not resend
+the completion: the worker fails the run once with a `fail_workflow` command whose message starts
 `Structural limit exceeded: workflow_task_completion_bytes:` and names both
 sizes, and the Server records the failure with
 `failure_category = structural_limit`.
 
-Python SDK 2.17 includes handling for the typed refusal, but an oversized
-completion on Server 3.8.0 can fail with `httpx.ReadError` before the worker
-receives HTTP 413. In the published-artifact test, the workflow remained
-pending instead of failing structurally. Reduce the completion size while the
-[Server response fix](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)
-is pending. Equivalent Rust SDK handling still awaits a qualified release.
+Python SDK 2.17 and Rust SDK 4.15 include handling for the typed refusal.
+On Server 3.8.0, an oversized completion can fail at the transport before the
+worker receives HTTP 413. In the published Python test, `httpx.ReadError` left
+the workflow pending instead of failing structurally. Published-Server
+over-limit acceptance remains open under the
+[Server response fix](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
+Reduce completion sizes until that path is qualified.
 
 To keep a completion within the limit:
 

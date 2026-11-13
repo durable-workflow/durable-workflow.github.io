@@ -303,15 +303,15 @@ Erros de validação são retornados no envelope padrão de erro do plano de con
 
 No Server nativo 3.6.0 e posteriores, uma requisição que conclui uma tarefa de workflow com comandos (`POST /api/worker/workflow-tasks/{id}/complete` e `POST /api/worker/activity-tasks/{id}/continuation/complete`) pode ter até 16 vezes `max_payload_bytes`: 32 MiB com o padrão de 2 MiB. Ela segue `DW_MAX_PAYLOAD_BYTES` e não tem configuração própria. Os argumentos de cada comando continuam respeitando o limite por payload dentro da conclusão. O Server PHP 2.x e versões nativas anteriores limitam uma conclusão a um limite de payload, como qualquer outra requisição.
 
-Uma conclusão maior é recusada com `413 payload_too_large` e `limit_kind: workflow_task_completion_bytes` antes que algo seja registrado. Reexecutar a tarefa produz os mesmos comandos, então reenviar a conclusão recebe a mesma recusa. O PHP SDK 3.17.0 e posteriores nunca a reenviam: o worker falha a execução uma única vez com um comando `fail_workflow` cuja mensagem começa com `Structural limit exceeded: workflow_task_completion_bytes:` e informa os dois tamanhos, e o Server registra a falha com `failure_category = structural_limit`.
+Uma conclusão maior é recusada com `413 payload_too_large` e `limit_kind: workflow_task_completion_bytes` antes que algo seja registrado. Reexecutar a tarefa produz os mesmos comandos, então reenviar a conclusão recebe a mesma recusa. Quando o PHP SDK 3.17.0 ou posterior recebe essa recusa tipada, não reenvia a conclusão: o worker falha a execução uma única vez com um comando `fail_workflow` cuja mensagem começa com `Structural limit exceeded: workflow_task_completion_bytes:` e informa os dois tamanhos, e o Server registra a falha com `failure_category = structural_limit`.
 
-O Python SDK 2.17 trata a recusa tipada, mas uma conclusão grande demais no
-Server 3.8.0 pode falhar com `httpx.ReadError` antes que o worker receba HTTP 413.
-No teste com artefatos publicados, o workflow permaneceu pendente em vez de
-falhar por um limite estrutural. Reduza o tamanho da conclusão enquanto a
-[correção da resposta do Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)
-estiver pendente. O tratamento equivalente no SDK de Rust ainda aguarda uma
-versão qualificada.
+O Python SDK 2.17 e o Rust SDK 4.15 tratam a recusa tipada. No Server 3.8.0,
+uma conclusão grande demais pode falhar no transporte antes que o worker
+receba HTTP 413. No teste com o SDK de Python publicado, `httpx.ReadError`
+deixou o workflow pendente em vez de falhar por um limite estrutural. A
+aceitação de requisições acima do limite no Server publicado continua aberta
+na [correção da resposta do Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
+Reduza as conclusões até que esse caminho seja qualificado.
 
 Para manter uma conclusão dentro do limite:
 
