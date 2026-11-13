@@ -77,6 +77,29 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 frontière d'authentification de toutes les routes et ne doit jamais être
 exposé hors d'un réseau local de confiance.
 
+### Jeton refusé à cause de caractères blancs {#token-whitespace}
+
+Native Server 3.5.0 et les versions suivantes refusent de démarrer si
+`DW_AUTH_TOKEN`, `DW_WORKER_TOKEN`, `DW_OPERATOR_TOKEN`, `DW_ADMIN_TOKEN` ou un
+ancien paramètre de jeton contient des caractères blancs au début ou à la fin,
+ou un caractère de contrôle. Le diagnostic nomme le paramètre et indique `has leading or trailing whitespace or a control character`.
+Il ne contient pas la valeur du jeton.
+
+Cela provient souvent d'un Secret Kubernetes créé à partir d'un fichier avec
+un saut de ligne final, ou avec `echo` sans `-n`. Créez un nouveau Secret à partir
+de la valeur prévue du jeton, sans caractères blancs ni saut de ligne ajouté :
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` ne supprime pas les caractères blancs déjà présents dans la variable.
+Corrigez d'abord la valeur source si elle est incorrecte. Pour un Secret
+existant, mettez-le à jour avec votre procédure de déploiement, puis redémarrez
+les processus Server et worker concernés pour charger la valeur corrigée.
+Les deux côtés doivent utiliser exactement les mêmes octets pour le jeton.
+
 ## Autorisation et attribution des signaux {#signal-authorization-and-attribution}
 
 Avant d'admettre un signal, Server authentifie la requête et applique la

@@ -61,6 +61,19 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 
 `DW_AUTH_DRIVER=none` 仅用于本地开发。它移除所有路由的认证边界，绝不能暴露到可信本地网络之外。
 
+### 因空白字符而拒绝令牌 {#token-whitespace}
+
+Native Server 3.5.0 及更高版本会在 `DW_AUTH_TOKEN`、`DW_WORKER_TOKEN`、`DW_OPERATOR_TOKEN`、`DW_ADMIN_TOKEN` 或旧版令牌设置包含首尾空白字符或控制字符时拒绝启动。诊断信息会指明设置名称并显示 `has leading or trailing whitespace or a control character`，不会包含令牌值。
+
+常见原因是从末尾带换行符的文件创建 Kubernetes Secret，或者使用了不带 `-n` 的 `echo`。请使用原本应使用的不含空白字符的令牌值创建新的 Secret，不要添加换行符：
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` 不会删除变量中已经存在的空白字符。如果源值有误，请先修正。对于现有的 Secret，请通过部署流程更新，然后重启受影响的 Server 和 Worker 进程以加载修正后的值。两端必须使用完全相同的令牌字节。
+
 ## 信号授权与归属 {#signal-authorization-and-attribution}
 
 接纳信号前，Server 对请求进行认证，并强制执行配置的角色及命名空间策略。工作流信号路由要求 `operator` 或 `admin` 凭据。这些路由权限不实现应用的订单审批策略。请在转发信号前，由可信应用网关或受支持的自定义认证提供器执行该业务决策。如果最终用户不能直接发送信号，请将高权限 Server 凭据保留在该可信边界内。

@@ -61,6 +61,19 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 
 `DW_AUTH_DRIVER=none` はローカル開発専用です。すべてのルートから認証境界を取り除くため、信頼できるローカルネットワークの外に公開してはいけません。
 
+### 空白文字によるトークンの拒否 {#token-whitespace}
+
+Native Server 3.5.0 以降は、`DW_AUTH_TOKEN`、`DW_WORKER_TOKEN`、`DW_OPERATOR_TOKEN`、`DW_ADMIN_TOKEN` または旧形式のトークン設定に、先頭や末尾の空白文字または制御文字が含まれていると起動を拒否します。診断メッセージは設定名と `has leading or trailing whitespace or a control character` を表示し、トークンの値は含めません。
+
+よくある原因は、末尾に改行のあるファイルから Kubernetes Secret を作成したことや、`-n` なしの `echo` を使ったことです。空白文字を含まない本来のトークン値から、改行を追加せずに新しい Secret を作成してください。
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` は変数にすでに含まれている空白文字を削除しません。元の値が不正な場合は、先に修正してください。既存の Secret は通常のデプロイ手順で更新し、対象の Server と Worker のプロセスを再起動して、修正した値を読み込ませてください。両側で同じトークンのバイト列を使う必要があります。
+
 ## シグナルの認可と帰属 {#signal-authorization-and-attribution}
 
 シグナルを受け入れる前に、Server はリクエストを認証し、設定されたロールと名前空間ポリシーを強制します。ワークフローのシグナルルートには `operator` または `admin` の認証情報が必要です。このルート権限は、アプリケーションの注文承認ポリシーを実装するものではありません。シグナルを転送する前に信頼できるアプリケーションゲートウェイ、または対応するカスタム認証プロバイダーで、その業務上の判断を強制してください。エンドユーザーが直接シグナルを送ってはいけない場合、特権 Server 認証情報はその信頼境界内に保管します。
