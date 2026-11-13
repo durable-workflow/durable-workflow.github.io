@@ -388,9 +388,9 @@ Validation errors are returned in the standard control-plane error envelope with
 
 ### Native worker-command names and IDs {#native-worker-command-name-limits}
 
-Keep native worker commands within these storage-compatible bounds. Lengths
-count characters, not UTF-8 bytes. The workflow-ID row is the separate start
-API limit; child-call fields have stricter bounds than other commands.
+The table lists storage-character bounds. Existing runtime byte guards also
+apply, as explained below. The workflow-ID row is the separate start API
+limit; child-call fields have stricter bounds than other commands.
 
 | Field | Maximum characters | Scope |
 |---|---|---|
@@ -402,6 +402,15 @@ API limit; child-call fields have stricter bounds than other commands.
 | `queue` | 255 | Worker commands except `start_child_workflow` |
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+Native 3.8.0 and the corrected source also retain UTF-8 byte checks.
+`activity_type`, `open_signal_wait.signal_name`, an explicit
+`schedule_activity.queue`, and `continue_as_new.workflow_type` / `queue`
+use a 255-byte parser ceiling (`422 invalid_request`). Child `workflow_type`
+and `queue` have an additional 191-byte guard that can return
+`422 unsupported_child_options`. For example, an activity type containing
+128 copies of `é` is 256 bytes and is refused despite having only 128
+characters. The new character checks do not remove these byte guards.
 
 Native Server 3.8.0 does not consistently validate these command-name bounds
 before writes. SQLite can silently store over-long names; other backends can

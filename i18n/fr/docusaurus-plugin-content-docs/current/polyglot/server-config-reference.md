@@ -308,8 +308,8 @@ Les erreurs de validation utilisent l’enveloppe d’erreur standard du plan de
 
 ### Noms et identifiants des commandes des workers natifs {#native-worker-command-name-limits}
 
-Respectez ces limites de stockage dans les commandes des workers natifs. Les
-longueurs comptent les caractères, pas les octets UTF-8. La ligne de l’ID du
+Le tableau indique les limites de stockage en caractères. Les contrôles
+d’octets du runtime décrits ci-dessous s’appliquent aussi. La ligne de l’ID du
 workflow concerne la limite distincte de l’API de démarrage ; les champs des
 appels enfants ont des limites plus strictes que les autres commandes.
 
@@ -323,6 +323,15 @@ appels enfants ont des limites plus strictes que les autres commandes.
 | `queue` | 255 | Commandes des workers sauf `start_child_workflow` |
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+Le runtime natif 3.8.0 et le code corrigé conservent aussi des contrôles
+d’octets UTF-8. `activity_type`, `open_signal_wait.signal_name`, une
+`schedule_activity.queue` explicite et `continue_as_new.workflow_type` / `queue`
+ont un plafond d’analyse de 255 octets (`422 invalid_request`). Les champs
+`workflow_type` et `queue` d’un enfant ont un contrôle supplémentaire de
+191 octets pouvant renvoyer `422 unsupported_child_options`. Par exemple, un
+type d’activité contenant 128 copies de `é` occupe 256 octets et est refusé
+malgré ses 128 caractères. Les nouveaux contrôles de caractères ne suppriment pas ces contrôles d’octets.
 
 Le Server natif 3.8.0 ne valide pas systématiquement ces limites de noms avant
 les écritures. SQLite peut stocker silencieusement des noms trop longs ; les

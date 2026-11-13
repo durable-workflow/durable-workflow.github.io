@@ -320,9 +320,9 @@ der Payload-Größe verwenden `reason: "payload_too_large"` und Statuscode `413`
 
 ### Namen und IDs nativer Worker-Befehle {#native-worker-command-name-limits}
 
-Halten Sie native Worker-Befehle innerhalb dieser Speichergrenzen. Die Längen
-zählen Zeichen, keine UTF-8-Bytes. Die Workflow-ID-Zeile betrifft die separate
-Start-API; Felder von Child-Aufrufen haben engere Grenzen als andere Befehle.
+Die Tabelle zeigt Speichergrenzen in Zeichen. Zusätzlich gelten die unten
+beschriebenen Byte-Prüfungen der Laufzeit. Die Workflow-ID-Zeile betrifft die
+separate Start-API; Felder von Child-Aufrufen haben engere Grenzen als andere Befehle.
 
 | Feld | Maximale Zeichenanzahl | Geltungsbereich |
 |---|---|---|
@@ -334,6 +334,15 @@ Start-API; Felder von Child-Aufrufen haben engere Grenzen als andere Befehle.
 | `queue` | 255 | Worker-Befehle außer `start_child_workflow` |
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+Native 3.8.0 und der korrigierte Quellcode behalten außerdem UTF-8-Byte-Prüfungen
+bei. Für `activity_type`, `open_signal_wait.signal_name`, eine explizite
+`schedule_activity.queue` und `continue_as_new.workflow_type` / `queue`
+gilt eine Parsergrenze von 255 Bytes (`422 invalid_request`). Für Child-
+`workflow_type` und `queue` gilt zusätzlich eine 191-Byte-Prüfung, die
+`422 unsupported_child_options` zurückgeben kann. Ein Activity-Typ aus
+128 Wiederholungen von `é` hat beispielsweise 256 Bytes und wird trotz nur
+128 Zeichen abgelehnt. Die neuen Zeichenprüfungen heben diese Byte-Prüfungen nicht auf.
 
 Native Server 3.8.0 prüft diese Namensgrenzen vor Schreibvorgängen nicht
 konsistent. SQLite kann überlange Namen stillschweigend speichern; andere

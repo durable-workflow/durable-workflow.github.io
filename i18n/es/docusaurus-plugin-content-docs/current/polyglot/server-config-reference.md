@@ -308,10 +308,10 @@ Los errores de validación se devuelven en el sobre de error estándar del plano
 
 ### Nombres e ID de comandos de workers nativos {#native-worker-command-name-limits}
 
-Mantenga los comandos de workers nativos dentro de estos límites de
-almacenamiento. Las longitudes cuentan caracteres, no bytes UTF-8. La fila del
-ID de workflow corresponde al límite separado de la API de inicio; los campos
-de llamadas a hijos tienen límites más estrictos que otros comandos.
+La tabla muestra límites de almacenamiento en caracteres. También se aplican
+las comprobaciones de bytes del runtime descritas abajo. La fila del ID de
+workflow corresponde al límite separado de la API de inicio; los campos de
+llamadas a hijos tienen límites más estrictos que otros comandos.
 
 | Campo | Máximo de caracteres | Ámbito |
 |---|---|---|
@@ -323,6 +323,15 @@ de llamadas a hijos tienen límites más estrictos que otros comandos.
 | `queue` | 255 | Comandos de workers salvo `start_child_workflow` |
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+El runtime nativo 3.8.0 y el código corregido conservan comprobaciones de bytes
+UTF-8. `activity_type`, `open_signal_wait.signal_name`, una
+`schedule_activity.queue` explícita y `continue_as_new.workflow_type` / `queue`
+tienen un límite de análisis de 255 bytes (`422 invalid_request`). Los campos
+`workflow_type` y `queue` de un hijo tienen además un límite de 191 bytes que
+puede devolver `422 unsupported_child_options`. Por ejemplo, un tipo de
+actividad con 128 copias de `é` ocupa 256 bytes y se rechaza aunque solo tenga
+128 caracteres. Las nuevas comprobaciones de caracteres no eliminan estos límites de bytes.
 
 El Server nativo 3.8.0 no valida estos límites de nombres de forma uniforme
 antes de escribir. SQLite puede almacenar nombres demasiado largos sin avisar;

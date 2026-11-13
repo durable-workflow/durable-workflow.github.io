@@ -303,7 +303,7 @@ PHP Server 2.x の設定可能な上限には、文書化された `DW_*` 設定
 
 ### native ワーカーコマンドの名前と ID {#native-worker-command-name-limits}
 
-native ワーカーコマンドでは、次の保存先の上限を守ってください。長さは UTF-8 バイト数ではなく文字数です。workflow ID の行は開始 API の別の上限を示します。子呼び出しのフィールドには、ほかのコマンドより厳しい上限があります。
+表は保存先の文字数上限を示します。下記の runtime のバイト数チェックも適用されます。workflow ID の行は開始 API の別の上限です。子呼び出しのフィールドには、ほかのコマンドより厳しい上限があります。
 
 | フィールド | 最大文字数 | 対象 |
 |---|---|---|
@@ -315,6 +315,8 @@ native ワーカーコマンドでは、次の保存先の上限を守ってく�
 | `queue` | 255 | `start_child_workflow` 以外のワーカーコマンド |
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+native 3.8.0 と修正後のソースにも、UTF-8 バイト数のチェックが残ります。`activity_type`、`open_signal_wait.signal_name`、明示的な `schedule_activity.queue`、`continue_as_new.workflow_type` / `queue` には、パーサーの 255 バイト上限があります（`422 invalid_request`）。子の `workflow_type` と `queue` には追加の 191 バイトチェックがあり、`422 unsupported_child_options` を返す場合があります。たとえば `é` を 128 個並べた Activity 型は 256 バイトとなり、128 文字しかなくても拒否されます。新しい文字数チェックは、これらのバイト数チェックを削除しません。
 
 native Server 3.8.0 は、書き込み前にこれらの名前の上限を一貫して検証しません。SQLite は長すぎる名前を警告なく保存する場合があり、ほかのバックエンドではデータベースエラーになる場合があります。[ソースの修正](https://github.com/durable-workflow/server/pull/1186)は、`commands.0.activity_type` などのフィールドごとに、書き込み前の `422` 拒否を追加しますが、検証済み Server リリースとしての公開はまだです。選択された安定版は引き続き 3.8.0 です。修正版へ更新する前に、191 文字を超える名前の既存の Activity 型とシグナル待機を確認してください。その名前を使う新しいコマンドは拒否されます。残りの識別子の調査は [Server #607](https://github.com/durable-workflow/server/issues/607) で追跡しています。上記の HTTP 操作名の 256 バイト上限は、これとは別です。
 

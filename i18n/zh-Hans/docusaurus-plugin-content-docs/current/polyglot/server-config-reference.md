@@ -303,7 +303,7 @@ PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器
 
 ### 原生 worker 命令的名称和 ID {#native-worker-command-name-limits}
 
-原生 worker 命令应遵守以下存储上限。长度按字符数计算，而不是 UTF-8 字节数。workflow ID 一行是启动 API 的独立限制；子调用字段的上限比其他命令更严格。
+表中列出存储的字符数上限。下述 runtime 字节检查也仍然适用。workflow ID 一行是启动 API 的独立限制；子调用字段的上限比其他命令更严格。
 
 | 字段 | 最大字符数 | 范围 |
 |---|---|---|
@@ -315,6 +315,8 @@ PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器
 | `queue` | 255 | 除 `start_child_workflow` 外的 worker 命令 |
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+原生 3.8.0 和修复后的源码都仍有 UTF-8 字节检查。`activity_type`、`open_signal_wait.signal_name`、显式指定的 `schedule_activity.queue` 以及 `continue_as_new.workflow_type` / `queue` 使用解析器的 255 字节上限（`422 invalid_request`）。子调用的 `workflow_type` 和 `queue` 还受到 191 字节检查，可能返回 `422 unsupported_child_options`。例如，由 128 个 `é` 组成的 activity 类型占 256 字节，即使只有 128 个字符也会被拒绝。新的字符数检查不会取消这些字节检查。
 
 原生 Server 3.8.0 不会在写入前一致地校验这些命令名称上限。SQLite 可能静默保存过长的名称，其他后端可能返回数据库错误。[源码修复](https://github.com/durable-workflow/server/pull/1186)会在写入前返回针对具体字段的 `422` 拒绝，例如 `commands.0.activity_type`，但仍在等待经过验证的 Server 发布版本。当前选择的稳定版仍为 3.8.0。升级到修复版本前，请检查名称超过 191 个字符的已有 activity 类型和信号等待：使用这些名称的新命令将被拒绝。其余标识符的检查由 [Server #607](https://github.com/durable-workflow/server/issues/607) 跟踪。上述 HTTP 操作名的 256 字节上限是独立的限制。
 
