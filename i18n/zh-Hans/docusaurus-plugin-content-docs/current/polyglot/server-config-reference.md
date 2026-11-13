@@ -282,6 +282,8 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 
 PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器校验上限是固定的。Native Server 3.x 支持的设置见其[实现说明](#native-server-3x)。在 native 3.8.0 中，`DW_MAX_PAYLOAD_BYTES=0` 会将普通请求和工作流任务完成请求的上限设为零字节，拒绝非空请求体。操作名上限固定为 256 字节。
 
+原生 3.9.1 仍对信号的 `request_id` 执行 255 个 UTF-8 字节的检查。因此，255 个字符的多字节键也可能返回 `422 invalid_request_id`。[安装后 CLI 验证](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)跟踪这一已发布版本的限制；该验证不代表共享 #216 的请求键完整验收通过。
+
 当前配置值发布在 `GET /api/cluster/info` 响应的 `limits` 下，客户端可在运行时发现这些限制：
 
 ```json
@@ -316,23 +318,29 @@ PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
 
-原生 3.8.0 和修复后的源码都仍有 UTF-8 字节检查。`activity_type`、`open_signal_wait.signal_name`、显式指定的 `schedule_activity.queue` 以及 `continue_as_new.workflow_type` / `queue` 使用解析器的 255 字节上限（`422 invalid_request`）。子调用的 `workflow_type` 和 `queue` 还受到 191 字节检查，可能返回 `422 unsupported_child_options`。例如，由 128 个 `é` 组成的 activity 类型占 256 字节，即使只有 128 个字符也会被拒绝。新的字符数检查不会取消这些字节检查。
+原生 3.8.0 和 3.9.1 都仍有 UTF-8 字节检查。`activity_type`、`open_signal_wait.signal_name`、显式指定的 `schedule_activity.queue` 以及 `continue_as_new.workflow_type` / `queue` 使用解析器的 255 字节上限（`422 invalid_request`）。子调用的 `workflow_type` 和 `queue` 还受到 191 字节检查，可能返回 `422 unsupported_child_options`。例如，由 128 个 `é` 组成的 activity 类型占 256 字节，即使只有 128 个字符也会被拒绝。新的字符数检查不会取消这些字节检查。
 
-原生 Server 3.8.0 不会在写入前一致地校验这些命令名称上限。SQLite 可能静默保存过长的名称，其他后端可能返回数据库错误。[源码修复](https://github.com/durable-workflow/server/pull/1186)会在写入前返回针对具体字段的 `422` 拒绝，例如 `commands.0.activity_type`，但仍在等待经过验证的 Server 发布版本。当前选择的稳定版仍为 3.8.0。升级到修复版本前，请检查名称超过 191 个字符的已有 activity 类型和信号等待：使用这些名称的新命令将被拒绝。其余标识符的检查由 [Server #607](https://github.com/durable-workflow/server/issues/607) 跟踪。上述 HTTP 操作名的 256 字节上限是独立的限制。
+原生 Server 3.9.1 包含[已发布的修复](https://github.com/durable-workflow/server/releases/tag/3.9.1#other-changes)：在写入前返回针对具体字段的 `422 validation_failed` 拒绝，例如 `commands.0.activity_type`。原生 3.8.0 不会一致地校验这些字符上限；SQLite 可能静默保存过长的名称，其他后端则可能返回数据库错误。升级前请检查名称超过 191 个字符的已有 activity 类型和信号等待：使用这些名称的新命令现在会被拒绝。其余标识符的检查仍由 [Server #607](https://github.com/durable-workflow/server/issues/607) 跟踪。上述 HTTP 操作名的 256 字节上限是独立限制。
 
 ### 工作流任务完成大小 {#workflow-task-completion-size}
 
 在原生 Server 3.6.0 及以上，带命令完成工作流任务的请求（`POST /api/worker/workflow-tasks/{id}/complete` 和 `POST /api/worker/activity-tasks/{id}/continuation/complete`）最多可达 `max_payload_bytes` 的 16 倍：默认 2 MiB 时为 32 MiB。该上限跟随 `DW_MAX_PAYLOAD_BYTES`，没有单独的设置。完成请求中每个命令的参数仍须符合单个载荷上限。PHP Server 2.x 和更早的原生版本与其他请求一样，将完成请求限制为一个载荷上限。
 
+原生 3.9.1 在 cluster info 中通过 `limits.max_workflow_task_completion_bytes` 公布实际预算。它对两个完成路由都计量整个编码后 JSON 请求体，包括 envelope、元数据和命令。应使用该值，而不是按 Server 版本推断倍数或累加解码后的参数大小。单个值和普通路由的上限不变。此字段不会授予额外的外部 payload 上传权限或引用放置权限。
+
+SDK 规划器必须遵守公布的正整数上限，即使它低于普通上限。字段缺失时保留保守的回退行为；显式格式错误、null、零、负数或非整数值会在上传前拒绝完成规划。普通路由忽略此未使用的完成字段。
+
 更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上在收到这种类型化拒绝后不会重新发送完成请求：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。
 
-Python SDK 2.17 和 Rust SDK 4.15 包含对类型化拒绝的处理。在 Server 3.8.0 上，过大的完成请求可能在 Worker 收到 HTTP 413 之前就在传输层失败。在已发布 Python SDK 的测试中，`httpx.ReadError` 使工作流保持待处理状态，而没有因结构限制失败。已发布 Server 的超限请求验收仍由 [Server 响应修复](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)跟进。在该路径通过资格验证之前，请减小完成请求。
+Python SDK 2.17 和 Rust SDK 4.15 包含类型化拒绝处理。Server 3.8.0 的已发布 Python 验证在收到 HTTP 413 前遇到 `httpx.ReadError`，使 workflow 保持待定。原生 3.9.1 通过有界丢弃请求余下数据修复此响应路径：最多 64 MiB、最多两秒，然后返回原始拒绝并关闭连接。超出任一边界的上传仍可能遇到传输错误。
+
+已发布的 Python SDK 2.17.1 与经过验证的原生 Server 3.9.1（linux/amd64、SQLite）现已通过[实际安装 Worker 的验证](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)：预算内 300 × 10 KB fan-out；过大的完成请求只产生一次类型化 413 和一次结构性失败，部分 activity 为零；随后同一 Worker 成功执行后续任务。此结果只验证这个确切的 Python/Server 组合。PHP 和 Rust 仍需各自的安装后验证；共享 #228 仍未关闭。共享 #216 的请求键验证是独立的。
 
 要让完成请求保持在上限之内：
 
 - 将大型扇出拆分为分布在多个工作流任务中的较小批次。
 - 将工作移到子工作流中，或使用 continue-as-new。
-- 将大型参数存入外部载荷存储，使完成请求携带引用而不是载荷本身。
+- 外部 payload 存储仅用于受支持的 payload 位置。activity continuation 命令参数仍须 inline；activity/result 上传许可不授权在这些命令参数中放置引用。
 
 #### Rust 命令规划 {#rust-completion-planning}
 

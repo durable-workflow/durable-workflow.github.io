@@ -114,6 +114,8 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 このスタックはネイティブ Server と MySQL で構成されます。`DW_AUTH_TOKEN` が設定されるまで Compose は起動を拒否します。本番用 env ファイル、バックアップ、アップグレードは [デプロイガイド](/docs/deployment#single-node-production)で説明しています。
 
+native 3.8.x 以前から 3.9.1 への更新では、再起動前に[明示的なスキーマ更新](../deployment.md#native-schema-upgrade-3-9)が必要です。
+
 ### ポート {#ports}
 
 | サービス | ポート | 用途 |

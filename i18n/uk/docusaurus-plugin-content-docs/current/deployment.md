@@ -269,6 +269,21 @@ docker compose --env-file durable-workflow.prod.env \
 розділі
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Оновлення до Server 3.9.1 {#native-schema-upgrade-3-9}
+
+Оновлення з native 3.8.x або ранішої версії потребує оновлення схеми на кожному бекенді. Server 3.9.1 додає порожню таблицю `dw_command_intents`:
+
+| Бекенд | Перехід схеми з 3.8.x |
+|---|---|
+| SQLite | 12 → 13 |
+| PostgreSQL | 13 → 14 |
+| MariaDB | 13 → 14 |
+| MySQL | 14 → 15 |
+
+Зупиніть усі репліки Server, залиште базу даних працювати, створіть резервні копії бази та сховища Server, а тоді виберіть і завантажте образ 3.9.1. Запустіть його `schema-upgrade` один раз перед перезапуском усіх реплік на тій самій версії. Server не оновлює наявну схему при запуску: він відмовляє зі старою схемою через `native_schema_upgrade_required`. Після перезапуску перевірте readiness, версію та реєстрацію Worker. [Кваліфіковані інструкції релізу 3.9.1](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade) містять команди Compose без checkout вихідного коду.
+
+MySQL і MariaDB продовжують перерване оновлення; SQLite та PostgreSQL застосовують крок транзакційно. Відкат до 3.8.x потребує відновлення резервної копії: 3.8.0 відмовляє з оновленою базою через `native_schema_newer_than_binary`. Із 3.9.0 додатковий крок схеми не потрібен. Для старіших версій `schema-upgrade` застосовує також попередні кроки, зокрема [перебудову JSON у 3.7](#native-schema-upgrade-3-7), якщо вона потрібна. Протокол Worker 1.20 і control plane 2 не змінюються.
+
 ### Оновлення до Server 3.8.0 {#native-schema-upgrade-3-8}
 
 Server 3.8.0 потребує нативного оновлення схеми на кожному бекенді. Він додає одну таблицю лише для native, `dw_task_queue_pauses`, яка створюється порожньою:

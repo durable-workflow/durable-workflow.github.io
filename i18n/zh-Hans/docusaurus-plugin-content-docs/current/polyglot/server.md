@@ -113,6 +113,8 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 该栈包含原生 Server 和 MySQL。未设置 `DW_AUTH_TOKEN` 时，Compose 会拒绝启动。生产 env 文件、备份和升级见[部署指南](/docs/deployment#single-node-production)。
 
+从 native 3.8.x 或更早版本升级到 3.9.1 时，必须在重启前[显式升级 schema](../deployment.md#native-schema-upgrade-3-9)。
+
 ### 端口 {#ports}
 
 | 服务 | 端口 | 用途 |

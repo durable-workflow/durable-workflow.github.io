@@ -293,6 +293,8 @@ Grenze für gewöhnliche Anfragen und Workflow-Task-Completions auf null Bytes,
 sodass nichtleere Bodys abgelehnt werden. Die Grenze für Operationsnamen ist
 fest auf 256 Bytes gesetzt.
 
+Native 3.9.1 prüft Signal-`request_id` weiterhin gegen 255 UTF-8-Bytes. Ein mehrbyteiger Schlüssel mit 255 Zeichen kann daher `422 invalid_request_id` auslösen. Die [Qualifikation der installierten CLI](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056) verfolgt diese veröffentlichte Einschränkung; sie belegt keine vollständige Request-Key-Akzeptanz unter dem gemeinsamen #216.
+
 Die aktuell konfigurierten Werte werden unter `limits` in der Antwort von
 `GET /api/cluster/info` veröffentlicht. Clients können sie dadurch zur Laufzeit
 ermitteln:
@@ -335,8 +337,7 @@ separate Start-API; Felder von Child-Aufrufen haben engere Grenzen als andere Be
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
 
-Native 3.8.0 und der korrigierte Quellcode behalten außerdem UTF-8-Byte-Prüfungen
-bei. Für `activity_type`, `open_signal_wait.signal_name`, eine explizite
+Native 3.8.0 und 3.9.1 behalten außerdem UTF-8-Byte-Prüfungen bei. Für `activity_type`, `open_signal_wait.signal_name`, eine explizite
 `schedule_activity.queue` und `continue_as_new.workflow_type` / `queue`
 gilt eine Parsergrenze von 255 Bytes (`422 invalid_request`). Für Child-
 `workflow_type` und `queue` gilt zusätzlich eine 191-Byte-Prüfung, die
@@ -344,36 +345,27 @@ gilt eine Parsergrenze von 255 Bytes (`422 invalid_request`). Für Child-
 128 Wiederholungen von `é` hat beispielsweise 256 Bytes und wird trotz nur
 128 Zeichen abgelehnt. Die neuen Zeichenprüfungen heben diese Byte-Prüfungen nicht auf.
 
-Native Server 3.8.0 prüft diese Namensgrenzen vor Schreibvorgängen nicht
-konsistent. SQLite kann überlange Namen stillschweigend speichern; andere
-Backends können Datenbankfehler zurückgeben. Die [Quellcodekorrektur](https://github.com/durable-workflow/server/pull/1186)
-fügt vor Schreibvorgängen feldspezifische `422`-Ablehnungen hinzu, etwa für
-`commands.0.activity_type`, wartet aber noch auf eine qualifizierte
-veröffentlichte Server-Version. Die ausgewählte stabile Version bleibt 3.8.0.
-Prüfen Sie vor dem Upgrade auf die korrigierte Version vorhandene Activity-Typen
-und Signal-Waits mit Namen über 191 Zeichen: Neue Befehle mit diesen Namen
-werden abgelehnt. Die übrige Kennungsprüfung wird in [Server #607](https://github.com/durable-workflow/server/issues/607)
-verfolgt. Die obige HTTP-Grenze von 256 Bytes für Operationsnamen ist separat.
+Native Server 3.9.1 enthält die [veröffentlichte Korrektur](https://github.com/durable-workflow/server/releases/tag/3.9.1#other-changes): feldspezifische `422 validation_failed`-Ablehnungen, etwa für `commands.0.activity_type`, vor Schreibvorgängen. Native 3.8.0 prüfte diese Zeichengrenzen nicht konsistent; SQLite konnte überlange Namen stillschweigend speichern, während andere Backends Datenbankfehler zurückgaben. Prüfen Sie vor dem Upgrade vorhandene Activity-Typen und Signal-Waits mit Namen über 191 Zeichen: Neue Befehle mit diesen Namen werden nun abgelehnt. Die übrige Kennungsprüfung wird in [Server #607](https://github.com/durable-workflow/server/issues/607) verfolgt. Die obige HTTP-Grenze von 256 Bytes für Operationsnamen ist separat.
 
 ### Größe eines Workflow-Task-Abschlusses {#workflow-task-completion-size}
 
 Auf nativem Server 3.6.0 und neuer darf eine Anfrage, die einen Workflow-Task mit Befehlen abschließt (`POST /api/worker/workflow-tasks/{id}/complete` und `POST /api/worker/activity-tasks/{id}/continuation/complete`), bis zum 16-Fachen von `max_payload_bytes` groß sein: 32 MiB beim Standardwert von 2 MiB. Sie folgt `DW_MAX_PAYLOAD_BYTES` und hat keine eigene Einstellung. Die Argumente jedes Befehls müssen innerhalb des Abschlusses weiterhin die Grenze pro Payload einhalten. PHP-Server 2.x und frühere native Versionen begrenzen einen Abschluss wie jede andere Anfrage auf eine Payload-Grenze.
 
+Native 3.9.1 veröffentlicht das tatsächliche Budget als `limits.max_workflow_task_completion_bytes` in Cluster-Info. Es misst für beide Completion-Routen den vollständig kodierten JSON-Anfragekörper einschließlich Envelopes, Metadaten und Befehlen. Verwenden Sie diesen Wert, statt einen Multiplikator aus der Server-Version abzuleiten oder dekodierte Argumentgrößen zu addieren. Die Grenzen pro Wert und für gewöhnliche Routen bleiben unverändert. Das Feld erteilt keine zusätzliche Berechtigung zum Hochladen externer Payloads oder Platzieren von Referenzen.
+
+SDK-Planer müssen eine positive veröffentlichte Grenze auch unterhalb der gewöhnlichen Grenze beachten. Fehlt das Feld, bleibt der konservative Fallback erhalten. Ein explizit fehlerhafter Wert, ein Nullwert (null), die Zahl Null, ein negativer oder nicht ganzzahliger Wert verweigert die Completion-Planung vor dem Upload. Gewöhnliche Routen ignorieren dieses ungenutzte Completion-Feld.
+
 Ein größerer Abschluss wird mit `413 payload_too_large` und `limit_kind: workflow_task_completion_bytes` abgelehnt, bevor etwas aufgezeichnet wird. Eine erneute Ausführung des Tasks erzeugt dieselben Befehle, daher führt erneutes Senden zur selben Ablehnung. Erhält PHP SDK 3.17.0 oder neuer diese typisierte Ablehnung, sendet es die Completion nicht erneut: Der Worker lässt den Lauf einmal mit einem `fail_workflow`-Befehl fehlschlagen, dessen Nachricht mit `Structural limit exceeded: workflow_task_completion_bytes:` beginnt und beide Größen nennt, und der Server zeichnet den Fehler mit `failure_category = structural_limit` auf.
 
-Python SDK 2.17 und Rust SDK 4.15 behandeln die typisierte Ablehnung. Bei
-Server 3.8.0 kann eine zu große Completion bereits beim Transport scheitern,
-bevor der Worker HTTP 413 erhält. Im Test mit dem veröffentlichten Python-SDK
-ließ `httpx.ReadError` den Workflow ausstehend, statt ihn strukturell scheitern
-zu lassen. Die Qualifikation übergroßer Anfragen am veröffentlichten Server ist
-unter der [Korrektur der Server-Antwort](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)
-weiter offen. Verkleinern Sie die Completions, bis dieser Pfad qualifiziert ist.
+Python SDK 2.17 und Rust SDK 4.15 behandeln die typisierte Ablehnung. Auf Server 3.8.0 traf ein veröffentlichter Python-Kontrolllauf vor HTTP 413 auf `httpx.ReadError` und ließ den Workflow offen. Native 3.9.1 korrigiert diesen Antwortpfad durch begrenztes Verwerfen der Anfrage: höchstens 64 MiB verbleibende Upload-Daten und höchstens zwei Sekunden, bevor die ursprüngliche Ablehnung zurückgegeben und die Verbindung geschlossen wird. Außerhalb dieser Grenzen können weiterhin Transportfehler auftreten.
+
+Das veröffentlichte Python SDK 2.17.1 mit qualifiziertem nativem Server 3.9.1 (linux/amd64, SQLite) besteht nun die [Kontrollen mit tatsächlich installiertem Worker](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512): Fan-out von 300 × 10 KB innerhalb der Grenze, genau ein typisiertes 413 und ein struktureller Fehler ohne teilweise gestartete Aktivitäten bei übergroßer Completion, danach eine erfolgreiche Aufgabe auf demselben Worker. Dies qualifiziert genau dieses Python/Server-Paar. PHP und Rust benötigen eigene installierte Akzeptanznachweise; das gemeinsame #228 bleibt offen. Die Request-Key-Akzeptanz unter dem gemeinsamen #216 ist separat.
 
 So bleibt ein Abschluss innerhalb der Grenze:
 
 - Teilen Sie ein großes Fan-out in kleinere Stapel über mehrere Workflow-Tasks auf.
 - Verlagern Sie Arbeit in Child-Workflows, oder verwenden Sie Continue-as-New.
-- Speichern Sie große Argumente im externen Payload-Speicher, sodass der Abschluss Referenzen statt der Payloads enthält.
+- Verwenden Sie externen Payload-Speicher nur für unterstützte Payload-Positionen. Befehlsargumente einer Activity-Continuation bleiben inline; eine Upload-Berechtigung für Activity oder Ergebnis erlaubt dort keine Referenzen.
 
 #### Rust-Befehlsplanung {#rust-completion-planning}
 

@@ -367,6 +367,12 @@ listed in its [implementation notes](#native-server-3x). On native 3.8.0,
 workflow-task completions, rejecting nonempty bodies. Its operation-name
 ceiling is fixed at 256 bytes.
 
+Native 3.9.1 still applies a 255-byte UTF-8 check to signal `request_id`.
+A 255-character multibyte key can therefore return `422 invalid_request_id`.
+The [installed CLI qualification](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)
+tracks this published limitation; it does not establish full request-key
+acceptance under shared #216.
+
 The currently-configured values are published under `limits` on the `GET /api/cluster/info` response, so clients can discover them at runtime:
 
 ```json
@@ -461,7 +467,8 @@ HTTP 413 and left the workflow pending. Native 3.9.1 corrects that response
 path with bounded request discard: at most 64 MiB of remaining upload data for
 at most two seconds before returning the original refusal and closing the
 connection. Uploads beyond either bound may still encounter transport errors.
-Published Python SDK 2.17.1 with qualified native Server 3.9.1 now passes the
+Published Python SDK 2.17.1 with qualified native Server 3.9.1
+(linux/amd64, SQLite) now passes the
 [actual installed-worker controls](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512):
 300 × 10 KB within-cap fan-out, one typed 413 and one structural failure with
 zero partial activities for an oversized completion, then a successful task on
