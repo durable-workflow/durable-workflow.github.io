@@ -118,6 +118,12 @@ El resultado contiene clave e índice estables del miembro, tipo e identidad dur
 
 El runtime registra la primera resolución apta mientras mantiene el bloqueo de confirmación del padre. Por eso, reinicios en frío, recargas del historial persistido, consultas y finalizaciones posteriores de perdedores reutilizan el ganador registrado, sin competir con futuros locales del lenguaje ni reinterpretar el orden. Las entregas exactamente duplicadas son idempotentes. Las entradas concurrentes se ordenan por historial duradero confirmado; una entrada que llega mientras corre una actividad es visible en la siguiente tarea de workflow, y una entrada tardía o duplicada no reemplaza al ganador registrado.
 
+### Perdedores cuando se cierra la ejecución {#selection-losers-at-close}
+
+Desde Workflow 2.28, si la ejecución se cierra mientras un miembro no ganador sigue abierto, el cierre lo cancela en la misma transacción. Esto se aplica cuando la ejecución se completa, falla o continúa como nueva. Una actividad abierta recibe `ActivityCancelled` con `cancellation_reason: run_closed` y un temporizador pendiente recibe `TimerCancelled`, ambos registrados antes del evento terminal. No se añade nada después del evento terminal y se rechaza un resultado tardío de la actividad cancelada. El replay ignora estas cancelaciones, porque el workflow nunca las vio.
+
+Si el workflow necesita el efecto de un perdedor, espérelo antes de retornar. En el modo de servicio, una actividad programada con `cancellation_policy: abandon` sigue ejecutándose. El evento terminal la incluye en `abandoned_activities`, y su resultado nunca se registra en la ejecución cerrada. Los workflows hijos siguen su política de cierre del padre.
+
 ## Barreras anidadas {#nested-barriers}
 
 Los grupos anidados `all([...])` permiten expresar en un paso un árbol duradero de distribución y reunión de trabajo. El runtime programa cada actividad o hijo como secuencia hoja duradera, registra su `parallel_group_path` completo, espera hasta que todas las barreras que la contienen puedan avanzar y reconstruye la forma anidada original del resultado antes de reanudar. Al reproducir, cada hoja de actividad o hijo debe coincidir con esa ruta registrada. El historial tipado de hojas sin metadatos de grupo se considera historial incompatible de una versión preliminar antigua, sin suponer su encaje en la barrera actual.

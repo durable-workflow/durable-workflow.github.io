@@ -78,6 +78,8 @@ se clôturent explicitement sur le prédécesseur.
 
 Les boucles longues peuvent réduire leur historique sans inventer un nouvel identifiant public de workflow à chaque passage à l’exécution suivante.
 
+Depuis Workflow 2.28, les activités et minuteurs que l’exécution qui se clôt n’a jamais attendus sont annulés lorsqu’elle continue dans une nouvelle exécution ; les enfants sont en revanche transmis à l’exécution suivante. Voir [Perdants à la clôture de l’exécution](./concurrency.md#selection-losers-at-close).
+
 ## Budget d’historique {#history-budget}
 
 Le code du workflow peut consulter la longueur courante de l’historique et un indicateur de recommandation de continuation via un contexte explicite du runtime. Les boucles longues peuvent ainsi passer le relais volontairement avant d’atteindre des limites de budget d’historique.
