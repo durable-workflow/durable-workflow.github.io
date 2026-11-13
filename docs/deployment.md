@@ -268,6 +268,33 @@ command-level Compose examples in the
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)
 section.
 
+### Upgrading to Server 3.10.0 {#native-schema-upgrade-3-10}
+
+Native 3.10.0 requires an explicit additive schema upgrade from 3.9.x:
+
+| Backend | Schema transition from 3.9.x |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+Stop every Server replica, keep the database running, and back up the database
+and external-payload storage. Select the 3.10.0 image and run its
+`schema-upgrade` once before restarting every replica on the same version.
+Check readiness, reported version and worker registration. Startup does not
+upgrade an old schema automatically. Older versions require the intervening
+steps too. The [published 3.10.0 upgrade instructions](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback)
+provide the Compose commands. Worker protocol 1.20 and control plane 2 are unchanged.
+
+The nullable schedule summary is not backfilled from legacy action arrays.
+Existing schedules remain unavailable until an owning transition records a
+valid summary; see [dispatch-summary authority](./polyglot/server-api-reference.md#schedule-dispatch-summary).
+MySQL and MariaDB resume interrupted upgrades; SQLite and PostgreSQL apply the
+step transactionally. Rollback to an older binary requires restoring the
+pre-upgrade database and storage backup. Do not run an older binary against
+the newer schema.
+
 ### Upgrading to Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Upgrading from native 3.8.x or earlier requires a schema upgrade on every
