@@ -66,12 +66,12 @@ PHP と Laravel の要件を比較する前にパッケージのリリースを�
 
 | パッケージ系列 | PHP | Laravel |
 | --- | --- | --- |
-| 現在の組み込み Workflow 2.26 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| 現在の組み込み Workflow 2.27 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | 組み込み Workflow 2.20.5 | PHP `^8.1`。Laravel 自身の最低要件も適用 | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 | 公開済み PHP SDK 3.14 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | PHP SDK 3.9.5 | 基本 SDK は PHP `^8.1`。Laravel ブリッジはフレームワークの最低要件にも従う | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 
-[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.27.0/resources/laravel-embedded-upgrade-contract.json)
 と各リリースの `composer.json` がパッケージの根拠です。現在の組み込みリリースは
 Laravel 12/PHP 8.2～8.4 と Laravel 13/PHP 8.3～8.4 で検証されています。
 PHP 8.1 と Laravel 10/11 のサポートは終了しました。
@@ -119,6 +119,13 @@ Workflow 2.25 と 2.26 は 2.21 のサポート下限と組み込みワーカー
 - 2.25 以降、固定のメモまたは検索属性の上限を超えると、`InvalidArgumentException` ではなく `StructuralLimitExceededException` が発生し、`memo_size_bytes` の既定値は 65,536 です。[構造上の制限](./constraints/structural-limits.md)を参照してください。
 
 [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0)、[2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0) のリリースノートを参照してください。
+
+Workflow 2.27 は 2.21 のサポート下限と組み込みワーカープロトコル `1.22` を維持し、データベースマイグレーションは追加しません。アップグレード前に確認すべき変更:
+
+- 2.27 以降、組み込みアプリは自身の名前空間の作業だけを修復・実行します。アプリが `DW_V2_NAMESPACE` 以外の名前空間でワークフローを開始、スケジュール、またはシグナル送信する場合は、それらをすべて `DW_V2_NAMESPACES` に列挙してください。すべての名前空間を担当するプロセスは `DW_V2_ALL_NAMESPACES=true` を設定します。[アプリが実行する名前空間](./configuration/options.md#namespace-allowlist)を参照してください。
+- 2.27 以降、子の完了処理が親に課す作業量は兄弟の数に関係なく一定です。[大規模なファンアウトのコスト](./features/child-workflows.md#fan-out-cost)を参照してください。
+
+[2.27.0 のリリースノート](https://github.com/durable-workflow/workflow/releases/tag/2.27.0)を参照してください。
 
 ## 安定性レベル {#stability-levels}
 

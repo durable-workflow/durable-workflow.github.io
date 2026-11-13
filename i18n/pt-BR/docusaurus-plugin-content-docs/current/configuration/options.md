@@ -167,6 +167,21 @@ $controlPlane->start('order-processing', 'order-12345', [
 
 Quando nenhum namespace está configurado e nenhum é passado explicitamente, novas instâncias mantêm um namespace `null`. Um observador com escopo de namespace não inclui essas execuções. Alterar a configuração não reatribui instâncias existentes. Tentar iniciar uma instância existente por outro namespace é rejeitado.
 
+### Quais namespaces um app executa {#namespace-allowlist}
+
+A partir do Workflow 2.27, um app embutido repara e executa trabalho apenas nos namespaces que atende. Isso inclui o watchdog, o reparo de tarefas, os prazos de execuções e atividades, `workflow:v2:schedule-tick` e os jobs enfileirados de workflows, atividades, timers e chamadas de serviço. Um job enfileirado de outro namespace é ignorado antes de ter qualquer efeito, e um aviso é registrado.
+
+```env
+DW_V2_NAMESPACE=production
+DW_V2_NAMESPACES=production,billing
+```
+
+- Quando `DW_V2_NAMESPACES` não está definido, o app atende exatamente `DW_V2_NAMESPACE`, então um app com um único namespace não precisa mudar nada.
+- Quando está definido, o app atende exatamente os namespaces listados, então inclua também o próprio `DW_V2_NAMESPACE`. `default` designa o namespace sem escopo. Um valor vazio não atende nenhum, e `*` é recusado.
+- Um processo que repara ou executa o tick de todos os namespaces do banco, como um servidor independente, define `DW_V2_ALL_NAMESPACES=true` em vez disso.
+
+Liste todos os namespaces em que o app inicia, agenda ou sinaliza workflows. Caso contrário, suas tarefas e agendamentos esperam por um app que os atenda. A lista de permissões impede que um app execute o trabalho de outro com o código ou as credenciais errados. Ela não é isolamento de inquilinos: apps que compartilham um banco ainda podem ler as linhas uns dos outros. O trabalho recusado é contado em `namespace_scope_refusals`; veja [Monitoramento](../monitoring.md#stuck-run-metrics).
+
 ### Escopo de namespace no Waterline {#waterline-namespace-scoping}
 
 Quando o Waterline é implantado com um banco de dados compartilhado por múltiplos namespaces, defina `WATERLINE_NAMESPACE` para restringir todas as listagens a um namespace:

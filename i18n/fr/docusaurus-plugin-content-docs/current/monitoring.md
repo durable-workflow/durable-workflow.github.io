@@ -175,6 +175,8 @@ La vérification de santé consultative `replay_blocked_runs` (catégorie `corre
 
 Le Server natif signale `replay_blocked` et la vérification `replay_blocked_runs` depuis la 3.6.0.
 
+Depuis Workflow 2.27, `operator_metrics.namespace_scope_refusals` compte le travail que la [liste d’autorisation des espaces de noms](./configuration/options.md#namespace-allowlist) de l’application a refusé au cours des 15 dernières minutes, par espace de noms et par chemin. `job` compte les jobs en file ignorés. `repair`, `timeout` et `schedule_tick` comptent les candidats à la réparation, les échéances dépassées et les planifications dues restées plus de deux minutes dans un espace de noms hors de la liste. La vérification de santé consultative `namespace_scope_refusals` avertit tant que des refus arrivent et s’efface 15 minutes après le dernier. Les compteurs sont stockés dans le cache par défaut : utilisez un stockage partagé (Redis, base de données ou Memcached) pour que le processus web qui sert la santé voie les compteurs des workers.
+
 ### Échecs de tâches de workflow côté Server {#workflow-task-failure-metric}
 
 Le Server signale les tâches de workflow en échec dans `GET /api/system/metrics`, sous `metrics.dw_workflow_task_consecutive_failures` :

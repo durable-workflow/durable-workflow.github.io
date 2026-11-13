@@ -167,6 +167,21 @@ $controlPlane->start('order-processing', 'order-12345', [
 
 未配置命名空间且未显式传入时，新实例的命名空间保留为 `null`。限定命名空间的观察者不会包含这些运行。更改配置不会重新分配已有实例。通过不同命名空间启动已有实例会被拒绝。
 
+### 应用运行哪些命名空间 {#namespace-allowlist}
+
+从 Workflow 2.27 起，嵌入式应用只修复和运行它所服务的命名空间中的工作。范围包括 watchdog、任务修复、运行和活动的截止时间、`workflow:v2:schedule-tick`，以及排队的工作流、活动、计时器和服务调用作业。属于其他命名空间的排队作业会在产生任何效果之前被跳过，并记录一条警告。
+
+```env
+DW_V2_NAMESPACE=production
+DW_V2_NAMESPACES=production,billing
+```
+
+- 未设置 `DW_V2_NAMESPACES` 时，应用只服务 `DW_V2_NAMESPACE`，因此只有一个命名空间的应用无需更改。
+- 设置后，应用只服务列出的命名空间，所以请把 `DW_V2_NAMESPACE` 本身也列进去。`default` 表示未指定的命名空间。空值不服务任何命名空间，`*` 会被拒绝。
+- 修复或 tick 数据库中所有命名空间的进程（例如独立服务器）应改为设置 `DW_V2_ALL_NAMESPACES=true`。
+
+请列出应用启动、调度工作流或向其发送信号的每个命名空间。否则这些命名空间的任务和调度会一直等待某个服务它们的应用。这个允许列表可以防止一个应用用错误的代码或凭据运行另一个应用的工作。它不是租户隔离：共享同一数据库的应用仍然可以读取彼此的行。被拒绝的工作会计入 `namespace_scope_refusals`；参见[监控](../monitoring.md#stuck-run-metrics)。
+
 ### Waterline 命名空间范围 {#waterline-namespace-scoping}
 
 Waterline 部署在包含多个命名空间的共享数据库上时，设置 `WATERLINE_NAMESPACE` 可将所有列表视图限制在一个命名空间：
