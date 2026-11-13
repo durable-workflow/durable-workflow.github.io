@@ -154,6 +154,12 @@ confirmado. Uma entrada que chega enquanto uma atividade executa fica visível
 na próxima tarefa de workflow, e uma entrada tardia ou duplicada não pode
 substituir um vencedor já registrado.
 
+### Perdedores quando a execução é encerrada {#selection-losers-at-close}
+
+A partir do Workflow 2.28, se a execução é encerrada enquanto um membro não vencedor ainda está aberto, o encerramento o cancela na mesma transação. Isso vale quando a execução é concluída, falha ou continua como nova. Uma atividade aberta recebe `ActivityCancelled` com `cancellation_reason: run_closed`, e um timer pendente recebe `TimerCancelled`, ambos registrados antes do evento terminal. Nada é anexado depois do evento terminal, e um resultado tardio da atividade cancelada é recusado. O replay ignora esses cancelamentos, porque o workflow nunca os viu.
+
+Se o workflow precisa do efeito de um perdedor, aguarde-o antes de retornar. No modo de serviço, uma atividade agendada com `cancellation_policy: abandon` continua em execução. O evento terminal a lista em `abandoned_activities`, e seu resultado nunca é registrado na execução encerrada. Workflows filhos seguem sua política de encerramento do pai.
+
 ## Barreiras aninhadas {#nested-barriers}
 
 Grupos `all([...])` aninhados permitem que uma etapa de workflow expresse uma árvore durável de ramificação e convergência de trabalho. O runtime agenda cada atividade ou workflow filho como uma sequência durável de folha, registra o `parallel_group_path` completo da folha, espera até que cada barreira envolvente possa avançar e então reconstrói o formato aninhado original dos resultados antes de retomar o corpo do workflow. Durante o replay, uma folha de atividade ou de filho de uma etapa `all([...])` ainda deve corresponder ao caminho de grupo registrado. Histórico tipado de folha sem metadados de grupo é tratado como histórico incompatível de uma prévia antiga, sem tentar adivinhar sua posição na barreira atual.

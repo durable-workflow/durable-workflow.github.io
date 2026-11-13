@@ -362,6 +362,9 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 | `dw task-queue:build-ids <queue>` | Перевірити стан груп за build-id і розгортання однієї черги. | `--json` |
 | `dw task-queue:drain <queue>` | Позначити групу build-id як draining, щоб вона перестала отримувати нові завдання. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Зняти попередній drain, щоб група знову отримувала нові завдання. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | Затримати диспетчеризацію нових activity в одній черзі завдань до відновлення. | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | Відновити диспетчеризацію activity в призупиненій черзі завдань. | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | Показати, чи призупинено диспетчеризацію activity, хто її призупинив або відновив, коли й чому. | `--json` |
 
 Команди черг завдань є рекомендованим операторським оглядом обмеження потоку,
 місткості та відсутності worker. Серверну політику цих полів описано в
@@ -374,6 +377,35 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 зареєстрованих без `build_id`. Поєднання цих параметрів одразу спричиняє
 помилку параметрів. Обидві команди ідемпотентні: повторний drain не зсуває
 записаний час `drained_at`, а resume вже активної групи не змінює стану.
+
+`dw task-queue:pause-activities`, `dw task-queue:resume-activities` і
+`dw task-queue:activity-dispatch` (CLI 2.7.0 і новіші) призупиняють,
+відновлюють і показують диспетчеризацію activity в одній черзі завдань
+вибраного namespace, наприклад під час збою зовнішнього сервісу:
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+Поки чергу призупинено, жодне завдання activity в ній не отримує lease.
+Готові завдання лишаються готовими й зберігають лічильник спроб, activity,
+що вже виконуються, завершуються, а дедлайни activity продовжують спливати,
+тож тайм-аут schedule-to-start або schedule-to-close усе одно спрацьовує.
+Завдання workflow, signal, query та update доставляються як раніше.
+`--reason` приймає до 1000 символів. Pause і resume ідемпотентні: `--json`
+повертає `outcome` Server (`paused`, `already_paused`, `resumed` або
+`not_paused`) разом зі станом `activity_dispatch`. Призупинення — це не drain
+build-id: щоб зупинити worker однієї збірки, використовуйте
+`dw task-queue:drain`.
+
+Усі три команди потребують Server, який оголошує
+`capabilities.task_queue_activity_dispatch_pause` (нативний Server 3.8.0 або
+новіший). З будь-яким іншим Server, зокрема з опублікованим PHP Server 2.x,
+`dw` завершується з кодом `8`, не надсилаючи запит. `dw task-queue:describe`
+і `dw task-queue:list` показують стан диспетчеризації activity, коли Server
+його повідомляє.
 
 ## Команди протоколу worker {#worker-protocol-commands}
 
@@ -546,6 +578,7 @@ dw storage:test --driver=s3 --small-bytes=128 --large-bytes=3145728 --json
 | `5` | Ресурс не знайдено. |
 | `6` | Серверна помилка `5xx`. |
 | `7` | Тайм-аут. |
+| `8` | Помилка сумісності: команда відмовила до надсилання запиту. |
 
 Для підтримки зберіть `dw doctor --output=json`, `dw server:info
 --output=json` і `dw debug workflow <workflow-id> --output=json`.

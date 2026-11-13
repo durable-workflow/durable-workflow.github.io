@@ -96,12 +96,12 @@ embarqué et le SDK en mode service ont des contrats distincts.
 
 | Branche du paquet | PHP | Laravel |
 | --- | --- | --- |
-| Workflow embarqué 2.26 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
+| Workflow embarqué 2.28 actuel | PHP 8.2+ en 8.x ; PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | Workflow embarqué 2.20.5 | PHP `^8.1`, sous réserve du minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.14 publié | SDK de base PHP `^8.1` ; le pont Laravel exige PHP `^8.2`, et PHP 8.3+ pour Laravel 13 | `^12.69.0` ou `^13.30.0` |
 | SDK PHP 3.9.5 | SDK de base PHP `^8.1` ; le pont Laravel suit aussi le minimum du framework | `^10.50.4`, `^11.56.1`, `^12.69.0` ou `^13.30.0` |
 
-Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+Le [contrat embarqué publié](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
 et le `composer.json` de chaque version font autorité. La version embarquée
 actuelle a été vérifiée sur Laravel 12/PHP 8.2–8.4 et Laravel 13/PHP 8.3–8.4.
 Elle retire PHP 8.1 et Laravel 10/11. Le [guide historique v1 stable](/docs/1.x/installation/)
@@ -152,6 +152,19 @@ Workflow 2.25 et 2.26 conservent les planchers de support de 2.21 et le protocol
 - Depuis 2.25, dépasser une limite fixe de mémo ou d'attributs de recherche lève `StructuralLimitExceededException` au lieu de `InvalidArgumentException`, et la valeur par défaut de `memo_size_bytes` est 65 536. Voir [Limites structurelles](./constraints/structural-limits.md).
 
 Voir les notes de version de [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) et [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
+
+Workflow 2.27 conserve les planchers de support de 2.21 et le protocole de worker embarqué `1.22`, et n'ajoute aucune migration de base de données. Changements à vérifier avant la mise à niveau :
+
+- Depuis 2.27, une application embarquée ne répare et n'exécute le travail que dans ses propres espaces de noms. Si l'application démarre, planifie ou signale des workflows dans d'autres espaces de noms que `DW_V2_NAMESPACE`, listez-les tous dans `DW_V2_NAMESPACES`. Un processus qui sert tous les espaces de noms définit `DW_V2_ALL_NAMESPACES=true`. Voir [Espaces de noms exécutés par une application](./configuration/options.md#namespace-allowlist).
+- Depuis 2.27, la clôture d'un enfant coûte au parent le même travail, quel que soit le nombre de ses frères et sœurs. Voir [Coût d’un large éventail d’enfants](./features/child-workflows.md#fan-out-cost).
+
+Voir les [notes de version de 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
+
+Workflow 2.28 conserve les planchers de support de 2.21 et le protocole de worker embarqué `1.22`, et n'ajoute aucune migration de base de données. Changement de comportement à vérifier avant la mise à niveau :
+
+- Depuis 2.28, une exécution qui se termine, échoue ou continue dans une nouvelle exécution annule dans la même transaction les activités et minuteurs qu'elle n'a jamais attendus, comme les perdants de `select()`, au lieu de les laisser s'exécuter. Un résultat tardif d'une telle activité est refusé avec `run_closed`. Si un workflow a besoin de l'effet d'un perdant, attendez-le avant de retourner. Voir [Perdants à la clôture de l’exécution](./features/concurrency.md#selection-losers-at-close).
+
+Voir les [notes de version de 2.28.0](https://github.com/durable-workflow/workflow/releases/tag/2.28.0).
 
 ## Niveaux de stabilité {#stability-levels}
 

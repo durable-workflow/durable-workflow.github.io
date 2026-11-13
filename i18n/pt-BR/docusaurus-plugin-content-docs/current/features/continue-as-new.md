@@ -78,6 +78,8 @@ são encerrados explicitamente na execução antecessora.
 
 Loops de longa duração podem limitar o histórico por execução sem inventar um novo ID público de workflow a cada avanço para uma nova execução.
 
+A partir do Workflow 2.28, atividades e timers que a execução que está sendo encerrada nunca aguardou são cancelados quando ela continua como nova; os filhos, por outro lado, são transferidos para a nova execução. Veja [Perdedores quando a execução é encerrada](./concurrency.md#selection-losers-at-close).
+
 ## Limites do histórico {#history-budget}
 
 O código do workflow pode observar o tamanho atual do histórico e um indicador de sugestão de continuar como novo por meio do contexto explícito do runtime. Isso permite que loops de longa duração façam a transferência deliberadamente antes de atingir os limites do histórico.

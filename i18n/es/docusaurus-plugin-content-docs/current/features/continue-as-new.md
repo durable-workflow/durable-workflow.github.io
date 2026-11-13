@@ -66,6 +66,8 @@ Una señal dirigida a una ejecución nunca cambia de destino. Si no puede aplica
 
 Los bucles prolongados pueden desprenderse del historial sin inventar otro id público de workflow en cada transición.
 
+Desde Workflow 2.28, las actividades y los temporizadores que la ejecución que se cierra nunca esperó se cancelan al continuar como nueva ejecución; los hijos, en cambio, se entregan a la ejecución continuada. Consulte [Perdedores cuando se cierra la ejecución](./concurrency.md#selection-losers-at-close).
+
 ## Presupuesto de historial {#history-budget}
 
 El código puede observar la longitud actual del historial y una sugerencia de continuación mediante contexto explícito del runtime. Así puede traspasar deliberadamente antes de alcanzar límites costosos.

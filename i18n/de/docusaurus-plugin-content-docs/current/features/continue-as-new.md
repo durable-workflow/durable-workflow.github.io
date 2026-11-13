@@ -81,6 +81,8 @@ auf dem Vorgänger explizit abgeschlossen.
 Langlebige Schleifen können so ihre Historie abwerfen, ohne bei jedem
 Laufwechsel eine neue öffentliche Workflow-ID zu erfinden.
 
+Ab Workflow 2.28 werden Aktivitäten und Timer, auf die der schließende Lauf nie gewartet hat, bei Continue-as-new abgebrochen; untergeordnete Workflows werden stattdessen an den fortgesetzten Lauf übergeben. Siehe [Verlierer beim Schließen des Laufs](./concurrency.md#selection-losers-at-close).
+
 ## Historienbudget {#history-budget}
 
 Workflow-Code kann über expliziten Laufzeitkontext seine aktuelle

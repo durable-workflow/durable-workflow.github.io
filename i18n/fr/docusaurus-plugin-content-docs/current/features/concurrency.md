@@ -154,6 +154,12 @@ historique durable validé. Une entrée arrivant pendant une activité est visib
 à la prochaine tâche de workflow ; une entrée tardive ou dupliquée ne remplace
 pas un gagnant déjà enregistré.
 
+### Perdants à la clôture de l’exécution {#selection-losers-at-close}
+
+Depuis Workflow 2.28, si l’exécution se clôt alors qu’un membre non gagnant est encore ouvert, la clôture l’annule dans la même transaction. Cela s’applique quand l’exécution se termine, échoue ou continue dans une nouvelle exécution. Une activité ouverte reçoit `ActivityCancelled` avec `cancellation_reason: run_closed`, et un minuteur en attente reçoit `TimerCancelled`, tous deux enregistrés avant l’événement terminal. Rien n’est ajouté après l’événement terminal, et un résultat tardif de l’activité annulée est refusé. Le replay ignore ces annulations, car le workflow ne les a jamais vues.
+
+Si le workflow a besoin de l’effet d’un perdant, attendez-le avant de retourner. En mode service, une activité planifiée avec `cancellation_policy: abandon` continue de s’exécuter. L’événement terminal la liste dans `abandoned_activities`, et son résultat n’est jamais enregistré sur l’exécution close. Les workflows enfants suivent leur politique de clôture du parent.
+
 ## Barrières imbriquées {#nested-barriers}
 
 Les groupes `all([...])` imbriqués expriment dans une étape un arbre de travail durable distribué puis regroupé. Le runtime programme chaque activité ou enfant comme une séquence feuille durable, enregistre son `parallel_group_path` complet, attend que chaque barrière englobante puisse avancer puis reconstruit la structure imbriquée initiale avant de reprendre le workflow. À la relecture, une feuille d’activité ou d’enfant d’une étape `all([...])` doit toujours correspondre au chemin enregistré. Un historique typé de feuille sans métadonnées de groupe est traité comme un ancien historique de préversion incompatible, sans rattachement supposé à la barrière actuelle.

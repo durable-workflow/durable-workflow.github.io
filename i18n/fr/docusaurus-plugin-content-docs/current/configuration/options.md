@@ -167,6 +167,21 @@ $controlPlane->start('order-processing', 'order-12345', [
 
 Lorsqu’aucun espace de noms n’est configuré ni transmis explicitement, les nouvelles instances conservent un espace de noms `null`. Un observateur limité à un espace de noms n’inclut pas ces exécutions. Modifier la configuration ne réaffecte pas les instances existantes. Le démarrage d’une instance existante via un autre espace de noms est rejeté.
 
+### Espaces de noms exécutés par une application {#namespace-allowlist}
+
+Depuis Workflow 2.27, une application embarquée ne répare et n’exécute le travail que dans les espaces de noms qu’elle sert. Cela concerne le watchdog, la réparation des tâches, les échéances des exécutions et des activités, `workflow:v2:schedule-tick`, ainsi que les jobs en file de workflows, d’activités, de minuteurs et d’appels de service. Un job en file destiné à un autre espace de noms est ignoré avant d’avoir le moindre effet, et un avertissement est journalisé.
+
+```env
+DW_V2_NAMESPACE=production
+DW_V2_NAMESPACES=production,billing
+```
+
+- Si `DW_V2_NAMESPACES` n’est pas défini, l’application sert exactement `DW_V2_NAMESPACE` : une application à un seul espace de noms n’a rien à changer.
+- S’il est défini, l’application sert exactement les espaces de noms listés : incluez donc aussi `DW_V2_NAMESPACE`. `default` désigne l’espace de noms non attribué. Une valeur vide n’en sert aucun, et `*` est refusé.
+- Un processus qui répare ou exécute le tick de tous les espaces de noms de la base, comme un serveur autonome, définit plutôt `DW_V2_ALL_NAMESPACES=true`.
+
+Listez chaque espace de noms dans lequel l’application démarre, planifie ou signale des workflows. Sinon, leurs tâches et planifications attendent une application qui les sert. La liste d’autorisation empêche une application d’exécuter le travail d’une autre avec le mauvais code ou les mauvais identifiants. Ce n’est pas une isolation des locataires : des applications qui partagent une base peuvent toujours lire les lignes des autres. Le travail refusé est compté dans `namespace_scope_refusals` ; voir [Supervision](../monitoring.md#stuck-run-metrics).
+
 ### Portée de l’espace de noms dans Waterline {#waterline-namespace-scoping}
 
 Lorsque Waterline utilise une base partagée avec plusieurs espaces de noms, définissez `WATERLINE_NAMESPACE` pour limiter toutes les listes à un seul espace :

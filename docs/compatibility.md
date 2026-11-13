@@ -99,12 +99,12 @@ The embedded package and the service-mode SDK have separate support contracts.
 
 | Package line | PHP | Laravel |
 | --- | --- | --- |
-| Current embedded Workflow 2.26 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Current embedded Workflow 2.28 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | Embedded Workflow 2.20.5 | PHP `^8.1`, subject to Laravel's own minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 | Published PHP SDK 3.14 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | PHP SDK 3.9.5 | Bare SDK PHP `^8.1`; the Laravel bridge also follows Laravel's PHP minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 
-The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
 and each release's `composer.json` are the package authorities. The current
 embedded release was verified on Laravel 12 with PHP 8.2–8.4 and Laravel 13 with
 PHP 8.3–8.4. Its PHP 8.1 and Laravel 10/11 support has been removed. This does
@@ -192,6 +192,19 @@ protocol `1.22`. 2.25 adds no database migration. 2.26 adds one, so run
 See the release notes for
 [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) and
 [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
+
+Workflow 2.27 keeps the 2.21 support floors and the embedded worker protocol `1.22`, and adds no database migration. Changes to check before upgrading:
+
+- From 2.27, an embedded app repairs and runs work only in its own namespaces. If the app starts, schedules or signals workflows in namespaces other than `DW_V2_NAMESPACE`, list them all in `DW_V2_NAMESPACES`. A process that serves every namespace sets `DW_V2_ALL_NAMESPACES=true`. See [Which namespaces an app runs](./configuration/options.md#namespace-allowlist).
+- From 2.27, closing a child costs the parent the same work however many siblings it has. See [Cost of wide fan-out](./features/child-workflows.md#fan-out-cost).
+
+See the [2.27.0 release notes](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
+
+Workflow 2.28 keeps the 2.21 support floors and the embedded worker protocol `1.22`, and adds no database migration. Behavior change to check before upgrading:
+
+- From 2.28, a run that completes, fails or continues as new cancels the activities and timers it never awaited, such as `select()` losers, in the same transaction, instead of leaving them running. A late result from such an activity is refused with `run_closed`. If a workflow needs a loser's effect, await it before returning. See [Losers when the run closes](./features/concurrency.md#selection-losers-at-close).
+
+See the [2.28.0 release notes](https://github.com/durable-workflow/workflow/releases/tag/2.28.0).
 
 ## Stability Levels
 

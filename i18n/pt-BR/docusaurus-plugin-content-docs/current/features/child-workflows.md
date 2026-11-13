@@ -78,6 +78,17 @@ Essa forma contendo apenas filhos continua útil quando cada membro paralelo é 
 
 Se precisar combinar workflows filhos e atividades na mesma etapa de convergência, use uma barreira mista `all([...])`. As esperas por filhos e por atividades compartilham o mesmo `parallel_group_id`, e o Waterline identifica essa barreira compartilhada como `parallel_group_kind = mixed`. Se um subgrupo misto ou apenas de filhos estiver dentro de um `all([...])` maior, o grupo mais interno ainda determina `parallel_group_id`, enquanto `parallel_group_path` preserva o caminho completo do grupo externo ao interno.
 
+### Custo de uma ramificação ampla {#fan-out-cost}
+
+Cada encerramento de um filho bloqueia a execução pai enquanto registra o resultado do filho, verifica a barreira do grupo e atualiza as projeções do pai. A partir do Workflow 2.27, esse trabalho não cresce mais com o número de irmãos: um encerramento não lê o histórico de nenhum outro filho e executa um número fixo de consultas. Os encerramentos dos filhos de um mesmo pai continuam se revezando no bloqueio do pai, e o pai não pode executar sua própria tarefa de workflow enquanto um encerramento o mantém.
+
+Antes da 2.27, cada encerramento também relia o histórico e a execução de cada irmão, então encerrar todos os filhos de uma ramificação ampla custava um trabalho que crescia com o quadrado do número de filhos.
+
+Para ramificações com centenas de filhos, ou próximas do limite padrão de 1.000 filhos pendentes (`pending_child_count`, veja [Limites estruturais](../constraints/structural-limits.md)), divida o trabalho:
+
+- **Lotes:** inicie um grupo de filhos, aguarde-o com `all([...])` e então inicie o próximo grupo.
+- **Uma árvore:** deixe cada filho iniciar seus próprios filhos, para que nenhum pai supervisione mais do que algumas centenas ao mesmo tempo.
+
 ## Contrato de identidade {#identity-contract}
 
 - `child()->id()` e o `target_name` do Waterline referem-se ao ID da instância do workflow filho, estável ao longo da cadeia de execuções dessa instância.

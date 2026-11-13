@@ -328,7 +328,8 @@ HTTP-запиту до того, як завдання workflow, signal, update 
 
 | Обмеження | Типове значення | Ключ налаштування | Що обмежує |
 |---|---|---|---|
-| Розмір тіла | 2 MiB | `server.limits.max_payload_bytes` | Загальна кількість байтів тіла HTTP-запиту |
+| Розмір тіла | 2 MiB | `server.limits.max_payload_bytes` | Загальна кількість байтів тіла HTTP-запиту, крім завершення завдання workflow у нативному Server 3.6.0 або новішому (наступний рядок) |
+| Розмір завершення завдання workflow | 32 MiB (16 × розмір тіла) | похідне від `server.limits.max_payload_bytes` | Нативний Server 3.6.0 або новіший: запит, що завершує завдання workflow з командами. Аргументи кожної команди й далі мають вкладатися в ліміт на один payload |
 | Розмір memo | 256 KiB | `server.limits.max_memo_bytes` | Серіалізоване memo в `POST /workflows` та `POST /schedules` |
 | Кількість атрибутів пошуку | 100 | `server.limits.max_search_attributes` | Зареєстровані власні атрибути пошуку на простір імен |
 | Довжина ключа атрибута пошуку | 128 байтів | `server.limits.max_search_attribute_key_length` | Довжина одного ключа атрибута пошуку під час запуску |
@@ -366,3 +367,15 @@ HTTP-запиту до того, як завдання workflow, signal, update 
 проблемні поля (`signal_name`, `update_name`, `query_name`, `search_attributes`,
 `memo` тощо). Відхилення через розмір даних використовують
 `reason: "payload_too_large"` та код стану `413`.
+
+### Розмір завершення завдання workflow {#workflow-task-completion-size}
+
+У нативному Server 3.6.0 і новіших запит, що завершує завдання workflow з командами (`POST /api/worker/workflow-tasks/{id}/complete` і `POST /api/worker/activity-tasks/{id}/continuation/complete`), може мати розмір до 16 × `max_payload_bytes`: 32 MiB за типового значення 2 MiB. Ліміт іде за `DW_MAX_PAYLOAD_BYTES` і не має власного параметра. Аргументи кожної команди всередині завершення й далі мають вкладатися в ліміт на один payload. PHP Server 2.x і попередні нативні випуски обмежують завершення одним лімітом payload, як і будь-який інший запит.
+
+Більше завершення відхиляється з `413 payload_too_large` і `limit_kind: workflow_task_completion_bytes` ще до того, як щось буде записано. Повторне відтворення завдання дає ті самі команди, тож повторне надсилання завершення отримає ту саму відмову. PHP SDK 3.17.0 і новіші ніколи не надсилають його повторно: worker один раз завершує запуск помилкою через команду `fail_workflow`, повідомлення якої починається з `Structural limit exceeded: workflow_task_completion_bytes:` і називає обидва розміри, а Server записує помилку з `failure_category = structural_limit`. SDK для Python і Rust робитимуть те саме в наступних випусках.
+
+Щоб завершення вкладалося в ліміт:
+
+- Розділіть великий fan-out на менші пакети в кількох завданнях workflow.
+- Перенесіть роботу в дочірні workflow або використайте continue-as-new.
+- Зберігайте великі аргументи в зовнішньому сховищі payload, щоб завершення містило посилання замість самих payload.

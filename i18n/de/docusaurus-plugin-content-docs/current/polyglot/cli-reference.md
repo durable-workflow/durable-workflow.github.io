@@ -373,6 +373,9 @@ Tokens gehören zum Namespace und zur Filterauswahl. Beginnen Sie nach einer Fil
 | `dw task-queue:build-ids <queue>` | Kohortenzustand je Build-ID und Rollout-Status einer Warteschlange untersuchen. | `--json` |
 | `dw task-queue:drain <queue>` | Build-ID-Kohorte als auslaufend markieren, damit sie keine neuen Tasks übernimmt. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Frühere Leerung aufheben, sodass die Kohorte wieder neue Tasks übernimmt. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | Neue Activity-Zuteilung auf einer Task-Warteschlange anhalten, bis sie fortgesetzt wird. | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | Activity-Zuteilung auf einer angehaltenen Task-Warteschlange fortsetzen. | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | Anzeigen, ob die Activity-Zuteilung angehalten ist und wer sie wann und warum angehalten oder fortgesetzt hat. | `--json` |
 
 Die Task-Warteschlangenbefehle sind die bevorzugte Betriebsansicht für
 Drosselung, Kapazität und Diagnose fehlender Worker.
@@ -387,6 +390,36 @@ für ohne `build_id` registrierte Worker. Beides zusammen scheitert sofort mit
 einem Fehler für ungültige Optionen. Beide Befehle sind idempotent: Wiederholtes
 Leeren verschiebt `drained_at` nicht. Das Fortsetzen einer bereits aktiven
 Kohorte ändert nichts.
+
+`dw task-queue:pause-activities`, `dw task-queue:resume-activities` und
+`dw task-queue:activity-dispatch` (CLI 2.7.0 und neuer) halten die
+Activity-Zuteilung auf einer Task-Warteschlange des gewählten Namespace an,
+setzen sie fort oder zeigen sie an, zum Beispiel während eines Ausfalls eines
+nachgelagerten Systems:
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+Solange eine Warteschlange angehalten ist, wird kein Activity-Task darauf
+geleast. Bereitstehende Tasks bleiben bereit und behalten ihre Versuchszahl,
+bereits laufende Activities laufen zu Ende, und Activity-Fristen laufen weiter,
+sodass ein Schedule-to-Start- oder Schedule-to-Close-Timeout trotzdem auslöst.
+Workflow-Tasks, Signale, Abfragen und Updates werden wie bisher zugestellt.
+`--reason` nimmt bis zu 1000 Zeichen an. Anhalten und Fortsetzen sind
+idempotent: `--json` liefert das `outcome` des Servers (`paused`,
+`already_paused`, `resumed` oder `not_paused`) mit dem Zustand
+`activity_dispatch`. Ein Anhalten ist keine Build-ID-Leerung: Um die Worker
+eines Builds zu stoppen, verwenden Sie `dw task-queue:drain`.
+
+Die drei Befehle benötigen einen Server, der
+`capabilities.task_queue_activity_dispatch_pause` meldet (nativer Server 3.8.0
+oder neuer). Auf jedem anderen Server, auch dem veröffentlichten PHP-Server
+2.x, beendet sich `dw` mit Code `8`, bevor die Anfrage gesendet wird.
+`dw task-queue:describe` und `dw task-queue:list` zeigen den Zustand der
+Activity-Zuteilung, wenn der Server ihn meldet.
 
 ## Worker-Protokollbefehle {#worker-protocol-commands}
 
@@ -562,6 +595,7 @@ dokumentierten stabilen Exit-Codes:
 | `5` | Ressource nicht gefunden. |
 | `6` | Serverseitiger `5xx`-Fehler. |
 | `7` | Timeout. |
+| `8` | Kompatibilitätsfehler: Der Befehl hat abgelehnt, bevor die Anfrage gesendet wurde. |
 
 Sammeln Sie für Support-Pakete `dw doctor --output=json`,
 `dw server:info --output=json` und `dw debug workflow <workflow-id> --output=json`.
