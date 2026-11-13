@@ -337,7 +337,7 @@ Sticky execution не має окремих змінних середовища 
 | `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | Максимальна кількість workflow series у `/api/system/prometheus-metrics` перед підсумовуванням решти. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | Максимальна кількість activity series у `/api/system/prometheus-metrics` перед підсумовуванням решти. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | Максимальна кількість runtime series task queue у `/api/system/prometheus-metrics` перед підсумовуванням решти. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
-| `DW_MAX_HISTORY_EVENTS` | `50000` | Максимальна кількість подій історії на run workflow перед примусовим continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
+| `DW_MAX_HISTORY_EVENTS` | `50000` | Не має жодного ефекту. Жоден випуск Server її не читає, і історія run не обмежується. Обмежуйте довгу історію за допомогою continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Стандартна кількість днів зберігання історії закритих runs, якщо namespace не перевизначає її. | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | Максимальна кількість серіалізованих bytes одного payload. | `WORKFLOW_MAX_PAYLOAD_BYTES` |
 | `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | Максимальний закодований розмір у bytes (64 MiB), який приймає автентифікований транспорт завантаження та отримання зовнішнього payload. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |

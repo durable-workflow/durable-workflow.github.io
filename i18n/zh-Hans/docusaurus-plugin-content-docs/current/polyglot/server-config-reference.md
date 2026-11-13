@@ -246,7 +246,7 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 | `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | `/api/system/prometheus-metrics` 报告的工作流序列上限，超出序列将汇总。 | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | `/api/system/prometheus-metrics` 报告的活动序列上限，超出序列将汇总。 | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | `/api/system/prometheus-metrics` 报告的任务队列运行时序列上限，超出序列将汇总。 | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
-| `DW_MAX_HISTORY_EVENTS` | `50000` | 强制 continue-as-new 前每次工作流运行的历史事件上限。 | `WORKFLOW_MAX_HISTORY_EVENTS` |
+| `DW_MAX_HISTORY_EVENTS` | `50000` | 无任何效果。任何 Server 版本都不会读取它，每次运行的历史也没有上限。请使用 continue-as-new 限制较长的历史。 | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | 命名空间未覆盖时，已关闭运行历史的默认保留天数。 | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | 单个载荷序列化后的最大字节数。 | `WORKFLOW_MAX_PAYLOAD_BYTES` |
 | `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | 经身份验证的外部载荷上传与获取传输所接受的最大编码字节数（64 MiB）。 | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |

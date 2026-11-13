@@ -490,7 +490,7 @@ Wichtige Feldhinweise für Client-Code:
   `1.20`.
 - Workflow-Aufgabenbefehle stehen unter
   `worker_protocol.server_capabilities.supported_workflow_task_commands`.
-- Seit 3.5.0 meldet `worker_protocol.server_capabilities` `sticky_execution` und `sticky_history_suffix`. Seit 3.4.0 meldet es `activity_workflow_continuation`, das ein Worker nur nach seinem eigenen Opt-in verwendet.
+- Seit 3.5.0 meldet `worker_protocol.server_capabilities` `sticky_execution` und `sticky_history_suffix`. Seit 3.4.0 meldet es `activity_workflow_continuation`, das ein Worker nur nach seinem eigenen Opt-in verwendet. Das Aktivieren kostet derzeit Durchsatz: In unserem Benchmark liefen Läufe unter Last 24–49 % langsamer ([Messung](https://github.com/durable-workflow/server/issues/1078)).
 - Ein auf `false` gesetztes Fähigkeitsflag benennt eine Funktion oder einen
   veröffentlichten Vertrag, den der native Server nicht bedient.
   `response_compression` ist leer, weil der native Server Antworten

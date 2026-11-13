@@ -597,7 +597,8 @@ Key field notes for client code:
 - Since 3.5.0, `worker_protocol.server_capabilities` advertises
   `sticky_execution` and `sticky_history_suffix`. Since 3.4.0 it advertises
   `activity_workflow_continuation`, which a worker uses only after its own
-  opt-in.
+  opt-in. Enabling it currently costs throughput: in our benchmark, runs
+  were 24–49% slower under load ([measurement](https://github.com/durable-workflow/server/issues/1078)).
 - A capability flag set to `false` names a feature or published contract that
   native does not serve. `response_compression` is empty because native sends
   uncompressed responses.
