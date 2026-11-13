@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Transportador HTTP invocável
-description: Configure o transportador invocable_http exclusivo de atividades para que o servidor envie uma tarefa de atividade sob lease por POST a um handler HTTPS e reconcilie o resultado estruturado.
+description: Configure o transportador invocable_http exclusivo de atividades, que mapeia uma tarefa de atividade sob lease para um handler HTTPS e reconcilia o resultado estruturado.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,13 +24,19 @@ O transportador HTTP invocável é o primeiro transportador concreto definido na
 `carrier_type: invocable_http`.
 
 Quando um mapeamento de handler configurado resolve para um transportador
-`invocable_http`, o servidor invoca o endpoint configurado com o
+`invocable_http`, o processo transportador invoca o endpoint configurado com o
 [envelope de entrada de tarefa externa](./external-execution.md#published-contract-seams)
 independente de transportador e reconcilia a resposta com o
 [envelope de resultado de tarefa externa](./external-execution.md#published-contract-seams).
 Tarefas de workflow, ordenação de sinais/atualizações, replay e mutação do
 histórico permanecem no servidor. O transportador apenas move os envelopes
 declarados de entrada e resultado por um limite HTTPS.
+
+:::warning
+
+**Limitação atual:** o Server não envia a requisição HTTP por conta própria. Ele valida o mapeamento e o devolve na resposta do poll de atividades. Um processo que você executa precisa fazer poll da fila, chamar o endpoint e informar o resultado. Se ninguém fizer poll da fila, a tarefa de atividade fica aguardando. Um despachante no Server será construído quando os usuários precisarem ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
 
 ## O que é {#what-it-is}
 
@@ -121,7 +127,7 @@ amplia, substitui nem sobrepõe.
 
 ## Envelope de requisição e resposta {#request-and-response-envelope}
 
-O servidor envia o envelope de entrada independente de transportador e espera
+O processo transportador envia o envelope de entrada independente de transportador e espera
 receber o envelope de resultado independente de transportador:
 
 | Direção | Tipo de conteúdo | Schema |

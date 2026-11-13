@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: 呼び出し可能な HTTP キャリア
-description: アクティビティ専用の invocable_http キャリアを設定し、Server がリースしたアクティビティタスクを HTTPS ハンドラーへ POST して構造化された結果を照合できるようにします。
+description: アクティビティ専用の invocable_http キャリアを設定し、リースしたアクティビティタスクを HTTPS ハンドラーに対応付けて、構造化された結果を照合します。
 tags:
   - external-execution
   - invocable-carrier
@@ -19,7 +19,13 @@ keywords:
 
 呼び出し可能な HTTP キャリアは、[外部実行サーフェス](./external-execution.md)で定義された最初の具体的なキャリアです。`GET /api/cluster/info` の `worker_protocol.invocable_carrier_contract` で、`schema: durable-workflow.v2.invocable-carrier.contract`、`version: 1`、`carrier_type: invocable_http` として公開します。
 
-設定されたハンドラーマッピングが `invocable_http` キャリアに解決されると、Server はキャリアに依存しない[外部タスク入力エンベロープ](./external-execution.md#published-contract-seams)で設定済みエンドポイントを呼び出し、レスポンスを[外部タスク結果エンベロープ](./external-execution.md#published-contract-seams)に照らして照合します。ワークフロータスク、シグナル・更新の順序、リプレイ、履歴の変更は Server 内に残ります。キャリアは宣言された入力と結果のエンベロープを HTTPS 境界の向こうへ運ぶだけです。
+設定されたハンドラーマッピングが `invocable_http` キャリアに解決されると、キャリアのプロセスはキャリアに依存しない[外部タスク入力エンベロープ](./external-execution.md#published-contract-seams)で設定済みエンドポイントを呼び出し、レスポンスを[外部タスク結果エンベロープ](./external-execution.md#published-contract-seams)に照らして照合します。ワークフロータスク、シグナル・更新の順序、リプレイ、履歴の変更は Server 内に残ります。キャリアは宣言された入力と結果のエンベロープを HTTPS 境界の向こうへ運ぶだけです。
+
+:::warning
+
+**現在の制限:** Server 自身は HTTP リクエストを送信しません。マッピングを検証し、アクティビティのポーリング応答で返します。キューをポーリングし、エンドポイントを呼び出し、結果を報告するプロセスを自分で実行する必要があります。キューをポーリングするものがなければ、アクティビティタスクは待機したままです。Server 側のディスパッチャーは、ユーザーが必要とした時点で作ります（[#527](https://github.com/durable-workflow/server/issues/527)）。
+
+:::
 
 ## 用途 {#what-it-is}
 
@@ -81,7 +87,7 @@ keywords:
 
 ## リクエストとレスポンスのエンベロープ {#request-and-response-envelope}
 
-Server はキャリアに依存しない入力エンベロープを送り、キャリアに依存しない結果エンベロープを期待します。
+キャリアのプロセスはキャリアに依存しない入力エンベロープを送り、キャリアに依存しない結果エンベロープを期待します。
 
 | 方向 | コンテンツタイプ | スキーマ |
 | --- | --- | --- |

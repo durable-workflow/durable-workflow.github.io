@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Aufrufbarer HTTP-Transportadapter
-description: Den auf Aktivitäten begrenzten invocable_http-Transportadapter konfigurieren, damit Server einen geleasten Aktivitäts-Task per POST an einen HTTPS-Handler sendet und das strukturierte Ergebnis abgleicht.
+description: Den auf Aktivitäten begrenzten invocable_http-Transportadapter konfigurieren, der einen geleasten Aktivitäts-Task einem HTTPS-Handler-Endpunkt zuordnet und das strukturierte Ergebnis abgleicht.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,13 +24,19 @@ Der aufrufbare HTTP-Transportadapter ist der erste konkrete Transportadapter der
 `carrier_type: invocable_http` veröffentlicht.
 
 Wird eine konfigurierte Handler-Zuordnung zu einem `invocable_http`-Transportadapter
-aufgelöst, ruft der Server den konfigurierten Endpunkt mit der transportneutralen
+aufgelöst, ruft der Carrier-Prozess den konfigurierten Endpunkt mit der transportneutralen
 [externen Task-Eingabe-Envelope](./external-execution.md#published-contract-seams)
 auf und gleicht die Antwort mit der
 [externen Task-Ergebnis-Envelope](./external-execution.md#published-contract-seams)
 ab. Workflow-Tasks, Signal-/Update-Reihenfolge, Replay und Änderungen an der
 Historie bleiben im Server. Der Transportadapter bewegt nur deklarierte
 Eingabe- und Ergebnis-Envelopes über eine HTTPS-Grenze.
+
+:::warning
+
+**Aktuelle Einschränkung:** Der Server sendet die HTTP-Anfrage nicht selbst. Er prüft die Zuordnung und liefert sie in der Antwort auf den Activity-Poll. Ein von Ihnen betriebener Prozess muss die Queue pollen, den Endpunkt aufrufen und das Ergebnis melden. Pollt niemand die Queue, wartet die Activity-Aufgabe. Ein serverseitiger Dispatcher wird gebaut, sobald Nutzer ihn brauchen ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
 
 ## Zweck {#what-it-is}
 
@@ -120,7 +126,7 @@ des Transportadapters verlängert, überschreibt oder ersetzt diese nicht.
 
 ## Anfrage- und Antwort-Envelope {#request-and-response-envelope}
 
-Der Server sendet die transportneutrale Eingabe-Envelope und erwartet die
+Der Carrier-Prozess sendet die transportneutrale Eingabe-Envelope und erwartet die
 transportneutrale Ergebnis-Envelope zurück:
 
 | Richtung | Inhaltstyp | Schema |

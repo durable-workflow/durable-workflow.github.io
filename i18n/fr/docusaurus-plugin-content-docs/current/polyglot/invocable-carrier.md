@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Transporteur HTTP invocable
-description: Configurer le transporteur invocable_http réservé aux activités pour que le serveur envoie une tâche d'activité sous bail par POST à un gestionnaire HTTPS et rapproche le résultat structuré.
+description: Configurer le transporteur invocable_http réservé aux activités, qui associe une tâche d'activité sous bail à un gestionnaire HTTPS et rapproche le résultat structuré.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,7 +24,7 @@ l'[interface d'exécution externe](./external-execution.md). Il est publié par
 `carrier_type: invocable_http`.
 
 Lorsqu'une correspondance de gestionnaire configurée se résout en transporteur
-`invocable_http`, le serveur invoque le point de terminaison configuré avec
+`invocable_http`, le processus transporteur invoque le point de terminaison configuré avec
 l'[enveloppe d'entrée de tâche externe](./external-execution.md#published-contract-seams)
 indépendante du transporteur, puis rapproche la réponse de l'[enveloppe de
 résultat de tâche externe](./external-execution.md#published-contract-seams).
@@ -32,6 +32,12 @@ Les tâches de workflow, l'ordre des signaux/mises à jour, la relecture et les
 modifications de l'historique restent dans le serveur. Le transporteur se
 limite au transfert des enveloppes déclarées d'entrée et de résultat à travers
 une frontière HTTPS.
+
+:::warning
+
+**Limitation actuelle :** le Server n'envoie pas lui-même la requête HTTP. Il valide le mappage et le renvoie dans la réponse au poll d'activités. Un processus que vous exploitez doit interroger la file, appeler le point de terminaison et rapporter le résultat. Si personne n'interroge la file, la tâche d'activité attend. Un répartiteur côté Server sera construit quand les utilisateurs en auront besoin ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
 
 ## Définition {#what-it-is}
 
@@ -128,7 +134,7 @@ ne la prolonge pas, ne la remplace pas et ne la supplante pas.
 
 ## Enveloppes de requête et de réponse {#request-and-response-envelope}
 
-Le serveur envoie l'enveloppe d'entrée indépendante du transporteur et attend
+Le processus transporteur envoie l'enveloppe d'entrée indépendante du transporteur et attend
 en retour l'enveloppe de résultat indépendante du transporteur :
 
 | Direction | Type de contenu | Schéma |
