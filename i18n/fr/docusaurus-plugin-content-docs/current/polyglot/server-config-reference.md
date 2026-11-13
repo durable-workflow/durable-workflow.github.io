@@ -280,7 +280,12 @@ Avec le serveur autonome, un ensemble distinct de limites s’applique à l’en
 | `request_id` | 255 caractères | validateur du contrôleur | Jeton de déduplication des signaux/mises à jour/annulations/arrêts forcés |
 | `reason` | 1 000 caractères | validateur du contrôleur | Motif des annulations/arrêts forcés/archivages |
 
-Chaque limite se configure individuellement via des variables d’environnement `DW_*`. Consultez `config/dw-contract.php` pour le contrat complet. La valeur `0` désactive le contrôle de cette limite précise, sans désactiver les autres.
+Utilisez les paramètres `DW_*` documentés pour les limites configurables de
+PHP Server 2.x. Les bornes de validation du contrôleur sont fixes. Native
+Server 3.x prend en charge les paramètres de ses [notes d'implémentation](#native-server-3x).
+Sur native 3.8.0, `DW_MAX_PAYLOAD_BYTES=0` fixe un plafond de zéro octet pour
+les requêtes ordinaires et les complétions de tâches de workflow, refusant les
+corps non vides. Le plafond des noms d'opérations est fixé à 256 octets.
 
 Les valeurs actuellement configurées sont publiées sous `limits` dans la réponse de `GET /api/cluster/info`, pour permettre leur découverte par les clients :
 

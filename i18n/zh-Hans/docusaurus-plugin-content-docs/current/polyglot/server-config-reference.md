@@ -280,7 +280,7 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 | `request_id` | 255 字符 | 控制器验证器 | 信号／更新／取消／终止操作的去重令牌 |
 | `reason` | 1,000 字符 | 控制器验证器 | 取消／终止／归档操作的原因文本 |
 
-每个限制均可通过 `DW_*` 环境变量单独配置（完整契约见 `config/dw-contract.php`）。值为 `0` 时，仅禁用该项限制，其他限制仍然生效。
+PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器校验上限是固定的。Native Server 3.x 支持的设置见其[实现说明](#native-server-3x)。在 native 3.8.0 中，`DW_MAX_PAYLOAD_BYTES=0` 会将普通请求和工作流任务完成请求的上限设为零字节，拒绝非空请求体。操作名上限固定为 256 字节。
 
 当前配置值发布在 `GET /api/cluster/info` 响应的 `limits` 下，客户端可在运行时发现这些限制：
 

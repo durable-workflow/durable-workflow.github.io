@@ -360,7 +360,12 @@ When using the standalone server, a separate set of caps is enforced at the HTTP
 | `request_id` | 255 chars | controller validator | Deduplication token on signals/updates/cancel/terminate |
 | `reason` | 1,000 chars | controller validator | Reason text on cancel/terminate/archive |
 
-Each limit is individually configurable via `DW_*` environment variables (see `config/dw-contract.php` for the full contract). Setting a value of `0` disables the check for that specific limit, but leaves the others in force.
+Use the documented `DW_*` settings for configurable PHP Server 2.x limits.
+Controller-validator bounds are fixed. Native Server 3.x supports the settings
+listed in its [implementation notes](#native-server-3x). On native 3.8.0,
+`DW_MAX_PAYLOAD_BYTES=0` sets a zero-byte ceiling for ordinary requests and
+workflow-task completions, rejecting nonempty bodies. Its operation-name
+ceiling is fixed at 256 bytes.
 
 The currently-configured values are published under `limits` on the `GET /api/cluster/info` response, so clients can discover them at runtime:
 

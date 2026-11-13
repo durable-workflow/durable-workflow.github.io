@@ -280,7 +280,12 @@ Al utilizar el servidor independiente, se aplica otro conjunto de máximos en el
 | `request_id` | 255 caracteres | Validador del controlador | Token de deduplicación en señales, actualizaciones, cancelación y terminación |
 | `reason` | 1,000 caracteres | Validador del controlador | Texto del motivo en cancelación, terminación y archivado |
 
-Cada límite se puede configurar por separado mediante variables de entorno `DW_*` (consulta el contrato completo en `config/dw-contract.php`). Establecer un valor de `0` desactiva la comprobación de ese límite concreto, pero mantiene las demás.
+Use las opciones `DW_*` documentadas para los límites configurables de PHP
+Server 2.x. Los límites de validación del controlador son fijos. Native Server
+3.x admite las opciones de sus [notas de implementación](#native-server-3x).
+En native 3.8.0, `DW_MAX_PAYLOAD_BYTES=0` establece un techo de cero bytes para
+solicitudes normales y finalizaciones de tareas de workflow, rechazando
+cuerpos no vacíos. El límite de nombres de operación es fijo: 256 bytes.
 
 Los valores configurados actualmente se publican bajo `limits` en la respuesta de `GET /api/cluster/info`, de modo que los clientes pueden descubrirlos durante la ejecución:
 

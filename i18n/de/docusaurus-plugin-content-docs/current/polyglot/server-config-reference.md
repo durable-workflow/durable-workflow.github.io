@@ -285,9 +285,13 @@ eine Datenbankzeile schreibt.
 | `request_id` | 255 Zeichen | Controller-Validator | Deduplizierungstoken für Signale/Updates/Abbrechen/Beenden |
 | `reason` | 1.000 Zeichen | Controller-Validator | Begründungstext für Abbrechen/Beenden/Archivieren |
 
-Jede Grenze ist einzeln über `DW_*`-Umgebungsvariablen konfigurierbar
-(vollständiger Vertrag in `config/dw-contract.php`). Der Wert `0` deaktiviert
-die Prüfung für diese einzelne Grenze; die anderen bleiben wirksam.
+Verwenden Sie die dokumentierten `DW_*`-Einstellungen für konfigurierbare
+Grenzen von PHP Server 2.x. Grenzen der Controller-Validierung sind fest.
+Native Server 3.x unterstützt die in seinen [Implementierungshinweisen](#native-server-3x)
+genannten Einstellungen. Bei native 3.8.0 setzt `DW_MAX_PAYLOAD_BYTES=0` die
+Grenze für gewöhnliche Anfragen und Workflow-Task-Completions auf null Bytes,
+sodass nichtleere Bodys abgelehnt werden. Die Grenze für Operationsnamen ist
+fest auf 256 Bytes gesetzt.
 
 Die aktuell konfigurierten Werte werden unter `limits` in der Antwort von
 `GET /api/cluster/info` veröffentlicht. Clients können sie dadurch zur Laufzeit
