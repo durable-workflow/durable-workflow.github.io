@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Transportador HTTP invocable
-description: Configura el transportador invocable_http exclusivo de actividades para que el servidor envíe por POST una tarea con lease a un manejador HTTPS y concilie el resultado estructurado.
+description: Configura el transportador invocable_http exclusivo de actividades, que asigna una tarea con lease a un manejador HTTPS y concilia el resultado estructurado.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,7 +24,7 @@ la [interfaz de ejecución externa](./external-execution.md). Se publica mediant
 `carrier_type: invocable_http`.
 
 Cuando una asignación de manejador configurada se resuelve a un transportador
-`invocable_http`, el servidor invoca el endpoint configurado con el
+`invocable_http`, el proceso transportador invoca el endpoint configurado con el
 [sobre de entrada de tarea externa](./external-execution.md#published-contract-seams)
 independiente del transportador y concilia la respuesta con el
 [sobre de resultado de tarea externa](./external-execution.md#published-contract-seams).

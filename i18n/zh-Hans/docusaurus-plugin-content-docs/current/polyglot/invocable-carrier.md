@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: 可调用 HTTP 载体
-description: 配置仅支持活动的 invocable_http 载体，让服务器将已租用活动任务 POST 到 HTTPS 处理器端点，并核对结构化结果。
+description: 配置仅支持活动的 invocable_http 载体，将已租用活动任务映射到 HTTPS 处理器端点，并核对结构化结果。
 tags:
   - external-execution
   - invocable-carrier
@@ -19,7 +19,7 @@ keywords:
 
 可调用 HTTP 载体是[外部执行接口](./external-execution.md)定义的第一个具体载体。它由 `GET /api/cluster/info` 的 `worker_protocol.invocable_carrier_contract` 发布，使用 `schema: durable-workflow.v2.invocable-carrier.contract`、`version: 1` 和 `carrier_type: invocable_http`。
 
-配置的处理器映射解析到 `invocable_http` 载体时，服务器携带与载体无关的[外部任务输入封装](./external-execution.md#published-contract-seams)调用配置的端点，并根据[外部任务结果封装](./external-execution.md#published-contract-seams)核对响应。工作流任务、信号和更新排序、重放及历史变更仍在服务器内进行。载体仅跨 HTTPS 边界传递已声明的输入和结果封装。
+配置的处理器映射解析到 `invocable_http` 载体时，载体进程携带与载体无关的[外部任务输入封装](./external-execution.md#published-contract-seams)调用配置的端点，并根据[外部任务结果封装](./external-execution.md#published-contract-seams)核对响应。工作流任务、信号和更新排序、重放及历史变更仍在服务器内进行。载体仅跨 HTTPS 边界传递已声明的输入和结果封装。
 
 :::warning
 

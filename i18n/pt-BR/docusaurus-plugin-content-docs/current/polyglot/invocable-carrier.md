@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Transportador HTTP invocável
-description: Configure o transportador invocable_http exclusivo de atividades para que o servidor envie uma tarefa de atividade sob lease por POST a um handler HTTPS e reconcilie o resultado estruturado.
+description: Configure o transportador invocable_http exclusivo de atividades, que mapeia uma tarefa de atividade sob lease para um handler HTTPS e reconcilia o resultado estruturado.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,7 +24,7 @@ O transportador HTTP invocável é o primeiro transportador concreto definido na
 `carrier_type: invocable_http`.
 
 Quando um mapeamento de handler configurado resolve para um transportador
-`invocable_http`, o servidor invoca o endpoint configurado com o
+`invocable_http`, o processo transportador invoca o endpoint configurado com o
 [envelope de entrada de tarefa externa](./external-execution.md#published-contract-seams)
 independente de transportador e reconcilia a resposta com o
 [envelope de resultado de tarefa externa](./external-execution.md#published-contract-seams).

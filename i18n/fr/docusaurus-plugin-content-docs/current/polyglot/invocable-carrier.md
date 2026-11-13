@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Transporteur HTTP invocable
-description: Configurer le transporteur invocable_http réservé aux activités pour que le serveur envoie une tâche d'activité sous bail par POST à un gestionnaire HTTPS et rapproche le résultat structuré.
+description: Configurer le transporteur invocable_http réservé aux activités, qui associe une tâche d'activité sous bail à un gestionnaire HTTPS et rapproche le résultat structuré.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,7 +24,7 @@ l'[interface d'exécution externe](./external-execution.md). Il est publié par
 `carrier_type: invocable_http`.
 
 Lorsqu'une correspondance de gestionnaire configurée se résout en transporteur
-`invocable_http`, le serveur invoque le point de terminaison configuré avec
+`invocable_http`, le processus transporteur invoque le point de terminaison configuré avec
 l'[enveloppe d'entrée de tâche externe](./external-execution.md#published-contract-seams)
 indépendante du transporteur, puis rapproche la réponse de l'[enveloppe de
 résultat de tâche externe](./external-execution.md#published-contract-seams).

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Викличний HTTP-транспорт
-description: Налаштування транспорту invocable_http лише для activities, щоб Server міг надсилати орендовані завдання activity до HTTPS-обробника й узгоджувати структурований результат.
+description: Налаштування транспорту invocable_http лише для activities, який зіставляє орендоване завдання activity з HTTPS-обробником і узгоджує структурований результат.
 tags:
   - external-execution
   - invocable-carrier
@@ -25,7 +25,7 @@ keywords:
 `version: 1` та `carrier_type: invocable_http`.
 
 Коли налаштоване зіставлення обробника визначає carrier `invocable_http`,
-Server викликає його endpoint з незалежною від carrier
+Процес carrier викликає його endpoint з незалежною від carrier
 [оболонкою вхідних даних external task](./external-execution.md#published-contract-seams)
 і узгоджує відповідь з
 [оболонкою результату external task](./external-execution.md#published-contract-seams).
