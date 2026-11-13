@@ -142,9 +142,7 @@ Ein abgeschlossenes null-Ergebnis ist `Ok(Value::Null)`. Ergebnisbestätigungen
 erhalten den expliziten `update_status`. Die Rust-Schnittstelle steht in der
 [Client-API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
 
-Rust SDK 4.15.0 wendet die gewöhnliche Payload-Grenze weiterhin auf den ganzen
-Befehlsbatch an. Beachten Sie die [bekannte Planergrenze](./server-config-reference.md#rust-completion-planning),
-bevor Sie einen großen Fan-out ohne externen Payload-Speicher ausführen.
+Rust SDK 4.16 verwendet für die Completion-Planung das explizite Server-Budget `limits.max_workflow_task_completion_bytes`. Ältere Producer ohne dieses Feld behalten die konservative gewöhnliche Grenze. Siehe [Completion-Planung](./server-config-reference.md#rust-completion-planning) für das qualifizierte native 3.9.1-Paar und die Grenzen der Payload-Platzierung.
 
 ## Fristen für Bedingungswarteoperationen und Worker-Upgrades {#condition-wait-deadlines}
 
@@ -233,11 +231,13 @@ Jede beobachtete Clientanfrage, Worker-Abfrage oder Verarbeitung eines bezogenen
 | `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
 | `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
 
-Die Client-Tag-Schlüssel sind genau `method`, `route`, `plane`, `status_code`, `outcome`; beim Worker `task_kind`, `task_queue`, `outcome`. Geprüfte Routenplatzhalter enthalten keine IDs, Abfragezeichenfolgen, Payloads oder Zugangsdaten; unbekannte Pfade nutzen `unknown`. Queuenamen kontrolliert die Anwendung: begrenzte Mengen statt einer Queue pro Lauf.
+Für die obigen Zähler-/Dauerpaare gilt: Die Client-Tag-Schlüssel sind genau `method`, `route`, `plane`, `status_code`, `outcome`; beim Worker `task_kind`, `task_queue`, `outcome`. Geprüfte Routenplatzhalter enthalten keine IDs, Abfragezeichenfolgen, Payloads oder Zugangsdaten; unbekannte Pfade nutzen `unknown`. Queuenamen kontrolliert die Anwendung: begrenzte Mengen statt einer Queue pro Lauf.
 
 Client-Ergebnisse umfassen `ok`, `http_error`, `bridge_rejected`, `TransportError`, `TimeoutError`, `SdkError` und `pending` für ein abgebrochenes Future. `status_code` erhält einen beobachteten dezimalen HTTP-Status, sonst `none`. Rust-Ausnahmenamen müssen nicht mit anderen SDKs übereinstimmen.
 
 Eine Clientbeobachtung umfasst interne Transport-/Storage-Admission-Wiederholungen und Antwort-/Payload-Verarbeitung; getrennte Anwendungs-/Worker-Aufrufe bleiben getrennt. Ein verzögerter Iterator beobachtet jede angefragte Seite. Worker-Polls enthalten verwaltete Wiederholungen/Backoff und unterscheiden `task`, `empty`, `backpressure`, `error`. Task-Ergebnisse `completed`, `failed`, `expired` beschreiben die Verarbeitung, nicht den Workflow-Endzustand. Dies sind Prozessbeobachtungen, keine dauerhaften Zählungen, Abrechnungseinheiten oder Schedule-to-start-Latenzen; abrupter Prozessverlust kann die letzte Probe auslassen.
+
+Rust SDK 4.16 ergänzt das siebte Instrument `durable_workflow_worker_task_schedule_to_start_seconds` mit ausschließlich `task_kind`- und `task_queue`-Tags. Es erfasst die vom Server gemessene Zeit zwischen Ausführungsberechtigung und Claim in Sekunden, wenn der Producer `claimed_task_ready_age` veröffentlicht und gültige `ready_age_ms` liefert. Fehlende, ungültige oder nicht unterstützte Daten erzeugen keinen Messwert; das SDK erfindet keine Null. Die [Kontrollen mit veröffentlichtem 4.16/native 3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) qualifizieren alle sieben Metriken, Workflow-/Activity-Ready-Age und den Prometheus-Adapter.
 
 Für den offiziellen Prometheus-Adapter aktivieren Sie das optionale Cargo-Feature `metrics-prometheus`. Das Beispiel nutzt die veröffentlichten Abhängigkeiten:
 

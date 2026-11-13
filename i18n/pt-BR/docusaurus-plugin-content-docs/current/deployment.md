@@ -275,6 +275,21 @@ todos os Servers parados. A referência do Server mantém os exemplos mais
 recentes de comandos Compose na seção
 [Imagem oficial + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Atualizar para Server 3.9.1 {#native-schema-upgrade-3-9}
+
+Atualizar do native 3.8.x ou anterior exige upgrade do esquema em todos os backends. Server 3.9.1 adiciona a tabela vazia `dw_command_intents`:
+
+| Backend | Transição de esquema desde 3.8.x |
+|---|---|
+| SQLite | 12 → 13 |
+| PostgreSQL | 13 → 14 |
+| MariaDB | 13 → 14 |
+| MySQL | 14 → 15 |
+
+Pare todas as réplicas do Server, mantenha o banco ativo, faça backup do banco e do armazenamento do Server e selecione e baixe a imagem 3.9.1. Execute o `schema-upgrade` dessa imagem uma vez antes de reiniciar todas as réplicas na mesma versão. Server não atualiza um esquema existente na inicialização: recusa o antigo com `native_schema_upgrade_required`. Verifique readiness, versão e registro do Worker após reiniciar. As [instruções qualificadas da versão 3.9.1](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade) fornecem comandos Compose sem checkout do código-fonte.
+
+MySQL e MariaDB retomam upgrades interrompidos; SQLite e PostgreSQL aplicam a etapa em transação. Voltar para 3.8.x exige restaurar o backup: 3.8.0 recusa o banco atualizado com `native_schema_newer_than_binary`. A partir de 3.9.0, nenhuma etapa extra de esquema é necessária. De versões anteriores, `schema-upgrade` também aplica as etapas passadas, incluindo a [reconstrução JSON da 3.7](#native-schema-upgrade-3-7) quando aplicável. O protocolo Worker 1.20 e o plano de controle 2 não mudam.
+
 ### Atualizar para o Server 3.8.0 {#native-schema-upgrade-3-8}
 
 O Server 3.8.0 precisa de uma atualização de esquema native em todos os backends. Ele adiciona uma tabela exclusiva do native, `dw_task_queue_pauses`, criada vazia:

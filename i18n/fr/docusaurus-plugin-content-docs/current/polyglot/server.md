@@ -124,6 +124,8 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 La stack comprend le Server natif et MySQL. Compose refuse de démarrer tant que `DW_AUTH_TOKEN` n’est pas défini. Le [guide de déploiement](/docs/deployment#single-node-production) décrit le fichier d’environnement de production, les sauvegardes et les mises à niveau.
 
+Passer de native 3.8.x ou antérieur à 3.9.1 exige la [mise à niveau explicite du schéma](../deployment.md#native-schema-upgrade-3-9) avant redémarrage.
+
 ### Ports {#ports}
 
 | Service | Port | Rôle |

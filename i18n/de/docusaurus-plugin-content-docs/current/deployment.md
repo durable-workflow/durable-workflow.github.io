@@ -195,6 +195,21 @@ Upgrade-Reihenfolge:
 
 Der native Server prüft sein Schema beim Start. Patch-Veröffentlichungen innerhalb einer nativen Minor-Linie behalten das Schema bei, daher genügt ein Image-Wechsel. Eine Veröffentlichung, deren Hinweise eine Schemaänderung ankündigen, benötigt zusätzlich den Befehl `schema-upgrade` des Images, ausgeführt nach einer Datenbanksicherung, während alle Server gestoppt sind. Die Server-Referenz enthält aktuelle Compose-Befehlsbeispiele unter [Offizielles Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Upgrade auf Server 3.9.1 {#native-schema-upgrade-3-9}
+
+Ein Upgrade von native 3.8.x oder früher erfordert auf jedem Backend ein Schema-Upgrade. Server 3.9.1 fügt die leere Tabelle `dw_command_intents` hinzu:
+
+| Backend | Schemaübergang von 3.8.x |
+|---|---|
+| SQLite | 12 → 13 |
+| PostgreSQL | 13 → 14 |
+| MariaDB | 13 → 14 |
+| MySQL | 14 → 15 |
+
+Stoppen Sie alle Server-Replikate, lassen Sie die Datenbank laufen, sichern Sie Datenbank und Server-Speicher und wählen und laden Sie dann das Image 3.9.1. Führen Sie dessen `schema-upgrade` einmal aus, bevor alle Replikate auf derselben Version neu starten. Server aktualisiert ein vorhandenes Schema nicht beim Start: Ein altes Schema wird mit `native_schema_upgrade_required` abgelehnt. Prüfen Sie danach Readiness, gemeldete Version und Worker-Registrierung. Die [qualifizierte Release-Anleitung für 3.9.1](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade) enthält die Compose-Befehle ohne Quellcode-Checkout.
+
+MySQL und MariaDB setzen unterbrochene Upgrades fort; SQLite und PostgreSQL führen den Schritt transaktional aus. Ein Rollback auf 3.8.x erfordert das Backup: 3.8.0 lehnt die aktualisierte Datenbank mit `native_schema_newer_than_binary` ab. Von 3.9.0 ist kein weiterer Schemaschritt nötig. Von älteren Versionen führt `schema-upgrade` auch die vorherigen Schritte aus, gegebenenfalls einschließlich des [JSON-Neuaufbaus aus 3.7](#native-schema-upgrade-3-7). Worker-Protokoll 1.20 und Control Plane 2 bleiben unverändert.
+
 ### Upgrade auf Server 3.8.0 {#native-schema-upgrade-3-8}
 
 Server 3.8.0 benötigt auf jedem Backend ein natives Schema-Upgrade. Es fügt eine nur native Tabelle hinzu, `dw_task_queue_pauses`, die leer angelegt wird:

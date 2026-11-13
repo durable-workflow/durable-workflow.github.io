@@ -287,6 +287,8 @@ En native 3.8.0, `DW_MAX_PAYLOAD_BYTES=0` establece un techo de cero bytes para
 solicitudes normales y finalizaciones de tareas de workflow, rechazando
 cuerpos no vacíos. El límite de nombres de operación es fijo: 256 bytes.
 
+El runtime nativo 3.9.1 sigue comprobando `request_id` de señales contra 255 bytes UTF-8. Una clave multibyte de 255 caracteres puede devolver `422 invalid_request_id`. La [cualificación de la CLI instalada](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056) registra esta limitación publicada; no establece aceptación completa de claves de solicitud bajo el #216 compartido.
+
 Los valores configurados actualmente se publican bajo `limits` en la respuesta de `GET /api/cluster/info`, de modo que los clientes pueden descubrirlos durante la ejecución:
 
 ```json
@@ -324,8 +326,7 @@ llamadas a hijos tienen límites más estrictos que otros comandos.
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
 
-El runtime nativo 3.8.0 y el código corregido conservan comprobaciones de bytes
-UTF-8. `activity_type`, `open_signal_wait.signal_name`, una
+Los runtimes nativos 3.8.0 y 3.9.1 conservan comprobaciones de bytes UTF-8. `activity_type`, `open_signal_wait.signal_name`, una
 `schedule_activity.queue` explícita y `continue_as_new.workflow_type` / `queue`
 tienen un límite de análisis de 255 bytes (`422 invalid_request`). Los campos
 `workflow_type` y `queue` de un hijo tienen además un límite de 191 bytes que
@@ -333,48 +334,31 @@ puede devolver `422 unsupported_child_options`. Por ejemplo, un tipo de
 actividad con 128 copias de `é` ocupa 256 bytes y se rechaza aunque solo tenga
 128 caracteres. Las nuevas comprobaciones de caracteres no eliminan estos límites de bytes.
 
-El Server nativo 3.8.0 no valida estos límites de nombres de forma uniforme
-antes de escribir. SQLite puede almacenar nombres demasiado largos sin avisar;
-otros backends pueden devolver errores de base de datos. La [corrección del código](https://github.com/durable-workflow/server/pull/1186)
-añade rechazos `422` específicos del campo antes de escribir, como
-`commands.0.activity_type`, pero aún espera una versión publicada y cualificada
-del Server. La versión estable seleccionada sigue siendo 3.8.0. Antes de
-actualizar a esa versión corregida, revise los tipos de actividad y las esperas
-de señales existentes con nombres de más de 191 caracteres: los nuevos comandos
-con esos nombres se rechazarán. La revisión de los demás identificadores se
-sigue en [Server #607](https://github.com/durable-workflow/server/issues/607).
-El límite HTTP anterior de 256 bytes para nombres de operaciones es independiente.
+El Server nativo 3.9.1 incluye la [corrección publicada](https://github.com/durable-workflow/server/releases/tag/3.9.1#other-changes): rechazos `422 validation_failed` específicos del campo, como `commands.0.activity_type`, antes de escribir. El runtime nativo 3.8.0 no validaba estos límites de caracteres de forma uniforme; SQLite podía guardar nombres demasiado largos sin avisar, mientras otros backends devolvían errores de base de datos. Antes de actualizar, revise tipos de actividad y esperas de señales con nombres de más de 191 caracteres: ahora los comandos nuevos con esos nombres se rechazan. La revisión de los demás identificadores sigue en [Server #607](https://github.com/durable-workflow/server/issues/607). El límite HTTP anterior de 256 bytes para nombres de operaciones es independiente.
 
 ### Tamaño de finalización de tarea de workflow {#workflow-task-completion-size}
 
 En el Server nativo 3.6.0 y posteriores, una solicitud que finaliza una tarea de workflow con comandos (`POST /api/worker/workflow-tasks/{id}/complete` y `POST /api/worker/activity-tasks/{id}/continuation/complete`) puede ocupar hasta 16 veces `max_payload_bytes`: 32 MiB con el valor predeterminado de 2 MiB. Sigue a `DW_MAX_PAYLOAD_BYTES` y no tiene un ajuste propio. Los argumentos de cada comando siguen respetando el límite por carga útil dentro de la finalización. El Server PHP 2.x y las versiones nativas anteriores limitan una finalización a un límite de carga útil, como cualquier otra solicitud.
 
+El runtime nativo 3.9.1 publica el presupuesto real como `limits.max_workflow_task_completion_bytes` en cluster info. Mide el cuerpo JSON codificado completo de la solicitud, incluidos envelopes, metadatos y comandos, para ambas rutas de finalización. Use ese valor en vez de inferir un multiplicador a partir de la versión o sumar argumentos decodificados. Los límites por valor y de rutas ordinarias no cambian. El campo no concede permisos adicionales de subida de payloads externos ni de colocación de referencias.
+
+El planificador de finalizaciones de Rust SDK 4.16 respeta un límite positivo publicado incluso si es menor que el ordinario. Si el campo falta, se conserva el fallback conservador; un valor explícitamente mal formado, nulo, cero, negativo o no entero rechaza la planificación antes de subir datos. Las rutas ordinarias ignoran este campo de finalización no utilizado.
+
 Una finalización mayor se rechaza con `413 payload_too_large` y `limit_kind: workflow_task_completion_bytes` antes de registrar nada. Reproducir la tarea genera los mismos comandos, así que reenviar la finalización recibe el mismo rechazo. Cuando PHP SDK 3.17.0 o posterior recibe este rechazo tipado, no reenvía la finalización: el worker hace fallar la ejecución una sola vez con un comando `fail_workflow` cuyo mensaje empieza por `Structural limit exceeded: workflow_task_completion_bytes:` e indica ambos tamaños, y el Server registra el fallo con `failure_category = structural_limit`.
 
-Python SDK 2.17 y Rust SDK 4.15 gestionan el rechazo tipado. En Server 3.8.0,
-una finalización demasiado grande puede fallar en el transporte antes de que el
-worker reciba HTTP 413. En la prueba con el SDK de Python publicado,
-`httpx.ReadError` dejó el workflow pendiente en lugar de fallar por un límite
-estructural. La aceptación de solicitudes sobredimensionadas en el Server
-publicado sigue abierta en la [corrección de la respuesta del Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
-Reduzca las finalizaciones hasta que esa ruta esté cualificada.
+Python SDK 2.17 y Rust SDK 4.15 incluyen el manejo del rechazo tipado. En Server 3.8.0, un control publicado de Python obtuvo `httpx.ReadError` antes de recibir HTTP 413 y dejó el workflow pendiente. El runtime nativo 3.9.1 corrige esa respuesta descartando datos de forma acotada: como máximo 64 MiB de la subida restante durante dos segundos, antes de devolver el rechazo original y cerrar la conexión. Las subidas que superen cualquiera de esos límites aún pueden sufrir errores de transporte.
+
+Python SDK 2.17.1 publicado con Server nativo 3.9.1 cualificado (linux/amd64, SQLite) supera ahora los [controles con el Worker instalado real](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512): fan-out de 300 × 10 KB dentro del límite, un único 413 tipado y un único fallo estructural sin actividades parciales para una finalización sobredimensionada, y después una tarea correcta en el mismo Worker. Esto cualifica ese par exacto Python/Server. PHP requiere su propia aceptación instalada; Rust 4.16 se cualifica abajo. El #228 compartido sigue abierto. La aceptación de claves de solicitud del #216 compartido es independiente.
 
 Para mantener una finalización dentro del límite:
 
 - Divida un fan-out grande en lotes más pequeños repartidos entre tareas de workflow.
 - Mueva trabajo a workflows hijos, o use continue-as-new.
-- Guarde los argumentos grandes en el almacenamiento externo de cargas útiles, para que la finalización lleve referencias en lugar de las cargas útiles.
+- Use almacenamiento externo de payloads solo para ubicaciones admitidas. Los argumentos de comandos de continuación de actividades siguen inline; un permiso de subida de actividad/resultado no autoriza referencias en esos argumentos.
 
 #### Planificación de comandos en Rust {#rust-completion-planning}
 
-Rust SDK 4.15.0 sigue usando el límite habitual por carga como techo agregado
-de planificación de comandos (2 MiB por defecto), antes de la mayor capacidad
-de finalización del Server. Sin almacenamiento externo de cargas en el
-namespace, el fan-out publicado de 300 × 10 KB se rechaza con
-`external_payload_unavailable`. El worker sale y la ejecución sigue pendiente.
-Use lotes de comandos más pequeños mientras esté pendiente la
-[corrección del planificador agregado del SDK](https://github.com/durable-workflow/sdk-rust/issues/254).
-Esta ruta del SDK aún no implementa la mayor capacidad del Server.
+Rust SDK 4.16 usa el presupuesto positivo explícito de finalización anunciado por el productor. Los [controles publicados 4.16/native 3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) superan fan-out inline de 300 × 10 KB sin almacenamiento externo, un lote sobredimensionado de 60 × 450 KB que falla estructuralmente sin actividades parciales y una tarea posterior correcta en el mismo Worker. Sin el campo explícito, los productores antiguos conservan el límite ordinario conservador. El presupuesto mayor no concede nuevos permisos de subida o colocación de referencias; los argumentos de comandos de continuación de actividades siguen inline. Estos controles no cualifican los reintentos con clave del #216 compartido ni la limpieza por timeout nativa.
 
 ## Inicialización de Docker y procedencia {#docker-bootstrap-and-provenance}
 
