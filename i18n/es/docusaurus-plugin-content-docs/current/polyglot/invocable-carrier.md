@@ -32,6 +32,12 @@ Las tareas de workflow, el orden de señales/actualizaciones, la reproducción y
 la modificación del historial permanecen en el servidor. El transportador solo
 traslada los sobres declarados de entrada y resultado a través de HTTPS.
 
+:::warning
+
+**Limitación actual:** el Server no envía la solicitud HTTP por sí mismo. Valida la asignación y la devuelve en la respuesta del poll de actividades. Un proceso que usted ejecute debe hacer poll de la cola, llamar al endpoint e informar el resultado. Si nadie hace poll de la cola, la tarea de actividad espera. Se construirá un despachador en el Server cuando los usuarios lo necesiten ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
+
 ## Qué es {#what-it-is}
 
 El transportador sirve para trabajo con garantías de actividad que el equipo
@@ -119,7 +125,7 @@ la amplía, reemplaza ni sustituye.
 
 ## Sobres de solicitud y respuesta {#request-and-response-envelope}
 
-El servidor envía el sobre de entrada independiente del transportador y espera
+El proceso transportador envía el sobre de entrada independiente del transportador y espera
 recibir el sobre de resultado independiente del transportador:
 
 | Sentido | Tipo de contenido | Esquema |

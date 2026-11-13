@@ -32,6 +32,12 @@ Tarefas de workflow, ordenação de sinais/atualizações, replay e mutação do
 histórico permanecem no servidor. O transportador apenas move os envelopes
 declarados de entrada e resultado por um limite HTTPS.
 
+:::warning
+
+**Limitação atual:** o Server não envia a requisição HTTP por conta própria. Ele valida o mapeamento e o devolve na resposta do poll de atividades. Um processo que você executa precisa fazer poll da fila, chamar o endpoint e informar o resultado. Se ninguém fizer poll da fila, a tarefa de atividade fica aguardando. Um despachante no Server será construído quando os usuários precisarem ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
+
 ## O que é {#what-it-is}
 
 O transportador HTTP invocável existe para trabalho com garantias de atividade
@@ -121,7 +127,7 @@ amplia, substitui nem sobrepõe.
 
 ## Envelope de requisição e resposta {#request-and-response-envelope}
 
-O servidor envia o envelope de entrada independente de transportador e espera
+O processo transportador envia o envelope de entrada independente de transportador e espera
 receber o envelope de resultado independente de transportador:
 
 | Direção | Tipo de conteúdo | Schema |

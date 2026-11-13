@@ -33,6 +33,12 @@ modifications de l'historique restent dans le serveur. Le transporteur se
 limite au transfert des enveloppes déclarées d'entrée et de résultat à travers
 une frontière HTTPS.
 
+:::warning
+
+**Limitation actuelle :** le Server n'envoie pas lui-même la requête HTTP. Il valide le mappage et le renvoie dans la réponse au poll d'activités. Un processus que vous exploitez doit interroger la file, appeler le point de terminaison et rapporter le résultat. Si personne n'interroge la file, la tâche d'activité attend. Un répartiteur côté Server sera construit quand les utilisateurs en auront besoin ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
+
 ## Définition {#what-it-is}
 
 Le transporteur HTTP invocable sert aux tâches de niveau activité qu'une
@@ -128,7 +134,7 @@ ne la prolonge pas, ne la remplace pas et ne la supplante pas.
 
 ## Enveloppes de requête et de réponse {#request-and-response-envelope}
 
-Le serveur envoie l'enveloppe d'entrée indépendante du transporteur et attend
+Le processus transporteur envoie l'enveloppe d'entrée indépendante du transporteur et attend
 en retour l'enveloppe de résultat indépendante du transporteur :
 
 | Direction | Type de contenu | Schéma |

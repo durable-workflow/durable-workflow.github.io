@@ -32,6 +32,12 @@ ab. Workflow-Tasks, Signal-/Update-Reihenfolge, Replay und Änderungen an der
 Historie bleiben im Server. Der Transportadapter bewegt nur deklarierte
 Eingabe- und Ergebnis-Envelopes über eine HTTPS-Grenze.
 
+:::warning
+
+**Aktuelle Einschränkung:** Der Server sendet die HTTP-Anfrage nicht selbst. Er prüft die Zuordnung und liefert sie in der Antwort auf den Activity-Poll. Ein von Ihnen betriebener Prozess muss die Queue pollen, den Endpunkt aufrufen und das Ergebnis melden. Pollt niemand die Queue, wartet die Activity-Aufgabe. Ein serverseitiger Dispatcher wird gebaut, sobald Nutzer ihn brauchen ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
+
 ## Zweck {#what-it-is}
 
 Der aufrufbare HTTP-Transportadapter dient Arbeit auf Aktivitätsniveau, die ein
@@ -120,7 +126,7 @@ des Transportadapters verlängert, überschreibt oder ersetzt diese nicht.
 
 ## Anfrage- und Antwort-Envelope {#request-and-response-envelope}
 
-Der Server sendet die transportneutrale Eingabe-Envelope und erwartet die
+Der Carrier-Prozess sendet die transportneutrale Eingabe-Envelope und erwartet die
 transportneutrale Ergebnis-Envelope zurück:
 
 | Richtung | Inhaltstyp | Schema |
