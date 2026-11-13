@@ -169,7 +169,7 @@ docker compose --env-file durable-workflow.prod.env \
 
 原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
-### 升级到 Server 3.9.1 {#native-schema-upgrade-3-9}
+### 升级到 Server 3.9.2 {#native-schema-upgrade-3-9}
 
 从 native 3.8.x 或更早版本升级时，所有后端都必须升级 schema。Server 3.9.1 添加空的 `dw_command_intents` 表：
 
@@ -180,9 +180,9 @@ docker compose --env-file durable-workflow.prod.env \
 | MariaDB | 13 → 14 |
 | MySQL | 14 → 15 |
 
-停止所有 Server 副本，保持数据库运行，备份数据库和 Server 存储，然后选择并拉取 3.9.1 镜像。在以相同版本重启所有副本前，用该镜像运行一次 `schema-upgrade`。Server 不会在启动时升级已有 schema：旧 schema 会被 `native_schema_upgrade_required` 拒绝。重启后检查 readiness、报告的版本和 Worker 注册。[经过验证的 3.9.1 发布说明](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade)提供无需 checkout 源码的 Compose 命令。
+停止所有 Server 副本，保持数据库运行，备份数据库和 Server 存储，然后选择并拉取 3.9.2 镜像。在以相同版本重启所有副本前，用该镜像运行一次 `schema-upgrade`。Server 不会在启动时升级已有 schema：旧 schema 会被 `native_schema_upgrade_required` 拒绝。重启后检查 readiness、报告的版本和 Worker 注册。[经过验证的 3.9.2 发布说明](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback)提供无需 checkout 源码的 Compose 命令。
 
-MySQL 和 MariaDB 可继续被中断的升级；SQLite 和 PostgreSQL 在事务中应用此步骤。回退到 3.8.x 必须恢复备份：3.8.0 会以 `native_schema_newer_than_binary` 拒绝升级后的数据库。从 3.9.0 升级不需要额外的 schema 步骤。更早版本的 `schema-upgrade` 还会应用之前的步骤，包括适用的 [3.7 JSON 重建](#native-schema-upgrade-3-7)。Worker protocol 1.20 和 control plane 2 保持不变。
+MySQL 和 MariaDB 可继续被中断的升级；SQLite 和 PostgreSQL 在事务中应用此步骤。回退到 3.8.x 必须恢复备份：3.8.0 会以 `native_schema_newer_than_binary` 拒绝升级后的数据库。从 3.9.0 或 3.9.1 升级不需要额外的 schema 步骤：停止副本、备份、选择新镜像、重启并验证 readiness、版本和 Worker 注册。物理 schema 与现有命令/意图行保持不变。回退到 3.9.1 使用同一 schema，但会恢复 Unicode 键/回执元数据缺陷并失去观测文件所有者加固。更早版本的 `schema-upgrade` 还会应用之前的步骤，包括适用的 [3.7 JSON 重建](#native-schema-upgrade-3-7)。Worker protocol 1.20 和 control plane 2 保持不变。
 
 ### 升级到 Server 3.8.0 {#native-schema-upgrade-3-8}
 

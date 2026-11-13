@@ -275,7 +275,7 @@ todos os Servers parados. A referência do Server mantém os exemplos mais
 recentes de comandos Compose na seção
 [Imagem oficial + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
-### Atualizar para Server 3.9.1 {#native-schema-upgrade-3-9}
+### Atualizar para Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Atualizar do native 3.8.x ou anterior exige upgrade do esquema em todos os backends. Server 3.9.1 adiciona a tabela vazia `dw_command_intents`:
 
@@ -286,9 +286,9 @@ Atualizar do native 3.8.x ou anterior exige upgrade do esquema em todos os backe
 | MariaDB | 13 → 14 |
 | MySQL | 14 → 15 |
 
-Pare todas as réplicas do Server, mantenha o banco ativo, faça backup do banco e do armazenamento do Server e selecione e baixe a imagem 3.9.1. Execute o `schema-upgrade` dessa imagem uma vez antes de reiniciar todas as réplicas na mesma versão. Server não atualiza um esquema existente na inicialização: recusa o antigo com `native_schema_upgrade_required`. Verifique readiness, versão e registro do Worker após reiniciar. As [instruções qualificadas da versão 3.9.1](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade) fornecem comandos Compose sem checkout do código-fonte.
+Pare todas as réplicas do Server, mantenha o banco ativo, faça backup do banco e do armazenamento do Server e selecione e baixe a imagem 3.9.2. Execute o `schema-upgrade` dessa imagem uma vez antes de reiniciar todas as réplicas na mesma versão. Server não atualiza um esquema existente na inicialização: recusa o antigo com `native_schema_upgrade_required`. Verifique readiness, versão e registro do Worker após reiniciar. As [instruções qualificadas da versão 3.9.2](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback) fornecem comandos Compose sem checkout do código-fonte.
 
-MySQL e MariaDB retomam upgrades interrompidos; SQLite e PostgreSQL aplicam a etapa em transação. Voltar para 3.8.x exige restaurar o backup: 3.8.0 recusa o banco atualizado com `native_schema_newer_than_binary`. A partir de 3.9.0, nenhuma etapa extra de esquema é necessária. De versões anteriores, `schema-upgrade` também aplica as etapas passadas, incluindo a [reconstrução JSON da 3.7](#native-schema-upgrade-3-7) quando aplicável. O protocolo Worker 1.20 e o plano de controle 2 não mudam.
+MySQL e MariaDB retomam upgrades interrompidos; SQLite e PostgreSQL aplicam a etapa em transação. Voltar para 3.8.x exige restaurar o backup: 3.8.0 recusa o banco atualizado com `native_schema_newer_than_binary`. A partir de 3.9.0 ou 3.9.1, nenhuma etapa extra de esquema é necessária: pare réplicas, faça backup, selecione a nova imagem, reinicie e verifique readiness, versão e registro de Workers. O esquema físico e as linhas existentes de comandos/intenções não mudam. Voltar para 3.9.1 usa o mesmo esquema, mas restaura os defeitos de chaves Unicode/metadados dos recibos e remove o reforço do proprietário das observações. De versões anteriores, `schema-upgrade` também aplica as etapas passadas, incluindo a [reconstrução JSON da 3.7](#native-schema-upgrade-3-7) quando aplicável. O protocolo Worker 1.20 e o plano de controle 2 não mudam.
 
 ### Atualizar para o Server 3.8.0 {#native-schema-upgrade-3-8}
 

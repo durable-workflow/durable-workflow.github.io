@@ -170,7 +170,7 @@ docker compose --env-file durable-workflow.prod.env \
 
 ネイティブ Server は起動時にスキーマを確認します。ネイティブの同一マイナー系列内のパッチリリースはスキーマを維持するため、イメージの変更だけで済みます。リリースノートでスキーマ変更が告知されたリリースでは、データベースをバックアップし、全 Server を停止した状態で、イメージの `schema-upgrade` コマンドも実行する必要があります。最新のコマンド例は Server リファレンスの[公式イメージと Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)にあります。
 
-### Server 3.9.1 への更新 {#native-schema-upgrade-3-9}
+### Server 3.9.2 への更新 {#native-schema-upgrade-3-9}
 
 native 3.8.x 以前からの更新では、すべてのバックエンドでスキーマ更新が必要です。Server 3.9.1 は空の `dw_command_intents` テーブルを追加します。
 
@@ -181,9 +181,9 @@ native 3.8.x 以前からの更新では、すべてのバックエンドでス�
 | MariaDB | 13 → 14 |
 | MySQL | 14 → 15 |
 
-すべての Server レプリカを停止し、データベースは動かしたまま、データベースと Server ストレージをバックアップしてから、3.9.1 イメージを選んで取得します。そのイメージの `schema-upgrade` を 1 回実行した後、全レプリカを同じバージョンで再起動します。Server は起動時に既存スキーマを更新せず、古いスキーマでは `native_schema_upgrade_required` で拒否します。再起動後に readiness、報告バージョン、Worker 登録を確認してください。[検証済み 3.9.1 リリースの手順](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade)に、ソースの checkout が不要な Compose コマンドがあります。
+すべての Server レプリカを停止し、データベースは動かしたまま、データベースと Server ストレージをバックアップしてから、3.9.2 イメージを選んで取得します。そのイメージの `schema-upgrade` を 1 回実行した後、全レプリカを同じバージョンで再起動します。Server は起動時に既存スキーマを更新せず、古いスキーマでは `native_schema_upgrade_required` で拒否します。再起動後に readiness、報告バージョン、Worker 登録を確認してください。[検証済み 3.9.2 リリースの手順](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback)に、ソースの checkout が不要な Compose コマンドがあります。
 
-MySQL と MariaDB は中断後の更新を再開でき、SQLite と PostgreSQL はトランザクションでこのステップを適用します。3.8.x へのロールバックにはバックアップの復元が必要です。3.8.0 は更新済みデータベースを `native_schema_newer_than_binary` で拒否します。3.9.0 からは追加のスキーマ更新は不要です。さらに古いバージョンでは、`schema-upgrade` が該当する [3.7 の JSON 再構築](#native-schema-upgrade-3-7)などの以前の手順も適用します。Worker protocol 1.20 と control plane 2 は変わりません。
+MySQL と MariaDB は中断後の更新を再開でき、SQLite と PostgreSQL はトランザクションでこのステップを適用します。3.8.x へのロールバックにはバックアップの復元が必要です。3.8.0 は更新済みデータベースを `native_schema_newer_than_binary` で拒否します。3.9.0 または 3.9.1 からは追加のスキーマ更新は不要です。レプリカを停止し、バックアップ後に新しいイメージを選択して再起動し、readiness、バージョン、Worker 登録を確認します。物理スキーマと既存のコマンド・intent 行は変わりません。3.9.1 に戻す場合は同じスキーマを使えますが、Unicode キー・レシートメタデータの不具合が戻り、観測ファイル所有者の強化が失われます。さらに古いバージョンでは、`schema-upgrade` が該当する [3.7 の JSON 再構築](#native-schema-upgrade-3-7)などの以前の手順も適用します。Worker protocol 1.20 と control plane 2 は変わりません。
 
 ### Server 3.8.0 へのアップグレード {#native-schema-upgrade-3-8}
 
