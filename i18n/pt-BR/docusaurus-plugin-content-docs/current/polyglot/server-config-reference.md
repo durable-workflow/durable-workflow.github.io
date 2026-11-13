@@ -246,7 +246,7 @@ Essas opções controlam os limites das requisições e o crescimento limitado. 
 | `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | Máximo de séries de workflows de `/api/system/prometheus-metrics` antes de resumir as séries excedentes. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | Máximo de séries de atividades de `/api/system/prometheus-metrics` antes de resumir as séries excedentes. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | Máximo de séries de execução por fila de `/api/system/prometheus-metrics` antes de resumir as séries excedentes. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
-| `DW_MAX_HISTORY_EVENTS` | `50000` | Máximo de eventos de histórico por execução antes de exigir continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
+| `DW_MAX_HISTORY_EVENTS` | `50000` | Não tem efeito. Nenhuma versão do Server a lê, e o histórico por execução não tem limite. Limite históricos longos com continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Dias de retenção padrão do histórico de execuções encerradas quando o namespace não os substitui. | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | Máximo de bytes serializados de um payload. | `WORKFLOW_MAX_PAYLOAD_BYTES` |
 | `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | Tamanho máximo codificado em bytes (64 MiB) aceito pelo transporte autenticado de envio e leitura de payloads externos. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |

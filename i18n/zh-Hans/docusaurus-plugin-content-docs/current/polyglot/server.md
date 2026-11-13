@@ -438,7 +438,7 @@ curl http://localhost:8080/api/cluster/info \
 
 - 构建版本是 `version`，而不是 `server_version`。在原生 Server 上，`implementation` 为 `"rust"`。
 - 调用 API 之前，请检查 `control_plane.version` 和 `worker_protocol.version`。原生 3.5.0 提供控制平面 `2` 与 Worker 协议 `1.20`，并接受发送 `1.0` 至 `1.20` 之间任一协议版本的 Worker 请求。
-- 自 3.5.0 起，`worker_protocol.server_capabilities` 声明 `sticky_execution` 和 `sticky_history_suffix`。自 3.4.0 起还声明 `activity_workflow_continuation`，worker 只有在自行启用后才会使用它。
+- 自 3.5.0 起，`worker_protocol.server_capabilities` 声明 `sticky_execution` 和 `sticky_history_suffix`。自 3.4.0 起还声明 `activity_workflow_continuation`，worker 只有在自行启用后才会使用它。目前启用它会降低吞吐量：在我们的基准测试中，负载下的运行慢了 24–49%（[测量结果](https://github.com/durable-workflow/server/issues/1078)）。
 - 工作流任务命令位于 `worker_protocol.server_capabilities.supported_workflow_task_commands`。
 - 值为 `false` 的能力标志表示原生 Server 不提供的功能或已发布契约。`response_compression` 为空，因为原生 Server 发送未压缩的响应。
 - `native_unqualified` 列出原生 Server 省略的每个 PHP 2.x 响应成员及其原因，其中包括 `topology`。
