@@ -28,7 +28,7 @@ PHP 2.x のスタック（Server、キュー Worker、スケジューラー、�
 
 :::warning サポート終了・未修正
 
-PHP Server 2.11.8 はサポート終了であり、11月の Laravel アドバイザリに対して未修正です。公開済みイメージには Laravel 13.34.0 が含まれます。ソースのチェックアウトで Composer 依存関係を更新しても、インストール済みイメージは修正されません。確認済みの条件は[2026年11月13日のセキュリティ通知](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md)を参照してください。
+PHP Server 2.11.8 はサポート終了であり、11月の Laravel アドバイザリに対して未修正です。公開済みイメージには Laravel 13.34.0 が含まれます。ソースのチェックアウトで Composer 依存関係を更新しても、インストール済みイメージは修正されません。確認済みの条件は[2026年11月13日のセキュリティ通知](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md)を参照してください。
 
 Laravel は署名付きの `GET /storage/{path}` と `PUT /storage/{path}` を登録します。配布アプリケーションはその一時署名 URL を発行せず、`Concurrency::run()` も呼びません。依存関係の問題は、デフォルトの Server 経路で悪用可能と実証したものではありません。ストレージ経路の露出は、有効な一時署名 URL の入手または発行と、アドバイザリのリクエスト解析条件に依存します。独自のルートや拡張は別途確認してください。
 

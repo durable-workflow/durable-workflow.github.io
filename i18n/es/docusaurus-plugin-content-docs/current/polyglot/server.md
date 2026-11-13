@@ -38,7 +38,7 @@ La configuración marcada abajo como PHP 2.x no se aplica al Server nativo.
 
 :::warning Retirado y sin parche
 
-PHP Server 2.11.8 está retirado y sigue sin parche para los avisos de Laravel de noviembre. Su imagen publicada contiene Laravel 13.34.0. Actualizar las dependencias de Composer en el código fuente no parchea esa imagen instalada. Consulte las condiciones revisadas en el [aviso de seguridad del 13 de noviembre de 2026](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md).
+PHP Server 2.11.8 está retirado y sigue sin parche para los avisos de Laravel de noviembre. Su imagen publicada contiene Laravel 13.34.0. Actualizar las dependencias de Composer en el código fuente no parchea esa imagen instalada. Consulte las condiciones revisadas en el [aviso de seguridad del 13 de noviembre de 2026](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md).
 
 Laravel registra las rutas firmadas `GET /storage/{path}` y `PUT /storage/{path}`. La aplicación distribuida no emite sus URL firmadas temporales ni llama a `Concurrency::run()`. El hallazgo en la dependencia no demuestra un recorrido explotable del Server predeterminado. La exposición de las rutas de almacenamiento depende de obtener o emitir una URL firmada temporal válida y de las condiciones de análisis de solicitudes del aviso. Revise por separado las rutas y extensiones propias.
 

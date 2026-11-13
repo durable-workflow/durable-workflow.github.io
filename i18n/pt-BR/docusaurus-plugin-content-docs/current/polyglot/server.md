@@ -38,7 +38,7 @@ A configuração abaixo marcada como PHP 2.x não se aplica ao Server nativo.
 
 :::warning Aposentado e sem correção
 
-O PHP Server 2.11.8 foi aposentado e continua sem correção para os avisos Laravel de novembro. Sua imagem publicada contém Laravel 13.34.0. Atualizar as dependências Composer de uma cópia do código-fonte não corrige essa imagem instalada. Consulte as condições revisadas no [aviso de segurança de 13 de novembro de 2026](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md).
+O PHP Server 2.11.8 foi aposentado e continua sem correção para os avisos Laravel de novembro. Sua imagem publicada contém Laravel 13.34.0. Atualizar as dependências Composer de uma cópia do código-fonte não corrige essa imagem instalada. Consulte as condições revisadas no [aviso de segurança de 13 de novembro de 2026](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md).
 
 O Laravel registra as rotas assinadas `GET /storage/{path}` e `PUT /storage/{path}`. A aplicação distribuída não emite suas URLs temporárias assinadas nem chama `Concurrency::run()`. O problema na dependência não demonstra um fluxo explorável no Server padrão. A exposição das rotas de armazenamento depende da obtenção ou emissão de uma URL temporária assinada válida e das condições de análise de requisições do aviso. Revise rotas e extensões próprias separadamente.
 

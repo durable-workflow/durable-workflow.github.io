@@ -28,7 +28,7 @@ PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）�
 
 :::warning 已退役且未修补
 
-PHP Server 2.11.8 已退役，仍未修补 11 月的 Laravel 安全公告问题。其已发布镜像包含 Laravel 13.34.0。更新源码检出中的 Composer 依赖不会修补已安装镜像。已审查的条件见 [2026 年 11 月 13 日安全通知](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md)。
+PHP Server 2.11.8 已退役，仍未修补 11 月的 Laravel 安全公告问题。其已发布镜像包含 Laravel 13.34.0。更新源码检出中的 Composer 依赖不会修补已安装镜像。已审查的条件见 [2026 年 11 月 13 日安全通知](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md)。
 
 Laravel 注册带签名的 `GET /storage/{path}` 和 `PUT /storage/{path}` 路由。随附应用不会签发其临时签名 URL，也不会调用 `Concurrency::run()`。依赖问题并不证明默认 Server 流程可被利用。存储路由的暴露取决于获得或签发有效临时签名 URL，以及公告中的请求解析条件。自定义路由和扩展需单独审查。
 

@@ -38,7 +38,7 @@ La configuration marquée PHP 2.x ci-dessous ne s’applique pas au Server natif
 
 :::warning Retiré et non corrigé
 
-PHP Server 2.11.8 est retiré et reste non corrigé pour les avis Laravel de novembre. Son image publiée contient Laravel 13.34.0. Mettre à jour les dépendances Composer d’une copie des sources ne corrige pas cette image installée. Consultez les conditions examinées dans l’[avis de sécurité du 13 novembre 2026](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md).
+PHP Server 2.11.8 est retiré et reste non corrigé pour les avis Laravel de novembre. Son image publiée contient Laravel 13.34.0. Mettre à jour les dépendances Composer d’une copie des sources ne corrige pas cette image installée. Consultez les conditions examinées dans l’[avis de sécurité du 13 novembre 2026](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md).
 
 Laravel enregistre les routes signées `GET /storage/{path}` et `PUT /storage/{path}`. L’application distribuée n’émet pas leurs URL signées temporaires et n’appelle pas `Concurrency::run()`. Le constat sur la dépendance ne démontre pas un parcours Server exploitable par défaut. L’exposition des routes de stockage dépend de l’obtention ou de l’émission d’une URL signée temporaire valide et des conditions d’analyse des requêtes décrites dans l’avis. Examinez séparément les routes et extensions personnalisées.
 

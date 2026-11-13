@@ -46,7 +46,7 @@ Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Serv
 
 :::warning Eingestellt und ungepatcht
 
-PHP Server 2.11.8 ist eingestellt und bleibt für die Laravel-Sicherheitshinweise vom November ungepatcht. Das veröffentlichte Image enthält Laravel 13.34.0. Aktualisierte Composer-Abhängigkeiten in einem Quellcode-Checkout patchen dieses installierte Image nicht. Die geprüften Bedingungen stehen im [Sicherheitshinweis vom 13. November 2026](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md).
+PHP Server 2.11.8 ist eingestellt und bleibt für die Laravel-Sicherheitshinweise vom November ungepatcht. Das veröffentlichte Image enthält Laravel 13.34.0. Aktualisierte Composer-Abhängigkeiten in einem Quellcode-Checkout patchen dieses installierte Image nicht. Die geprüften Bedingungen stehen im [Sicherheitshinweis vom 13. November 2026](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md).
 
 Laravel registriert signierte Routen `GET /storage/{path}` und `PUT /storage/{path}`. Die ausgelieferte Anwendung stellt deren temporäre signierte URLs nicht aus und ruft `Concurrency::run()` nicht auf. Der Abhängigkeitsbefund weist keinen ausnutzbaren Standardablauf des Servers nach. Die Exposition der Speicherrouten hängt vom Erhalt oder Ausstellen einer gültigen temporären signierten URL und den Request-Parsing-Bedingungen des Hinweises ab. Prüfen Sie eigene Routen und Erweiterungen gesondert.
 

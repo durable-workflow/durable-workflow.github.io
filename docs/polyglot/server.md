@@ -48,7 +48,7 @@ Configuration below marked as PHP 2.x does not apply to the native Server.
 
 :::warning Retired and unpatched
 
-PHP Server 2.11.8 is retired and remains unpatched for the November Laravel advisories. Its published image contains Laravel 13.34.0. Updating a source checkout's Composer dependencies does not patch that installed image. Read the [13 November 2026 security notice](https://github.com/durable-workflow/server/blob/2c808ecf90c6684aa16468191dad8a05333a83da/docs/security/retired-php-server-2026-11-13.md) for the reviewed conditions.
+PHP Server 2.11.8 is retired and remains unpatched for the November Laravel advisories. Its published image contains Laravel 13.34.0. Updating a source checkout's Composer dependencies does not patch that installed image. Read the [13 November 2026 security notice](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md) for the reviewed conditions.
 
 Laravel registers signed `GET /storage/{path}` and `PUT /storage/{path}` routes. The shipped application does not issue their temporary signed URLs or call `Concurrency::run()`. The dependency finding does not demonstrate an exploitable default Server journey. Storage-route exposure depends on obtaining or issuing a valid temporary signed URL and the advisory's request-parsing conditions. Review custom routes and extensions separately.
 
