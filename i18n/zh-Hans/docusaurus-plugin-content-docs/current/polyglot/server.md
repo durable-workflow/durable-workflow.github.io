@@ -113,8 +113,7 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 该栈包含原生 Server 和 MySQL。未设置 `DW_AUTH_TOKEN` 时，Compose 会拒绝启动。生产 env 文件、备份和升级见[部署指南](/docs/deployment#single-node-production)。
 
-从 native 3.8.x 或更早版本升级到 3.9.2 时，必须在重启前[显式升级 schema](../deployment.md#native-schema-upgrade-3-9)。
-从 3.9.0 或 3.9.1 升级不需要额外的 schema 步骤；请执行相同的备份、重启与 readiness 检查。
+升级到 native 3.10.0（包括从 3.9.x）必须在重启前[显式升级 schema](../deployment.md#native-schema-upgrade-3-10)。更早版本还需中间步骤。请备份数据库和外部 payload 存储；回退会恢复此备份。
 
 ### 端口 {#ports}
 

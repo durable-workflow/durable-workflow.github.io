@@ -275,6 +275,21 @@ todos os Servers parados. A referência do Server mantém os exemplos mais
 recentes de comandos Compose na seção
 [Imagem oficial + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Atualizar para Server 3.10.0 {#native-schema-upgrade-3-10}
+
+O runtime nativo 3.10.0 exige upgrade aditivo explícito do esquema a partir de 3.9.x.
+
+| Backend | Transição de esquema desde 3.9.x |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+Pare todas as réplicas do Server, mantenha o banco ativo e faça backup do banco e do armazenamento de payloads externos. Selecione a imagem 3.10.0 e execute seu `schema-upgrade` uma vez antes de reiniciar todas as réplicas na mesma versão. Verifique readiness, versão informada e registro dos Workers. A inicialização não atualiza esquemas antigos automaticamente. Versões anteriores também exigem as etapas intermediárias. As [instruções publicadas de upgrade para 3.10.0](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback) trazem os comandos Compose. O protocolo Worker 1.20 e o plano de controle 2 não mudam.
+
+O resumo nullable do agendamento não é preenchido a partir de arrays legados de ações. Agendamentos existentes ficam indisponíveis até uma transição responsável registrar um resumo válido; veja a [autoridade do resumo de despacho](./polyglot/server-api-reference.md#schedule-dispatch-summary). MySQL e MariaDB retomam upgrades interrompidos; SQLite e PostgreSQL aplicam a etapa em transação. Voltar para um binário anterior exige restaurar o backup pré-upgrade de banco e armazenamento. Não execute um binário antigo no esquema novo.
+
 ### Atualizar para Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Atualizar do native 3.8.x ou anterior exige upgrade do esquema em todos os backends. Server 3.9.1 adiciona a tabela vazia `dw_command_intents`:

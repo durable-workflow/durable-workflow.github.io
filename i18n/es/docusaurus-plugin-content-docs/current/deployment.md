@@ -263,6 +263,21 @@ la base de datos y con todos los Server detenidos. La referencia de Server
 mantiene los comandos Compose actualizados en
 [Imagen oficial + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Actualizar a Server 3.10.0 {#native-schema-upgrade-3-10}
+
+El runtime nativo 3.10.0 requiere una actualización aditiva explícita del esquema desde 3.9.x.
+
+| Backend | Transición de esquema desde 3.9.x |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+Detenga todas las réplicas del Server, mantenga la base activa y haga una copia de la base y del almacenamiento de payloads externos. Seleccione la imagen 3.10.0 y ejecute su `schema-upgrade` una vez antes de reiniciar todas las réplicas con la misma versión. Verifique readiness, versión declarada y registro de workers. El inicio no actualiza esquemas antiguos automáticamente. Las versiones anteriores también requieren los pasos intermedios. Las [instrucciones publicadas de actualización a 3.10.0](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback) incluyen los comandos Compose. El protocolo de workers 1.20 y el plano de control 2 no cambian.
+
+El resumen nullable de la programación no se rellena a partir de arrays antiguos de acciones. Las programaciones existentes siguen no disponibles hasta que una transición responsable registre un resumen válido; vea la [autoridad del resumen de despacho](./polyglot/server-api-reference.md#schedule-dispatch-summary). MySQL y MariaDB reanudan actualizaciones interrumpidas; SQLite y PostgreSQL aplican el paso en una transacción. Volver a un binario anterior exige restaurar la copia previa de base y almacenamiento. No ejecute un binario antiguo contra el esquema nuevo.
+
 ### Actualizar a Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Actualizar desde native 3.8.x o anterior exige actualizar el esquema en todos los backends. Server 3.9.1 añade la tabla vacía `dw_command_intents`:

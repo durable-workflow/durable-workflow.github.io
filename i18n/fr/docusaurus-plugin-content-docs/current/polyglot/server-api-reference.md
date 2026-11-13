@@ -820,6 +820,20 @@ Les noms et types d'attributs font partie du contrat de recherche de l'espace
 de noms. Évitez les attributs à forte cardinalité dans les tableaux de bord
 opérateurs et les étiquettes de métriques.
 
+### Autorité du résumé de dispatch des programmations {#schedule-dispatch-summary}
+
+Le Server natif 3.10.0 publié ajoute un `dispatch_summary` complet avec `version: 1`, `state`, `last_outcome` et `buffered_actions_count` aux éléments de liste et aux réponses describe des programmations. Les anciens producteurs l’omettent ; une liste vide ne prouve pas la prise en charge. Examinez le champ complet au lieu de déduire le support d’une version. Le [contrat de programmation taggé](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules) définit la forme exacte.
+
+| État | Dernier résultat | Nombre actuel en tampon |
+|---|---|---|
+| `known` | Dispatch enregistré complet | Entier de 0 à 9007199254740991 |
+| `never` | `null`, établi seulement à la création | `0` |
+| `unavailable` | `null`, y compris autorité ancienne ou stockée invalide | `null` |
+
+Les résultats connus sont `started`, `buffered`, `skipped` ou `failed`, avec l’ID de résultat, l’heure d’enregistrement, le motif et les identités workflow/run applicables complets. Le nombre actuel en tampon est distinct : un vidage ultérieur peut laisser un résultat buffered enregistré avec un compteur à 0. Le statut d’exécution du dernier workflow est aussi distinct ; un dispatch Started peut pointer vers un workflow ensuite Failed.
+
+Chaque résumé est borné à 4096 octets UTF-8 sérialisés. Une transition incapable d’enregistrer le contrat complet stocke une autorité indisponible, sans tronquer le motif ni changer l’opération de programmation. Des données absentes, null, partielles ou non prises en charge ne sont pas une autorité v1. Un résumé unavailable valide prévaut sur les preuves anciennes. Un describe ultérieur possède le résumé entier, absence ou null inclus ; ne le fusionnez jamais champ par champ avec une ancienne liste. Les mises à niveau ne reconstruisent pas l’autorité depuis les anciens tableaux. La lecture bornée de la page ne nécessite pas un describe par ligne. Il s’agit du producteur ; le consommateur publié et l’actualisation visible de Waterline sont qualifiés séparément.
+
 ### Filtres et continuation des listes de planifications {#schedule-list-filters}
 
 `GET /api/schedules` lit l’espace de noms de la requête. La [qualification de PHP Server publié avec une installation normale](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) vérifie les filtres combinés et la continuation. Envoyez les paramètres suivants avec l’encodage URL habituel :

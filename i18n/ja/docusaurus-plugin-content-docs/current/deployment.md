@@ -170,6 +170,21 @@ docker compose --env-file durable-workflow.prod.env \
 
 ネイティブ Server は起動時にスキーマを確認します。ネイティブの同一マイナー系列内のパッチリリースはスキーマを維持するため、イメージの変更だけで済みます。リリースノートでスキーマ変更が告知されたリリースでは、データベースをバックアップし、全 Server を停止した状態で、イメージの `schema-upgrade` コマンドも実行する必要があります。最新のコマンド例は Server リファレンスの[公式イメージと Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)にあります。
 
+### Server 3.10.0 への更新 {#native-schema-upgrade-3-10}
+
+Native 3.10.0 は 3.9.x からの明示的な追加スキーマ更新を必要とします。
+
+| バックエンド | 3.9.x からのスキーマ遷移 |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+すべての Server レプリカを停止し、DB は稼働させたまま、DB と外部 payload ストレージをバックアップします。3.10.0 イメージを選び、その `schema-upgrade` を一度実行してから全レプリカを同じバージョンで再起動します。readiness、報告バージョン、Worker 登録を確認します。起動時に旧スキーマを自動更新しません。さらに古いバージョンでは途中の更新手順も必要です。[公開済み 3.10.0 更新手順](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback)に Compose コマンドがあります。Worker protocol 1.20 と control plane 2 は変わりません。
+
+null 許容のスケジュール要約は古い action 配列から埋め戻しません。既存スケジュールは、その更新を担う遷移が有効な要約を記録するまで unavailable のままです。[dispatch-summary の権威](./polyglot/server-api-reference.md#schedule-dispatch-summary)を参照してください。MySQL と MariaDB は中断した更新を再開し、SQLite と PostgreSQL はトランザクションで適用します。旧バイナリへ戻すには更新前の DB・ストレージのバックアップを復元します。新しいスキーマで古いバイナリを実行しないでください。
+
 ### Server 3.9.2 への更新 {#native-schema-upgrade-3-9}
 
 native 3.8.x 以前からの更新では、すべてのバックエンドでスキーマ更新が必要です。Server 3.9.1 は空の `dw_command_intents` テーブルを追加します。

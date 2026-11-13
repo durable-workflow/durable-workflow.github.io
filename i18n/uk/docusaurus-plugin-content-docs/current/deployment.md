@@ -269,6 +269,21 @@ docker compose --env-file durable-workflow.prod.env \
 розділі
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Оновлення до Server 3.10.0 {#native-schema-upgrade-3-10}
+
+Нативний 3.10.0 потребує явного адитивного оновлення схеми з 3.9.x.
+
+| Backend | Перехід схеми з 3.9.x |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+Зупиніть усі репліки Server, залиште базу активною та створіть резервні копії бази й зовнішнього сховища payload. Виберіть образ 3.10.0 і виконайте його `schema-upgrade` один раз перед перезапуском усіх реплік на тій самій версії. Перевірте readiness, оголошену версію та реєстрацію Worker. Запуск не оновлює стару схему автоматично. Старіші версії також потребують проміжних кроків. [Опубліковані інструкції 3.10.0](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback) містять команди Compose. Протокол Worker 1.20 і control plane 2 не змінюються.
+
+Nullable-підсумок розкладу не заповнюється зі старих масивів дій. Наявні розклади залишаються недоступними, доки відповідальний перехід не запише коректний підсумок; див. [авторитетність підсумку dispatch](./polyglot/server-api-reference.md#schedule-dispatch-summary). MySQL і MariaDB продовжують перервані оновлення; SQLite та PostgreSQL застосовують крок транзакційно. Відкат до старішого бінарного файлу потребує відновлення передоновлювальної копії бази й сховища. Не запускайте старий бінарний файл із новою схемою.
+
 ### Оновлення до Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Оновлення з native 3.8.x або ранішої версії потребує оновлення схеми на кожному бекенді. Server 3.9.1 додає порожню таблицю `dw_command_intents`:

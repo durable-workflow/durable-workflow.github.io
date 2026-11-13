@@ -792,6 +792,20 @@ Rotas de agendamento são rotas do plano de controle.
 Nomes e tipos de atributos fazem parte do contrato de busca do namespace.
 Evite atributos de alta cardinalidade em painéis de operação ou rótulos de métricas.
 
+### Autoridade do resumo de despacho dos agendamentos {#schedule-dispatch-summary}
+
+O Server nativo 3.10.0 publicado adiciona um `dispatch_summary` completo com `version: 1`, `state`, `last_outcome` e `buffered_actions_count` aos itens de listagem e respostas describe dos agendamentos. Produtores anteriores omitem o campo; lista vazia não comprova suporte. Inspecione o campo completo em vez de inferir suporte pela versão. O [contrato de agendamentos da tag](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules) define o formato exato.
+
+| Estado | Último resultado | Contagem atual do buffer |
+|---|---|---|
+| `known` | Despacho registrado completo | Inteiro de 0 até 9007199254740991 |
+| `never` | `null`, estabelecido apenas na criação | `0` |
+| `unavailable` | `null`, incluindo autoridade legada ou armazenada inválida | `null` |
+
+Resultados conhecidos são `started`, `buffered`, `skipped` ou `failed`, com ID do resultado, instante de registro, motivo e identidades workflow/run aplicáveis completos. A contagem atual do buffer é separada: drená-lo depois pode manter um resultado buffered registrado com contagem zero. O estado de execução do workflow mais recente também é separado; um despacho Started pode apontar para um workflow que depois Failed.
+
+Cada resumo é limitado a 4096 bytes UTF-8 serializados. Se a transição não puder registrar o contrato completo, armazena autoridade indisponível, sem truncar o motivo nem alterar o agendamento. Dados ausentes, null, parciais ou não suportados não são autoridade v1. Um resumo unavailable válido prevalece sobre evidências legadas. Um describe posterior é dono do resumo inteiro, incluindo ausência ou null; nunca o mescle campo a campo com uma lista anterior. Upgrades não reconstroem autoridade de arrays legados. A leitura limitada da página dispensa describe por linha. Esse é o comportamento do produtor; o consumidor publicado e a atualização visível do Waterline são qualificados separadamente.
+
 ### Filtros e continuação da listagem de agendamentos {#schedule-list-filters}
 
 `GET /api/schedules` lê o namespace da requisição. A [qualificação do PHP Server publicado com instalação normal](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) verifica filtros combinados e continuação. Envie os seguintes parâmetros de consulta com a codificação URL habitual:
