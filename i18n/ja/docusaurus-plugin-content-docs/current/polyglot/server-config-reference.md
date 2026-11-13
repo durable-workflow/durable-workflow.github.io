@@ -282,6 +282,8 @@ Sticky 実行には Server イメージ専用の環境変数はありません�
 
 PHP Server 2.x の設定可能な上限には、文書化された `DW_*` 設定を使ってください。コントローラーの検証上限は固定です。Native Server 3.x が対応する設定は、[実装上の注意](#native-server-3x)に記載されています。native 3.8.0 の `DW_MAX_PAYLOAD_BYTES=0` は、通常のリクエストとワークフロータスクの完了に対して 0 バイトの上限を設定し、空でないボディーを拒否します。操作名の上限は 256 バイトに固定されています。
 
+native 3.9.1 は、シグナルの `request_id` に 255 UTF-8 バイトのチェックを引き続き適用します。そのため、255 文字のマルチバイトキーでも `422 invalid_request_id` になる場合があります。[インストール済み CLI の検証](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)でこの公開版の制限を追跡しています。共有 #216 のリクエストキー全体の合格を示すものではありません。
+
 `GET /api/cluster/info` の `limits` に現在値を公開し、クライアントが実行時に確認できます。
 
 ```json
@@ -316,27 +318,33 @@ PHP Server 2.x の設定可能な上限には、文書化された `DW_*` 設定
 | `workflow_type` | 255 | `continue_as_new` |
 | `workflow_type` / `queue` | 191 | `start_child_workflow` |
 
-native 3.8.0 と修正後のソースにも、UTF-8 バイト数のチェックが残ります。`activity_type`、`open_signal_wait.signal_name`、明示的な `schedule_activity.queue`、`continue_as_new.workflow_type` / `queue` には、パーサーの 255 バイト上限があります（`422 invalid_request`）。子の `workflow_type` と `queue` には追加の 191 バイトチェックがあり、`422 unsupported_child_options` を返す場合があります。たとえば `é` を 128 個並べた Activity 型は 256 バイトとなり、128 文字しかなくても拒否されます。新しい文字数チェックは、これらのバイト数チェックを削除しません。
+native 3.8.0 と 3.9.1 にも、UTF-8 バイト数のチェックが残ります。`activity_type`、`open_signal_wait.signal_name`、明示的な `schedule_activity.queue`、`continue_as_new.workflow_type` / `queue` には、パーサーの 255 バイト上限があります（`422 invalid_request`）。子の `workflow_type` と `queue` には追加の 191 バイトチェックがあり、`422 unsupported_child_options` を返す場合があります。たとえば `é` を 128 個並べた Activity 型は 256 バイトとなり、128 文字しかなくても拒否されます。新しい文字数チェックは、これらのバイト数チェックを削除しません。
 
-native Server 3.8.0 は、書き込み前にこれらの名前の上限を一貫して検証しません。SQLite は長すぎる名前を警告なく保存する場合があり、ほかのバックエンドではデータベースエラーになる場合があります。[ソースの修正](https://github.com/durable-workflow/server/pull/1186)は、`commands.0.activity_type` などのフィールドごとに、書き込み前の `422` 拒否を追加しますが、検証済み Server リリースとしての公開はまだです。選択された安定版は引き続き 3.8.0 です。修正版へ更新する前に、191 文字を超える名前の既存の Activity 型とシグナル待機を確認してください。その名前を使う新しいコマンドは拒否されます。残りの識別子の調査は [Server #607](https://github.com/durable-workflow/server/issues/607) で追跡しています。上記の HTTP 操作名の 256 バイト上限は、これとは別です。
+native Server 3.9.1 には[公開済みの修正](https://github.com/durable-workflow/server/releases/tag/3.9.1#other-changes)が含まれます。書き込み前に `commands.0.activity_type` など、フィールドごとの `422 validation_failed` 拒否を返します。native 3.8.0 はこれらの文字数上限を一貫して検証せず、SQLite は長すぎる名前を警告なく保存する場合があり、ほかのバックエンドではデータベースエラーになる場合がありました。更新前に、191 文字を超える名前の既存 Activity 型とシグナル待機を確認してください。その名前を使う新しいコマンドは拒否されます。残りの識別子の調査は [Server #607](https://github.com/durable-workflow/server/issues/607) で継続しています。上記の HTTP 操作名の 256 バイト上限は別の制限です。
 
 ### ワークフロータスク完了サイズ {#workflow-task-completion-size}
 
 native Server 3.6.0 以降では、コマンド付きでワークフロータスクを完了するリクエスト（`POST /api/worker/workflow-tasks/{id}/complete` と `POST /api/worker/activity-tasks/{id}/continuation/complete`）は `max_payload_bytes` の 16 倍まで許可されます。既定の 2 MiB なら 32 MiB です。この上限は `DW_MAX_PAYLOAD_BYTES` に従い、専用の設定はありません。完了の中でも、各コマンドの引数には引き続きペイロードごとの上限が適用されます。PHP Server 2.x と以前の native リリースは、他のリクエストと同じく完了を 1 ペイロード分の上限に制限します。
 
+native 3.9.1 は cluster info の `limits.max_workflow_task_completion_bytes` に実際の予算を公開します。両方の完了ルートについて、エンベロープ、メタデータ、コマンドを含む、エンコード済み JSON リクエスト本文全体のサイズです。Server のバージョンから倍率を推測したり、デコード済み引数を合計したりせず、この値を使ってください。値ごとと通常ルートの上限は変わりません。このフィールドは、外部 payload のアップロードや参照配置の追加権限を与えません。
+
+Rust SDK 4.16 の完了プランナーは、通常の上限より小さくても、公開された正の上限を守ります。フィールドがなければ保守的なフォールバックを維持します。明示的な不正値、null、ゼロ、負数、非整数の場合はアップロード前に完了計画を拒否します。通常ルートは、この未使用の完了フィールドを無視します。
+
 それより大きい完了は、何も記録される前に `413 payload_too_large` と `limit_kind: workflow_task_completion_bytes` で拒否されます。タスクをリプレイしても同じコマンドが生成されるため、完了を再送しても同じ拒否になります。PHP SDK 3.17.0 以降は、この型付き拒否を受信した場合、完了リクエストを再送しません。Worker は `Structural limit exceeded: workflow_task_completion_bytes:` で始まり両方のサイズを示すメッセージの `fail_workflow` コマンドで実行を一度だけ失敗させ、Server はその失敗を `failure_category = structural_limit` として記録します。
 
-Python SDK 2.17 と Rust SDK 4.15 は型付き拒否の処理に対応しています。Server 3.8.0 では、大きすぎる完了リクエストが、Worker に HTTP 413 が届く前にトランスポート層で失敗することがあります。公開済み Python SDK のテストでは、`httpx.ReadError` により、ワークフローは構造上限による失敗にならず、保留中のままでした。公開済み Server での上限超過リクエストの受け入れ検証は、[Server の応答修正](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)で引き続き対応中です。この経路の適格性が確認されるまでは、完了リクエストを小さくしてください。
+Python SDK 2.17 と Rust SDK 4.15 には型付き拒否の処理があります。Server 3.8.0 の公開済み Python 検証では HTTP 413 を受け取る前に `httpx.ReadError` が発生し、workflow が保留されました。native 3.9.1 は、残りのアップロードを最大 64 MiB、最大 2 秒間だけ破棄してから元の拒否を返し、接続を閉じることで応答経路を修正します。どちらかの境界を超えるアップロードでは、引き続きトランスポートエラーが起こり得ます。
+
+公開済み Python SDK 2.17.1 と検証済み native Server 3.9.1（linux/amd64、SQLite）は、[実際にインストールした Worker の検証](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)に合格しました。上限内の 300 × 10 KB fan-out、大きすぎる完了に対する型付き 413 が 1 回と構造的失敗が 1 回、部分的な Activity がゼロ、その後の同じ Worker でのタスク成功を確認しています。この特定の Python/Server 組み合わせの検証です。PHP には独自のインストール済み検証が必要です。Rust 4.16 の検証は下記に示します。共有 #228 は未完了です。共有 #216 のリクエストキー検証は別です。
 
 完了を上限内に収めるには：
 
 - 大きなファンアウトを、複数のワークフロータスクにまたがる小さなバッチに分割します。
 - 処理を子ワークフローに移すか、continue-as-new を使います。
-- 大きな引数は外部ペイロードストレージに保存し、完了にはペイロードではなく参照を含めます。
+- 外部 payload ストレージは、対応している payload 配置にだけ使ってください。Activity continuation のコマンド引数は inline のままです。Activity や結果のアップロード許可は、その引数への参照配置を許可しません。
 
 #### Rust のコマンド計画 {#rust-completion-planning}
 
-Rust SDK 4.15.0 は、Server のより大きな完了上限より先に、通常のペイロード上限をコマンド計画全体の上限として適用します（既定は 2 MiB）。名前空間に外部ペイロードストレージがない場合、公開済みの 300 × 10 KB ファンアウトは `external_payload_unavailable` で拒否され、Worker が終了し、実行は保留中のままになります。[SDK の集約計画の修正](https://github.com/durable-workflow/sdk-rust/issues/254)が完了するまでは、小さなコマンドバッチを使ってください。この SDK の経路は、Server のより大きな上限にはまだ対応していません。
+Rust SDK 4.16 は producer が広告した明示的な正の完了予算を使います。[公開済み 4.16/native 3.9.1 の検証](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）は、外部ストレージなしの 300 × 10 KB inline fan-out、部分的な Activity ゼロで構造的に失敗する上限超過の 60 × 450 KB バッチ、その後の同じ Worker でのタスク成功を確認しています。明示的なフィールドがなければ、古い producer は保守的な通常の上限を維持します。予算が増えても、アップロードや参照配置の追加権限は得られず、Activity continuation のコマンド引数は inline のままです。この検証は共有 #216 のキー付き再試行や native のタイムアウトクリーンアップを確認するものではありません。
 
 ## Docker の初期化と出所情報 {#docker-bootstrap-and-provenance}
 

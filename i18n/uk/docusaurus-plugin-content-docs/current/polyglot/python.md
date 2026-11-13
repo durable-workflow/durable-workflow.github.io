@@ -410,14 +410,16 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.get_history(workflow_id, run_id)` | декодований payload історії | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.export_history(workflow_id, run_id)` | декодований архівний payload історії | `WorkflowNotFound`, помилки автентифікації/Server |
-| `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, помилки автентифікації/Server |
-| `await client.query_workflow(workflow_id, query_name, args=None)` | декодований результат query | `QueryFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
+| `await client.signal_workflow(workflow_id, signal_name, args=None)` | квитанція прийняття (`dict`) | `WorkflowNotFound`, `InvalidArgument`, помилки автентифікації/Server |
+| `await client.query_workflow(workflow_id, query_name, args=None)` | квитанція запиту (`dict`) | `QueryFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.update_workflow(workflow_id, update_name, args=None, ...)` | підтвердження update (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | декодований результат workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`signal_workflow` повертає квитанцію прийняття разом із `request_id`. `query_workflow` і `WorkflowHandle.query` повертають квитанцію запиту; читайте `receipt["result"]` для декодованого значення обробника, навіть коли він успішно повертає `None`. Дивіться [посібник клієнта Python](https://python.durable-workflow.com/reference/client/).
 
 `update_workflow` за замовчуванням використовує `wait_for="accepted"`.
 Підтвердження може містити `update_status="accepted"` і `result=None`. З

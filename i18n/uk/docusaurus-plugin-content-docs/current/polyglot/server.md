@@ -171,6 +171,8 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 задано `DW_AUTH_TOKEN`. [Посібник розгортання](/docs/deployment#single-node-production)
 описує production-файл env, резервні копії та оновлення.
 
+Оновлення з native 3.8.x або ранішої версії до 3.9.1 потребує [явного оновлення схеми](../deployment.md#native-schema-upgrade-3-9) перед перезапуском.
+
 ### Порти {#ports}
 
 | Сервіс | Порт | Призначення |

@@ -269,6 +269,21 @@ pendant que tous les Servers sont arrêtés. La référence Server conserve les
 exemples Compose actuels au niveau des commandes dans la section
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Mise à niveau vers Server 3.9.1 {#native-schema-upgrade-3-9}
+
+Passer de native 3.8.x ou antérieur exige une mise à niveau du schéma sur chaque backend. Server 3.9.1 ajoute la table vide `dw_command_intents` :
+
+| Backend | Transition du schéma depuis 3.8.x |
+|---|---|
+| SQLite | 12 → 13 |
+| PostgreSQL | 13 → 14 |
+| MariaDB | 13 → 14 |
+| MySQL | 14 → 15 |
+
+Arrêtez toutes les répliques du Server, laissez tourner la base de données, sauvegardez la base et le stockage du Server, puis sélectionnez et téléchargez l’image 3.9.1. Exécutez son `schema-upgrade` une fois avant de redémarrer toutes les répliques sur la même version. Server ne met pas à niveau un schéma existant au démarrage : il refuse l’ancien avec `native_schema_upgrade_required`. Vérifiez readiness, version et enregistrement du Worker après redémarrage. Les [instructions qualifiées de la version 3.9.1](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade) fournissent les commandes Compose sans checkout des sources.
+
+MySQL et MariaDB reprennent une mise à niveau interrompue ; SQLite et PostgreSQL appliquent l’étape dans une transaction. Revenir à 3.8.x exige de restaurer la sauvegarde : 3.8.0 refuse la base mise à niveau avec `native_schema_newer_than_binary`. Depuis 3.9.0, aucune étape de schéma supplémentaire n’est nécessaire. Depuis une version plus ancienne, `schema-upgrade` applique aussi les étapes antérieures, y compris la [reconstruction JSON de 3.7](#native-schema-upgrade-3-7) si nécessaire. Le protocole Worker 1.20 et le plan de contrôle 2 restent inchangés.
+
 ### Mettre à niveau vers Server 3.8.0 {#native-schema-upgrade-3-8}
 
 Server 3.8.0 nécessite une mise à niveau du schéma native sur chaque backend. Il ajoute une table propre à native, `dw_task_queue_pauses`, créée vide :

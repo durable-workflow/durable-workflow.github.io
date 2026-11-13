@@ -411,14 +411,16 @@ Los equivalentes CLI son `dw task-queue:build-ids`, `dw task-queue:drain` y
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.get_history(workflow_id, run_id)` | carga de historial decodificada | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.export_history(workflow_id, run_id)` | carga de historial para archivo decodificada | `WorkflowNotFound`, errores de autenticación/servidor |
-| `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, errores de autenticación/servidor |
-| `await client.query_workflow(workflow_id, query_name, args=None)` | resultado de consulta decodificado | `QueryFailed`, `WorkflowNotFound`, errores de autenticación/servidor |
+| `await client.signal_workflow(workflow_id, signal_name, args=None)` | recibo de admisión (`dict`) | `WorkflowNotFound`, `InvalidArgument`, errores de autenticación/servidor |
+| `await client.query_workflow(workflow_id, query_name, args=None)` | recibo de consulta (`dict`) | `QueryFailed`, `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.update_workflow(workflow_id, update_name, args=None, ...)` | recibo de actualización (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | salida de workflow decodificada | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`signal_workflow` devuelve el recibo de admisión, incluido `request_id`. `query_workflow` y `WorkflowHandle.query` devuelven un recibo de consulta; lea `receipt["result"]` para el valor decodificado del handler, incluso cuando devuelve `None` correctamente. Véase la [guía del cliente Python](https://python.durable-workflow.com/reference/client/).
 
 `update_workflow` usa `wait_for="accepted"` de forma predeterminada. Su recibo
 puede contener `update_status="accepted"` y `result=None`. Con
