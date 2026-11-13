@@ -584,7 +584,7 @@ curl http://localhost:8080/api/cluster/info \
   від `1.0` до `1.20`.
 - Команди workflow-task містяться в
   `worker_protocol.server_capabilities.supported_workflow_task_commands`.
-- Починаючи з 3.5.0, `worker_protocol.server_capabilities` оголошує `sticky_execution` і `sticky_history_suffix`. Починаючи з 3.4.0, воно оголошує `activity_workflow_continuation`, яке worker використовує лише після власного ввімкнення.
+- Починаючи з 3.5.0, `worker_protocol.server_capabilities` оголошує `sticky_execution` і `sticky_history_suffix`. Починаючи з 3.4.0, воно оголошує `activity_workflow_continuation`, яке worker використовує лише після власного ввімкнення. Наразі його ввімкнення знижує пропускну здатність: у нашому бенчмарку виконання під навантаженням були на 24–49% повільнішими ([вимірювання](https://github.com/durable-workflow/server/issues/1078)).
 - Прапорець можливості зі значенням `false` позначає функцію чи опублікований
   контракт, який нативний Server не обслуговує. `response_compression`
   порожній, бо нативний Server надсилає нестиснені відповіді.

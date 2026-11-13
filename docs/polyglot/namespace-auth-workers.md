@@ -73,6 +73,29 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 boundary from every route and should never be exposed outside a trusted local
 network.
 
+### Token rejected because of whitespace {#token-whitespace}
+
+Native Server 3.5.0 and later refuses to start if `DW_AUTH_TOKEN`,
+`DW_WORKER_TOKEN`, `DW_OPERATOR_TOKEN`, `DW_ADMIN_TOKEN` or a legacy token
+setting contains leading or trailing whitespace or a control character. The
+diagnostic names the setting and says `has leading or trailing whitespace or a
+control character`. It does not include the token value.
+
+A common cause is a Kubernetes Secret created from a file with a trailing
+newline, or with `echo` without `-n`. Create a new Secret from the intended
+whitespace-free token value without adding a newline:
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` does not remove whitespace already present in the variable. Correct
+the source value first if it is malformed. For an existing Secret, update it
+through your deployment process, then restart affected Server and worker
+processes so they load the corrected value. Both sides must use the same token
+bytes.
+
 ## Signal authorization and attribution
 
 Before admitting a signal, Server authenticates the request and enforces the

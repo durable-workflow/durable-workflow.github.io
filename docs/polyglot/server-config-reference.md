@@ -326,7 +326,7 @@ default.
 | `DW_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` | `100` | Maximum workflow series reported by `/api/system/prometheus-metrics` before excess series are summarized. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_WORKFLOW_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` | `100` | Maximum activity series reported by `/api/system/prometheus-metrics` before excess series are summarized. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_ACTIVITY_SERIES_LIMIT` |
 | `DW_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` | `100` | Maximum task-queue runtime series reported by `/api/system/prometheus-metrics` before excess series are summarized. | `WORKFLOW_SERVER_METRICS_PROMETHEUS_TASK_QUEUE_SERIES_LIMIT` |
-| `DW_MAX_HISTORY_EVENTS` | `50000` | Maximum history events per workflow run before continue-as-new is enforced. | `WORKFLOW_MAX_HISTORY_EVENTS` |
+| `DW_MAX_HISTORY_EVENTS` | `50000` | Has no effect. No Server release reads it and history per run is not capped. Bound long histories with continue-as-new. | `WORKFLOW_MAX_HISTORY_EVENTS` |
 | `DW_HISTORY_RETENTION_DAYS` | `30` | Default number of days closed-run history is retained when a namespace does not override it. | `WORKFLOW_HISTORY_RETENTION_DAYS` |
 | `DW_MAX_PAYLOAD_BYTES` | `2097152` | Maximum serialized bytes for one payload. | `WORKFLOW_MAX_PAYLOAD_BYTES` |
 | `DW_EXTERNAL_PAYLOAD_MAX_BYTES` | `67108864` | Maximum encoded size in bytes (64 MiB) accepted by the authenticated external-payload upload and fetch transport. | `WORKFLOW_SERVER_EXTERNAL_PAYLOAD_MAX_BYTES` |
