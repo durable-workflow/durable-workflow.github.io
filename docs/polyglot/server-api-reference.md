@@ -499,6 +499,29 @@ encode them for you. A direct HTTP caller must use the official Avro encoder's
 `{codec, blob}` envelope or the runtime external reference below. The surrounding
 HTTP document is JSON; raw business JSON is not an alternative payload codec.
 
+### Native fired-timer redrive and replay clocks {#native-redrive-timers}
+
+:::note Pending native publication and consumer qualification
+
+The plain-timer extension and fractional-clock correction are merged in [Server source 5221ed82](https://github.com/durable-workflow/server/pull/1215), with native 3.11.0 [release preparation](https://github.com/durable-workflow/server/pull/1218) still pending. The selected published Server retains its earlier timer refusal and clock-writing behavior. This source description does not establish a published producer, SDK replay result or stable selection.
+
+:::
+
+For an otherwise eligible run that failed at an activity, the new source accepts a completed plain timer before that failure. Its unique step must contain exactly one ordered `TimerScheduled` / `TimerFired` pair with matching source `timer_id`. The successor writes the pair with one fresh shared timer ID, creates no timer row or timer task, and resumes at the failed activity without waiting for that timer again. Source history stays unchanged.
+
+The reused `TimerFired` names the immediate predecessor in `reused_from_run_id`. Its `reused_recorded_at` retains the original timer event time across repeated redrives. Reused activities and markers also retain full available fractional precision when a fallback clock is first written. The initial replay anchor comes from the persisted source run start and is carried in `replayed_started_at`; consumed steps use their event-time authority. Repeated redrives preserve already-recorded clock strings and the existing initial anchor. Fractions omitted by an older producer cannot be reconstructed. Deadline formatting is unchanged.
+
+| Refusal | Timer boundary retained by the new source |
+| --- | --- |
+| `unsupported_timer` | A scope, parallel-group, cancellation-cleanup, condition or signal-timeout timer is outside the plain-timer slice. |
+| `incomplete_timer_step` | The pair is missing, reversed, duplicated, or has absent/non-string/mismatched source timer IDs. |
+
+Cancelled timers remain `unsupported_history`. Step collisions, gaps and invalid failure boundaries keep their existing explicit refusals. Definition/fingerprint, parent/local-activity, external-payload and workflow-code-upsert limits still apply. Signals, updates and child workflows gain no native redrive support from this slice. Describe and redrive share structural eligibility; the existing worker-fingerprint comparison still applies when redrive is requested.
+
+The [actual PHP/Python/Rust cold-worker cohort](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) must retain the same workflow definition/fingerprint through cold replacement and repeated redrive. It compares parsed full-precision UTC instants against an observed nonzero-fraction source `TimerFired`, preserves source history, and checks original callback counts, fresh timer identity and absence of repeated timer work. Whole-second rendering cannot establish that precision result, and installed history must not be rewritten to supply it. Source-controlled timestamp tests are separate evidence.
+
+Immutable producer/platform/source qualification, the applicable installed SDK receipts and actual Chart publication precede stable adoption. [Core's precision/reference follow-through](https://github.com/durable-workflow/workflow/issues/992) remains separate under [Server #980](https://github.com/durable-workflow/server/issues/980). The change adds no ordinary-entry clock support to an SDK that does not advertise it, and unchanged SDKs need no release solely to align version numbers. Protocol, OpenAPI and catalog shapes are unchanged.
+
 ## Namespace And Storage
 
 Namespace routes require operator or admin roles. Mutating namespace and
