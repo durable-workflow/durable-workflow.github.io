@@ -238,6 +238,8 @@ Durable Workflow 中每个公开接口恰好具有以下一个稳定性级别。
 
 所选 Server 为原生 3.x Server。PHP Server 2.x 已冻结在 2.11.8，不再发布新版本；现有 PHP 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。接管已在运行手册说明的范围内于已发布的 3.0.4 镜像上通过资格验证；它是单向的，且必须先备份。
 
+PHP Server 2.11.8 仍未修补 11 月的 Laravel 安全公告问题。现有固定版本部署必须遵循[有条件的暴露说明和退役措施](./polyglot/server.md#retired-php-server-security)；历史 takeover 证据保留原有限制。
+
 Helm Chart 记录的 `appVersion` 为 `%%artifact.helmChartAppVersion%%`，与所选 Server 一致，且该 Chart 默认运行原生 Server。[已发布的版本发布记录](%%artifact.helmChartQualificationUrl%%)记录了 Chart 的发布运行、OCI/软件包摘要、源码标识，以及该次运行中的 kind 安装；它并不代表生产集群资格验证。安装或覆盖镜像前，请阅读 [Chart 选择与升级](./deployment.md#helm-chart-selection)。
 
 

@@ -34,6 +34,24 @@ La configuration marquée PHP 2.x ci-dessous ne s’applique pas au Server natif
 
 :::
 
+## Sécurité de PHP Server retiré {#retired-php-server-security}
+
+:::warning Retiré et non corrigé
+
+PHP Server 2.11.8 est retiré et reste non corrigé pour les avis Laravel de novembre. Son image publiée contient Laravel 13.34.0. Mettre à jour les dépendances Composer d’une copie des sources ne corrige pas cette image installée. Consultez les conditions examinées dans l’[avis de sécurité du 13 novembre 2026](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md).
+
+Laravel enregistre les routes signées `GET /storage/{path}` et `PUT /storage/{path}`. L’application distribuée n’émet pas leurs URL signées temporaires et n’appelle pas `Concurrency::run()`. Le constat sur la dépendance ne démontre pas un parcours Server exploitable par défaut. L’exposition des routes de stockage dépend de l’obtention ou de l’émission d’une URL signée temporaire valide et des conditions d’analyse des requêtes décrites dans l’avis. Examinez séparément les routes et extensions personnalisées.
+
+Cessez d’exposer le service PHP retiré et planifiez la migration vers native. Jusqu’à son retrait :
+
+- Bloquez toutes les requêtes `/storage/*` à l’ingress, y compris GET et PUT, et vérifiez la règle sur le véritable endpoint. Ces routes sont distinctes du transport authentifié `/api/external-payloads/v1`.
+- Cessez d’émettre et de réutiliser les URL temporaires de téléchargement ou d’envoi du disque local. Examinez les extensions qui génèrent des routes signées ou appellent Laravel Concurrency.
+- Conservez une sauvegarde restaurable de la base de données et du stockage externe des payloads. Arrêtez tous les rôles PHP pendant une migration qui écrit dans la base.
+
+Ces contrôles réduisent l’exposition identifiée des routes de stockage ; ils n’installent pas les correctifs et n’établissent pas la sécurité des extensions personnalisées. Native utilise un runtime Rust hors de ce constat de dépendance Laravel. Suivez le [runbook de takeover avec sauvegarde préalable](%%artifact.serverTakeoverRunbookUrl%%) uniquement dans ses limites exactes de version, backend et état, et répétez sur une copie restaurée. Le démarrage native ne convertit pas une base PHP, et la dernière version native ne qualifie pas à nouveau takeover. Les mises à niveau native suivantes conservent leurs [exigences explicites de schéma et restauration](../deployment.md#native-schema-upgrade-3-10).
+
+:::
+
 ## Est-ce réservé aux équipes PHP ? {#is-this-only-for-php-teams}
 
 Non. PHP, Python et Rust disposent de SDK officiels. Une équipe dont l’application utilise uniquement Python ou Rust peut déployer Server comme infrastructure, écrire ses workflows et activités avec son SDK natif et communiquer par le protocole public. Son application n’intègre pas Laravel et ne devient pas une application Laravel.

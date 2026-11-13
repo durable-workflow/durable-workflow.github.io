@@ -342,6 +342,8 @@ and image digests used for each completed check.
 
 The selected Server is the native 3.x Server. PHP Server 2.x is frozen at 2.11.8 and receives no further releases; existing PHP installations can move to native with `upgrade-takeover` by following the [native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%). Takeover is qualified on the published 3.0.4 image within the runbook's stated scope; it is one-way and backup-first.
 
+PHP Server 2.11.8 remains unpatched for the November Laravel advisories. Existing pinned deployments must follow the [conditional exposure and retirement actions](./polyglot/server.md#retired-php-server-security); the historical takeover evidence retains its original limits.
+
 The Helm chart's recorded `appVersion` is `%%artifact.helmChartAppVersion%%`, matching the selected Server, and the chart runs the native Server by default. Its [published release receipt](%%artifact.helmChartQualificationUrl%%) records the chart release run, OCI/package digests, source identity, and a kind install in that run; it is not a production cluster qualification. See [chart selection and upgrades](./deployment.md#helm-chart-selection) before installing or overriding the image.
 
 PyPI renders the Python distribution version as

@@ -24,6 +24,24 @@ PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）�
 
 :::
 
+## 已退役 PHP Server 的安全性 {#retired-php-server-security}
+
+:::warning 已退役且未修补
+
+PHP Server 2.11.8 已退役，仍未修补 11 月的 Laravel 安全公告问题。其已发布镜像包含 Laravel 13.34.0。更新源码检出中的 Composer 依赖不会修补已安装镜像。已审查的条件见 [2026 年 11 月 13 日安全通知](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md)。
+
+Laravel 注册带签名的 `GET /storage/{path}` 和 `PUT /storage/{path}` 路由。随附应用不会签发其临时签名 URL，也不会调用 `Concurrency::run()`。依赖问题并不证明默认 Server 流程可被利用。存储路由的暴露取决于获得或签发有效临时签名 URL，以及公告中的请求解析条件。自定义路由和扩展需单独审查。
+
+停止对外开放已退役 PHP 服务，并规划迁移至 native。在退役前：
+
+- 在 ingress 阻止所有 `/storage/*` 请求，包括 GET 和 PUT，并在实际端点验证规则。这些路由独立于经过身份验证的 `/api/external-payloads/v1` 传输。
+- 停止签发和重复使用本地磁盘的临时下载或上传 URL。审查生成签名路由或调用 Laravel Concurrency 的扩展。
+- 保留可恢复的数据库及外部 payload 存储备份。迁移写入数据库期间停止所有 PHP 角色。
+
+这些控制降低已识别的存储路由暴露，但不会安装修复，也不能证明自定义扩展安全。Native 使用 Rust runtime，不在此 Laravel 依赖问题范围内。仅在精确的版本、backend 和状态限制内遵循[备份优先的 takeover 手册](%%artifact.serverTakeoverRunbookUrl%%)，并在恢复出的副本上演练。Native 启动不是 PHP 数据库转换，最新 native 发布也不会重新证明 takeover 的适用性。后续 native 升级仍遵循[显式 schema 与恢复要求](../deployment.md#native-schema-upgrade-3-10)。
+
+:::
+
 ## 只适用于 PHP 团队吗？ {#is-this-only-for-php-teams}
 
 不是。PHP、Python 和 Rust 都有第一方 SDK。仅使用 Python 或 Rust 的团队可将已发布的独立 Server 部署为基础设施，以各自 SDK 编写工作流和活动，通过公开协议通信。应用无需嵌入 Laravel，也不会因此变成 Laravel 应用。

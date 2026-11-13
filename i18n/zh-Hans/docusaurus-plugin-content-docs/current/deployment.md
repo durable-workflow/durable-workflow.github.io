@@ -20,6 +20,8 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 :::note 现有 PHP Server 2.x 安装
 
+PHP Server 2.11.8 已退役，仍未修补 11 月的 Laravel 安全公告问题。固定版本的 PHP 部署在使用下述旧配方前，应遵循[有条件的暴露说明及 ingress/签名链接措施](./polyglot/server.md#retired-php-server-security)。
+
 PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。现有 PHP 2.x 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。对于由 PHP 2.11.8 在 SQLite、MySQL 8.0 和 PostgreSQL 17 上写入的数据库，接管已在已发布的 3.0.4 镜像（arm64）上通过资格验证。MariaDB、amd64 以及来自其他 PHP 版本的数据库（布局 2.8.0–2.11.8）仅有基于源码构建的 CI 覆盖。接管是单向的，必须先备份，并且必须停止 PHP。接管会拒绝它无法迁移的数据库和状态；运行手册中的[拒绝情形表](%%artifact.serverTakeoverRunbookUrl%%#refusals)列出了每种情况。请先在由备份恢复出的副本上演练接管。接管后无法回滚到 PHP，且接管计划在 3.1.x 系列中弃用。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
 
 :::

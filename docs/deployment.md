@@ -38,6 +38,8 @@ Server 2.x is frozen at 2.11.8 and receives no further releases.
 
 :::note Existing PHP Server 2.x installations
 
+PHP Server 2.11.8 is retired and unpatched for the November Laravel advisories. For pinned PHP deployments, follow the [conditional exposure and ingress/signed-link actions](./polyglot/server.md#retired-php-server-security) before using the legacy recipes below.
+
 The PHP 2.x stack (server, queue worker, scheduler, bootstrap job and Redis)
 remains available. At the 2.11.8 release tag it is
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);

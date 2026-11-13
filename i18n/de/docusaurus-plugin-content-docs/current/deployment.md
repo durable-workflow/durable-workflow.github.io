@@ -21,6 +21,8 @@ Er läuft als ein Prozess pro Knoten: Er erstellt und prüft sein Datenbankschem
 
 :::note Bestehende Installationen des PHP-Servers 2.x
 
+PHP Server 2.11.8 ist eingestellt und für die Laravel-Sicherheitshinweise vom November ungepatcht. Befolgen Sie bei fest gepinnten PHP-Deployments die [Bedingungen und Ingress-/Signatur-Link-Maßnahmen](./polyglot/server.md#retired-php-server-security), bevor Sie die alten Rezepte unten verwenden.
+
 Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis)
 bleibt verfügbar. Am Veröffentlichungstag 2.11.8 ist er
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);

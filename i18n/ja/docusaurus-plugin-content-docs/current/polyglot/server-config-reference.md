@@ -18,6 +18,8 @@ keywords:
 
 このページは Durable Workflow Server イメージの運用者向け `DW_*` 環境変数の契約を説明します。デプロイ用テンプレートの作成、本番設定の確認、従来の `WORKFLOW_*` / `ACTIVITY_*` 名から v2 Server の契約への移行に使用してください。現在の Server はネイティブ 3.x Server です。どの設定を適用、無視、拒否するかは [ネイティブ Server 3.x](#native-server-3x) に記載しています。PHP Server 2.x は 2.11.8 で凍結されています。
 
+PHP Server 2.11.8 は11月の Laravel アドバイザリに対して未修正です。既存の固定バージョン環境では[条件付きの露出と ingress・署名リンク対策](./server.md#retired-php-server-security)に従ってください。設定を変更してもイメージは修正されません。
+
 PHP 2.x Server は `DB_*`、`REDIS_*`、`QUEUE_CONNECTION`、`CACHE_STORE` など、通常の Laravel 実行時設定も使用します。これらは Durable Workflow API の設定ではなくデプロイ基盤の設定なので、別の表に記載しています。
 
 ## ネイティブ Server 3.x {#native-server-3x}

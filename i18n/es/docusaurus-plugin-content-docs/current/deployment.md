@@ -37,6 +37,8 @@ versión 2.11.8 y no recibirá más publicaciones.
 
 :::note Instalaciones existentes de PHP Server 2.x
 
+PHP Server 2.11.8 está retirado y sin parche para los avisos de Laravel de noviembre. Para despliegues PHP fijados, siga las [condiciones de exposición y medidas de ingress/enlaces firmados](./polyglot/server.md#retired-php-server-security) antes de usar las recetas antiguas siguientes.
+
 El stack PHP 2.x (servidor, worker de cola, programador, tarea de inicialización
 y Redis) sigue disponible. En la etiqueta de publicación 2.11.8 es
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
