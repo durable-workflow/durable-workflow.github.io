@@ -267,7 +267,8 @@ Al utilizar el servidor independiente, se aplica otro conjunto de máximos en el
 
 | Límite | Valor predeterminado | Clave de configuración | Qué limita |
 |---|---|---|---|
-| Tamaño del cuerpo | 2 MiB | `server.limits.max_payload_bytes` | Total de bytes del cuerpo de la solicitud HTTP |
+| Tamaño del cuerpo | 2 MiB | `server.limits.max_payload_bytes` | Total de bytes del cuerpo de la solicitud HTTP, salvo una finalización de tarea de workflow en el Server nativo 3.6.0 o posterior (fila siguiente) |
+| Tamaño de finalización de tarea de workflow | 32 MiB (16 × tamaño del cuerpo) | derivado de `server.limits.max_payload_bytes` | Server nativo 3.6.0 o posterior: una solicitud que finaliza una tarea de workflow con comandos. Los argumentos de cada comando siguen respetando el límite por carga útil |
 | Tamaño de memo | 256 KiB | `server.limits.max_memo_bytes` | Memo serializado en `POST /workflows` y `POST /schedules` |
 | Número de atributos de búsqueda | 100 | `server.limits.max_search_attributes` | Atributos de búsqueda personalizados registrados por namespace |
 | Longitud de clave de atributo de búsqueda | 128 bytes | `server.limits.max_search_attribute_key_length` | Longitud de una clave de atributo de búsqueda al iniciar |
@@ -298,3 +299,15 @@ Los valores configurados actualmente se publican bajo `limits` en la respuesta d
 ```
 
 Los errores de validación se devuelven en el sobre de error estándar del plano de control con `reason: "validation_failed"` y un mapa `validation_errors` cuyas claves corresponden al campo que causa el error (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, etc.). Los rechazos por tamaño de carga útil utilizan `reason: "payload_too_large"` y el código de estado `413`.
+
+### Tamaño de finalización de tarea de workflow {#workflow-task-completion-size}
+
+En el Server nativo 3.6.0 y posteriores, una solicitud que finaliza una tarea de workflow con comandos (`POST /api/worker/workflow-tasks/{id}/complete` y `POST /api/worker/activity-tasks/{id}/continuation/complete`) puede ocupar hasta 16 veces `max_payload_bytes`: 32 MiB con el valor predeterminado de 2 MiB. Sigue a `DW_MAX_PAYLOAD_BYTES` y no tiene un ajuste propio. Los argumentos de cada comando siguen respetando el límite por carga útil dentro de la finalización. El Server PHP 2.x y las versiones nativas anteriores limitan una finalización a un límite de carga útil, como cualquier otra solicitud.
+
+Una finalización mayor se rechaza con `413 payload_too_large` y `limit_kind: workflow_task_completion_bytes` antes de registrar nada. Reproducir la tarea genera los mismos comandos, así que reenviar la finalización recibe el mismo rechazo. PHP SDK 3.17.0 y posteriores nunca la reenvían: el worker hace fallar la ejecución una sola vez con un comando `fail_workflow` cuyo mensaje empieza por `Structural limit exceeded: workflow_task_completion_bytes:` e indica ambos tamaños, y el Server registra el fallo con `failure_category = structural_limit`. Los SDK de Python y Rust harán lo mismo en sus próximas versiones.
+
+Para mantener una finalización dentro del límite:
+
+- Divida un fan-out grande en lotes más pequeños repartidos entre tareas de workflow.
+- Mueva trabajo a workflows hijos, o use continue-as-new.
+- Guarde los argumentos grandes en el almacenamiento externo de cargas útiles, para que la finalización lleve referencias en lugar de las cargas útiles.
