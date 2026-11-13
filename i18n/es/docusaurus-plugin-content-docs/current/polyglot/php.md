@@ -290,6 +290,14 @@ mismo caso representativo en v1, v2 integrado y este puente de modo servicio,
 incluidos drenaje y reversión. Utiliza [Modos de despliegue](/docs/polyglot/deployment-modes/)
 para una comparación más amplia de límites del runtime.
 
+## Leer una actualización aceptada más tarde {#read-an-update-outcome}
+
+El PHP SDK 3.18.1 seleccionado permite leer una actualización retenida por su ID estable sin admitirla de nuevo. `Client::updateOutcome($workflowId, $updateId)` usa por defecto `waitFor: 'completed'`: el trabajo pendiente lanza `UpdateStillPending`; un resultado completado puede ser legítimamente `null`. `updateOutcomeReceipt()` usa por defecto `waitFor: 'accepted'` y devuelve el recibo del Server para inspeccionar `update_status` y `wait_timed_out` por separado del resultado completado.
+
+Estas lecturas GET requieren la capacidad `update_outcome_reads` (Server nativo 3.6.0 y posteriores). Sin ella, el SDK lanza `LogicException` y no reenvía la actualización. Una excepción pendiente del `updateWorkflow()` inicial conserva el ID de solicitud del llamador. Una lectura GET pendiente conserva `updateId`, pero la clave de solicitud original puede faltar: `$pending->requestId` es entonces `''`, que significa desconocida. Siga leyendo con ese ID de actualización; nunca envíe una clave vacía, inferida o con hash interno como ID de solicitud original.
+
+La [guía PHP publicada](https://php.durable-workflow.com/build/messages/#apply-a-tracked-update) muestra el manejador y el recorrido del cliente. Los [controles con PHP 3.18.1 instalado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-php/pull/411#issuecomment-6855609359) verifican lecturas de pendiente a completado con null sin una segunda admisión, además del [manejo del tamaño de finalización](./server-config-reference.md#workflow-task-completion-size). Esta evidencia no establece aceptación completa de claves bajo el #216 compartido ni soporte nativo de limpieza por timeout.
+
 ## Actualizar a PHP SDK 3.12 a 3.14 {#upgrade-to-3-12-through-3-14}
 
 PHP `^8.1`, los mínimos del puente Laravel, el protocolo de workers `1.20` y el plano de control `2` no cambian respecto a 3.11. Revise estos cambios de comportamiento antes de desplegar:
