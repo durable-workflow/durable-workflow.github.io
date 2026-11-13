@@ -184,9 +184,15 @@ Worker 会自动声明 `workflow_entry_arguments_validation`。在配套 Server 
 
 这些桥接不同于[嵌入式 Laravel 工作流](/docs/installation/)；后者通过 `durable-workflow/workflow` 使 Laravel 应用自身管理持久状态并通过 Laravel 队列执行。参见 [Laravel 采用与运行时迁移](/docs/laravel-adoption/)，了解同一个典型 Laravel 用例如何使用 v1、v2 嵌入式及已提供的服务模式桥接，包括排空和回滚。更全面的运行时边界比较见[部署模式](/docs/polyglot/deployment-modes/)。
 
+## 含二进制值的查询结果 {#query-binary-results}
+
+PHP SDK 3.18.2 修复了包含嵌套 `AvroBinaryValue` 字节的有效 Avro 结果在查询完成时的问题。`result_envelope` 仍是权威表示。SDK 仅在无法编码为 JSON 时省略可选的普通 `result` 投影；普通 JSON 兼容结果保留该投影。
+
+[已发布 PHP 3.18.2 / 原生 Server 3.9.1 的安装后验证](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312)（PHP 8.3.36、linux/amd64、SQLite）确认实际 Worker 对嵌套二进制字节、普通 JSON、有符号零和 `null` 的往返处理，以及 workflow 完成和 Worker 正常注销。这是兼容的查询修复，不会添加 capability，也不代表完整请求键或超时清理支持。参见 [PHP 查询指南](https://php.durable-workflow.com/build/messages/#register-a-read-only-query)。
+
 ## 稍后读取已接受的更新 {#read-an-update-outcome}
 
-所选 PHP SDK 3.18.1 可通过稳定 ID 读取保留的更新，无需再次受理。`Client::updateOutcome($workflowId, $updateId)` 默认使用 `waitFor: 'completed'`：仍在等待时抛出 `UpdateStillPending`；已完成的结果可以合法地为 `null`。`updateOutcomeReceipt()` 默认使用 `waitFor: 'accepted'`，返回 Server 回执，以便将 `update_status`、`wait_timed_out` 与已完成结果分开检查。
+所选 PHP SDK %%artifact.publishedPhpSdkVersion%% 可通过稳定 ID 读取保留的更新，无需再次受理。`Client::updateOutcome($workflowId, $updateId)` 默认使用 `waitFor: 'completed'`：仍在等待时抛出 `UpdateStillPending`；已完成的结果可以合法地为 `null`。`updateOutcomeReceipt()` 默认使用 `waitFor: 'accepted'`，返回 Server 回执，以便将 `update_status`、`wait_timed_out` 与已完成结果分开检查。
 
 这些 GET 读取要求 `update_outcome_reads` capability（原生 Server 3.6.0 及以上）。不支持时 SDK 抛出 `LogicException`，不会重新提交更新。首次 `updateWorkflow()` 的等待异常保留调用方请求 ID。待完成的 GET 读取保留 `updateId`，但原始请求键可能不可用：此时 `$pending->requestId` 为 `''`，表示未知。请继续使用该更新 ID 读取；切勿将空键、推测键或内部哈希键当作原始请求 ID 提交。
 

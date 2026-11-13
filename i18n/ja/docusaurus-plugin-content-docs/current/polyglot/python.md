@@ -352,7 +352,9 @@ driver = external_storage_driver_from_policy(
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | デコード済みワークフロー出力 | `WorkflowFailed`、`WorkflowCancelled`、`WorkflowTerminated`、`TimeoutError` |
 
-`signal_workflow` は `request_id` を含む受け付けレシートを返します。`query_workflow` と `WorkflowHandle.query` はクエリレシートを返すため、ハンドラーが正常に `None` を返す場合も、デコード済みの値は `receipt["result"]` から取得してください。[Python クライアントガイド](https://python.durable-workflow.com/reference/client/)を参照してください。
+`signal_workflow` は `request_id` を含む受け付けレシートを返します。`query_workflow` と `WorkflowHandle.query` はクエリレシートを返すため、ハンドラーが正常に `None` を返す場合も、デコード済みの値は `receipt["result"]` から取得してください。[Python クライアントガイド](https://python.durable-workflow.com/reference/client/#read-a-query-result)を参照してください。
+
+Python SDK 2.17.2 は、バイトを含む正当な Avro Query 結果を修正します。`result_envelope` が引き続き正規の結果で、エンコードできない任意のプレーン JSON 表現だけを省略します。[公開済み 2.17.2 / native Server 3.9.1 のインストール後検証](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320)（linux/amd64、SQLite）では、入れ子のバイトと `None` の Query レシート、コールド Worker 置換、保留から完了 null への Update 読み取りを確認しています。Query の戻り値の形は上記のままです。このパッチは timeout-cleanup や並列ポリシーの capability を広告しません。以前の 2.17.1 の完了サイズに関する証拠は、正確なバージョンと実験の範囲を保持します。
 
 `update_workflow` の既定は `wait_for="accepted"` です。レシートは `update_status="accepted"` と `result=None` を含む場合があります。`wait_for="completed"` では、`wait_timeout_seconds` が待機時間を制限します。期限が切れると、レシートは受け付け済みのまま `wait_timed_out=True` を設定します。`None` を含む完了した結果は、`update_status="completed"` でのみ識別できます。`update_id` を保持し、[後から結果を読み取ってください](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 

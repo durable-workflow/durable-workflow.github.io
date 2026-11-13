@@ -289,9 +289,15 @@ service mode, включно з drain і rollback.
 Ширше порівняння меж runtime наведено в
 [режимах розгортання](/docs/polyglot/deployment-modes/).
 
+## Результати запитів із бінарними значеннями {#query-binary-results}
+
+PHP SDK 3.18.2 виправляє завершення запитів для коректних результатів Avro із вкладеними байтами `AvroBinaryValue`. `result_envelope` залишається авторитетним поданням. SDK пропускає лише необов’язкову просту проєкцію `result`, коли її неможливо закодувати в JSON; звичайні JSON-сумісні результати зберігають цю проєкцію.
+
+[Перевірки встановленого опублікованого PHP 3.18.2 / нативного Server 3.9.1](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312) (PHP 8.3.36, linux/amd64, SQLite) підтверджують фактичний обмін через Worker для вкладених бінарних байтів, звичайного JSON, знакового нуля та `null`, а також завершення workflow і коректне зняття Worker з реєстрації. Це сумісне виправлення запитів; воно не додає можливості та не встановлює повну підтримку ключів запитів чи очищення після тайм-ауту. Див. [посібник PHP із запитів](https://php.durable-workflow.com/build/messages/#register-a-read-only-query).
+
 ## Прочитати прийняте оновлення пізніше {#read-an-update-outcome}
 
-Вибраний PHP SDK 3.18.1 дозволяє читати збережене оновлення за сталим ID без повторного прийняття. `Client::updateOutcome($workflowId, $updateId)` типово використовує `waitFor: 'completed'`: незавершена робота породжує `UpdateStillPending`; завершений результат цілком може бути `null`. `updateOutcomeReceipt()` типово використовує `waitFor: 'accepted'` і повертає квитанцію Server, щоб перевіряти `update_status` та `wait_timed_out` окремо від завершеного результату.
+Вибраний PHP SDK %%artifact.publishedPhpSdkVersion%% дозволяє читати збережене оновлення за сталим ID без повторного прийняття. `Client::updateOutcome($workflowId, $updateId)` типово використовує `waitFor: 'completed'`: незавершена робота породжує `UpdateStillPending`; завершений результат цілком може бути `null`. `updateOutcomeReceipt()` типово використовує `waitFor: 'accepted'` і повертає квитанцію Server, щоб перевіряти `update_status` та `wait_timed_out` окремо від завершеного результату.
 
 Ці GET-читання потребують можливості `update_outcome_reads` (нативний Server 3.6.0 і новіші). Без неї SDK породжує `LogicException` і не надсилає оновлення повторно. Виняток очікування початкового `updateWorkflow()` зберігає ID запиту викликача. Незавершене GET-читання зберігає `updateId`, але початковий ключ запиту може бути недоступним: тоді `$pending->requestId` дорівнює `''`, тобто невідомий. Продовжуйте читати за цим ID оновлення; ніколи не надсилайте порожній, виведений або внутрішній хешований ключ як початковий ID запиту.
 

@@ -290,9 +290,15 @@ mismo caso representativo en v1, v2 integrado y este puente de modo servicio,
 incluidos drenaje y reversión. Utiliza [Modos de despliegue](/docs/polyglot/deployment-modes/)
 para una comparación más amplia de límites del runtime.
 
+## Resultados de consulta con valores binarios {#query-binary-results}
+
+PHP SDK 3.18.2 corrige la finalización de consultas para resultados Avro válidos con bytes `AvroBinaryValue` anidados. `result_envelope` sigue siendo la representación autoritativa. El SDK omite únicamente la proyección simple opcional `result` cuando no se puede codificar en JSON; los resultados habituales compatibles con JSON conservan esa proyección.
+
+Los [controles instalados de PHP 3.18.2 publicado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312) (PHP 8.3.36, linux/amd64, SQLite) verifican un recorrido real del Worker con bytes binarios anidados, JSON habitual, cero con signo y `null`, además de completar el workflow y dar de baja el Worker de forma ordenada. Es una corrección compatible de consultas; no añade una capacidad ni establece soporte completo de claves de solicitud o limpieza por timeout. Consulte la [guía PHP de consultas](https://php.durable-workflow.com/build/messages/#register-a-read-only-query).
+
 ## Leer una actualización aceptada más tarde {#read-an-update-outcome}
 
-El PHP SDK 3.18.1 seleccionado permite leer una actualización retenida por su ID estable sin admitirla de nuevo. `Client::updateOutcome($workflowId, $updateId)` usa por defecto `waitFor: 'completed'`: el trabajo pendiente lanza `UpdateStillPending`; un resultado completado puede ser legítimamente `null`. `updateOutcomeReceipt()` usa por defecto `waitFor: 'accepted'` y devuelve el recibo del Server para inspeccionar `update_status` y `wait_timed_out` por separado del resultado completado.
+El PHP SDK %%artifact.publishedPhpSdkVersion%% seleccionado permite leer una actualización retenida por su ID estable sin admitirla de nuevo. `Client::updateOutcome($workflowId, $updateId)` usa por defecto `waitFor: 'completed'`: el trabajo pendiente lanza `UpdateStillPending`; un resultado completado puede ser legítimamente `null`. `updateOutcomeReceipt()` usa por defecto `waitFor: 'accepted'` y devuelve el recibo del Server para inspeccionar `update_status` y `wait_timed_out` por separado del resultado completado.
 
 Estas lecturas GET requieren la capacidad `update_outcome_reads` (Server nativo 3.6.0 y posteriores). Sin ella, el SDK lanza `LogicException` y no reenvía la actualización. Una excepción pendiente del `updateWorkflow()` inicial conserva el ID de solicitud del llamador. Una lectura GET pendiente conserva `updateId`, pero la clave de solicitud original puede faltar: `$pending->requestId` es entonces `''`, que significa desconocida. Siga leyendo con ese ID de actualización; nunca envíe una clave vacía, inferida o con hash interno como ID de solicitud original.
 

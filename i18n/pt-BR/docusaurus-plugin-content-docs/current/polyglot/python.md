@@ -425,7 +425,9 @@ o procedimento completo; os equivalentes CLI são `dw task-queue:build-ids`,
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | saída decodificada do workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` retorna o recibo de admissão, incluindo `request_id`. `query_workflow` e `WorkflowHandle.query` retornam um recibo de consulta; leia `receipt["result"]` para o valor decodificado do handler, inclusive quando retorna `None` com sucesso. Veja o [guia do cliente Python](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` retorna o recibo de admissão, incluindo `request_id`. `query_workflow` e `WorkflowHandle.query` retornam um recibo de consulta; leia `receipt["result"]` para o valor decodificado do handler, inclusive quando retorna `None` com sucesso. Veja o [guia do cliente Python](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+O Python SDK 2.17.2 corrige resultados Avro válidos de consultas contendo bytes. `result_envelope` continua sendo a representação autoritativa; apenas uma projeção JSON simples opcional que não possa ser codificada é omitida. Os [controles instalados do 2.17.2 publicado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) verificam recibos de consulta com bytes aninhados e `None`, substituição a frio do Worker e leituras de atualização de pendente até concluída com null. Os formatos de retorno das consultas continuam como descritos acima. Esse patch não anuncia capabilities de limpeza por timeout nem de política de paralelismo. A evidência anterior do tamanho de conclusão de 2.17.1 mantém seu escopo exato de versão e experimento.
 
 `update_workflow` usa `wait_for="accepted"` por padrão. Seu recibo pode conter
 `update_status="accepted"` e `result=None`. Com `wait_for="completed"`,

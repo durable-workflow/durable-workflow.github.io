@@ -421,7 +421,9 @@ Die entsprechenden CLI-Befehle sind `dw task-queue:build-ids`,
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | decodierte Workflow-Ausgabe | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` liefert die Annahmequittung einschließlich `request_id`. `query_workflow` und `WorkflowHandle.query` liefern eine Query-Quittung; lesen Sie `receipt["result"]` für den dekodierten Handlerwert, auch wenn der Handler erfolgreich `None` zurückgibt. Siehe den [Python-Client-Leitfaden](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` liefert die Annahmequittung einschließlich `request_id`. `query_workflow` und `WorkflowHandle.query` liefern eine Query-Quittung; lesen Sie `receipt["result"]` für den dekodierten Handlerwert, auch wenn der Handler erfolgreich `None` zurückgibt. Siehe den [Python-Client-Leitfaden](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 korrigiert gültige Avro-Query-Ergebnisse mit Bytes. `result_envelope` bleibt maßgeblich; nur eine optionale einfache JSON-Projektion, die nicht kodiert werden kann, entfällt. [Kontrollen mit veröffentlichtem, installiertem 2.17.2 / nativem Server 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) prüfen Query-Belege mit verschachtelten Bytes und `None`, kalten Worker-Ersatz und Update-Lesezugriffe von ausstehend bis abgeschlossenem null. Die Query-Rückgabeform bleibt wie oben beschrieben. Dieser Patch bewirbt keine Timeout-Cleanup- oder Parallel-Policy-Capabilities. Der frühere Completion-Größennachweis für 2.17.1 behält seinen genauen Versions- und Versuchsumfang.
 
 `update_workflow` verwendet standardmäßig `wait_for="accepted"`. Die
 Bestätigung kann `update_status="accepted"` und `result=None` enthalten. Bei
