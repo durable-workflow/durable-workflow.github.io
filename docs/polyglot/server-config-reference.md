@@ -433,13 +433,18 @@ still meet the per-payload limit inside the completion. PHP Server 2.x and
 earlier native releases cap a completion at one payload limit, like any other
 request.
 
-Native 3.9.1 advertises the actual positive integer budget as
+Native 3.9.1 advertises the actual budget as
 `limits.max_workflow_task_completion_bytes` in cluster info. It measures the
 complete encoded JSON request body, including envelopes, metadata and commands,
 for both completion routes. Use that advertised value rather than inferring a
 multiplier from the Server version or summing decoded arguments. Per-value and
 ordinary-route limits remain unchanged. The field grants no additional external
 payload upload or reference-placement authority.
+
+SDK planners must honor a positive advertised cap even below the ordinary
+limit. An absent field preserves the conservative fallback; an explicitly
+malformed, null, zero, negative or non-integer value refuses completion planning
+before upload. Ordinary routes ignore this unused completion field.
 
 A larger completion is refused with `413 payload_too_large` and
 `limit_kind: workflow_task_completion_bytes` before anything is recorded.
