@@ -167,6 +167,21 @@ $controlPlane->start('order-processing', 'order-12345', [
 
 Si no se configura ni se pasa explícitamente un espacio, las nuevas instancias conservan `null`. Un observador limitado a un espacio no incluye esas ejecuciones. Cambiar la configuración no reasigna las instancias existentes. Se rechaza iniciar una instancia existente mediante otro espacio.
 
+### Qué espacios de nombres ejecuta una aplicación {#namespace-allowlist}
+
+Desde Workflow 2.27, una aplicación integrada repara y ejecuta trabajo solo en los espacios de nombres que atiende. Esto abarca el watchdog, la reparación de tareas, los plazos de ejecuciones y actividades, `workflow:v2:schedule-tick` y los jobs en cola de workflows, actividades, temporizadores y llamadas a servicios. Un job en cola de otro espacio de nombres se omite antes de tener ningún efecto y se registra una advertencia.
+
+```env
+DW_V2_NAMESPACE=production
+DW_V2_NAMESPACES=production,billing
+```
+
+- Si `DW_V2_NAMESPACES` no está definido, la aplicación atiende exactamente `DW_V2_NAMESPACE`, así que una aplicación con un solo espacio de nombres no necesita cambios.
+- Si está definido, la aplicación atiende exactamente los espacios de nombres de la lista, así que incluya también `DW_V2_NAMESPACE`. `default` designa el espacio de nombres sin asignar. Un valor vacío no atiende ninguno y `*` se rechaza.
+- Un proceso que repara o ejecuta el tick de todos los espacios de nombres de la base de datos, como un servidor independiente, define `DW_V2_ALL_NAMESPACES=true` en su lugar.
+
+Incluya cada espacio de nombres en el que la aplicación inicia, programa o envía señales a workflows. De lo contrario, sus tareas y programaciones esperan a una aplicación que los atienda. La lista de permitidos evita que una aplicación ejecute el trabajo de otra con el código o las credenciales equivocados. No es aislamiento de inquilinos: las aplicaciones que comparten una base de datos aún pueden leer las filas de las demás. El trabajo rechazado se cuenta en `namespace_scope_refusals`; consulte [Monitorización](../monitoring.md#stuck-run-metrics).
+
 ### Limitar Waterline a un espacio de nombres {#waterline-namespace-scoping}
 
 Si Waterline usa una base de datos compartida con varios espacios, establece `WATERLINE_NAMESPACE` para restringir todas las listas a uno:

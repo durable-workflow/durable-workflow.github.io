@@ -98,12 +98,12 @@ OpenAPI, AsyncAPI чи JSON Schema. Schema
 
 | Лінійка пакета | PHP | Laravel |
 | --- | --- | --- |
-| Поточний вбудований Workflow 2.26 | PHP 8.2+ у 8.x; PHP 8.3+ для Laravel 13 | `^12.69.0` або `^13.30.0` |
+| Поточний вбудований Workflow 2.27 | PHP 8.2+ у 8.x; PHP 8.3+ для Laravel 13 | `^12.69.0` або `^13.30.0` |
 | Вбудований Workflow 2.20.5 | PHP `^8.1` з урахуванням мінімуму фреймворку | `^10.50.4`, `^11.56.1`, `^12.69.0` або `^13.30.0` |
 | Опублікований PHP SDK 3.14 | Базовий SDK PHP `^8.1`; міст Laravel потребує PHP `^8.2`, а для Laravel 13 — PHP 8.3+ | `^12.69.0` або `^13.30.0` |
 | PHP SDK 3.9.5 | Базовий SDK PHP `^8.1`; міст Laravel також дотримується мінімуму фреймворку | `^10.50.4`, `^11.56.1`, `^12.69.0` або `^13.30.0` |
 
-Першоджерела пакета — [опублікований контракт вбудованого оновлення](https://github.com/durable-workflow/workflow/blob/2.26.0/resources/laravel-embedded-upgrade-contract.json)
+Першоджерела пакета — [опублікований контракт вбудованого оновлення](https://github.com/durable-workflow/workflow/blob/2.27.0/resources/laravel-embedded-upgrade-contract.json)
 і `composer.json` кожного випуску. Поточний вбудований випуск перевірено з
 Laravel 12/PHP 8.2–8.4 та Laravel 13/PHP 8.3–8.4. Підтримку PHP 8.1 і Laravel
 10/11 вилучено. [Історичний посібник стабільної v1](/docs/1.x/installation/) та
@@ -151,6 +151,13 @@ Workflow 2.25 і 2.26 зберігають мінімальні вимоги 2.2
 - Починаючи з 2.25, перевищення фіксованого обмеження memo або атрибута пошуку викидає `StructuralLimitExceededException` замість `InvalidArgumentException`, а типове значення `memo_size_bytes` становить 65 536. Див. [Структурні обмеження](./constraints/structural-limits.md).
 
 Див. примітки до випусків [2.25.0](https://github.com/durable-workflow/workflow/releases/tag/2.25.0) та [2.26.0](https://github.com/durable-workflow/workflow/releases/tag/2.26.0).
+
+Workflow 2.27 зберігає мінімальні вимоги підтримки з 2.21 і протокол вбудованого worker `1.22` та не додає міграцій бази даних. Зміни, які варто перевірити перед оновленням:
+
+- Починаючи з 2.27, вбудований застосунок відновлює й виконує роботу лише у власних просторах імен. Якщо застосунок запускає, планує workflow або надсилає їм сигнали в просторах імен, відмінних від `DW_V2_NAMESPACE`, перелічіть їх усі в `DW_V2_NAMESPACES`. Процес, що обслуговує всі простори імен, задає `DW_V2_ALL_NAMESPACES=true`. Див. [Які простори імен обслуговує застосунок](./configuration/options.md#namespace-allowlist).
+- Починаючи з 2.27, закриття дочірнього workflow коштує батьківському однаково, скільки б сусідніх дочірніх workflow він не мав. Див. [Вартість широкого розгалуження](./features/child-workflows.md#fan-out-cost).
+
+Див. [примітки до випуску 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
 
 ## Рівні стабільності {#stability-levels}
 

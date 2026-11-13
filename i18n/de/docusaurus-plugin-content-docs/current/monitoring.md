@@ -136,6 +136,8 @@ Die beratende Health-Prüfung `replay_blocked_runs` (Kategorie `correctness`) me
 
 Der native Server meldet `replay_blocked` und die Prüfung `replay_blocked_runs` ab 3.6.0.
 
+Ab Workflow 2.27 zählt `operator_metrics.namespace_scope_refusals` die Arbeit, die die [Namespace-Allowlist](./configuration/options.md#namespace-allowlist) der App in den letzten 15 Minuten abgelehnt hat, nach Namespace und Pfad. `job` zählt übersprungene eingereihte Jobs. `repair`, `timeout` und `schedule_tick` zählen Reparaturkandidaten, abgelaufene Fristen und fällige Zeitpläne, die länger als zwei Minuten in einem Namespace außerhalb der Allowlist liegen geblieben sind. Die beratende Health-Prüfung `namespace_scope_refusals` warnt, solange weiter Ablehnungen eintreffen, und wird 15 Minuten nach der letzten zurückgesetzt. Die Zähler liegen im Standard-Cache-Store. Verwenden Sie daher einen gemeinsamen Store (Redis, Datenbank oder Memcached), damit der Webprozess, der den Health-Status liefert, die Zähler der Worker sieht.
+
 ### Fehlgeschlagene Workflow-Tasks im Server {#workflow-task-failure-metric}
 
 Der Server meldet fehlgeschlagene Workflow-Tasks in `GET /api/system/metrics` unter `metrics.dw_workflow_task_consecutive_failures`:

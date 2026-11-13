@@ -161,7 +161,7 @@ Runs with workflow-task trouble have `task_problem = true`. Filter run lists on 
 - `active` (Task Problem): workflow-task work is missing, retrying or cannot be delivered right now.
 - `history` (Task History): the run needed workflow-task repair or replay recovery earlier.
 
-### Metrics and health
+### Metrics and health {#stuck-run-metrics}
 
 Embedded operator metrics (`operator_metrics` in Waterline stats) count open runs in each problem state. Closed runs are not counted.
 
@@ -174,6 +174,8 @@ Embedded operator metrics (`operator_metrics` in Waterline stats) count open run
 The advisory `replay_blocked_runs` health check (category `correctness`) reports `warning` while any open run is replay-blocked.
 
 Native Server reports `replay_blocked` and the `replay_blocked_runs` check from 3.6.0.
+
+From Workflow 2.27, `operator_metrics.namespace_scope_refusals` counts work the app's [namespace allowlist](./configuration/options.md#namespace-allowlist) refused in the last 15 minutes, by namespace and path. `job` counts skipped queued jobs. `repair`, `timeout` and `schedule_tick` count repair candidates, expired deadlines and due schedules left in a namespace outside the allowlist for more than two minutes. The advisory `namespace_scope_refusals` health check warns while refusals keep arriving and clears 15 minutes after the last one. The counts live in the default cache store, so use a shared store (Redis, database or Memcached) so that the web process serving health sees the workers' counts.
 
 ### Server workflow-task failures
 
