@@ -514,7 +514,7 @@ The reused `TimerFired` names the immediate predecessor in `reused_from_run_id`.
 | Refusal | Timer boundary retained by the new source |
 | --- | --- |
 | `unsupported_timer` | A scope, parallel-group, cancellation-cleanup, condition or signal-timeout timer is outside the plain-timer slice. |
-| `incomplete_timer_step` | The pair is missing, reversed, duplicated, or has absent/non-string/mismatched source timer IDs. |
+| `incomplete_timer_step` | A timer step has a missing event, reversed or duplicate events, or absent/non-string/mismatched source timer IDs. |
 
 Cancelled timers remain `unsupported_history`. Step collisions, gaps and invalid failure boundaries keep their existing explicit refusals. Definition/fingerprint, parent/local-activity, external-payload and workflow-code-upsert limits still apply. Signals, updates and child workflows gain no native redrive support from this slice. Describe and redrive share structural eligibility; the existing worker-fingerprint comparison still applies when redrive is requested.
 
