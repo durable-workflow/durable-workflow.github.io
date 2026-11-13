@@ -282,6 +282,11 @@ Todo comando que aceita payloads do chamador usa o mesmo formato de entrada:
 `-` para stdin e `--input-encoding=json|raw|base64`. JSON é o padrão; entradas
 raw e base64 são passadas como um argumento posicional do workflow.
 
+Use `dw workflow:update-outcome` para ler mais tarde uma atualização aceita
+sem enviá-la novamente. Pendente é diferente de concluída com resultado null.
+Veja [ler o resultado de uma atualização](./cli-reference.md#read-update-outcome)
+para a capacidade exigida do Server e as opções de espera.
+
 ### Adaptadores de ponte {#bridge-adapters}
 
 ```bash

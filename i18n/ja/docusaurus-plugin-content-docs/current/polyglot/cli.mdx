@@ -226,6 +226,8 @@ dw workflow:history <workflow-id> <run-id>                 # Show run history
 
 呼び出し元のペイロードを受け取る全コマンドは同じ入力形式を使います。インライン値は `--input`、ファイルパスまたは標準入力を示す `-` は `--input-file`、エンコードは `--input-encoding=json|raw|base64` です。既定は JSON で、raw と base64 の入力は一つの位置引数としてワークフローに渡します。
 
+`dw workflow:update-outcome` を使うと、受け付け済みの更新を再送信せずに後から読み取れます。保留中と、null の結果で完了した状態は異なります。必要な Server の機能と待機オプションは、[更新結果の読み取り](./cli-reference.md#read-update-outcome)を参照してください。
+
 ### ブリッジアダプター {#bridge-adapters}
 
 ```bash

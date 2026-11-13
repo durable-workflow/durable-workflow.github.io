@@ -279,6 +279,11 @@ Every command that accepts caller payloads uses the same input shape:
 and `--input-encoding=json|raw|base64`. JSON is the default; raw and base64
 inputs are passed as one positional workflow argument.
 
+Use `dw workflow:update-outcome` to read an accepted update later without
+submitting it again. Pending is distinct from a completed null result. See
+[read an update outcome](./cli-reference.md#read-update-outcome) for the Server
+capability requirement and wait options.
+
 ### Bridge Adapters
 
 ```bash

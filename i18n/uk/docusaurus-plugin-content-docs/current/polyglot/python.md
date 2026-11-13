@@ -120,6 +120,15 @@ Python SDK 2.15 і 2.16 додають:
 
 Повний перелік див. у [журналі змін 2.16.0](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md).
 
+Python SDK 2.17 додає `Client.update_outcome` і
+`Client.update_outcome_receipt`, щоб читати прийнятий update пізніше без
+повторного надсилання. Ці методи потребують `capabilities.update_outcome_reads`
+(native Server 3.6.0 або новіший). `update_outcome` за замовчуванням чекає
+завершення й піднімає `UpdateStillPending`, якщо update ще не завершився.
+Повернене `None` є завершеним результатом null. `update_outcome_receipt` за
+замовчуванням використовує етап прийняття й зберігає явний `update_status`.
+Приклади для цієї мови наведено в [посібнику Python SDK](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
+
 ## Швидкий початок {#quickstart}
 
 Ця повна програма Python визначає workflow з однією activity,
@@ -403,12 +412,20 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 | `await client.export_history(workflow_id, run_id)` | декодований архівний payload історії | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, помилки автентифікації/Server |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | декодований результат query | `QueryFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | декодований результат update | `UpdateRejected`, `WorkflowNotFound`, помилки автентифікації/Server |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | підтвердження update (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | декодований результат workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`update_workflow` за замовчуванням використовує `wait_for="accepted"`.
+Підтвердження може містити `update_status="accepted"` і `result=None`. З
+`wait_for="completed"` параметр `wait_timeout_seconds` обмежує час очікування.
+Після його спливу підтвердження залишається прийнятим і встановлює
+`wait_timed_out=True`. Лише `update_status="completed"` означає завершений
+результат, зокрема `None`. Збережіть `update_id`, щоб
+[прочитати результат пізніше](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
 
 `start_workflow` приймає `workflow_type`, `task_queue`, необов'язкові
 `workflow_id`, `input`, `duplicate_policy`, `memo`, `search_attributes`,

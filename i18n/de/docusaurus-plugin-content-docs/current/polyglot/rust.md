@@ -131,6 +131,21 @@ unabhängig geführt. Ihre Laufzeit-Protokollmanifeste bestimmen die Kompatibili
 
 Siehe den [Changelog zu 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
 
+## Gespeicherte Update-Ergebnisse lesen {#read-update-outcome}
+
+Rust SDK 4.15 ergänzt `Client::update_outcome` und
+`Client::update_outcome_receipt`, um ein angenommenes Update über seine ID zu
+lesen, ohne es erneut einzureichen. Diese Methoden erfordern
+`capabilities.update_outcome_reads` (native Server ab 3.6.0). `update_outcome`
+liefert für ein noch nicht abgeschlossenes Update `Error::UpdateStillPending`.
+Ein abgeschlossenes null-Ergebnis ist `Ok(Value::Null)`. Ergebnisbestätigungen
+erhalten den expliziten `update_status`. Die Rust-Schnittstelle steht in der
+[Client-API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
+
+Rust SDK 4.15.0 wendet die gewöhnliche Payload-Grenze weiterhin auf den ganzen
+Befehlsbatch an. Beachten Sie die [bekannte Planergrenze](./server-config-reference.md#rust-completion-planning),
+bevor Sie einen großen Fan-out ohne externen Payload-Speicher ausführen.
+
 ## Fristen für Bedingungswarteoperationen und Worker-Upgrades {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 misst das Timeout eines nicht gruppierten `wait_condition`

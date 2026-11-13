@@ -89,6 +89,8 @@ Python SDK 2.15 と 2.16 では次が追加されています。
 
 完全な一覧は [2.16.0 の変更履歴](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md) を参照してください。
 
+Python SDK 2.17 では、受け付け済みの更新を再送信せずに後から読み取る `Client.update_outcome` と `Client.update_outcome_receipt` が追加されました。これらには `capabilities.update_outcome_reads`（native Server 3.6.0 以降）が必要です。`update_outcome` は既定で完了を待ち、未完了なら `UpdateStillPending` を送出します。返された `None` は、完了した null の結果です。`update_outcome_receipt` は既定で受け付け段階を使い、明示的な `update_status` を保持します。言語固有の例は [Python SDK のガイド](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)を参照してください。
+
 ## クイックスタート {#quickstart}
 
 次は、アクティビティを1つ持つワークフローを定義し、ローカルの Durable Workflow Server に対して開始して結果を待つ完全な Python プログラムです。
@@ -343,12 +345,14 @@ driver = external_storage_driver_from_policy(
 | `await client.export_history(workflow_id, run_id)` | デコード済みアーカイブ履歴ペイロード | `WorkflowNotFound`、認証・Server エラー |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`、`InvalidArgument`、認証・Server エラー |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | デコード済みクエリ結果 | `QueryFailed`、`WorkflowNotFound`、認証・Server エラー |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | デコード済み更新結果 | `UpdateRejected`、`WorkflowNotFound`、認証・Server エラー |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | 更新レシート（`dict`） | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`、`WorkflowNotFound`、認証・Server エラー |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | デコード済みワークフロー出力 | `WorkflowFailed`、`WorkflowCancelled`、`WorkflowTerminated`、`TimeoutError` |
+
+`update_workflow` の既定は `wait_for="accepted"` です。レシートは `update_status="accepted"` と `result=None` を含む場合があります。`wait_for="completed"` では、`wait_timeout_seconds` が待機時間を制限します。期限が切れると、レシートは受け付け済みのまま `wait_timed_out=True` を設定します。`None` を含む完了した結果は、`update_status="completed"` でのみ識別できます。`update_id` を保持し、[後から結果を読み取ってください](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 
 `start_workflow` は `workflow_type`、`task_queue`、任意の `workflow_id`、`input`、`duplicate_policy`、`memo`、`search_attributes`、`business_key`、`execution_timeout_seconds`、`run_timeout_seconds` を受け入れます。呼び出し元のすべてのペイロードは HTTP 境界を越える前に Avro エンベロープ化します。
 

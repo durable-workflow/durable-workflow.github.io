@@ -262,6 +262,63 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER` | `200` | 操作历史接口向每个调用方返回的 Nexus 操作上限，之后客户端需分页。 | `WORKFLOW_MAX_NEXUS_OPERATIONS_PER_CALLER` |
 | `DW_COMPRESSION_ENABLED` | `true` | 对超过最小大小阈值的 JSON 响应启用压缩。 | `WORKFLOW_SERVER_COMPRESSION_ENABLED` |
 
+## Server 请求边界限制 {#server-request-boundary-limits}
+
+使用独立 Server 时，在工作流任务、信号、更新或查询到达控制平面之前，HTTP 请求边界会应用另一组上限。超限请求会快速返回 `422 validation_failed`（整个请求体检查则返回 `413 payload_too_large`），使客户端获知拒绝原因，而 Server 不会向数据库写入任何行。
+
+| 限制 | 默认值 | 配置键 | 约束对象 |
+|---|---|---|---|
+| 请求体大小 | 2 MiB | `server.limits.max_payload_bytes` | HTTP 请求体的总字节数；原生 Server 3.6.0 及以上的工作流任务完成请求除外（见下一行） |
+| 工作流任务完成大小 | 32 MiB（请求体大小的 16 倍） | 由 `server.limits.max_payload_bytes` 推导 | 原生 Server 3.6.0 及以上：带命令完成工作流任务的请求。每个命令的参数仍须符合单个载荷上限 |
+| memo 大小 | 256 KiB | `server.limits.max_memo_bytes` | `POST /workflows` 和 `POST /schedules` 中序列化的 memo |
+| 搜索属性数量 | 100 | `server.limits.max_search_attributes` | 每个命名空间注册的自定义搜索属性数 |
+| 搜索属性键长度 | 128 字节 | `server.limits.max_search_attribute_key_length` | 启动时单个搜索属性键的长度 |
+| 搜索属性值大小 | 2 KiB | `server.limits.max_search_attribute_value_bytes` | 启动时的每个字符串值（以及数组值的每个元素） |
+| 信号／更新／查询名称 | 256 字节 | `server.limits.max_operation_name_length` | 信号／更新／查询名称的 URL 路径段 |
+| `workflow_id` 长度 | 128 字符 | 控制器验证器 | `POST /workflows` 中的工作流 ID |
+| `workflow_type` / `task_queue` / `business_key` | 255 字符 | 控制器验证器 | `POST /workflows` 中的字符串字段 |
+| `request_id` | 255 字符 | 控制器验证器 | 信号／更新／取消／终止操作的去重令牌 |
+| `reason` | 1,000 字符 | 控制器验证器 | 取消／终止／归档操作的原因文本 |
+
+PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器校验上限是固定的。Native Server 3.x 支持的设置见其[实现说明](#native-server-3x)。在 native 3.8.0 中，`DW_MAX_PAYLOAD_BYTES=0` 会将普通请求和工作流任务完成请求的上限设为零字节，拒绝非空请求体。操作名上限固定为 256 字节。
+
+当前配置值发布在 `GET /api/cluster/info` 响应的 `limits` 下，客户端可在运行时发现这些限制：
+
+```json
+{
+  "limits": {
+    "max_payload_bytes": 2097152,
+    "max_memo_bytes": 262144,
+    "max_search_attributes": 100,
+    "max_search_attribute_key_length": 128,
+    "max_search_attribute_value_bytes": 2048,
+    "max_operation_name_length": 256,
+    "max_pending_activities": 2000,
+    "max_pending_children": 2000
+  }
+}
+```
+
+验证错误通过标准控制平面错误信封返回，包含 `reason: "validation_failed"` 和以出错字段（`signal_name`、`update_name`、`query_name`、`search_attributes`、`memo` 等）为键的 `validation_errors` 映射。载荷大小超限使用 `reason: "payload_too_large"` 和 `413` 状态码。
+
+### 工作流任务完成大小 {#workflow-task-completion-size}
+
+在原生 Server 3.6.0 及以上，带命令完成工作流任务的请求（`POST /api/worker/workflow-tasks/{id}/complete` 和 `POST /api/worker/activity-tasks/{id}/continuation/complete`）最多可达 `max_payload_bytes` 的 16 倍：默认 2 MiB 时为 32 MiB。该上限跟随 `DW_MAX_PAYLOAD_BYTES`，没有单独的设置。完成请求中每个命令的参数仍须符合单个载荷上限。PHP Server 2.x 和更早的原生版本与其他请求一样，将完成请求限制为一个载荷上限。
+
+更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上在收到这种类型化拒绝后不会重新发送完成请求：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。
+
+Python SDK 2.17 和 Rust SDK 4.15 包含对类型化拒绝的处理。在 Server 3.8.0 上，过大的完成请求可能在 Worker 收到 HTTP 413 之前就在传输层失败。在已发布 Python SDK 的测试中，`httpx.ReadError` 使工作流保持待处理状态，而没有因结构限制失败。已发布 Server 的超限请求验收仍由 [Server 响应修复](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678)跟进。在该路径通过资格验证之前，请减小完成请求。
+
+要让完成请求保持在上限之内：
+
+- 将大型扇出拆分为分布在多个工作流任务中的较小批次。
+- 将工作移到子工作流中，或使用 continue-as-new。
+- 将大型参数存入外部载荷存储，使完成请求携带引用而不是载荷本身。
+
+#### Rust 命令规划 {#rust-completion-planning}
+
+Rust SDK 4.15.0 仍将普通单个载荷上限作为命令规划的总上限（默认为 2 MiB），先于 Server 更大的完成请求上限生效。如果命名空间没有外部载荷存储，已发布的 300 × 10 KB 扇出会以 `external_payload_unavailable` 被拒绝，Worker 退出，运行保持待处理状态。在 [SDK 总量规划器修复](https://github.com/durable-workflow/sdk-rust/issues/254)完成之前，请使用更小的命令批次。此 SDK 路径尚未实现 Server 更大的上限。
+
 ## Docker 初始化与来源信息 {#docker-bootstrap-and-provenance}
 
 | 变量 | 默认值 | 用途 | 旧版别名 |

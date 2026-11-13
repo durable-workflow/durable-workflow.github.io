@@ -289,6 +289,11 @@ de fichier ou `-` pour stdin, et `--input-encoding=json|raw|base64`. JSON est
 la valeur par défaut ; les entrées raw et base64 sont transmises comme un
 seul argument positionnel de workflow.
 
+Utilisez `dw workflow:update-outcome` pour lire plus tard une mise à jour
+acceptée sans la soumettre de nouveau. En attente et terminé avec un résultat
+null sont des états distincts. Consultez [lire le résultat d'une mise à jour](./cli-reference.md#read-update-outcome)
+pour la capacité requise du Server et les options d'attente.
+
 ### Adaptateurs de passerelle {#bridge-adapters}
 
 ```bash

@@ -137,6 +137,21 @@ protocol manifests determine compatibility.
 
 See the [4.13.0 changelog](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
 
+## Read retained update outcomes {#read-update-outcome}
+
+Rust SDK 4.15 adds `Client::update_outcome` and
+`Client::update_outcome_receipt` to read an accepted update by ID without
+submitting it again. These methods require `capabilities.update_outcome_reads`
+(native Server 3.6.0 or later). `update_outcome` returns
+`Error::UpdateStillPending` for an unfinished update. A completed null result
+is `Ok(Value::Null)`. Receipt reads preserve the explicit `update_status`.
+See the [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
+for the Rust interface.
+
+Rust SDK 4.15.0 still applies the ordinary payload ceiling to the whole
+command batch. See the [known planner limit](./server-config-reference.md#rust-completion-planning)
+before running a large fan-out without external payload storage.
+
 ## Condition wait deadlines and worker upgrades {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 measures an ungrouped `wait_condition` timeout from its first

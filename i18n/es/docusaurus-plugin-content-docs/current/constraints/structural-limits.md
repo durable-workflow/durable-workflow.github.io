@@ -261,53 +261,10 @@ El contrato completo está disponible en la sección `structural_limits` de la r
 
 Waterline muestra los fallos por límites estructurales en la tabla de excepciones con la categoría de fallo `structural_limit`. Los detalles del fallo en la línea de tiempo incluyen el tipo de límite, el valor actual y el máximo configurado.
 
-## Límites de Server en la recepción de solicitudes {#server-request-boundary-limits}
+## Límites del modo de servicio {#server-request-boundary-limits}
 
-Al utilizar el servidor independiente, se aplica otro conjunto de máximos en el límite de entrada de solicitudes HTTP, antes de que una tarea de workflow, señal, actualización o consulta llegue al plano de control. Estos límites rechazan de inmediato con una respuesta `422 validation_failed` (o `413 payload_too_large` para comprobaciones de todo el cuerpo), de modo que los clientes conocen el motivo sin que el servidor escriba ninguna fila en la base de datos.
-
-| Límite | Valor predeterminado | Clave de configuración | Qué limita |
-|---|---|---|---|
-| Tamaño del cuerpo | 2 MiB | `server.limits.max_payload_bytes` | Total de bytes del cuerpo de la solicitud HTTP, salvo una finalización de tarea de workflow en el Server nativo 3.6.0 o posterior (fila siguiente) |
-| Tamaño de finalización de tarea de workflow | 32 MiB (16 × tamaño del cuerpo) | derivado de `server.limits.max_payload_bytes` | Server nativo 3.6.0 o posterior: una solicitud que finaliza una tarea de workflow con comandos. Los argumentos de cada comando siguen respetando el límite por carga útil |
-| Tamaño de memo | 256 KiB | `server.limits.max_memo_bytes` | Memo serializado en `POST /workflows` y `POST /schedules` |
-| Número de atributos de búsqueda | 100 | `server.limits.max_search_attributes` | Atributos de búsqueda personalizados registrados por namespace |
-| Longitud de clave de atributo de búsqueda | 128 bytes | `server.limits.max_search_attribute_key_length` | Longitud de una clave de atributo de búsqueda al iniciar |
-| Tamaño de valor de atributo de búsqueda | 2 KiB | `server.limits.max_search_attribute_value_bytes` | Cada valor de cadena (y cada elemento de un valor de matriz) al iniciar |
-| Nombre de señal, actualización o consulta | 256 bytes | `server.limits.max_operation_name_length` | Segmento de ruta URL para los nombres de señales, actualizaciones y consultas |
-| Longitud de `workflow_id` | 128 caracteres | Validador del controlador | ID del workflow en `POST /workflows` |
-| `workflow_type` / `task_queue` / `business_key` | 255 caracteres | Validador del controlador | Campos de cadena en `POST /workflows` |
-| `request_id` | 255 caracteres | Validador del controlador | Token de deduplicación en señales, actualizaciones, cancelación y terminación |
-| `reason` | 1,000 caracteres | Validador del controlador | Texto del motivo en cancelación, terminación y archivado |
-
-Cada límite se puede configurar por separado mediante variables de entorno `DW_*` (consulta el contrato completo en `config/dw-contract.php`). Establecer un valor de `0` desactiva la comprobación de ese límite concreto, pero mantiene las demás.
-
-Los valores configurados actualmente se publican bajo `limits` en la respuesta de `GET /api/cluster/info`, de modo que los clientes pueden descubrirlos durante la ejecución:
-
-```json
-{
-  "limits": {
-    "max_payload_bytes": 2097152,
-    "max_memo_bytes": 262144,
-    "max_search_attributes": 100,
-    "max_search_attribute_key_length": 128,
-    "max_search_attribute_value_bytes": 2048,
-    "max_operation_name_length": 256,
-    "max_pending_activities": 2000,
-    "max_pending_children": 2000
-  }
-}
-```
-
-Los errores de validación se devuelven en el sobre de error estándar del plano de control con `reason: "validation_failed"` y un mapa `validation_errors` cuyas claves corresponden al campo que causa el error (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, etc.). Los rechazos por tamaño de carga útil utilizan `reason: "payload_too_large"` y el código de estado `413`.
+Los límites HTTP de Server y Cloud son distintos de estos controles de Laravel embebido. Consulte la [referencia de solicitudes del Server](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
 ### Tamaño de finalización de tarea de workflow {#workflow-task-completion-size}
 
-En el Server nativo 3.6.0 y posteriores, una solicitud que finaliza una tarea de workflow con comandos (`POST /api/worker/workflow-tasks/{id}/complete` y `POST /api/worker/activity-tasks/{id}/continuation/complete`) puede ocupar hasta 16 veces `max_payload_bytes`: 32 MiB con el valor predeterminado de 2 MiB. Sigue a `DW_MAX_PAYLOAD_BYTES` y no tiene un ajuste propio. Los argumentos de cada comando siguen respetando el límite por carga útil dentro de la finalización. El Server PHP 2.x y las versiones nativas anteriores limitan una finalización a un límite de carga útil, como cualquier otra solicitud.
-
-Una finalización mayor se rechaza con `413 payload_too_large` y `limit_kind: workflow_task_completion_bytes` antes de registrar nada. Reproducir la tarea genera los mismos comandos, así que reenviar la finalización recibe el mismo rechazo. PHP SDK 3.17.0 y posteriores nunca la reenvían: el worker hace fallar la ejecución una sola vez con un comando `fail_workflow` cuyo mensaje empieza por `Structural limit exceeded: workflow_task_completion_bytes:` e indica ambos tamaños, y el Server registra el fallo con `failure_category = structural_limit`. Los SDK de Python y Rust harán lo mismo en sus próximas versiones.
-
-Para mantener una finalización dentro del límite:
-
-- Divida un fan-out grande en lotes más pequeños repartidos entre tareas de workflow.
-- Mueva trabajo a workflows hijos, o use continue-as-new.
-- Guarde los argumentos grandes en el almacenamiento externo de cargas útiles, para que la finalización lleve referencias en lugar de las cargas útiles.
+Los límites de finalización y el manejo de rechazos de los SDK en modo de servicio se describen en la [referencia del Server](../polyglot/server-config-reference.md#workflow-task-completion-size).

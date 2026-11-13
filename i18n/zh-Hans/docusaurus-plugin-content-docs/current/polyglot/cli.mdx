@@ -226,6 +226,8 @@ dw workflow:history <workflow-id> <run-id>                 # Show run history
 
 所有接受调用方负载的命令使用同一输入形式：`--input` 传入内联值，`--input-file` 指定文件路径或用 `-` 读取标准输入，`--input-encoding=json|raw|base64` 指定编码。默认 JSON；raw 和 base64 输入作为一个位置工作流参数传入。
 
+使用 `dw workflow:update-outcome` 可以稍后读取已接受的更新，而不重新提交。待完成与已完成且结果为 null 是不同的状态。所需的 Server 能力和等待选项见[读取更新结果](./cli-reference.md#read-update-outcome)。
+
 ### 桥接适配器 {#bridge-adapters}
 
 ```bash

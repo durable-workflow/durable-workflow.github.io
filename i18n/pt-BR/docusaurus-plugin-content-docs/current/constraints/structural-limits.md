@@ -260,53 +260,10 @@ O contrato completo está disponível na seção `structural_limits` da resposta
 
 O Waterline exibe falhas de limites estruturais na tabela de exceções com a categoria de falha `structural_limit`. Os detalhes da falha na linha do tempo incluem o tipo de limite, o valor atual e o teto configurado.
 
-## Limites na fronteira de requisições do Server {#server-request-boundary-limits}
+## Limites do modo de serviço {#server-request-boundary-limits}
 
-Ao usar o servidor independente, um conjunto separado de tetos é aplicado na fronteira de requisições HTTP, antes que uma tarefa de workflow, sinal, atualização ou consulta chegue ao plano de controle. Esses limites falham imediatamente com uma resposta `422 validation_failed` (ou `413 payload_too_large` nas verificações do corpo inteiro), para que clientes saibam o motivo da rejeição sem que o servidor grave qualquer registro no banco de dados.
-
-| Limite | Padrão | Chave de configuração | O que restringe |
-|---|---|---|---|
-| Tamanho do corpo | 2 MiB | `server.limits.max_payload_bytes` | Total de bytes do corpo da requisição HTTP, exceto uma conclusão de tarefa de workflow no Server nativo 3.6.0 ou posterior (próxima linha) |
-| Tamanho da conclusão de tarefa de workflow | 32 MiB (16 × tamanho do corpo) | derivado de `server.limits.max_payload_bytes` | Server nativo 3.6.0 ou posterior: uma requisição que conclui uma tarefa de workflow com comandos. Os argumentos de cada comando continuam respeitando o limite por payload |
-| Tamanho do memo | 256 KiB | `server.limits.max_memo_bytes` | Memo serializado em `POST /workflows` e `POST /schedules` |
-| Contagem de atributos de busca | 100 | `server.limits.max_search_attributes` | Atributos de busca personalizados registrados por namespace |
-| Comprimento da chave de atributo de busca | 128 bytes | `server.limits.max_search_attribute_key_length` | Comprimento de uma única chave de atributo de busca no início |
-| Tamanho do valor de atributo de busca | 2 KiB | `server.limits.max_search_attribute_value_bytes` | Cada valor de string (e cada elemento de um valor de array) no início |
-| Nome de sinal / atualização / consulta | 256 bytes | `server.limits.max_operation_name_length` | Segmento do caminho da URL para nomes de sinal/atualização/consulta |
-| Comprimento de `workflow_id` | 128 caracteres | validador do controlador | ID do workflow em `POST /workflows` |
-| `workflow_type` / `task_queue` / `business_key` | 255 caracteres | validador do controlador | Campos de string em `POST /workflows` |
-| `request_id` | 255 caracteres | validador do controlador | Token de deduplicação em sinais/atualizações/cancelamento/término |
-| `reason` | 1.000 caracteres | validador do controlador | Texto do motivo em cancelamento/término/arquivamento |
-
-Cada limite pode ser configurado individualmente por variáveis de ambiente `DW_*` (consulte `config/dw-contract.php` para o contrato completo). Definir o valor `0` desativa a verificação daquele limite específico, mas mantém os demais em vigor.
-
-Os valores configurados atualmente são publicados em `limits` na resposta de `GET /api/cluster/info`, para que clientes possam descobri-los em tempo de execução:
-
-```json
-{
-  "limits": {
-    "max_payload_bytes": 2097152,
-    "max_memo_bytes": 262144,
-    "max_search_attributes": 100,
-    "max_search_attribute_key_length": 128,
-    "max_search_attribute_value_bytes": 2048,
-    "max_operation_name_length": 256,
-    "max_pending_activities": 2000,
-    "max_pending_children": 2000
-  }
-}
-```
-
-Erros de validação são retornados no envelope padrão de erro do plano de controle, com `reason: "validation_failed"` e um mapa `validation_errors` cujas chaves são os campos inválidos (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo` e assim por diante). Rejeições por tamanho de payload usam `reason: "payload_too_large"` e o código de status `413`.
+Os limites HTTP de Server e Cloud são separados destes controles do Laravel embutido. Veja a [referência de requisições do Server](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
 ### Tamanho da conclusão de tarefa de workflow {#workflow-task-completion-size}
 
-No Server nativo 3.6.0 e posteriores, uma requisição que conclui uma tarefa de workflow com comandos (`POST /api/worker/workflow-tasks/{id}/complete` e `POST /api/worker/activity-tasks/{id}/continuation/complete`) pode ter até 16 vezes `max_payload_bytes`: 32 MiB com o padrão de 2 MiB. Ela segue `DW_MAX_PAYLOAD_BYTES` e não tem configuração própria. Os argumentos de cada comando continuam respeitando o limite por payload dentro da conclusão. O Server PHP 2.x e versões nativas anteriores limitam uma conclusão a um limite de payload, como qualquer outra requisição.
-
-Uma conclusão maior é recusada com `413 payload_too_large` e `limit_kind: workflow_task_completion_bytes` antes que algo seja registrado. Reexecutar a tarefa produz os mesmos comandos, então reenviar a conclusão recebe a mesma recusa. O PHP SDK 3.17.0 e posteriores nunca a reenviam: o worker falha a execução uma única vez com um comando `fail_workflow` cuja mensagem começa com `Structural limit exceeded: workflow_task_completion_bytes:` e informa os dois tamanhos, e o Server registra a falha com `failure_category = structural_limit`. Os SDKs Python e Rust farão o mesmo nas próximas versões.
-
-Para manter uma conclusão dentro do limite:
-
-- Divida um fan-out grande em lotes menores distribuídos entre tarefas de workflow.
-- Mova trabalho para workflows filhos, ou use continue-as-new.
-- Guarde argumentos grandes no armazenamento externo de payloads, para que a conclusão leve referências em vez dos payloads.
+Os limites de conclusão e o tratamento de recusas pelos SDKs no modo de serviço estão na [referência do Server](../polyglot/server-config-reference.md#workflow-task-completion-size).

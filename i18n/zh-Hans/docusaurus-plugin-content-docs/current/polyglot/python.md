@@ -86,6 +86,8 @@ Python SDK 2.15 和 2.16 新增：
 
 完整列表请参见 [2.16.0 变更日志](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md)。
 
+Python SDK 2.17 新增 `Client.update_outcome` 和 `Client.update_outcome_receipt`，用于稍后读取已接受的更新，不重新提交。这些方法要求 `capabilities.update_outcome_reads`（native Server 3.6.0 及更高版本）。`update_outcome` 默认等待完成，如果更新尚未完成则抛出 `UpdateStillPending`。返回的 `None` 表示已完成的 null 结果。`update_outcome_receipt` 默认使用接受阶段，并保留明确的 `update_status`。语言专用示例见 [Python SDK 指南](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
+
 ## 快速入门 {#quickstart}
 
 下面的完整 Python 程序定义带一个活动的工作流，在本地 Durable Workflow Server 上启动并等待结果：
@@ -340,12 +342,14 @@ driver = external_storage_driver_from_policy(
 | `await client.export_history(workflow_id, run_id)` | 已解码归档历史负载 | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, 认证/Server 错误 |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | 已解码查询结果 | `QueryFailed`, `WorkflowNotFound`, 认证/Server 错误 |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | 已解码更新结果 | `UpdateRejected`, `WorkflowNotFound`, 认证/Server 错误 |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | 更新回执（`dict`） | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | 已解码工作流输出 | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`update_workflow` 默认为 `wait_for="accepted"`。其回执可能包含 `update_status="accepted"` 和 `result=None`。使用 `wait_for="completed"` 时，`wait_timeout_seconds` 限制等待时间。等待到期后，回执仍为已接受，并设置 `wait_timed_out=True`。只有 `update_status="completed"` 才表示结果已完成，包括 `None`。请保留 `update_id`，以便[稍后读取结果](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 
 `start_workflow` 接受 `workflow_type`、`task_queue`、可选 `workflow_id`、可选 `input`、`duplicate_policy`、`memo`、`search_attributes`、`business_key`、`execution_timeout_seconds` 和 `run_timeout_seconds`。所有调用方负载在越过 HTTP 边界前都进行 Avro 封装。
 

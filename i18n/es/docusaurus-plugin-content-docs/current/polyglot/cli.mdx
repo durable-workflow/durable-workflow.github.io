@@ -229,6 +229,11 @@ dw workflow:history <workflow-id> <run-id>                 # Show run history
 
 Todos los comandos que aceptan cargas del usuario comparten la misma entrada: `--input` para valores en línea, `--input-file` para una ruta o `-` para stdin y `--input-encoding=json|raw|base64`. JSON es el valor predeterminado; las entradas raw y base64 se pasan como un argumento posicional de workflow.
 
+Use `dw workflow:update-outcome` para leer más tarde una actualización aceptada
+sin volver a enviarla. Pendiente y completada con resultado null son estados
+distintos. Consulte [leer el resultado de una actualización](./cli-reference.md#read-update-outcome)
+para conocer la capacidad requerida del Server y las opciones de espera.
+
 ### Adaptadores puente {#bridge-adapters}
 
 ```bash

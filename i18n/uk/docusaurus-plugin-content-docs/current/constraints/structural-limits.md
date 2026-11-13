@@ -318,64 +318,10 @@ Waterline показує помилки структурних обмежень 
 `structural_limit`. Деталі помилки на часовій шкалі містять вид обмеження,
 поточне значення та налаштовану верхню межу.
 
-## Обмеження на межі запиту Server {#server-request-boundary-limits}
+## Обмеження Service Mode {#server-request-boundary-limits}
 
-Під час використання окремого Server інший набір меж застосовується на межі
-HTTP-запиту до того, як завдання workflow, signal, update чи query потрапляє
-до площини керування. Ці межі одразу повертають `422 validation_failed` або
-`413 payload_too_large` для перевірки всього тіла. Клієнти дізнаються причину
-відхилення без запису сервером будь-якого рядка до бази даних.
-
-| Обмеження | Типове значення | Ключ налаштування | Що обмежує |
-|---|---|---|---|
-| Розмір тіла | 2 MiB | `server.limits.max_payload_bytes` | Загальна кількість байтів тіла HTTP-запиту, крім завершення завдання workflow у нативному Server 3.6.0 або новішому (наступний рядок) |
-| Розмір завершення завдання workflow | 32 MiB (16 × розмір тіла) | похідне від `server.limits.max_payload_bytes` | Нативний Server 3.6.0 або новіший: запит, що завершує завдання workflow з командами. Аргументи кожної команди й далі мають вкладатися в ліміт на один payload |
-| Розмір memo | 256 KiB | `server.limits.max_memo_bytes` | Серіалізоване memo в `POST /workflows` та `POST /schedules` |
-| Кількість атрибутів пошуку | 100 | `server.limits.max_search_attributes` | Зареєстровані власні атрибути пошуку на простір імен |
-| Довжина ключа атрибута пошуку | 128 байтів | `server.limits.max_search_attribute_key_length` | Довжина одного ключа атрибута пошуку під час запуску |
-| Розмір значення атрибута пошуку | 2 KiB | `server.limits.max_search_attribute_value_bytes` | Кожне рядкове значення та кожен елемент масиву під час запуску |
-| Назва signal / update / query | 256 байтів | `server.limits.max_operation_name_length` | Сегмент шляху URL для назв signal/update/query |
-| Довжина `workflow_id` | 128 символів | валідатор контролера | ID workflow в `POST /workflows` |
-| `workflow_type` / `task_queue` / `business_key` | 255 символів | валідатор контролера | Рядкові поля в `POST /workflows` |
-| `request_id` | 255 символів | валідатор контролера | Токен усунення дублікатів для signal/update/cancel/terminate |
-| `reason` | 1,000 символів | валідатор контролера | Текст причини для cancel/terminate/archive |
-
-Кожна межа окремо налаштовується через змінні середовища `DW_*`. Повний контракт
-наведено в `config/dw-contract.php`. Значення `0` вимикає перевірку конкретної
-межі, залишаючи решту чинними.
-
-Поточні значення публікуються під `limits` у відповіді `GET /api/cluster/info`,
-тому клієнти можуть дізнатися їх під час виконання:
-
-```json
-{
-  "limits": {
-    "max_payload_bytes": 2097152,
-    "max_memo_bytes": 262144,
-    "max_search_attributes": 100,
-    "max_search_attribute_key_length": 128,
-    "max_search_attribute_value_bytes": 2048,
-    "max_operation_name_length": 256,
-    "max_pending_activities": 2000,
-    "max_pending_children": 2000
-  }
-}
-```
-
-Помилки валідації повертаються в стандартній оболонці помилок площини керування
-з `reason: "validation_failed"` та мапою `validation_errors`, ключами якої є
-проблемні поля (`signal_name`, `update_name`, `query_name`, `search_attributes`,
-`memo` тощо). Відхилення через розмір даних використовують
-`reason: "payload_too_large"` та код стану `413`.
+HTTP-обмеження Server і Cloud відрізняються від цих вбудованих обмежень Laravel. Див. [довідник запитів Server](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
 ### Розмір завершення завдання workflow {#workflow-task-completion-size}
 
-У нативному Server 3.6.0 і новіших запит, що завершує завдання workflow з командами (`POST /api/worker/workflow-tasks/{id}/complete` і `POST /api/worker/activity-tasks/{id}/continuation/complete`), може мати розмір до 16 × `max_payload_bytes`: 32 MiB за типового значення 2 MiB. Ліміт іде за `DW_MAX_PAYLOAD_BYTES` і не має власного параметра. Аргументи кожної команди всередині завершення й далі мають вкладатися в ліміт на один payload. PHP Server 2.x і попередні нативні випуски обмежують завершення одним лімітом payload, як і будь-який інший запит.
-
-Більше завершення відхиляється з `413 payload_too_large` і `limit_kind: workflow_task_completion_bytes` ще до того, як щось буде записано. Повторне відтворення завдання дає ті самі команди, тож повторне надсилання завершення отримає ту саму відмову. PHP SDK 3.17.0 і новіші ніколи не надсилають його повторно: worker один раз завершує запуск помилкою через команду `fail_workflow`, повідомлення якої починається з `Structural limit exceeded: workflow_task_completion_bytes:` і називає обидва розміри, а Server записує помилку з `failure_category = structural_limit`. SDK для Python і Rust робитимуть те саме в наступних випусках.
-
-Щоб завершення вкладалося в ліміт:
-
-- Розділіть великий fan-out на менші пакети в кількох завданнях workflow.
-- Перенесіть роботу в дочірні workflow або використайте continue-as-new.
-- Зберігайте великі аргументи в зовнішньому сховищі payload, щоб завершення містило посилання замість самих payload.
+Обмеження запитів завершення та обробка відмов SDK у Service Mode описані в [довіднику Server](../polyglot/server-config-reference.md#workflow-task-completion-size).

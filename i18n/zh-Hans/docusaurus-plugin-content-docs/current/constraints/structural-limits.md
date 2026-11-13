@@ -246,53 +246,10 @@ v2 健康检查快照的 `structural_limits` 包含当前结构限制配置，�
 
 Waterline 在异常表中以 `structural_limit` 故障类别展示结构限制故障。时间线的故障详情包括限制类型、当前值和配置的上限。
 
-## Server 请求边界限制 {#server-request-boundary-limits}
+## Service Mode 限制 {#server-request-boundary-limits}
 
-使用独立 Server 时，在工作流任务、信号、更新或查询到达控制平面之前，HTTP 请求边界会应用另一组上限。超限请求会快速返回 `422 validation_failed`（整个请求体检查则返回 `413 payload_too_large`），使客户端获知拒绝原因，而 Server 不会向数据库写入任何行。
-
-| 限制 | 默认值 | 配置键 | 约束对象 |
-|---|---|---|---|
-| 请求体大小 | 2 MiB | `server.limits.max_payload_bytes` | HTTP 请求体的总字节数；原生 Server 3.6.0 及以上的工作流任务完成请求除外（见下一行） |
-| 工作流任务完成大小 | 32 MiB（请求体大小的 16 倍） | 由 `server.limits.max_payload_bytes` 推导 | 原生 Server 3.6.0 及以上：带命令完成工作流任务的请求。每个命令的参数仍须符合单个载荷上限 |
-| memo 大小 | 256 KiB | `server.limits.max_memo_bytes` | `POST /workflows` 和 `POST /schedules` 中序列化的 memo |
-| 搜索属性数量 | 100 | `server.limits.max_search_attributes` | 每个命名空间注册的自定义搜索属性数 |
-| 搜索属性键长度 | 128 字节 | `server.limits.max_search_attribute_key_length` | 启动时单个搜索属性键的长度 |
-| 搜索属性值大小 | 2 KiB | `server.limits.max_search_attribute_value_bytes` | 启动时的每个字符串值（以及数组值的每个元素） |
-| 信号／更新／查询名称 | 256 字节 | `server.limits.max_operation_name_length` | 信号／更新／查询名称的 URL 路径段 |
-| `workflow_id` 长度 | 128 字符 | 控制器验证器 | `POST /workflows` 中的工作流 ID |
-| `workflow_type` / `task_queue` / `business_key` | 255 字符 | 控制器验证器 | `POST /workflows` 中的字符串字段 |
-| `request_id` | 255 字符 | 控制器验证器 | 信号／更新／取消／终止操作的去重令牌 |
-| `reason` | 1,000 字符 | 控制器验证器 | 取消／终止／归档操作的原因文本 |
-
-每个限制均可通过 `DW_*` 环境变量单独配置（完整契约见 `config/dw-contract.php`）。值为 `0` 时，仅禁用该项限制，其他限制仍然生效。
-
-当前配置值发布在 `GET /api/cluster/info` 响应的 `limits` 下，客户端可在运行时发现这些限制：
-
-```json
-{
-  "limits": {
-    "max_payload_bytes": 2097152,
-    "max_memo_bytes": 262144,
-    "max_search_attributes": 100,
-    "max_search_attribute_key_length": 128,
-    "max_search_attribute_value_bytes": 2048,
-    "max_operation_name_length": 256,
-    "max_pending_activities": 2000,
-    "max_pending_children": 2000
-  }
-}
-```
-
-验证错误通过标准控制平面错误信封返回，包含 `reason: "validation_failed"` 和以出错字段（`signal_name`、`update_name`、`query_name`、`search_attributes`、`memo` 等）为键的 `validation_errors` 映射。载荷大小超限使用 `reason: "payload_too_large"` 和 `413` 状态码。
+Server 和 Cloud 的 HTTP 请求限制独立于这些嵌入式 Laravel 控制。请参阅 [Server 请求参考](../polyglot/server-config-reference.md#server-request-boundary-limits)。
 
 ### 工作流任务完成大小 {#workflow-task-completion-size}
 
-在原生 Server 3.6.0 及以上，带命令完成工作流任务的请求（`POST /api/worker/workflow-tasks/{id}/complete` 和 `POST /api/worker/activity-tasks/{id}/continuation/complete`）最多可达 `max_payload_bytes` 的 16 倍：默认 2 MiB 时为 32 MiB。该上限跟随 `DW_MAX_PAYLOAD_BYTES`，没有单独的设置。完成请求中每个命令的参数仍须符合单个载荷上限。PHP Server 2.x 和更早的原生版本与其他请求一样，将完成请求限制为一个载荷上限。
-
-更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上从不重新发送：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。Python 和 Rust SDK 将在下一个版本中采取相同做法。
-
-要让完成请求保持在上限之内：
-
-- 将大型扇出拆分为分布在多个工作流任务中的较小批次。
-- 将工作移到子工作流中，或使用 continue-as-new。
-- 将大型参数存入外部载荷存储，使完成请求携带引用而不是载荷本身。
+Service Mode 的完成请求上限和 SDK 拒绝处理见 [Server 参考](../polyglot/server-config-reference.md#workflow-task-completion-size)。

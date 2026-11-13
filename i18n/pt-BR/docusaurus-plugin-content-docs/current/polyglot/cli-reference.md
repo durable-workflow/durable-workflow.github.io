@@ -229,6 +229,7 @@ runtime, não no arquivo de perfil.
 | `dw workflow:signal <workflow-id> <signal-name>` | Envia um sinal. | `--run-id`, opções de entrada, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Executa consulta de workflow somente leitura. | `--run-id`, opções de entrada, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Envia ou executa uma atualização. | `--wait=accepted\|completed`, `--run-id`, opções de entrada, `--json` |
+| `dw workflow:update-outcome <workflow-id> <update-id>` | Ler o resultado retido de uma atualização sem enviá-la novamente. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Fecha um workflow ou lote selecionado como cancelado; não executa limpeza no código do workflow. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Força a terminação de um workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Pede ao servidor para reparar uma execução presa ou retentável. | `--json` |
@@ -252,6 +253,29 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` e `workflow:update`
 validam campos canônicos pelo contrato de requisições publicado pelo servidor.
 Aliases legados não canônicos são rejeitados antes de enviar a requisição.
+
+### Ler o resultado de uma atualização {#read-update-outcome}
+
+A CLI 2.8 e versões posteriores podem ler uma atualização aceita pelo seu
+`update_id` quando o Server anuncia `capabilities.update_outcome_reads`
+(nativo 3.6.0 ou posterior). Use o ID do recibo de aceitação:
+
+```bash
+dw workflow:update-outcome order-123 "$UPDATE_ID"
+dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeout=30
+```
+
+O padrão `--wait=accepted` responde imediatamente. Uma atualização aceita que
+ainda não terminou continua pendente, inclusive quando a espera expira. Uma
+atualização concluída pode ter um resultado null. `--json` retorna o recibo
+validado. Use seu `update_status` para distinguir esses casos. Cada invocação
+faz uma leitura do resultado e nunca envia a atualização novamente.
+
+`--wait-timeout` exige `--wait=completed` e um inteiro de pelo menos um segundo.
+Uma atualização que falhou sai com código 2. Um ID desconhecido ou removido sai
+com 5, o que não prova que a atualização nunca foi aceita. Um Server sem a
+capacidade, incluindo PHP Server 2.x, sai com 8 antes de enviar uma requisição
+de resultado.
 
 ## Inspeção de chamadas de serviço {#service-call-inspection}
 

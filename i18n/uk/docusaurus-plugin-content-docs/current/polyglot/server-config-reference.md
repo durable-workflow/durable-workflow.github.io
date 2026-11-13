@@ -353,6 +353,89 @@ Sticky execution не має окремих змінних середовища 
 | `DW_MAX_NEXUS_OPERATIONS_PER_CALLER` | `200` | Максимальна кількість Nexus operations на ініціатора в історії операцій перед обов'язковою пагінацією клієнта. | `WORKFLOW_MAX_NEXUS_OPERATIONS_PER_CALLER` |
 | `DW_COMPRESSION_ENABLED` | `true` | Увімкнення стиснення JSON-відповіді після перевищення мінімального порогу розміру. | `WORKFLOW_SERVER_COMPRESSION_ENABLED` |
 
+## Обмеження на межі запиту Server {#server-request-boundary-limits}
+
+Під час використання окремого Server інший набір меж застосовується на межі
+HTTP-запиту до того, як завдання workflow, signal, update чи query потрапляє
+до площини керування. Ці межі одразу повертають `422 validation_failed` або
+`413 payload_too_large` для перевірки всього тіла. Клієнти дізнаються причину
+відхилення без запису сервером будь-якого рядка до бази даних.
+
+| Обмеження | Типове значення | Ключ налаштування | Що обмежує |
+|---|---|---|---|
+| Розмір тіла | 2 MiB | `server.limits.max_payload_bytes` | Загальна кількість байтів тіла HTTP-запиту, крім завершення завдання workflow у нативному Server 3.6.0 або новішому (наступний рядок) |
+| Розмір завершення завдання workflow | 32 MiB (16 × розмір тіла) | похідне від `server.limits.max_payload_bytes` | Нативний Server 3.6.0 або новіший: запит, що завершує завдання workflow з командами. Аргументи кожної команди й далі мають вкладатися в ліміт на один payload |
+| Розмір memo | 256 KiB | `server.limits.max_memo_bytes` | Серіалізоване memo в `POST /workflows` та `POST /schedules` |
+| Кількість атрибутів пошуку | 100 | `server.limits.max_search_attributes` | Зареєстровані власні атрибути пошуку на простір імен |
+| Довжина ключа атрибута пошуку | 128 байтів | `server.limits.max_search_attribute_key_length` | Довжина одного ключа атрибута пошуку під час запуску |
+| Розмір значення атрибута пошуку | 2 KiB | `server.limits.max_search_attribute_value_bytes` | Кожне рядкове значення та кожен елемент масиву під час запуску |
+| Назва signal / update / query | 256 байтів | `server.limits.max_operation_name_length` | Сегмент шляху URL для назв signal/update/query |
+| Довжина `workflow_id` | 128 символів | валідатор контролера | ID workflow в `POST /workflows` |
+| `workflow_type` / `task_queue` / `business_key` | 255 символів | валідатор контролера | Рядкові поля в `POST /workflows` |
+| `request_id` | 255 символів | валідатор контролера | Токен усунення дублікатів для signal/update/cancel/terminate |
+| `reason` | 1,000 символів | валідатор контролера | Текст причини для cancel/terminate/archive |
+
+Використовуйте задокументовані параметри `DW_*` для налаштовуваних обмежень
+PHP Server 2.x. Межі перевірок контролера фіксовані. Native Server 3.x підтримує
+параметри зі своїх [приміток щодо реалізації](#native-server-3x). У native 3.8.0
+`DW_MAX_PAYLOAD_BYTES=0` задає нульову межу байтів для звичайних запитів і
+завершень workflow task, тому непорожні тіла відхиляються. Межа назв операцій
+фіксована й становить 256 байтів.
+
+Поточні значення публікуються під `limits` у відповіді `GET /api/cluster/info`,
+тому клієнти можуть дізнатися їх під час виконання:
+
+```json
+{
+  "limits": {
+    "max_payload_bytes": 2097152,
+    "max_memo_bytes": 262144,
+    "max_search_attributes": 100,
+    "max_search_attribute_key_length": 128,
+    "max_search_attribute_value_bytes": 2048,
+    "max_operation_name_length": 256,
+    "max_pending_activities": 2000,
+    "max_pending_children": 2000
+  }
+}
+```
+
+Помилки валідації повертаються в стандартній оболонці помилок площини керування
+з `reason: "validation_failed"` та мапою `validation_errors`, ключами якої є
+проблемні поля (`signal_name`, `update_name`, `query_name`, `search_attributes`,
+`memo` тощо). Відхилення через розмір даних використовують
+`reason: "payload_too_large"` та код стану `413`.
+
+### Розмір завершення завдання workflow {#workflow-task-completion-size}
+
+У нативному Server 3.6.0 і новіших запит, що завершує завдання workflow з командами (`POST /api/worker/workflow-tasks/{id}/complete` і `POST /api/worker/activity-tasks/{id}/continuation/complete`), може мати розмір до 16 × `max_payload_bytes`: 32 MiB за типового значення 2 MiB. Ліміт іде за `DW_MAX_PAYLOAD_BYTES` і не має власного параметра. Аргументи кожної команди всередині завершення й далі мають вкладатися в ліміт на один payload. PHP Server 2.x і попередні нативні випуски обмежують завершення одним лімітом payload, як і будь-який інший запит.
+
+Більше завершення відхиляється з `413 payload_too_large` і `limit_kind: workflow_task_completion_bytes` ще до того, як щось буде записано. Повторне відтворення завдання дає ті самі команди, тож повторне надсилання завершення отримає ту саму відмову. Коли PHP SDK 3.17.0 або новіший отримує цю типізовану відмову, він не надсилає запит завершення повторно: worker один раз завершує запуск помилкою через команду `fail_workflow`, повідомлення якої починається з `Structural limit exceeded: workflow_task_completion_bytes:` і називає обидва розміри, а Server записує помилку з `failure_category = structural_limit`.
+
+Python SDK 2.17 і Rust SDK 4.15 обробляють типізовану відмову. На Server
+3.8.0 завеликий запит завершення може дати збій транспорту до отримання worker
+відповіді HTTP 413. У тесті з опублікованим Python SDK помилка
+`httpx.ReadError` залишила workflow в очікуванні замість структурної помилки.
+Перевірка завеликих запитів на опублікованому Server ще не завершена в межах
+[виправлення відповіді Server](https://github.com/durable-workflow/.github/issues/228#issuecomment-6848969678).
+Зменшуйте запити завершення, доки цей шлях не пройде кваліфікацію.
+
+Щоб завершення вкладалося в ліміт:
+
+- Розділіть великий fan-out на менші пакети в кількох завданнях workflow.
+- Перенесіть роботу в дочірні workflow або використайте continue-as-new.
+- Зберігайте великі аргументи в зовнішньому сховищі payload, щоб завершення містило посилання замість самих payload.
+
+#### Планування команд Rust {#rust-completion-planning}
+
+Rust SDK 4.15.0 ще використовує звичайне обмеження одного payload як сумарну
+межу планування команд (типово 2 MiB), до вищої межі запитів завершення Server.
+Без зовнішнього сховища payload у namespace опублікований fan-out із
+300 × 10 KB відхиляється з `external_payload_unavailable`. Worker завершує
+роботу, а запуск залишається в очікуванні. Використовуйте менші пакети команд,
+поки очікується [виправлення сумарного планувальника SDK](https://github.com/durable-workflow/sdk-rust/issues/254).
+Цей шлях SDK ще не реалізує вищу межу Server.
+
 ## Docker bootstrap та походження пакета {#docker-bootstrap-and-provenance}
 
 | Змінна | Стандартне значення | Призначення | Застарілий alias |

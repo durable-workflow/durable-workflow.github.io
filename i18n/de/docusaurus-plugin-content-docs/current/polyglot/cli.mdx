@@ -291,6 +291,11 @@ für Inline-Werte, `--input-file` für einen Dateipfad oder `-` für stdin und
 `--input-encoding=json|raw|base64`. JSON ist Standard. Raw- und Base64-Eingaben
 werden als ein Positionsargument des Workflows übergeben.
 
+Mit `dw workflow:update-outcome` lesen Sie ein angenommenes Update später,
+ohne es erneut einzureichen. Ausstehend und abgeschlossen mit null-Ergebnis
+sind unterschiedliche Zustände. Unter [Update-Ergebnis lesen](./cli-reference.md#read-update-outcome)
+stehen die erforderliche Server-Fähigkeit und die Warteoptionen.
+
 ### Brückenadapter {#bridge-adapters}
 
 ```bash

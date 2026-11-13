@@ -235,6 +235,7 @@ der Laufzeitumgebung statt in der Profildatei bleiben.
 | `dw workflow:signal <workflow-id> <signal-name>` | Signal senden. | `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Schreibgeschützte Workflow-Abfrage ausführen. | `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Workflow-Update übermitteln oder ausführen. | `--wait=accepted\|completed`, `--run-id`, Eingabeoptionen, `--json` |
+| `dw workflow:update-outcome <workflow-id> <update-id>` | Ein gespeichertes Update-Ergebnis lesen, ohne das Update erneut einzureichen. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Einen Workflow oder ausgewählten Batch als abgebrochen schließen; keine Bereinigung durch Workflow-Code. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Workflow zwangsweise terminieren. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Server um Reparatur eines festhängenden oder wiederholbaren Laufs bitten. | `--json` |
@@ -258,6 +259,29 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` und `workflow:update`
 prüfen kanonische Anfragefelder gegen den vom Server veröffentlichten
 Anfragevertrag. Nichtkanonische alte Aliase werden vor dem Senden abgelehnt.
+
+### Ein Update-Ergebnis lesen {#read-update-outcome}
+
+CLI ab 2.8 kann ein angenommenes Update über seine `update_id` lesen, wenn der
+Server `capabilities.update_outcome_reads` meldet (native ab 3.6.0). Verwenden
+Sie die ID aus der Annahmebestätigung:
+
+```bash
+dw workflow:update-outcome order-123 "$UPDATE_ID"
+dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeout=30
+```
+
+Der Standard `--wait=accepted` antwortet sofort. Ein angenommenes, noch nicht
+abgeschlossenes Update bleibt ausstehend, auch wenn eine Wartefrist abläuft.
+Ein abgeschlossenes Update kann ein null-Ergebnis haben. `--json` liefert die
+geprüfte Bestätigung. Unterscheiden Sie die Fälle über `update_status`. Jeder
+Aufruf liest das Ergebnis einmal und reicht das Update niemals erneut ein.
+
+`--wait-timeout` erfordert `--wait=completed` und eine ganze Zahl von mindestens
+einer Sekunde. Ein fehlgeschlagenes Update endet mit Exitcode 2. Eine unbekannte
+oder entfernte Update-ID endet mit 5. Das beweist nicht, dass das Update nie
+angenommen wurde. Ohne die Fähigkeit, auch bei PHP Server 2.x, endet der Befehl
+mit 8, bevor eine Ergebnisanfrage gesendet wird.
 
 ## Dienstaufrufe untersuchen {#service-call-inspection}
 

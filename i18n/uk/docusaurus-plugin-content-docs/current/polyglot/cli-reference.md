@@ -228,6 +228,7 @@ JSON містить стабільне поле `status` для автомати
 | `dw workflow:signal <workflow-id> <signal-name>` | Надіслати signal. | `--run-id`, параметри вводу, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Виконати query workflow лише для читання. | `--run-id`, параметри вводу, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Подати чи виконати update workflow. | `--wait=accepted\|completed`, `--run-id`, параметри вводу, `--json` |
+| `dw workflow:update-outcome <workflow-id> <update-id>` | Прочитати збережений результат update без повторного надсилання. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Закрити один workflow чи вибрану групу як скасовані без очищення в коді workflow. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Примусово завершити workflow. | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | Попросити сервер відновити застрягле виконання чи виконання, що допускає повторну спробу. | `--json` |
@@ -251,6 +252,29 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` і `workflow:update`
 перевіряють канонічні поля запиту за контрактом, опублікованим сервером.
 Неканонічні застарілі псевдоніми відхиляються до надсилання запиту.
+
+### Прочитати результат update {#read-update-outcome}
+
+CLI 2.8 і новіші версії можуть читати прийнятий update за його `update_id`,
+якщо Server оголошує `capabilities.update_outcome_reads` (native 3.6.0 або
+новіший). Використайте ID із підтвердження прийняття:
+
+```bash
+dw workflow:update-outcome order-123 "$UPDATE_ID"
+dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeout=30
+```
+
+Типове значення `--wait=accepted` повертає відповідь одразу. Прийнятий update,
+який ще не завершився, залишається в очікуванні, зокрема після завершення часу
+очікування. Завершений update може мати результат null. `--json` повертає
+перевірене підтвердження. Розрізняйте ці випадки за `update_status`. Кожен
+виклик читає результат один раз і ніколи не надсилає update повторно.
+
+`--wait-timeout` потребує `--wait=completed` і цілого числа не менше однієї
+секунди. Невдалий update завершується з кодом 2. Невідомий або видалений ID
+update дає код 5, що не доводить, ніби update ніколи не приймався. Server без
+цієї можливості, зокрема PHP Server 2.x, дає код 8 до надсилання запиту
+результату.
 
 ## Перегляд викликів сервісів {#service-call-inspection}
 

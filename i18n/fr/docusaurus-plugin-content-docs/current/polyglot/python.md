@@ -123,6 +123,17 @@ Les versions 2.15 et 2.16 du SDK Python ajoutent :
 
 Voir le [journal des modifications 2.16.0](https://github.com/durable-workflow/sdk-python/blob/2.16.0/CHANGELOG.md) pour la liste complète.
 
+Python SDK 2.17 ajoute `Client.update_outcome` et
+`Client.update_outcome_receipt` pour lire plus tard une mise à jour acceptée
+sans la soumettre de nouveau. Ces méthodes exigent
+`capabilities.update_outcome_reads` (Server natif 3.6.0 ou ultérieur).
+`update_outcome` attend la fin par défaut et lève `UpdateStillPending` si la mise
+à jour n'est pas terminée. Un `None` renvoyé est un résultat null terminé.
+`update_outcome_receipt` utilise par défaut l'étape d'acceptation et conserve
+le `update_status` explicite. Consultez le
+[guide du SDK Python](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)
+pour les exemples propres au langage.
+
 ## Démarrage rapide {#quickstart}
 
 Ce programme Python complet définit un workflow avec une activité, le démarre
@@ -408,12 +419,19 @@ parcours complet. Les équivalents CLI sont `dw task-queue:build-ids`,
 | `await client.export_history(workflow_id, run_id)` | historique d'archivage décodé | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, erreurs d'authentification/serveur |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | résultat de requête décodé | `QueryFailed`, `WorkflowNotFound`, erreurs d'authentification/serveur |
-| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | résultat de mise à jour décodé | `UpdateRejected`, `WorkflowNotFound`, erreurs d'authentification/serveur |
+| `await client.update_workflow(workflow_id, update_name, args=None, ...)` | accusé de mise à jour (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | sortie de workflow décodée | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`update_workflow` utilise `wait_for="accepted"` par défaut. Son accusé peut
+contenir `update_status="accepted"` et `result=None`. Avec
+`wait_for="completed"`, `wait_timeout_seconds` borne l'attente. À son expiration,
+l'accusé reste accepté et définit `wait_timed_out=True`. Seul
+`update_status="completed"` identifie un résultat terminé, y compris `None`.
+Conservez `update_id` pour [lire le résultat plus tard](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
 
 `start_workflow` accepte `workflow_type`, `task_queue`, `workflow_id` facultatif,
 `input` facultatif, `duplicate_policy`, `memo`, `search_attributes`, `business_key`,

@@ -131,6 +131,20 @@ Rust SDK 3.5.0 за замовчуванням надсилає
 
 Див. [журнал змін 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
 
+## Читати збережені результати update {#read-update-outcome}
+
+Rust SDK 4.15 додає `Client::update_outcome` і
+`Client::update_outcome_receipt`, щоб читати прийнятий update за ID без
+повторного надсилання. Ці методи потребують `capabilities.update_outcome_reads`
+(native Server 3.6.0 або новіший). `update_outcome` повертає
+`Error::UpdateStillPending`, якщо update ще не завершився. Завершений результат
+null має вигляд `Ok(Value::Null)`. Підтвердження зберігають явний `update_status`.
+Інтерфейс Rust описано в [API Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
+
+Rust SDK 4.15.0 ще застосовує звичайну межу payload до всього пакета команд.
+Див. [відоме обмеження планувальника](./server-config-reference.md#rust-completion-planning)
+перед великим fan-out без зовнішнього сховища payload.
+
 ## Строки очікування умови та оновлення worker {#condition-wait-deadlines}
 
 Rust SDK 4.11.2 відлічує тайм-аут для `wait_condition` поза групою від першого

@@ -136,6 +136,21 @@ déterminent la compatibilité.
 
 Voir le [journal des modifications 4.13.0](https://github.com/durable-workflow/sdk-rust/blob/4.13.0/CHANGELOG.md).
 
+## Lire les résultats conservés des mises à jour {#read-update-outcome}
+
+Rust SDK 4.15 ajoute `Client::update_outcome` et
+`Client::update_outcome_receipt` pour lire une mise à jour acceptée par son ID
+sans la soumettre de nouveau. Ces méthodes exigent
+`capabilities.update_outcome_reads` (Server natif 3.6.0 ou ultérieur).
+`update_outcome` renvoie `Error::UpdateStillPending` pour une mise à jour
+inachevée. Un résultat null terminé est `Ok(Value::Null)`. Les accusés conservent
+le `update_status` explicite. Consultez l'[API de Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
+pour l'interface Rust.
+
+Rust SDK 4.15.0 applique encore le plafond ordinaire de charge utile au lot
+entier de commandes. Consultez la [limite connue du planificateur](./server-config-reference.md#rust-completion-planning)
+avant un grand fan-out sans stockage externe des charges utiles.
+
 ## Échéances des attentes de condition et mise à niveau des workers {#condition-wait-deadlines}
 
 Le SDK Rust 4.11.2 mesure le délai d’un `wait_condition` hors groupe depuis

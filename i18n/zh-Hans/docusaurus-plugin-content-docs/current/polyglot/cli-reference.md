@@ -152,6 +152,7 @@ dw server:info --output=json \
 | `dw workflow:signal <workflow-id> <signal-name>` | 发送信号。 | `--run-id`, 输入选项, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | 执行只读工作流查询。 | `--run-id`, 输入选项, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | 提交或执行工作流更新。 | `--wait=accepted\|completed`, `--run-id`, 输入选项, `--json` |
+| `dw workflow:update-outcome <workflow-id> <update-id>` | 读取保留的更新结果，不重新提交更新。 | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | 将单个工作流或选定批次关闭为已取消；不运行工作流代码清理。 | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | 强制终止工作流。 | `--reason`, `--run-id`, `--json` |
 | `dw workflow:repair <workflow-id>` | 请求 Server 修复卡住或可重试运行。 | `--json` |
@@ -173,6 +174,19 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 ```
 
 `workflow:start`、`workflow:signal`、`workflow:query` 和 `workflow:update` 根据 Server 公布的请求契约验证规范请求字段。非规范的旧别名在请求发送前即被拒绝。
+
+### 读取更新结果 {#read-update-outcome}
+
+CLI 2.8 及更高版本可以通过 `update_id` 读取已接受的更新，前提是 Server 公布 `capabilities.update_outcome_reads`（native 3.6.0 及更高版本）。请使用接受回执中的 ID：
+
+```bash
+dw workflow:update-outcome order-123 "$UPDATE_ID"
+dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeout=30
+```
+
+默认的 `--wait=accepted` 会立即返回。已接受但尚未完成的更新仍处于待完成状态，完成等待超时后也一样。已完成的更新可以返回 null。`--json` 返回经过校验的回执，请用其中的 `update_status` 区分这些情况。每次调用只读取一次结果，绝不重新提交更新。
+
+`--wait-timeout` 要求使用 `--wait=completed`，且值为至少一秒的整数。更新失败时退出码为 2。未知或已清理的更新 ID 对应退出码 5，但这不能证明该更新从未被接受。如果 Server 不支持此能力（包括 PHP Server 2.x），命令会在发送结果请求前以 8 退出。
 
 ## 服务调用检查 {#service-call-inspection}
 
