@@ -285,6 +285,31 @@ service-mode bridge, including drain and rollback. Use
 [Deployment Modes](/docs/polyglot/deployment-modes/) for the wider runtime
 boundary comparison.
 
+## Read an accepted update later {#read-an-update-outcome}
+
+The selected PHP SDK 3.18.1 supports reading a retained update by its stable ID
+without admitting it again. `Client::updateOutcome($workflowId, $updateId)`
+defaults to `waitFor: 'completed'`: pending work throws `UpdateStillPending`;
+a completed result may legitimately be `null`. `updateOutcomeReceipt()` defaults
+to `waitFor: 'accepted'` and returns the Server receipt so callers can inspect
+`update_status` and `wait_timed_out` separately from a completed result.
+
+These GET reads require the `update_outcome_reads` capability (native Server
+3.6.0 and later). Without it, the SDK throws `LogicException` and does not
+resubmit the update. An initial `updateWorkflow()` pending exception retains
+the caller's request ID. A pending GET read retains `updateId`, but its original
+request key may be unavailable: `$pending->requestId` is then `''`, meaning
+unknown. Continue reading with that update ID; never submit an empty, inferred
+or internal hashed key as the original request ID.
+
+The [published PHP guide](https://php.durable-workflow.com/build/messages/#apply-a-tracked-update)
+shows the workflow-side handler and client journey. [Installed PHP 3.18.1 /
+native Server 3.9.1 controls](https://github.com/durable-workflow/sdk-php/pull/411#issuecomment-6855609359)
+verify pending-to-completed-null reads without a second update admission, plus
+[completion-size handling](./server-config-reference.md#workflow-task-completion-size).
+This evidence does not establish full request-key acceptance under shared #216
+or native timeout-cleanup support.
+
 ## Upgrade to PHP SDK 3.12 through 3.14 {#upgrade-to-3-12-through-3-14}
 
 PHP `^8.1`, the Laravel bridge floors, worker protocol `1.20` and control plane

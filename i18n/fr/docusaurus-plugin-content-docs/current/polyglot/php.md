@@ -295,6 +295,14 @@ mode service livré, y compris le drainage et le retour arrière.
 Les [modes de déploiement](/docs/polyglot/deployment-modes/) comparent plus
 largement les frontières du runtime.
 
+## Lire plus tard une mise à jour acceptée {#read-an-update-outcome}
+
+Le PHP SDK 3.18.1 sélectionné permet de lire une mise à jour conservée par son ID stable sans l’admettre à nouveau. `Client::updateOutcome($workflowId, $updateId)` utilise par défaut `waitFor: 'completed'` : un travail en attente lève `UpdateStillPending` ; un résultat terminé peut légitimement être `null`. `updateOutcomeReceipt()` utilise par défaut `waitFor: 'accepted'` et renvoie le reçu du Server pour examiner `update_status` et `wait_timed_out` séparément du résultat terminé.
+
+Ces lectures GET exigent la capacité `update_outcome_reads` (Server natif 3.6.0 et suivants). Sans elle, le SDK lève `LogicException` et ne renvoie pas la mise à jour. Une exception d’attente du premier `updateWorkflow()` conserve l’ID de requête de l’appelant. Une lecture GET en attente conserve `updateId`, mais la clé d’origine peut manquer : `$pending->requestId` vaut alors `''`, soit inconnue. Continuez la lecture avec cet ID de mise à jour ; ne soumettez jamais de clé vide, déduite ou hachée interne comme ID de requête d’origine.
+
+Le [guide PHP publié](https://php.durable-workflow.com/build/messages/#apply-a-tracked-update) présente le gestionnaire et le parcours client. Les [contrôles avec PHP 3.18.1 installé / Server natif 3.9.1](https://github.com/durable-workflow/sdk-php/pull/411#issuecomment-6855609359) vérifient le passage d’attente à un résultat terminé null sans seconde admission, ainsi que le [traitement de la taille de finalisation](./server-config-reference.md#workflow-task-completion-size). Ces preuves n’établissent ni l’acceptation complète des clés du #216 partagé, ni le nettoyage natif après timeout.
+
 ## Mettre à niveau vers le SDK PHP 3.12 à 3.14 {#upgrade-to-3-12-through-3-14}
 
 PHP `^8.1`, les planchers du pont Laravel, le protocole de worker `1.20` et le plan de contrôle `2` sont inchangés depuis 3.11. Vérifiez ces changements de comportement avant le déploiement :
