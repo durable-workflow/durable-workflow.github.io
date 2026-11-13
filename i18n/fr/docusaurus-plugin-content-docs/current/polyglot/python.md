@@ -417,14 +417,16 @@ parcours complet. Les équivalents CLI sont `dw task-queue:build-ids`,
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.get_history(workflow_id, run_id)` | charge utile d'historique décodée | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.export_history(workflow_id, run_id)` | historique d'archivage décodé | `WorkflowNotFound`, erreurs d'authentification/serveur |
-| `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, erreurs d'authentification/serveur |
-| `await client.query_workflow(workflow_id, query_name, args=None)` | résultat de requête décodé | `QueryFailed`, `WorkflowNotFound`, erreurs d'authentification/serveur |
+| `await client.signal_workflow(workflow_id, signal_name, args=None)` | reçu d’admission (`dict`) | `WorkflowNotFound`, `InvalidArgument`, erreurs d'authentification/serveur |
+| `await client.query_workflow(workflow_id, query_name, args=None)` | reçu de requête (`dict`) | `QueryFailed`, `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.update_workflow(workflow_id, update_name, args=None, ...)` | accusé de mise à jour (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | sortie de workflow décodée | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`signal_workflow` renvoie le reçu d’admission avec son `request_id`. `query_workflow` et `WorkflowHandle.query` renvoient un reçu de requête ; lisez `receipt["result"]` pour la valeur décodée du handler, y compris lorsque celui-ci renvoie `None` avec succès. Voir le [guide du client Python](https://python.durable-workflow.com/reference/client/).
 
 `update_workflow` utilise `wait_for="accepted"` par défaut. Son accusé peut
 contenir `update_status="accepted"` et `result=None`. Avec

@@ -328,13 +328,13 @@ PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器
 
 原生 3.9.1 在 cluster info 中通过 `limits.max_workflow_task_completion_bytes` 公布实际预算。它对两个完成路由都计量整个编码后 JSON 请求体，包括 envelope、元数据和命令。应使用该值，而不是按 Server 版本推断倍数或累加解码后的参数大小。单个值和普通路由的上限不变。此字段不会授予额外的外部 payload 上传权限或引用放置权限。
 
-SDK 规划器必须遵守公布的正整数上限，即使它低于普通上限。字段缺失时保留保守的回退行为；显式格式错误、null、零、负数或非整数值会在上传前拒绝完成规划。普通路由忽略此未使用的完成字段。
+Rust SDK 4.16 完成规划器遵守公布的正整数上限，即使它低于普通上限。字段缺失时保留保守的回退行为；显式格式错误、null、零、负数或非整数值会在上传前拒绝完成规划。普通路由忽略此未使用的完成字段。
 
 更大的完成请求会在记录任何内容之前以 `413 payload_too_large` 和 `limit_kind: workflow_task_completion_bytes` 被拒绝。重放该任务会生成相同的命令，因此重新发送完成请求会得到同样的拒绝。PHP SDK 3.17.0 及以上在收到这种类型化拒绝后不会重新发送完成请求：Worker 用一条 `fail_workflow` 命令让运行失败一次，其消息以 `Structural limit exceeded: workflow_task_completion_bytes:` 开头并给出两个大小，Server 以 `failure_category = structural_limit` 记录该失败。
 
 Python SDK 2.17 和 Rust SDK 4.15 包含类型化拒绝处理。Server 3.8.0 的已发布 Python 验证在收到 HTTP 413 前遇到 `httpx.ReadError`，使 workflow 保持待定。原生 3.9.1 通过有界丢弃请求余下数据修复此响应路径：最多 64 MiB、最多两秒，然后返回原始拒绝并关闭连接。超出任一边界的上传仍可能遇到传输错误。
 
-已发布的 Python SDK 2.17.1 与经过验证的原生 Server 3.9.1（linux/amd64、SQLite）现已通过[实际安装 Worker 的验证](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)：预算内 300 × 10 KB fan-out；过大的完成请求只产生一次类型化 413 和一次结构性失败，部分 activity 为零；随后同一 Worker 成功执行后续任务。此结果只验证这个确切的 Python/Server 组合。PHP 仍需独立的安装后验证；Rust4.16 的验证如下。共享 #228 仍未关闭。共享 #216 的请求键验证是独立的。
+已发布的 Python SDK 2.17.1 与经过验证的原生 Server 3.9.1（linux/amd64、SQLite）现已通过[实际安装 Worker 的验证](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)：预算内 300 × 10 KB fan-out；过大的完成请求只产生一次类型化 413 和一次结构性失败，部分 activity 为零；随后同一 Worker 成功执行后续任务。此结果只验证这个确切的 Python/Server 组合。PHP 仍需独立的安装后验证；Rust 4.16 的验证如下。共享 #228 仍未关闭。共享 #216 的请求键验证是独立的。
 
 要让完成请求保持在上限之内：
 
@@ -344,7 +344,7 @@ Python SDK 2.17 和 Rust SDK 4.15 包含类型化拒绝处理。Server 3.8.0 的
 
 #### Rust 命令规划 {#rust-completion-planning}
 
-Rust SDK 4.16 使用 producer 公布的显式正整数完成预算。[已发布4.16/native3.9.1 的验证](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）通过了无外部存储的 300 × 10 KB inline fan-out、过大的 60 × 450 KB 批次产生结构性失败且部分 activity 为零、随后同一 Worker 的后续任务成功。缺少显式字段时，旧 producer 继续使用保守的普通上限。更大的预算不授予新上传权限或引用位置权限；activity continuation 命令参数仍须 inline。这些验证不代表共享 #216 的请求键重试或原生超时清理已通过。
+Rust SDK 4.16 使用 producer 公布的显式正整数完成预算。[已发布 4.16/native 3.9.1 的验证](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）通过了无外部存储的 300 × 10 KB inline fan-out、过大的 60 × 450 KB 批次产生结构性失败且部分 activity 为零、随后同一 Worker 的后续任务成功。缺少显式字段时，旧 producer 继续使用保守的普通上限。更大的预算不授予新上传权限或引用位置权限；activity continuation 命令参数仍须 inline。这些验证不代表共享 #216 的请求键重试或原生超时清理已通过。
 
 ## Docker 初始化与来源信息 {#docker-bootstrap-and-provenance}
 

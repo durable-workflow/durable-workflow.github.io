@@ -447,8 +447,8 @@ multiplier from the Server version or summing decoded arguments. Per-value and
 ordinary-route limits remain unchanged. The field grants no additional external
 payload upload or reference-placement authority.
 
-SDK planners must honor a positive advertised cap even below the ordinary
-limit. An absent field preserves the conservative fallback; an explicitly
+Rust SDK 4.16 completion planning honors a positive advertised cap even below
+the ordinary limit. An absent field preserves the conservative fallback; an explicitly
 malformed, null, zero, negative or non-integer value refuses completion planning
 before upload. Ordinary routes ignore this unused completion field.
 

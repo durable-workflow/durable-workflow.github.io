@@ -90,7 +90,7 @@ si la actualización no ha terminado. Un resultado null completado es
 la [API de Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
 para conocer la interfaz de Rust.
 
-Rust SDK 4.16 usa el presupuesto explícito del Server `limits.max_workflow_task_completion_bytes` para planificar finalizaciones. Los productores antiguos sin ese campo conservan el límite ordinario conservador. Consulte [planificación de finalizaciones](./server-config-reference.md#rust-completion-planning) para el par cualificado con native3.9.1 y los límites de ubicación de payloads.
+Rust SDK 4.16 usa el presupuesto explícito del Server `limits.max_workflow_task_completion_bytes` para planificar finalizaciones. Los productores antiguos sin ese campo conservan el límite ordinario conservador. Consulte [planificación de finalizaciones](./server-config-reference.md#rust-completion-planning) para el par cualificado con native 3.9.1 y los límites de ubicación de payloads.
 
 ## Plazos de espera de condiciones y actualización de workers {#condition-wait-deadlines}
 
@@ -185,7 +185,7 @@ Los resultados del cliente incluyen `ok`, `http_error`, `bridge_rejected`, `Tran
 
 Una observación del cliente incluye reintentos internos de transporte/storage admission y manejo de respuesta/payload; llamadas separadas de aplicación/worker se observan por separado. El iterador perezoso observa cada página solicitada. Los polls incluyen retry/backoff gestionados y distinguen `task`, `empty`, `backpressure`, `error`. Los resultados de tarea `completed`, `failed`, `expired` describen el despacho, no el estado terminal del workflow. Son observaciones del proceso, no contadores duraderos, unidades facturables ni latencia schedule-to-start; la pérdida abrupta del proceso puede omitir la muestra final.
 
-Rust SDK 4.16 añade el séptimo instrumento, `durable_workflow_worker_task_schedule_to_start_seconds`, solo con las etiquetas `task_kind` y `task_queue`. Registra en segundos el retraso entre elegibilidad y claim medido por el Server cuando el productor anuncia `claimed_task_ready_age` y suministra `ready_age_ms` válido. Los datos ausentes, inválidos o no admitidos no generan muestra; el SDK nunca inventa un cero. Los [controles publicados4.16/native3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) cualifican las siete métricas, ready-age de workflows/actividades y el adaptador Prometheus.
+Rust SDK 4.16 añade el séptimo instrumento, `durable_workflow_worker_task_schedule_to_start_seconds`, solo con las etiquetas `task_kind` y `task_queue`. Registra en segundos el retraso entre elegibilidad y claim medido por el Server cuando el productor anuncia `claimed_task_ready_age` y suministra `ready_age_ms` válido. Los datos ausentes, inválidos o no admitidos no generan muestra; el SDK nunca inventa un cero. Los [controles publicados 4.16/native 3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) cualifican las siete métricas, ready-age de workflows/actividades y el adaptador Prometheus.
 
 Para el adaptador oficial de Prometheus, active el feature opcional Cargo `metrics-prometheus`. El ejemplo usa la receta publicada de dependencias:
 

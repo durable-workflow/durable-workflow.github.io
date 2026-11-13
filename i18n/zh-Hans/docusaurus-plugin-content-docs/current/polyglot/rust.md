@@ -81,7 +81,7 @@ Server 在主版本 `1` 内协商 Worker 协议头：公布 `1.N` 的 Server 仅
 
 Rust SDK 4.15 新增 `Client::update_outcome` 和 `Client::update_outcome_receipt`，用于按 ID 读取已接受的更新，不重新提交。这些方法要求 `capabilities.update_outcome_reads`（native Server 3.6.0 及更高版本）。`update_outcome` 对尚未完成的更新返回 `Error::UpdateStillPending`。已完成的 null 结果为 `Ok(Value::Null)`。回执保留明确的 `update_status`。Rust 接口见 [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)。
 
-Rust SDK 4.16 使用 Server 显式提供的 `limits.max_workflow_task_completion_bytes` 预算规划完成请求。没有该字段的旧 producer 继续使用保守的普通上限。经过验证的 native3.9.1 组合及 payload 位置限制见[完成规划](./server-config-reference.md#rust-completion-planning)。
+Rust SDK 4.16 使用 Server 显式提供的 `limits.max_workflow_task_completion_bytes` 预算规划完成请求。没有该字段的旧 producer 继续使用保守的普通上限。经过验证的 native 3.9.1 组合及 payload 位置限制见[完成规划](./server-config-reference.md#rust-completion-planning)。
 
 ## 条件等待期限与 Worker 升级 {#condition-wait-deadlines}
 
@@ -170,7 +170,7 @@ Ok(())
 
 一次客户端观测包含内部传输/storage admission 重试及响应/payload 处理；应用或 worker 管理的独立调用分别计量。惰性迭代器按所请求的每页观测。worker poll 包含管理的 retry/backoff，区分 `task`、`empty`、`backpressure`、`error`。任务结果 `completed`、`failed`、`expired` 描述任务处理，不表示工作流终态。这是进程观测，不是持久计数、计费单位或 schedule-to-start 延迟；进程突然丢失可能遗漏最终样本。
 
-Rust SDK 4.16 添加第七个指标 `durable_workflow_worker_task_schedule_to_start_seconds`，仅带 `task_kind` 和 `task_queue` 标签。当 producer 公布 `claimed_task_ready_age` 并提供有效的 `ready_age_ms` 时，它以秒记录 Server 计量的“可执行到 claim”延迟。数据缺失、无效或不受支持时不产生样本；SDK 不会编造零值。[已发布4.16/native3.9.1 的验证](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）验证了全部七个指标、workflow/activity ready-age 观测和 Prometheus 适配器。
+Rust SDK 4.16 添加第七个指标 `durable_workflow_worker_task_schedule_to_start_seconds`，仅带 `task_kind` 和 `task_queue` 标签。当 producer 公布 `claimed_task_ready_age` 并提供有效的 `ready_age_ms` 时，它以秒记录 Server 计量的“可执行到 claim”延迟。数据缺失、无效或不受支持时不产生样本；SDK 不会编造零值。[已发布 4.16/native 3.9.1 的验证](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）验证了全部七个指标、workflow/activity ready-age 观测和 Prometheus 适配器。
 
 使用官方 Prometheus 适配器时，启用可选 Cargo feature `metrics-prometheus`。示例采用已发布的依赖配置：
 

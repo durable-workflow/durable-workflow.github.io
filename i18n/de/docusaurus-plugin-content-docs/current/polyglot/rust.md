@@ -142,7 +142,7 @@ Ein abgeschlossenes null-Ergebnis ist `Ok(Value::Null)`. Ergebnisbestätigungen
 erhalten den expliziten `update_status`. Die Rust-Schnittstelle steht in der
 [Client-API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
 
-Rust SDK 4.16 verwendet für die Completion-Planung das explizite Server-Budget `limits.max_workflow_task_completion_bytes`. Ältere Producer ohne dieses Feld behalten die konservative gewöhnliche Grenze. Siehe [Completion-Planung](./server-config-reference.md#rust-completion-planning) für das qualifizierte native3.9.1-Paar und die Grenzen der Payload-Platzierung.
+Rust SDK 4.16 verwendet für die Completion-Planung das explizite Server-Budget `limits.max_workflow_task_completion_bytes`. Ältere Producer ohne dieses Feld behalten die konservative gewöhnliche Grenze. Siehe [Completion-Planung](./server-config-reference.md#rust-completion-planning) für das qualifizierte native 3.9.1-Paar und die Grenzen der Payload-Platzierung.
 
 ## Fristen für Bedingungswarteoperationen und Worker-Upgrades {#condition-wait-deadlines}
 
@@ -237,7 +237,7 @@ Client-Ergebnisse umfassen `ok`, `http_error`, `bridge_rejected`, `TransportErro
 
 Eine Clientbeobachtung umfasst interne Transport-/Storage-Admission-Wiederholungen und Antwort-/Payload-Verarbeitung; getrennte Anwendungs-/Worker-Aufrufe bleiben getrennt. Ein verzögerter Iterator beobachtet jede angefragte Seite. Worker-Polls enthalten verwaltete Wiederholungen/Backoff und unterscheiden `task`, `empty`, `backpressure`, `error`. Task-Ergebnisse `completed`, `failed`, `expired` beschreiben die Verarbeitung, nicht den Workflow-Endzustand. Dies sind Prozessbeobachtungen, keine dauerhaften Zählungen, Abrechnungseinheiten oder Schedule-to-start-Latenzen; abrupter Prozessverlust kann die letzte Probe auslassen.
 
-Rust SDK 4.16 ergänzt das siebte Instrument `durable_workflow_worker_task_schedule_to_start_seconds` mit ausschließlich `task_kind`- und `task_queue`-Tags. Es erfasst die vom Server gemessene Zeit zwischen Ausführungsberechtigung und Claim in Sekunden, wenn der Producer `claimed_task_ready_age` veröffentlicht und gültige `ready_age_ms` liefert. Fehlende, ungültige oder nicht unterstützte Daten erzeugen keinen Messwert; das SDK erfindet keine Null. Die [Kontrollen mit veröffentlichtem4.16/native3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) qualifizieren alle sieben Metriken, Workflow-/Activity-Ready-Age und den Prometheus-Adapter.
+Rust SDK 4.16 ergänzt das siebte Instrument `durable_workflow_worker_task_schedule_to_start_seconds` mit ausschließlich `task_kind`- und `task_queue`-Tags. Es erfasst die vom Server gemessene Zeit zwischen Ausführungsberechtigung und Claim in Sekunden, wenn der Producer `claimed_task_ready_age` veröffentlicht und gültige `ready_age_ms` liefert. Fehlende, ungültige oder nicht unterstützte Daten erzeugen keinen Messwert; das SDK erfindet keine Null. Die [Kontrollen mit veröffentlichtem 4.16/native 3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) qualifizieren alle sieben Metriken, Workflow-/Activity-Ready-Age und den Prometheus-Adapter.
 
 Für den offiziellen Prometheus-Adapter aktivieren Sie das optionale Cargo-Feature `metrics-prometheus`. Das Beispiel nutzt die veröffentlichten Abhängigkeiten:
 

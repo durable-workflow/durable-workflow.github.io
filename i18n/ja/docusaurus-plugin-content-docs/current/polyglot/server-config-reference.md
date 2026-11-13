@@ -328,13 +328,13 @@ native Server 3.6.0 以降では、コマンド付きでワークフロータス
 
 native 3.9.1 は cluster info の `limits.max_workflow_task_completion_bytes` に実際の予算を公開します。両方の完了ルートについて、エンベロープ、メタデータ、コマンドを含む、エンコード済み JSON リクエスト本文全体のサイズです。Server のバージョンから倍率を推測したり、デコード済み引数を合計したりせず、この値を使ってください。値ごとと通常ルートの上限は変わりません。このフィールドは、外部 payload のアップロードや参照配置の追加権限を与えません。
 
-SDK のプランナーは、通常の上限より小さくても、公開された正の上限を守る必要があります。フィールドがなければ保守的なフォールバックを維持します。明示的な不正値、null、ゼロ、負数、非整数の場合はアップロード前に完了計画を拒否します。通常ルートは、この未使用の完了フィールドを無視します。
+Rust SDK 4.16 の完了プランナーは、通常の上限より小さくても、公開された正の上限を守ります。フィールドがなければ保守的なフォールバックを維持します。明示的な不正値、null、ゼロ、負数、非整数の場合はアップロード前に完了計画を拒否します。通常ルートは、この未使用の完了フィールドを無視します。
 
 それより大きい完了は、何も記録される前に `413 payload_too_large` と `limit_kind: workflow_task_completion_bytes` で拒否されます。タスクをリプレイしても同じコマンドが生成されるため、完了を再送しても同じ拒否になります。PHP SDK 3.17.0 以降は、この型付き拒否を受信した場合、完了リクエストを再送しません。Worker は `Structural limit exceeded: workflow_task_completion_bytes:` で始まり両方のサイズを示すメッセージの `fail_workflow` コマンドで実行を一度だけ失敗させ、Server はその失敗を `failure_category = structural_limit` として記録します。
 
 Python SDK 2.17 と Rust SDK 4.15 には型付き拒否の処理があります。Server 3.8.0 の公開済み Python 検証では HTTP 413 を受け取る前に `httpx.ReadError` が発生し、workflow が保留されました。native 3.9.1 は、残りのアップロードを最大 64 MiB、最大 2 秒間だけ破棄してから元の拒否を返し、接続を閉じることで応答経路を修正します。どちらかの境界を超えるアップロードでは、引き続きトランスポートエラーが起こり得ます。
 
-公開済み Python SDK 2.17.1 と検証済み native Server 3.9.1（linux/amd64、SQLite）は、[実際にインストールした Worker の検証](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)に合格しました。上限内の 300 × 10 KB fan-out、大きすぎる完了に対する型付き 413 が 1 回と構造的失敗が 1 回、部分的な Activity がゼロ、その後の同じ Worker でのタスク成功を確認しています。この特定の Python/Server 組み合わせの検証です。PHP には独自のインストール済み検証が必要です。Rust4.16 の検証は下記に示します。共有 #228 は未完了です。共有 #216 のリクエストキー検証は別です。
+公開済み Python SDK 2.17.1 と検証済み native Server 3.9.1（linux/amd64、SQLite）は、[実際にインストールした Worker の検証](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)に合格しました。上限内の 300 × 10 KB fan-out、大きすぎる完了に対する型付き 413 が 1 回と構造的失敗が 1 回、部分的な Activity がゼロ、その後の同じ Worker でのタスク成功を確認しています。この特定の Python/Server 組み合わせの検証です。PHP には独自のインストール済み検証が必要です。Rust 4.16 の検証は下記に示します。共有 #228 は未完了です。共有 #216 のリクエストキー検証は別です。
 
 完了を上限内に収めるには：
 
@@ -344,7 +344,7 @@ Python SDK 2.17 と Rust SDK 4.15 には型付き拒否の処理があります�
 
 #### Rust のコマンド計画 {#rust-completion-planning}
 
-Rust SDK 4.16 は producer が広告した明示的な正の完了予算を使います。[公開済み4.16/native3.9.1 の検証](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）は、外部ストレージなしの 300 × 10 KB inline fan-out、部分的な Activity ゼロで構造的に失敗する上限超過の 60 × 450 KB バッチ、その後の同じ Worker でのタスク成功を確認しています。明示的なフィールドがなければ、古い producer は保守的な通常の上限を維持します。予算が増えても、アップロードや参照配置の追加権限は得られず、Activity continuation のコマンド引数は inline のままです。この検証は共有 #216 のキー付き再試行や native のタイムアウト清理を確認するものではありません。
+Rust SDK 4.16 は producer が広告した明示的な正の完了予算を使います。[公開済み 4.16/native 3.9.1 の検証](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）は、外部ストレージなしの 300 × 10 KB inline fan-out、部分的な Activity ゼロで構造的に失敗する上限超過の 60 × 450 KB バッチ、その後の同じ Worker でのタスク成功を確認しています。明示的なフィールドがなければ、古い producer は保守的な通常の上限を維持します。予算が増えても、アップロードや参照配置の追加権限は得られず、Activity continuation のコマンド引数は inline のままです。この検証は共有 #216 のキー付き再試行や native のタイムアウトクリーンアップを確認するものではありません。
 
 ## Docker の初期化と出所情報 {#docker-bootstrap-and-provenance}
 

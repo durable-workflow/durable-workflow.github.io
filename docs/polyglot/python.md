@@ -461,14 +461,19 @@ end-to-end rollout walkthrough; the CLI mirrors of these methods are
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, auth/server errors |
 | `await client.get_history(workflow_id, run_id)` | decoded history payload | `WorkflowNotFound`, auth/server errors |
 | `await client.export_history(workflow_id, run_id)` | decoded archival history payload | `WorkflowNotFound`, auth/server errors |
-| `await client.signal_workflow(workflow_id, signal_name, args=None)` | `None` | `WorkflowNotFound`, `InvalidArgument`, auth/server errors |
-| `await client.query_workflow(workflow_id, query_name, args=None)` | decoded query result | `QueryFailed`, `WorkflowNotFound`, auth/server errors |
+| `await client.signal_workflow(workflow_id, signal_name, args=None)` | admission receipt (`dict`) | `WorkflowNotFound`, `InvalidArgument`, auth/server errors |
+| `await client.query_workflow(workflow_id, query_name, args=None)` | query receipt (`dict`) | `QueryFailed`, `WorkflowNotFound`, auth/server errors |
 | `await client.update_workflow(workflow_id, update_name, args=None, ...)` | update receipt (`dict`) | `UpdateRejected`, `UpdateValidationFailed`, `UpdateFailed`, `WorkflowNotFound`, auth/server errors |
 | `await client.cancel_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, auth/server errors |
 | `await client.terminate_workflow(workflow_id, reason=None)` | `None` | `WorkflowNotFound`, auth/server errors |
 | `await client.repair_workflow(workflow_id)` | `WorkflowCommandResult` | `WorkflowNotFound`, auth/server errors |
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, auth/server errors |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | decoded workflow output | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
+
+`signal_workflow` returns the admission receipt, including its `request_id`.
+`query_workflow` and `WorkflowHandle.query` return a query receipt; read
+`receipt["result"]` for the decoded handler value, including when the handler successfully
+returns `None`. See the [Python client guide](https://python.durable-workflow.com/reference/client/).
 
 `update_workflow` defaults to `wait_for="accepted"`. Its receipt can have
 `update_status="accepted"` and `result=None`. With `wait_for="completed"`,
