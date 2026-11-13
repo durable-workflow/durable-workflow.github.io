@@ -265,6 +265,8 @@ Waterline muestra los fallos por límites estructurales en la tabla de excepcion
 
 Los límites HTTP de Server y Cloud son distintos de estos controles de Laravel embebido. Consulte la [referencia de solicitudes del Server](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
+Para nombres e ID de comandos de workers nativos, consulte los [límites por campo](../polyglot/server-config-reference.md#native-worker-command-name-limits).
+
 ### Tamaño de finalización de tarea de workflow {#workflow-task-completion-size}
 
 Los límites de finalización y el manejo de rechazos de los SDK en modo de servicio se describen en la [referencia del Server](../polyglot/server-config-reference.md#workflow-task-completion-size).

@@ -306,6 +306,36 @@ Los valores configurados actualmente se publican bajo `limits` en la respuesta d
 
 Los errores de validación se devuelven en el sobre de error estándar del plano de control con `reason: "validation_failed"` y un mapa `validation_errors` cuyas claves corresponden al campo que causa el error (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, etc.). Los rechazos por tamaño de carga útil utilizan `reason: "payload_too_large"` y el código de estado `413`.
 
+### Nombres e ID de comandos de workers nativos {#native-worker-command-name-limits}
+
+Mantenga los comandos de workers nativos dentro de estos límites de
+almacenamiento. Las longitudes cuentan caracteres, no bytes UTF-8. La fila del
+ID de workflow corresponde al límite separado de la API de inicio; los campos
+de llamadas a hijos tienen límites más estrictos que otros comandos.
+
+| Campo | Máximo de caracteres | Ámbito |
+|---|---|---|
+| `workflow_id` | 128 | `POST /api/workflows` |
+| `activity_type` | 191 | Comandos de actividades |
+| `signal_name` | 191 | `open_signal_wait` |
+| `condition_key` / `condition_definition_fingerprint` | 191 | `open_condition_wait` |
+| `connection` | 255 | Comandos de workers |
+| `queue` | 255 | Comandos de workers salvo `start_child_workflow` |
+| `workflow_type` | 255 | `continue_as_new` |
+| `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+El Server nativo 3.8.0 no valida estos límites de nombres de forma uniforme
+antes de escribir. SQLite puede almacenar nombres demasiado largos sin avisar;
+otros backends pueden devolver errores de base de datos. La [corrección del código](https://github.com/durable-workflow/server/pull/1186)
+añade rechazos `422` específicos del campo antes de escribir, como
+`commands.0.activity_type`, pero aún espera una versión publicada y cualificada
+del Server. La versión estable seleccionada sigue siendo 3.8.0. Antes de
+actualizar a esa versión corregida, revise los tipos de actividad y las esperas
+de señales existentes con nombres de más de 191 caracteres: los nuevos comandos
+con esos nombres se rechazarán. La revisión de los demás identificadores se
+sigue en [Server #607](https://github.com/durable-workflow/server/issues/607).
+El límite HTTP anterior de 256 bytes para nombres de operaciones es independiente.
+
 ### Tamaño de finalización de tarea de workflow {#workflow-task-completion-size}
 
 En el Server nativo 3.6.0 y posteriores, una solicitud que finaliza una tarea de workflow con comandos (`POST /api/worker/workflow-tasks/{id}/complete` y `POST /api/worker/activity-tasks/{id}/continuation/complete`) puede ocupar hasta 16 veces `max_payload_bytes`: 32 MiB con el valor predeterminado de 2 MiB. Sigue a `DW_MAX_PAYLOAD_BYTES` y no tiene un ajuste propio. Los argumentos de cada comando siguen respetando el límite por carga útil dentro de la finalización. El Server PHP 2.x y las versiones nativas anteriores limitan una finalización a un límite de carga útil, como cualquier otra solicitud.

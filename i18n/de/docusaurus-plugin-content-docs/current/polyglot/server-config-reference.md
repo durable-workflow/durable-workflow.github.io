@@ -318,6 +318,34 @@ zurückgegeben. Deren Schlüssel sind die betroffenen Felder (`signal_name`,
 `update_name`, `query_name`, `search_attributes`, `memo` usw.). Ablehnungen wegen
 der Payload-Größe verwenden `reason: "payload_too_large"` und Statuscode `413`.
 
+### Namen und IDs nativer Worker-Befehle {#native-worker-command-name-limits}
+
+Halten Sie native Worker-Befehle innerhalb dieser Speichergrenzen. Die Längen
+zählen Zeichen, keine UTF-8-Bytes. Die Workflow-ID-Zeile betrifft die separate
+Start-API; Felder von Child-Aufrufen haben engere Grenzen als andere Befehle.
+
+| Feld | Maximale Zeichenanzahl | Geltungsbereich |
+|---|---|---|
+| `workflow_id` | 128 | `POST /api/workflows` |
+| `activity_type` | 191 | Activity-Befehle |
+| `signal_name` | 191 | `open_signal_wait` |
+| `condition_key` / `condition_definition_fingerprint` | 191 | `open_condition_wait` |
+| `connection` | 255 | Worker-Befehle |
+| `queue` | 255 | Worker-Befehle außer `start_child_workflow` |
+| `workflow_type` | 255 | `continue_as_new` |
+| `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+Native Server 3.8.0 prüft diese Namensgrenzen vor Schreibvorgängen nicht
+konsistent. SQLite kann überlange Namen stillschweigend speichern; andere
+Backends können Datenbankfehler zurückgeben. Die [Quellcodekorrektur](https://github.com/durable-workflow/server/pull/1186)
+fügt vor Schreibvorgängen feldspezifische `422`-Ablehnungen hinzu, etwa für
+`commands.0.activity_type`, wartet aber noch auf eine qualifizierte
+veröffentlichte Server-Version. Die ausgewählte stabile Version bleibt 3.8.0.
+Prüfen Sie vor dem Upgrade auf die korrigierte Version vorhandene Activity-Typen
+und Signal-Waits mit Namen über 191 Zeichen: Neue Befehle mit diesen Namen
+werden abgelehnt. Die übrige Kennungsprüfung wird in [Server #607](https://github.com/durable-workflow/server/issues/607)
+verfolgt. Die obige HTTP-Grenze von 256 Bytes für Operationsnamen ist separat.
+
 ### Größe eines Workflow-Task-Abschlusses {#workflow-task-completion-size}
 
 Auf nativem Server 3.6.0 und neuer darf eine Anfrage, die einen Workflow-Task mit Befehlen abschließt (`POST /api/worker/workflow-tasks/{id}/complete` und `POST /api/worker/activity-tasks/{id}/continuation/complete`), bis zum 16-Fachen von `max_payload_bytes` groß sein: 32 MiB beim Standardwert von 2 MiB. Sie folgt `DW_MAX_PAYLOAD_BYTES` und hat keine eigene Einstellung. Die Argumente jedes Befehls müssen innerhalb des Abschlusses weiterhin die Grenze pro Payload einhalten. PHP-Server 2.x und frühere native Versionen begrenzen einen Abschluss wie jede andere Anfrage auf eine Payload-Grenze.

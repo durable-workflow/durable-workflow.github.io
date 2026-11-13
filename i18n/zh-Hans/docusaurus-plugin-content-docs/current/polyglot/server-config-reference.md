@@ -301,6 +301,23 @@ PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器
 
 验证错误通过标准控制平面错误信封返回，包含 `reason: "validation_failed"` 和以出错字段（`signal_name`、`update_name`、`query_name`、`search_attributes`、`memo` 等）为键的 `validation_errors` 映射。载荷大小超限使用 `reason: "payload_too_large"` 和 `413` 状态码。
 
+### 原生 worker 命令的名称和 ID {#native-worker-command-name-limits}
+
+原生 worker 命令应遵守以下存储上限。长度按字符数计算，而不是 UTF-8 字节数。workflow ID 一行是启动 API 的独立限制；子调用字段的上限比其他命令更严格。
+
+| 字段 | 最大字符数 | 范围 |
+|---|---|---|
+| `workflow_id` | 128 | `POST /api/workflows` |
+| `activity_type` | 191 | activity 命令 |
+| `signal_name` | 191 | `open_signal_wait` |
+| `condition_key` / `condition_definition_fingerprint` | 191 | `open_condition_wait` |
+| `connection` | 255 | worker 命令 |
+| `queue` | 255 | 除 `start_child_workflow` 外的 worker 命令 |
+| `workflow_type` | 255 | `continue_as_new` |
+| `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+原生 Server 3.8.0 不会在写入前一致地校验这些命令名称上限。SQLite 可能静默保存过长的名称，其他后端可能返回数据库错误。[源码修复](https://github.com/durable-workflow/server/pull/1186)会在写入前返回针对具体字段的 `422` 拒绝，例如 `commands.0.activity_type`，但仍在等待经过验证的 Server 发布版本。当前选择的稳定版仍为 3.8.0。升级到修复版本前，请检查名称超过 191 个字符的已有 activity 类型和信号等待：使用这些名称的新命令将被拒绝。其余标识符的检查由 [Server #607](https://github.com/durable-workflow/server/issues/607) 跟踪。上述 HTTP 操作名的 256 字节上限是独立的限制。
+
 ### 工作流任务完成大小 {#workflow-task-completion-size}
 
 在原生 Server 3.6.0 及以上，带命令完成工作流任务的请求（`POST /api/worker/workflow-tasks/{id}/complete` 和 `POST /api/worker/activity-tasks/{id}/continuation/complete`）最多可达 `max_payload_bytes` 的 16 倍：默认 2 MiB 时为 32 MiB。该上限跟随 `DW_MAX_PAYLOAD_BYTES`，没有单独的设置。完成请求中每个命令的参数仍须符合单个载荷上限。PHP Server 2.x 和更早的原生版本与其他请求一样，将完成请求限制为一个载荷上限。

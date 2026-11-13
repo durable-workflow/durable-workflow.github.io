@@ -265,6 +265,8 @@ Waterline surfaces structural-limit failures in the exceptions table with the `s
 
 Server and Cloud HTTP request limits are separate from these embedded Laravel controls. See the [Server request reference](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
+For native worker-command names and IDs, see the [field bounds](../polyglot/server-config-reference.md#native-worker-command-name-limits).
+
 ### Workflow-task completion size {#workflow-task-completion-size}
 
 Service Mode completion caps and SDK refusal behavior are covered in the [Server reference](../polyglot/server-config-reference.md#workflow-task-completion-size).
