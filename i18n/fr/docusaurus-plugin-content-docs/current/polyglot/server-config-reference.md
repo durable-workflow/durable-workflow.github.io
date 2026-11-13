@@ -306,6 +306,44 @@ Les valeurs actuellement configurées sont publiées sous `limits` dans la répo
 
 Les erreurs de validation utilisent l’enveloppe d’erreur standard du plan de contrôle avec `reason: "validation_failed"` et une table `validation_errors` indexée par champ en cause (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, etc.). Les refus de taille utilisent `reason: "payload_too_large"` et le code `413`.
 
+### Noms et identifiants des commandes des workers natifs {#native-worker-command-name-limits}
+
+Le tableau indique les limites de stockage en caractères. Les contrôles
+d’octets du runtime décrits ci-dessous s’appliquent aussi. La ligne de l’ID du
+workflow concerne la limite distincte de l’API de démarrage ; les champs des
+appels enfants ont des limites plus strictes que les autres commandes.
+
+| Champ | Maximum de caractères | Portée |
+|---|---|---|
+| `workflow_id` | 128 | `POST /api/workflows` |
+| `activity_type` | 191 | Commandes d’activités |
+| `signal_name` | 191 | `open_signal_wait` |
+| `condition_key` / `condition_definition_fingerprint` | 191 | `open_condition_wait` |
+| `connection` | 255 | Commandes des workers |
+| `queue` | 255 | Commandes des workers sauf `start_child_workflow` |
+| `workflow_type` | 255 | `continue_as_new` |
+| `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+Le runtime natif 3.8.0 et le code corrigé conservent aussi des contrôles
+d’octets UTF-8. `activity_type`, `open_signal_wait.signal_name`, une
+`schedule_activity.queue` explicite et `continue_as_new.workflow_type` / `queue`
+ont un plafond d’analyse de 255 octets (`422 invalid_request`). Les champs
+`workflow_type` et `queue` d’un enfant ont un contrôle supplémentaire de
+191 octets pouvant renvoyer `422 unsupported_child_options`. Par exemple, un
+type d’activité contenant 128 copies de `é` occupe 256 octets et est refusé
+malgré ses 128 caractères. Les nouveaux contrôles de caractères ne suppriment pas ces contrôles d’octets.
+
+Le Server natif 3.8.0 ne valide pas systématiquement ces limites de noms avant
+les écritures. SQLite peut stocker silencieusement des noms trop longs ; les
+autres backends peuvent renvoyer des erreurs de base de données. La [correction du code](https://github.com/durable-workflow/server/pull/1186)
+ajoute des refus `422` propres à chaque champ avant toute écriture, par exemple
+`commands.0.activity_type`, mais attend encore une version publiée et qualifiée
+du Server. La version stable sélectionnée reste 3.8.0. Avant de passer à cette
+version corrigée, vérifiez les types d’activité et les attentes de signal dont
+les noms dépassent 191 caractères : les nouvelles commandes utilisant ces noms
+seront refusées. L’examen des autres identifiants est suivi dans [Server #607](https://github.com/durable-workflow/server/issues/607).
+Le plafond HTTP de 256 octets pour les noms d’opérations ci-dessus est distinct.
+
 ### Taille d’un achèvement de tâche de workflow {#workflow-task-completion-size}
 
 Sur Server natif 3.6.0 et ultérieur, une requête qui achève une tâche de workflow avec des commandes (`POST /api/worker/workflow-tasks/{id}/complete` et `POST /api/worker/activity-tasks/{id}/continuation/complete`) peut atteindre 16 fois `max_payload_bytes` : 32 MiB avec la valeur par défaut de 2 MiB. Elle suit `DW_MAX_PAYLOAD_BYTES` et n’a pas de réglage propre. Les arguments de chaque commande respectent toujours la limite par payload à l’intérieur de l’achèvement. Server PHP 2.x et les versions natives antérieures limitent un achèvement à une limite de payload, comme toute autre requête.

@@ -250,6 +250,8 @@ Waterline 在异常表中以 `structural_limit` 故障类别展示结构限制�
 
 Server 和 Cloud 的 HTTP 请求限制独立于这些嵌入式 Laravel 控制。请参阅 [Server 请求参考](../polyglot/server-config-reference.md#server-request-boundary-limits)。
 
+原生 worker 命令名称和 ID 的限制请参阅[字段上限](../polyglot/server-config-reference.md#native-worker-command-name-limits)。
+
 ### 工作流任务完成大小 {#workflow-task-completion-size}
 
 Service Mode 的完成请求上限和 SDK 拒绝处理见 [Server 参考](../polyglot/server-config-reference.md#workflow-task-completion-size)。

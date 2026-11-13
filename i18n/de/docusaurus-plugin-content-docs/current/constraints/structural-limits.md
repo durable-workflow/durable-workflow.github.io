@@ -330,6 +330,8 @@ Grenzart, aktuellen Wert und konfigurierte Obergrenze.
 
 Die HTTP-Anfragegrenzen von Server und Cloud gelten getrennt von diesen eingebetteten Laravel-Grenzen. Siehe die [Server-Anfragereferenz](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
+Die Grenzen für Namen und IDs nativer Worker-Befehle stehen in den [Feldgrenzen](../polyglot/server-config-reference.md#native-worker-command-name-limits).
+
 ### Größe eines Workflow-Task-Abschlusses {#workflow-task-completion-size}
 
 Completion-Grenzen und die Behandlung von SDK-Ablehnungen im Service Mode stehen in der [Server-Referenz](../polyglot/server-config-reference.md#workflow-task-completion-size).

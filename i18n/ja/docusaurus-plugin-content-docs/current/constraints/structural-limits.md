@@ -250,6 +250,8 @@ v2 のヘルススナップショットの `structural_limits` に現在の設�
 
 Server と Cloud の HTTP リクエスト上限は、ここで説明する組み込み Laravel の制御とは別です。[Server のリクエストリファレンス](../polyglot/server-config-reference.md#server-request-boundary-limits)を参照してください。
 
+native ワーカーコマンドの名前と ID については、[フィールドの上限](../polyglot/server-config-reference.md#native-worker-command-name-limits)を参照してください。
+
 ### ワークフロータスク完了サイズ {#workflow-task-completion-size}
 
 Service Mode の完了上限と SDK による拒否処理は、[Server リファレンス](../polyglot/server-config-reference.md#workflow-task-completion-size)で説明しています。

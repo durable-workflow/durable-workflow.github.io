@@ -322,6 +322,8 @@ Waterline показує помилки структурних обмежень 
 
 HTTP-обмеження Server і Cloud відрізняються від цих вбудованих обмежень Laravel. Див. [довідник запитів Server](../polyglot/server-config-reference.md#server-request-boundary-limits).
 
+Межі імен та ID команд нативних воркерів наведені в [обмеженнях полів](../polyglot/server-config-reference.md#native-worker-command-name-limits).
+
 ### Розмір завершення завдання workflow {#workflow-task-completion-size}
 
 Обмеження запитів завершення та обробка відмов SDK у Service Mode описані в [довіднику Server](../polyglot/server-config-reference.md#workflow-task-completion-size).

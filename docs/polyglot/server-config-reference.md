@@ -386,6 +386,43 @@ The currently-configured values are published under `limits` on the `GET /api/cl
 
 Validation errors are returned in the standard control-plane error envelope with `reason: "validation_failed"` and a `validation_errors` map keyed by the offending field (`signal_name`, `update_name`, `query_name`, `search_attributes`, `memo`, and so on). Payload-size rejections use `reason: "payload_too_large"` and the `413` status code.
 
+### Native worker-command names and IDs {#native-worker-command-name-limits}
+
+The table lists storage-character bounds. Existing runtime byte guards also
+apply, as explained below. The workflow-ID row is the separate start API
+limit; child-call fields have stricter bounds than other commands.
+
+| Field | Maximum characters | Scope |
+|---|---|---|
+| `workflow_id` | 128 | `POST /api/workflows` |
+| `activity_type` | 191 | Activity commands |
+| `signal_name` | 191 | `open_signal_wait` |
+| `condition_key` / `condition_definition_fingerprint` | 191 | `open_condition_wait` |
+| `connection` | 255 | Worker commands |
+| `queue` | 255 | Worker commands except `start_child_workflow` |
+| `workflow_type` | 255 | `continue_as_new` |
+| `workflow_type` / `queue` | 191 | `start_child_workflow` |
+
+Native 3.8.0 and the corrected source also retain UTF-8 byte checks.
+`activity_type`, `open_signal_wait.signal_name`, an explicit
+`schedule_activity.queue`, and `continue_as_new.workflow_type` / `queue`
+use a 255-byte parser ceiling (`422 invalid_request`). Child `workflow_type`
+and `queue` have an additional 191-byte guard that can return
+`422 unsupported_child_options`. For example, an activity type containing
+128 copies of `é` is 256 bytes and is refused despite having only 128
+characters. The new character checks do not remove these byte guards.
+
+Native Server 3.8.0 does not consistently validate these command-name bounds
+before writes. SQLite can silently store over-long names; other backends can
+return database errors. The [source correction](https://github.com/durable-workflow/server/pull/1186)
+adds field-specific `422` refusals before writes, such as
+`commands.0.activity_type`, but awaits a qualified published Server release.
+The selected stable remains 3.8.0. Review existing activity types and signal
+waits longer than 191 characters before upgrading to that corrected release:
+new commands using those names will be refused. The remaining identifier
+sweep is tracked in [Server #607](https://github.com/durable-workflow/server/issues/607).
+The 256-byte HTTP operation-name ceiling above is a separate boundary.
+
 ### Workflow-task completion size {#workflow-task-completion-size}
 
 On native Server 3.6.0 and later, a request that completes a workflow task
