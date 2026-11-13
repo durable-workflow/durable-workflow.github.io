@@ -125,7 +125,7 @@ The failure row stores `Workflow\V2\Exceptions\WorkflowTimeoutException` as the 
 
 ### Timeout outcome and cleanup
 
-A workflow deadline closes the run with status `failed` and
+With the default hard-timeout policy, a workflow deadline closes the run with status `failed` and
 `closed_reason = timed_out`. `WorkflowTimedOut` is the terminal history event.
 The runtime records `WorkflowTimeoutException` as failure data. It does **not**
 throw that exception into the workflow body or resume workflow code for cleanup.
@@ -150,6 +150,76 @@ still active. A workflow timeout does not automatically become a cooperative
 cancellation request, and a cancellation shield does not extend an execution
 or run deadline. See [Cancel and Terminate](./cancel-and-terminate.md) and
 [Cooperative Cancellation](../polyglot/cancellation.md).
+
+## Experimental deadline-triggered cleanup {#timeout-cleanup}
+
+**Unreleased experimental embedded support.** This journey targets Workflow
+2.29.0; publication and installed-package qualification are still pending.
+The selected stable release keeps the default hard-timeout behavior above.
+
+Before enabling this option, install the qualified release, run the application
+migrations, and deploy compatible embedded queue workers. The new migration
+adds `workflow_runs.timeout_cleanup_work_deadline_at`; it does not opt existing
+runs in. Do not enable the option before the migration completes.
+
+```bash
+php artisan migrate
+```
+
+Reserve a finite part of the existing hard timeout when starting a run:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
+    $orderId,
+    StartOptions::rejectDuplicate()
+        ->withExecutionTimeout(70)
+        ->withTimeoutCleanup(10),
+);
+```
+
+`timeoutCleanupSeconds:` is the constructor alternative. The allowance must be
+1–86,400 seconds, requires an execution or run timeout, and must be smaller than
+every configured hard timeout. Passing `null` leaves the default policy.
+
+In this example, ordinary work gets 60 seconds and cleanup may use the last
+10 seconds inside the original 70-second hard cap. The allowance never adds
+time after that cap. If both hard deadlines apply, the earlier one bounds
+cleanup. Late detection, retries, worker replacement and lease renewal do not
+refresh any deadline. Continue-as-new and redrive preserve the admitted
+allowance and original execution clocks; each run derives its own run clocks.
+
+At the work deadline, the run enters cleanup once and records
+`WorkflowTimeoutCleanupStarted`. Compatible workflow code receives
+`WorkflowTimeoutCleanupRequested`, a subtype of
+`WorkflowCancellationRequestedException` with cancellation `cause: timeout`.
+Handle that interruption to run registered saga compensation or protected
+cleanup; `compensate()` uses its cancellation shield. The shield does not
+extend the hard cap. See [Sagas](./sagas.md#deadline-driven-compensation).
+
+Cleanup has a separate `timeout_cleanup.outcome`:
+
+| Outcome | Meaning |
+|---|---|
+| `completed` | Workflow cleanup returned or rethrew the timeout interruption before its deadline. A returned value does not become the business result. |
+| `failed` | Cleanup threw another exception; `failure_id` links the cleanup failure. |
+| `expired` | The hard cap arrived before cleanup finished, including when no worker could run it. |
+| `preempted` | Immediate `cancel()` or `terminate()` interrupted cleanup; the corresponding cancellation/termination outcome remains terminal. |
+
+Completed, failed or expired cleanup still ends with business status `failed`,
+`closed_reason = timed_out` and `WorkflowTimedOut`. Successful compensation does
+not turn that timeout into a successful workflow. Inspect describe/run detail
+and the retained history for both the business outcome and cleanup outcome.
+Unavailable or delayed workers cannot guarantee an external cleanup effect;
+keep compensation idempotent and reconcile uncertain effects in your application.
+
+This increment supports embedded queue workers only. Poll-mode and service
+starts refuse the option, and bridge workers cannot claim an opted-in embedded
+run. Native admission and SDK runtime delivery remain pending under
+[Server #1201](https://github.com/durable-workflow/server/issues/1201); parser
+support alone does not implement timeout cleanup.
 
 ## Workflow-task lease {#workflow-task-lease}
 
