@@ -473,7 +473,17 @@ end-to-end rollout walkthrough; the CLI mirrors of these methods are
 `signal_workflow` returns the admission receipt, including its `request_id`.
 `query_workflow` and `WorkflowHandle.query` return a query receipt; read
 `receipt["result"]` for the decoded handler value, including when the handler successfully
-returns `None`. See the [Python client guide](https://python.durable-workflow.com/reference/client/).
+returns `None`. See the [Python query receipt guide](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 fixes valid Avro query results containing bytes. The
+`result_envelope` stays authoritative; only an optional plain JSON projection
+that cannot be encoded is omitted. [Published 2.17.2 / native Server 3.9.1
+installed controls](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320)
+(linux/amd64, SQLite) verify nested-byte and `None` query receipts, cold Worker
+replacement and pending-to-completed-null update reads. Query return shapes
+remain as described above. This patch does not advertise timeout-cleanup or
+parallel-policy capabilities. The earlier 2.17.1 completion-size evidence keeps
+its exact version and experiment scope.
 
 `update_workflow` defaults to `wait_for="accepted"`. Its receipt can have
 `update_status="accepted"` and `result=None`. With `wait_for="completed"`,

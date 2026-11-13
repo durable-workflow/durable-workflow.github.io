@@ -349,7 +349,9 @@ driver = external_storage_driver_from_policy(
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | 已解码工作流输出 | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` 返回包含 `request_id` 的接纳回执。`query_workflow` 和 `WorkflowHandle.query` 返回查询回执；通过 `receipt["result"]` 读取解码后的处理器值，包括成功返回的 `None`。参阅 [Python 客户端指南](https://python.durable-workflow.com/reference/client/)。
+`signal_workflow` 返回包含 `request_id` 的接纳回执。`query_workflow` 和 `WorkflowHandle.query` 返回查询回执；通过 `receipt["result"]` 读取解码后的处理器值，包括成功返回的 `None`。参阅 [Python 客户端指南](https://python.durable-workflow.com/reference/client/#read-a-query-result)。
+
+Python SDK 2.17.2 修复了包含字节的有效 Avro 查询结果。`result_envelope` 仍是权威表示，仅省略无法编码的可选普通 JSON 投影。[已发布 2.17.2 / 原生 Server 3.9.1 的安装后验证](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320)（linux/amd64、SQLite）确认嵌套字节与 `None` 查询回执、Worker 冷替换以及从待完成到完成 null 的更新读取。查询返回形态仍如上所述。此补丁不会通告超时清理或并行策略 capability。此前 2.17.1 的完成大小证据保留其确切版本和实验范围。
 
 `update_workflow` 默认为 `wait_for="accepted"`。其回执可能包含 `update_status="accepted"` 和 `result=None`。使用 `wait_for="completed"` 时，`wait_timeout_seconds` 限制等待时间。等待到期后，回执仍为已接受，并设置 `wait_timed_out=True`。只有 `update_status="completed"` 才表示结果已完成，包括 `None`。请保留 `update_id`，以便[稍后读取结果](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 

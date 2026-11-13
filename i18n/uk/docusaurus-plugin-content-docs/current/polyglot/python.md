@@ -419,7 +419,9 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | декодований результат workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` повертає квитанцію прийняття разом із `request_id`. `query_workflow` і `WorkflowHandle.query` повертають квитанцію запиту; читайте `receipt["result"]` для декодованого значення обробника, навіть коли він успішно повертає `None`. Дивіться [посібник клієнта Python](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` повертає квитанцію прийняття разом із `request_id`. `query_workflow` і `WorkflowHandle.query` повертають квитанцію запиту; читайте `receipt["result"]` для декодованого значення обробника, навіть коли він успішно повертає `None`. Дивіться [посібник клієнта Python](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 виправляє коректні результати Avro-запитів, що містять байти. `result_envelope` залишається авторитетним поданням; пропускається лише необов’язкова проста JSON-проєкція, яку неможливо закодувати. [Перевірки встановленого опублікованого 2.17.2 / нативного Server 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) підтверджують квитанції запитів із вкладеними байтами та `None`, холодну заміну Worker і читання оновлень від очікування до завершеного null. Форма повернення запитів залишається описаною вище. Цей патч не оголошує можливостей очищення після тайм-ауту чи політик паралелізму. Попередні докази розміру завершення для 2.17.1 зберігають точний обсяг версії та експерименту.
 
 `update_workflow` за замовчуванням використовує `wait_for="accepted"`.
 Підтвердження може містити `update_status="accepted"` і `result=None`. З

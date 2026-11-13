@@ -426,7 +426,9 @@ parcours complet. Les équivalents CLI sont `dw task-queue:build-ids`,
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, erreurs d'authentification/serveur |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | sortie de workflow décodée | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` renvoie le reçu d’admission avec son `request_id`. `query_workflow` et `WorkflowHandle.query` renvoient un reçu de requête ; lisez `receipt["result"]` pour la valeur décodée du handler, y compris lorsque celui-ci renvoie `None` avec succès. Voir le [guide du client Python](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` renvoie le reçu d’admission avec son `request_id`. `query_workflow` et `WorkflowHandle.query` renvoient un reçu de requête ; lisez `receipt["result"]` pour la valeur décodée du handler, y compris lorsque celui-ci renvoie `None` avec succès. Voir le [guide du client Python](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Le Python SDK 2.17.2 corrige les résultats Avro valides de requêtes contenant des octets. `result_envelope` reste la représentation de référence ; seule une projection JSON simple facultative impossible à encoder est omise. Les [contrôles sur installation du 2.17.2 publié / Server natif 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) vérifient les reçus de requête avec octets imbriqués et `None`, le remplacement à froid du Worker et les lectures de mise à jour d’attente à un résultat terminé null. La forme des retours de requête reste celle décrite ci-dessus. Ce patch n’annonce aucune capacité de nettoyage après timeout ni de politique de parallélisme. Les preuves antérieures de taille de finalisation de 2.17.1 gardent leur périmètre exact de version et d’expérience.
 
 `update_workflow` utilise `wait_for="accepted"` par défaut. Son accusé peut
 contenir `update_status="accepted"` et `result=None`. Avec

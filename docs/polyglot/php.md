@@ -285,9 +285,23 @@ service-mode bridge, including drain and rollback. Use
 [Deployment Modes](/docs/polyglot/deployment-modes/) for the wider runtime
 boundary comparison.
 
+## Query results with binary values {#query-binary-results}
+
+PHP SDK 3.18.2 fixes query completion for valid Avro results containing nested
+`AvroBinaryValue` bytes. The `result_envelope` remains authoritative. The SDK
+omits only the optional plain `result` projection when it cannot be JSON
+encoded; ordinary JSON-compatible results keep that projection.
+
+[Published PHP 3.18.2 / native Server 3.9.1 installed controls](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312)
+(PHP 8.3.36, linux/amd64, SQLite) verify an actual Worker round-trip for nested
+binary bytes, ordinary JSON, signed zero and `null`, plus workflow completion
+and graceful Worker deregistration. This is a compatible query fix; it does
+not add a capability or establish full request-key or timeout-cleanup support.
+See the [PHP query guide](https://php.durable-workflow.com/build/messages/#register-a-read-only-query).
+
 ## Read an accepted update later {#read-an-update-outcome}
 
-The selected PHP SDK 3.18.1 supports reading a retained update by its stable ID
+The selected PHP SDK %%artifact.publishedPhpSdkVersion%% supports reading a retained update by its stable ID
 without admitting it again. `Client::updateOutcome($workflowId, $updateId)`
 defaults to `waitFor: 'completed'`: pending work throws `UpdateStillPending`;
 a completed result may legitimately be `null`. `updateOutcomeReceipt()` defaults

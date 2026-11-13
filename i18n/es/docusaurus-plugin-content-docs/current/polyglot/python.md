@@ -420,7 +420,9 @@ Los equivalentes CLI son `dw task-queue:build-ids`, `dw task-queue:drain` y
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | salida de workflow decodificada | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` devuelve el recibo de admisión, incluido `request_id`. `query_workflow` y `WorkflowHandle.query` devuelven un recibo de consulta; lea `receipt["result"]` para el valor decodificado del handler, incluso cuando devuelve `None` correctamente. Véase la [guía del cliente Python](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` devuelve el recibo de admisión, incluido `request_id`. `query_workflow` y `WorkflowHandle.query` devuelven un recibo de consulta; lea `receipt["result"]` para el valor decodificado del handler, incluso cuando devuelve `None` correctamente. Véase la [guía del cliente Python](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 corrige resultados Avro válidos de consultas que contienen bytes. `result_envelope` sigue siendo la representación autoritativa; solo se omite una proyección JSON simple opcional que no se pueda codificar. Los [controles instalados de 2.17.2 publicado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) verifican recibos de consulta con bytes anidados y `None`, reemplazo en frío del Worker y lecturas de actualizaciones desde pendientes hasta completadas con null. Las formas de retorno de las consultas siguen siendo las descritas arriba. Este parche no anuncia capacidades de limpieza por timeout ni políticas de paralelismo. La evidencia anterior del tamaño de finalización de 2.17.1 conserva su alcance exacto de versión y experimento.
 
 `update_workflow` usa `wait_for="accepted"` de forma predeterminada. Su recibo
 puede contener `update_status="accepted"` y `result=None`. Con
