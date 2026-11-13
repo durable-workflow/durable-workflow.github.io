@@ -169,6 +169,21 @@ docker compose --env-file durable-workflow.prod.env \
 
 原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
+### 升级到 Server 3.10.0 {#native-schema-upgrade-3-10}
+
+原生 3.10.0 要求从 3.9.x 显式执行增量 schema 升级。
+
+| 后端 | 从 3.9.x 的 schema 迁移 |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+停止所有 Server 副本，保持数据库运行，并备份数据库及外部 payload 存储。选择 3.10.0 镜像，运行一次该镜像的 `schema-upgrade`，然后以同一版本重启所有副本。检查 readiness、报告版本和 Worker 注册。启动不会自动升级旧 schema。更早版本还需执行中间步骤。[已发布的 3.10.0 升级说明](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback)提供 Compose 命令。Worker protocol 1.20 和 control plane 2 不变。
+
+可空的调度摘要不会从旧 action 数组回填。已有调度保持 unavailable，直到负责该数据的状态转换记录有效摘要；参见[调度摘要权威](./polyglot/server-api-reference.md#schedule-dispatch-summary)。MySQL 和 MariaDB 可继续中断的升级；SQLite 和 PostgreSQL 在事务中执行。回退到旧二进制必须恢复升级前的数据库与存储备份。不要让旧二进制使用新 schema。
+
 ### 升级到 Server 3.9.2 {#native-schema-upgrade-3-9}
 
 从 native 3.8.x 或更早版本升级时，所有后端都必须升级 schema。Server 3.9.1 添加空的 `dw_command_intents` 表：

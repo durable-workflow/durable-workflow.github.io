@@ -610,6 +610,20 @@ Worker 应将租约 ID、尝试、任务 ID 和心跳端点视为 Server 签发�
 
 搜索属性名称和类型是命名空间搜索契约的一部分。避免在运维仪表盘或指标标签中使用高基数属性。
 
+### 调度派发摘要的权威 {#schedule-dispatch-summary}
+
+已发布的原生 Server 3.10.0 为调度列表项和 describe 响应添加完整的 `dispatch_summary`，包含 `version: 1`、`state`、`last_outcome`、`buffered_actions_count`。旧 producer 省略该字段；空列表不代表支持。应检查完整字段，而不是根据版本推断。[标签固定的调度契约](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules)定义确切结构。
+
+| 状态 | 最近结果 | 当前缓冲数量 |
+|---|---|---|
+| `known` | 完整记录的派发 | 0 到 9007199254740991 的整数 |
+| `never` | `null`，仅新建时确立 | `0` |
+| `unavailable` | `null`，包括旧数据或无效的已存储权威 | `null` |
+
+已知结果为 `started`、`buffered`、`skipped`、`failed`，保留完整结果 ID、记录时间、原因以及适用的 workflow/run 标识。当前缓冲数量独立：之后清空缓冲仍可保留 buffered 结果而数量为零。最新 workflow 的执行状态也独立；Started 派发可能指向后来 Failed 的 workflow。
+
+每个摘要最多为 4096 个序列化 UTF-8 字节。转换若无法记录完整契约，则存储 unavailable 权威，不截断原因，也不改变调度操作。缺失、null、部分或不支持的数据均不是 v1 权威。有效 unavailable 摘要覆盖旧证据。后续 describe 拥有整个摘要，包括缺失或 null；切勿逐字段与旧列表结果合并。schema 升级不会从旧数组重建权威。有界列表页读取不需要每行单独 describe。这是 producer 行为；Waterline 已发布 consumer 与可见刷新验收仍需单独验证。
+
 ### 计划列表筛选与继续读取 {#schedule-list-filters}
 
 `GET /api/schedules` 读取请求所属的命名空间。[常规发布 PHP Server 的验证](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227)已确认组合筛选和继续读取行为。以下查询参数使用正常的 URL 编码发送：

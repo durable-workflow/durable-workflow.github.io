@@ -135,8 +135,7 @@ Der Stack besteht aus dem nativen Server und MySQL. Compose verweigert den Start
 `DW_AUTH_TOKEN` nicht gesetzt ist. Der [Bereitstellungsleitfaden](/docs/deployment#single-node-production)
 behandelt die Produktions-Env-Datei, Sicherungen und Upgrades.
 
-Upgrades von native 3.8.x oder früher auf 3.9.2 benötigen vor dem Neustart das [explizite Schema-Upgrade](../deployment.md#native-schema-upgrade-3-9).
-Von 3.9.0 oder 3.9.1 ist kein zusätzlicher Schemaschritt nötig; führen Sie dieselben Backup-, Neustart- und Readiness-Prüfungen aus.
+Ein Upgrade auf native 3.10.0, auch von 3.9.x, erfordert vor dem Neustart das [explizite Schema-Upgrade](../deployment.md#native-schema-upgrade-3-10). Ältere Versionen benötigen auch ihre Zwischenschritte. Sichern Sie Datenbank und externen Payload-Speicher; ein Rollback stellt diese Sicherung wieder her.
 
 ### Ports {#ports}
 

@@ -849,6 +849,37 @@ Search attribute names and types are part of the namespace search contract.
 Avoid using high-cardinality attributes for operator dashboards or metric
 labels.
 
+### Schedule dispatch-summary authority {#schedule-dispatch-summary}
+
+Published native Server 3.10.0 adds a complete `dispatch_summary` with
+`version: 1`, `state`, `last_outcome` and `buffered_actions_count` to schedule
+list items and describe responses. Older producers omit it; an empty list
+does not establish support. Inspect the complete field rather than infer
+support from a version. The [tagged schedule contract](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules)
+defines the exact shape.
+
+| State | Last outcome | Current buffer count |
+|---|---|---|
+| `known` | Complete recorded dispatch | Integer from 0 through 9007199254740991 |
+| `never` | `null`, established only by new creation | `0` |
+| `unavailable` | `null`, including legacy or invalid stored authority | `null` |
+
+Known outcomes are `started`, `buffered`, `skipped` or `failed`, with the
+complete outcome ID, recording time, reason and applicable workflow/run
+identities. The current buffer count is separate: a later drain can leave a
+recorded buffered outcome with count zero. The latest workflow's execution
+status is also separate; a Started dispatch may point to a workflow that later Failed.
+
+Each summary is bounded to 4096 serialized UTF-8 bytes. A transition that
+cannot record the complete contract stores unavailable authority, without
+truncating its reason or changing the scheduling operation. Absent, null,
+partial or unsupported data is not v1 authority. A valid unavailable summary
+overrides legacy evidence. A later describe owns the whole summary, including
+absence or null; never merge it field by field with an older list result.
+Schema upgrades do not reconstruct authority from legacy arrays. The bounded
+list-page read needs no per-row describe requests. This is producer behavior;
+Waterline's published consumer and visible-refresh acceptance remain separately qualified.
+
 ### Schedule list filters and continuation {#schedule-list-filters}
 
 `GET /api/schedules` reads the request namespace. The [normal published PHP Server qualification](https://github.com/durable-workflow/durable-workflow.github.io/issues/402#issuecomment-6370122227) verifies combined filters and continuation. Send the following query parameters, with normal URL encoding:

@@ -269,6 +269,21 @@ pendant que tous les Servers sont arrêtés. La référence Server conserve les
 exemples Compose actuels au niveau des commandes dans la section
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
+### Mise à niveau vers Server 3.10.0 {#native-schema-upgrade-3-10}
+
+Le runtime natif 3.10.0 exige une mise à niveau additive explicite du schéma depuis 3.9.x.
+
+| Backend | Transition du schéma depuis 3.9.x |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+Arrêtez toutes les répliques du Server, laissez la base active et sauvegardez la base ainsi que le stockage des payloads externes. Sélectionnez l’image 3.10.0 et exécutez son `schema-upgrade` une fois avant de redémarrer toutes les répliques sur la même version. Vérifiez readiness, version annoncée et enregistrement des Workers. Le démarrage ne met pas automatiquement à niveau un ancien schéma. Les versions antérieures exigent aussi les étapes intermédiaires. Les [instructions publiées pour 3.10.0](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback) donnent les commandes Compose. Le protocole Worker 1.20 et le plan de contrôle 2 restent inchangés.
+
+Le résumé nullable de la programmation n’est pas rempli à partir des anciens tableaux d’actions. Les programmations existantes restent indisponibles jusqu’à ce qu’une transition responsable enregistre un résumé valide ; voir [l’autorité du résumé de dispatch](./polyglot/server-api-reference.md#schedule-dispatch-summary). MySQL et MariaDB reprennent les mises à niveau interrompues ; SQLite et PostgreSQL appliquent l’étape dans une transaction. Revenir à un ancien binaire exige de restaurer la sauvegarde préalable de base et de stockage. N’exécutez pas un ancien binaire sur le nouveau schéma.
+
 ### Mise à niveau vers Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Passer de native 3.8.x ou antérieur exige une mise à niveau du schéma sur chaque backend. Server 3.9.1 ajoute la table vide `dw_command_intents` :
