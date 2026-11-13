@@ -23,6 +23,8 @@ templates, reviewing production configuration, or migrating older
 is the native 3.x Server; [Native Server 3.x](#native-server-3x) lists which
 settings it honors, ignores or refuses. PHP Server 2.x is frozen at 2.11.8.
 
+PHP Server 2.11.8 remains unpatched for the November Laravel advisories. Follow the [conditional exposure and ingress/signed-link actions](./server.md#retired-php-server-security) for an existing pinned deployment; changing these settings does not patch the image.
+
 The PHP 2.x server also consumes ordinary Laravel runtime settings such as
 `DB_*`, `REDIS_*`, `QUEUE_CONNECTION`, and `CACHE_STORE`. Those runtime
 infrastructure variables are listed separately because they are deployment
