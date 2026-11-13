@@ -18,6 +18,8 @@ keywords:
 
 本页说明 Durable Workflow Server 镜像面向运维人员的 `DW_*` 环境变量契约。构建部署模板、检查生产配置，或将旧的 `WORKFLOW_*` / `ACTIVITY_*` 名称迁移到 v2 Server 契约时，请参考本页。当前 Server 是原生 3.x Server；[原生 Server 3.x](#native-server-3x) 列出它遵循、忽略或拒绝的设置。PHP Server 2.x 已冻结在 2.11.8。
 
+PHP Server 2.11.8 仍未修补 11 月的 Laravel 安全公告问题。现有固定版本部署应遵循[有条件的暴露说明及 ingress/签名链接措施](./server.md#retired-php-server-security)；更改这些设置不会修补镜像。
+
 PHP 2.x Server 还使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_*`、`QUEUE_CONNECTION` 和 `CACHE_STORE`。这些变量属于部署基础设施，并非 Durable Workflow API 控制项，因此单独列出。
 
 ## 原生 Server 3.x {#native-server-3x}

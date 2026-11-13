@@ -18,6 +18,8 @@ keywords:
 
 Esta página documenta o contrato das variáveis de ambiente `DW_*` da imagem do Durable Workflow Server para operadores. Use-a ao criar modelos de implantação, revisar a configuração de produção ou migrar os nomes antigos `WORKFLOW_*` / `ACTIVITY_*` para o contrato v2 do Server. O Server atual é o Server nativo 3.x; [Server nativo 3.x](#native-server-3x) indica quais configurações ele respeita, ignora ou recusa. O PHP Server 2.x está congelado na versão 2.11.8.
 
+O PHP Server 2.11.8 continua sem correção para os avisos Laravel de novembro. Siga as [condições de exposição e ações de ingress/links assinados](./server.md#retired-php-server-security) para uma implantação fixada existente; alterar essas configurações não corrige a imagem.
+
 O PHP Server 2.x também utiliza as configurações comuns do Laravel, como `DB_*`, `REDIS_*`, `QUEUE_CONNECTION` e `CACHE_STORE`. Essas variáveis de infraestrutura são listadas separadamente porque conectam os componentes da implantação e não controlam a API do Durable Workflow.
 
 ## Server nativo 3.x {#native-server-3x}

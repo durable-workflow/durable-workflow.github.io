@@ -247,6 +247,8 @@ Durable Workflow の各公開インターフェースは、次の安定性レベ
 
 選択した Server はネイティブ 3.x Server です。PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。既存の PHP インストールは、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従って `upgrade-takeover` でネイティブへ移行できます。テイクオーバーは、手順書に記載された範囲内で、公開済みの 3.0.4 イメージで適格性が確認されています。一方向の操作であり、事前のバックアップが前提です。
 
+PHP Server 2.11.8 は11月の Laravel アドバイザリに対して未修正です。既存の固定バージョン環境では[条件付きの露出と廃止の対策](./polyglot/server.md#retired-php-server-security)に従ってください。過去の takeover 実証の制限は変わりません。
+
 Helm チャートに記録された `appVersion` は `%%artifact.helmChartAppVersion%%` で、選択した Server と一致し、チャートは既定でネイティブ Server を実行します。[公開済みのリリース記録](%%artifact.helmChartQualificationUrl%%)には、チャートのリリース実行、OCI/パッケージのダイジェスト、ソース識別子、その実行内での kind へのインストールが記録されています。本番クラスターでの適格性確認ではありません。インストールやイメージの上書き前に、[チャートの選択とアップグレード](./deployment.md#helm-chart-selection)を確認してください。
 
 

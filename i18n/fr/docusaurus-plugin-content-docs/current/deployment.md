@@ -38,6 +38,8 @@ worker de file, ni ordonnanceur, ni Redis. PHP Server 2.x est figé à la versio
 
 :::note Installations PHP Server 2.x existantes
 
+PHP Server 2.11.8 est retiré et non corrigé pour les avis Laravel de novembre. Pour les déploiements PHP épinglés, suivez les [conditions d’exposition et actions ingress/liens signés](./polyglot/server.md#retired-php-server-security) avant d’utiliser les anciennes recettes ci-dessous.
+
 La pile PHP 2.x (serveur, worker de file, ordonnanceur, job d'initialisation et
 Redis) reste disponible. Au tag de publication 2.11.8, il s'agit de
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml) ;

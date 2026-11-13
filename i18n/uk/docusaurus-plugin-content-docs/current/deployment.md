@@ -38,6 +38,8 @@ Cloud натомість містить Managed Waterline для свого ке
 
 :::note Наявні встановлення PHP Server 2.x
 
+PHP Server 2.11.8 виведено з підтримки й не виправлено щодо листопадових рекомендацій Laravel. Для встановлень PHP із зафіксованою версією виконайте [дії щодо умовної експозиції, ingress і підписаних посилань](./polyglot/server.md#retired-php-server-security), перш ніж використовувати старі рецепти нижче.
+
 Стек PHP 2.x (server, worker черги, планувальник, Job початкового налаштування
 та Redis) залишається доступним. У тегу випуску 2.11.8 це
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);

@@ -245,6 +245,8 @@ Die Tabelle zeigt die für diese Dokumentation geprüfte stabile Kombination aus
 
 Der ausgewählte Server ist der native Server 3.x. Der PHP-Server 2.x ist bei 2.11.8 eingefroren und erhält keine weiteren Veröffentlichungen; bestehende PHP-Installationen können mit `upgrade-takeover` auf den nativen Server wechseln; folgen Sie dazu dem [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%). Die Übernahme ist auf dem veröffentlichten 3.0.4-Image innerhalb des im Runbook angegebenen Umfangs qualifiziert; sie ist einseitig und erfordert vorab eine Sicherung.
 
+PHP Server 2.11.8 bleibt für die Laravel-Sicherheitshinweise vom November ungepatcht. Bestehende fest gepinnte Deployments müssen die [Bedingungen und Stilllegungsmaßnahmen](./polyglot/server.md#retired-php-server-security) beachten; die historischen Takeover-Nachweise behalten ihre ursprünglichen Grenzen.
+
 Die aufgezeichnete `appVersion` des Helm-Charts ist `%%artifact.helmChartAppVersion%%` und entspricht dem ausgewählten Server; das Chart betreibt standardmäßig den nativen Server. Sein [veröffentlichter Release-Bericht](%%artifact.helmChartQualificationUrl%%) dokumentiert den Release-Lauf des Charts, OCI-/Paket-Digests, die Quellidentität und eine kind-Installation in diesem Lauf; er ist keine Qualifizierung für einen Produktionscluster. Lesen Sie vor der Installation oder einem Image-Override die [Chart-Auswahl und Upgrade-Hinweise](./deployment.md#helm-chart-selection).
 
 
