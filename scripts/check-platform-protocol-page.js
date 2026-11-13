@@ -18,13 +18,12 @@ const pagePath = path.join(
   repoRoot,
   'build',
   'docs',
-  '2.0',
   'platform-protocol-specs',
   'index.html',
 );
 const llmPaths = [
+  path.join(repoRoot, 'build', 'llms-full.txt'),
   path.join(repoRoot, 'build', 'llms-full-2.0.txt'),
-  path.join(repoRoot, 'build', '2.0', 'llms-full.txt'),
 ];
 
 function read(filePath) {
@@ -198,7 +197,7 @@ function assertRenderedPage() {
     .map(match => parseAttributes(match[1]))
     .find(attributes => attributes['data-platform-protocol-catalog']);
   if (!root) {
-    throw new Error('Rendered 2.0 protocol page is missing its catalog root');
+    throw new Error('Rendered protocol page is missing its catalog root');
   }
   assertEqual(
     root['data-platform-protocol-catalog'],
@@ -266,7 +265,7 @@ function assertModelRetrievalSurfaces() {
 function main() {
   assertRenderedPage();
   assertModelRetrievalSurfaces();
-  console.log('Rendered 2.0 protocol page and model-retrieval catalog data are aligned.');
+  console.log('Rendered protocol page and model-retrieval catalog data are aligned.');
 }
 
 if (require.main === module) {
