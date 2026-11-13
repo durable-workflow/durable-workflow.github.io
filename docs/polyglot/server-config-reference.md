@@ -92,8 +92,16 @@ Readiness also returns 503 while database health can remain 200. The
 [published 3.9.1 file-consumer controls](https://github.com/durable-workflow/server/issues/951#issuecomment-6853859351)
 verify these cases and recovery after atomic file replacement. They do not
 qualify physical quota measurement or a production Cloud mapping. This is
-admission control, not a write fence or byte reservation. Owner-UID hardening
-and draining completion-upload work remain separate from this published scope.
+admission control, not a write fence or byte reservation.
+
+Native 3.9.2 additionally requires the already-opened observation descriptor to
+belong to root or the effective Server UID. A foreign owner fails closed as
+`storage_admission_unavailable`; the owner/type/mode/content checks use the same
+descriptor. Operators must still provide trusted ancestors and the intended
+read-only container mapping: the runtime does not enforce ancestor ownership.
+The [published 3.9.2 correction](https://github.com/durable-workflow/server/releases/tag/3.9.2#storage-admission-observation-ownership)
+does not establish physical collector or Cloud adoption acceptance and adds no
+draining completion-upload allowance.
 
 Native has no server-side task-queue lease or dispatch caps, budget groups,
 namespace request admission, namespace durable-state quotas or held-poll caps,
@@ -380,11 +388,23 @@ listed in its [implementation notes](#native-server-3x). On native 3.8.0,
 workflow-task completions, rejecting nonempty bodies. Its operation-name
 ceiling is fixed at 256 bytes.
 
-Native 3.9.1 still applies a 255-byte UTF-8 check to signal `request_id`.
-A 255-character multibyte key can therefore return `422 invalid_request_id`.
-The [installed CLI qualification](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)
-tracks this published limitation; it does not establish full request-key
-acceptance under shared #216.
+Native 3.9.2 applies the existing 255 Unicode code-point limit to signal and
+update command keys throughout admission. A 255-character multibyte
+`request_id` is accepted; 256 characters are refused without admission. This
+corrects the [3.9.1 UTF-8 byte-count refusal](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056).
+Use the body `request_id` as the retry key; the HTTP `X-Request-Id` header is
+not a command key.
+
+Fresh keyed signal and accepted update receipts in 3.9.2 echo the literal
+`request_id` with `retained:false` and `intent_verified:true`. Retained receipts
+echo that key with `retained:true` and preserve the original command, run and
+update identities. Modern intent proof reports `intent_verified:true`;
+compatible pre-intent legacy readback reports `intent_verified:false`.
+Unkeyed and bridge receipts keep their existing behavior. The
+[published correction](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)
+does not establish every installed client cohort under
+[shared #216](https://github.com/durable-workflow/.github/issues/216); earlier
+3.9.1 failures must be rerun on the exact corrected tuple.
 
 The currently-configured values are published under `limits` on the `GET /api/cluster/info` response, so clients can discover them at runtime:
 

@@ -124,7 +124,8 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 El conjunto contiene el Server nativo y MySQL. Compose se niega a arrancar hasta que se defina `DW_AUTH_TOKEN`. La [guía de despliegue](/docs/deployment#single-node-production) cubre el archivo de entorno de producción, las copias de seguridad y las actualizaciones.
 
-Actualizar desde native 3.8.x o anterior a 3.9.1 exige la [actualización explícita del esquema](../deployment.md#native-schema-upgrade-3-9) antes de reiniciar.
+Actualizar desde native 3.8.x o anterior a 3.9.2 exige la [actualización explícita del esquema](../deployment.md#native-schema-upgrade-3-9) antes de reiniciar.
+Desde 3.9.0 o 3.9.1 no hace falta otro paso de esquema; siga las mismas comprobaciones de copia, reinicio y readiness.
 
 ### Puertos {#ports}
 
