@@ -32,7 +32,7 @@
   "failures-and-recovery.md": "a240727af9539cca9cceb6ab3ddea545c95f21402813365442929ea05c09e70c",
   "features/activity-execution-model.md": "e8c37520ae46a7efb30438f4fc06bf893c1df430cb1f92c48963697adaf09082",
   "features/cancel-and-terminate.md": "cedd1e6c51dfa551e00edc1d39739ff1f67d558d2a0be92143f478cb6111536b",
-  "features/child-workflows.md": "278b634b8b48b94203309cdba27d6116897a2919cab19628add8cd85dadb08d3",
+  "features/child-workflows.md": "30dd8e1a131654d6320641446b6bd661f27cd591353a60d007574955749cf8fb",
   "features/concurrency.md": "a7a3eb2274f7b14faf722494569b7663c07ab48afdf2e9225e58914b84cacbb4",
   "features/condition-waits.md": "451261eda990c9591a0db69839d872184b5c64da6b537a582133095b8d4b599e",
   "features/continue-as-new.md": "a5309192c685abeb5295071d423824ae2287e68d247a6661f18d3ab21f9bdc9c",

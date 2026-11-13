@@ -78,6 +78,17 @@ La forma exclusiva de hijos sigue siendo útil cuando todos los miembros paralel
 
 Para combinar hijos y actividades en el mismo paso de reunión, usa una barrera mixta `all([...])`. Las esperas comparten `parallel_group_id` y Waterline la etiqueta `parallel_group_kind = mixed`. Si un subgrupo mixto o de hijos está dentro de otro `all([...])`, el grupo más interno determina `parallel_group_id` y `parallel_group_path` conserva la ruta completa de fuera hacia dentro.
 
+### Coste de una ramificación amplia {#fan-out-cost}
+
+Cada cierre de un hijo bloquea la ejecución padre mientras registra el resultado del hijo, comprueba la barrera del grupo y actualiza las proyecciones del padre. Desde Workflow 2.27, ese trabajo ya no crece con el número de hermanos: un cierre no lee el historial de ningún otro hijo y ejecuta un número fijo de consultas. Los cierres de los hijos de un mismo padre siguen turnándose en el bloqueo del padre, y el padre no puede ejecutar su propia tarea de workflow mientras un cierre lo mantiene.
+
+Antes de 2.27, cada cierre también volvía a leer el historial y la ejecución de cada hermano, así que cerrar todos los hijos de una ramificación amplia costaba un trabajo que crecía con el cuadrado del número de hijos.
+
+Para ramificaciones de cientos de hijos, o cercanas al límite predeterminado de 1000 hijos pendientes (`pending_child_count`, consulta [Límites estructurales](../constraints/structural-limits.md)), divide el trabajo:
+
+- **Lotes:** inicia un grupo de hijos, espéralo con `all([...])` y luego inicia el siguiente grupo.
+- **Un árbol:** deja que cada hijo inicie sus propios hijos, para que ningún padre supervise más de unos cientos a la vez.
+
 ## Contrato de identidad {#identity-contract}
 
 - `child()->id()` y `target_name` en Waterline son el id de instancia del hijo, estable a lo largo de su cadena de ejecuciones.

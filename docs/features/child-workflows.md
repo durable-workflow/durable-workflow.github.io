@@ -81,6 +81,17 @@ That child-only form is still useful when every parallel member is a child workf
 
 If you need to combine child workflows with activities in the same fan-in step, use one mixed `all([...])` barrier instead. The child waits and activity waits share the same `parallel_group_id`, and Waterline labels that shared barrier as `parallel_group_kind = mixed`. If one mixed or child-only subgroup sits inside a larger `all([...])`, the innermost group still drives `parallel_group_id` while `parallel_group_path` preserves the full outer-to-inner path.
 
+### Cost of wide fan-out {#fan-out-cost}
+
+Each child close locks the parent run while it records the child's outcome, checks the group barrier and updates the parent's projections. In Workflow 2.27 and later, that work doesn't grow with the number of siblings: a close reads no other child's history and runs a fixed number of queries. Closes of one parent's children still take turns on the parent's lock, and the parent can't run its own workflow task while a close holds it.
+
+Before 2.27, each close also re-read every sibling's history and run, so closing all children of a wide fan-out cost work that grew with the square of the number of children.
+
+For fan-outs in the hundreds, or close to the default limit of 1,000 pending children (`pending_child_count`, see [Structural limits](../constraints/structural-limits.md)), split the work:
+
+- **Batches:** start a group of children, wait for it with `all([...])`, then start the next group.
+- **A tree:** let each child start its own children, so no single parent supervises more than a few hundred at once.
+
 ## Identity Contract
 
 - `child()->id()` and Waterline `target_name` refer to the child workflow instance id, which stays stable across that child instance's run chain.

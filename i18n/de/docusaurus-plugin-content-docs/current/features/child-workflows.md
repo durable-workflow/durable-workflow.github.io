@@ -97,6 +97,17 @@ in einer größeren `all([...])`-Gruppe, bestimmt weiterhin die innerste Gruppe
 die `parallel_group_id`. `parallel_group_path` erhält den vollständigen Pfad
 von außen nach innen.
 
+### Kosten breiter Verzweigungen {#fan-out-cost}
+
+Jeder Abschluss eines Kindes sperrt den Elternlauf, während er das Ergebnis des Kindes aufzeichnet, die Gruppenbarriere prüft und die Projektionen des Elternworkflows aktualisiert. Ab Workflow 2.27 wächst dieser Aufwand nicht mehr mit der Zahl der Geschwister: Ein Abschluss liest die Historie keines anderen Kindes und führt eine feste Zahl von Abfragen aus. Abschlüsse der Kinder eines Elternworkflows warten weiterhin nacheinander auf dessen Sperre, und der Elternworkflow kann seinen eigenen Workflow-Task nicht ausführen, solange ein Abschluss sie hält.
+
+Vor 2.27 las jeder Abschluss zusätzlich die Historie und den Lauf jedes Geschwisters erneut. Alle Kinder einer breiten Verzweigung abzuschließen kostete daher Arbeit, die mit dem Quadrat der Kinderzahl wuchs.
+
+Bei Verzweigungen in die Hunderte oder nahe am Standardlimit von 1.000 ausstehenden Kindern (`pending_child_count`, siehe [Strukturelle Grenzen](../constraints/structural-limits.md)) teilen Sie die Arbeit auf:
+
+- **Stapel:** Starten Sie eine Gruppe von Kindern, warten Sie mit `all([...])` auf sie und starten Sie dann die nächste Gruppe.
+- **Ein Baum:** Lassen Sie jedes Kind eigene Kinder starten, sodass kein einzelner Elternworkflow mehr als einige Hundert gleichzeitig beaufsichtigt.
+
 ## Identitätsvertrag {#identity-contract}
 
 - `child()->id()` und Waterlines `target_name` beziehen sich auf die Workflow-Instanz-ID des Kindes, die über dessen Laufkette hinweg stabil bleibt.
