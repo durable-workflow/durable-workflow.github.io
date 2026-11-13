@@ -90,9 +90,7 @@ si la actualización no ha terminado. Un resultado null completado es
 la [API de Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
 para conocer la interfaz de Rust.
 
-Rust SDK 4.15.0 aún aplica el límite habitual de carga a todo el lote de
-comandos. Consulte el [límite conocido del planificador](./server-config-reference.md#rust-completion-planning)
-antes de ejecutar un fan-out grande sin almacenamiento externo de cargas.
+Rust SDK 4.16 usa el presupuesto explícito del Server `limits.max_workflow_task_completion_bytes` para planificar finalizaciones. Los productores antiguos sin ese campo conservan el límite ordinario conservador. Consulte [planificación de finalizaciones](./server-config-reference.md#rust-completion-planning) para el par cualificado con native3.9.1 y los límites de ubicación de payloads.
 
 ## Plazos de espera de condiciones y actualización de workers {#condition-wait-deadlines}
 
@@ -181,11 +179,13 @@ Cada petición, poll o despacho de tarea obtenida incrementa un contador en uno 
 | `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
 | `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
 
-Las claves del cliente son exactamente `method`, `route`, `plane`, `status_code`, `outcome`; las del worker, `task_kind`, `task_queue`, `outcome`. Los patrones revisados de rutas excluyen ID, consultas, payloads y credenciales; rutas desconocidas usan `unknown`. Las colas dependen de la aplicación: use un conjunto acotado, no una por ejecución.
+Para los pares de contador/duración anteriores: Las claves del cliente son exactamente `method`, `route`, `plane`, `status_code`, `outcome`; las del worker, `task_kind`, `task_queue`, `outcome`. Los patrones revisados de rutas excluyen ID, consultas, payloads y credenciales; rutas desconocidas usan `unknown`. Las colas dependen de la aplicación: use un conjunto acotado, no una por ejecución.
 
 Los resultados del cliente incluyen `ok`, `http_error`, `bridge_rejected`, `TransportError`, `TimeoutError`, `SdkError` y `pending` para un future cancelado. `status_code` conserva el estado HTTP decimal observado, o `none`. Los nombres de excepciones Rust no tienen que coincidir con otros SDK.
 
 Una observación del cliente incluye reintentos internos de transporte/storage admission y manejo de respuesta/payload; llamadas separadas de aplicación/worker se observan por separado. El iterador perezoso observa cada página solicitada. Los polls incluyen retry/backoff gestionados y distinguen `task`, `empty`, `backpressure`, `error`. Los resultados de tarea `completed`, `failed`, `expired` describen el despacho, no el estado terminal del workflow. Son observaciones del proceso, no contadores duraderos, unidades facturables ni latencia schedule-to-start; la pérdida abrupta del proceso puede omitir la muestra final.
+
+Rust SDK 4.16 añade el séptimo instrumento, `durable_workflow_worker_task_schedule_to_start_seconds`, solo con las etiquetas `task_kind` y `task_queue`. Registra en segundos el retraso entre elegibilidad y claim medido por el Server cuando el productor anuncia `claimed_task_ready_age` y suministra `ready_age_ms` válido. Los datos ausentes, inválidos o no admitidos no generan muestra; el SDK nunca inventa un cero. Los [controles publicados4.16/native3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) cualifican las siete métricas, ready-age de workflows/actividades y el adaptador Prometheus.
 
 Para el adaptador oficial de Prometheus, active el feature opcional Cargo `metrics-prometheus`. El ejemplo usa la receta publicada de dependencias:
 

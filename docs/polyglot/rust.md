@@ -148,9 +148,11 @@ is `Ok(Value::Null)`. Receipt reads preserve the explicit `update_status`.
 See the [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome)
 for the Rust interface.
 
-Rust SDK 4.15.0 still applies the ordinary payload ceiling to the whole
-command batch. See the [known planner limit](./server-config-reference.md#rust-completion-planning)
-before running a large fan-out without external payload storage.
+Rust SDK 4.16 uses the Server's explicit
+`limits.max_workflow_task_completion_bytes` budget for completion planning.
+Older producers without that field keep the conservative ordinary cap. See
+[completion planning](./server-config-reference.md#rust-completion-planning)
+for the qualified native 3.9.1 tuple and payload-placement limits.
 
 ## Condition wait deadlines and worker upgrades {#condition-wait-deadlines}
 
@@ -235,11 +237,21 @@ Each observed client request, worker poll or claimed-task dispatch increments on
 | `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
 | `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
 
-Client tag keys are exactly `method`, `route`, `plane`, `status_code`, `outcome`; worker keys are `task_kind`, `task_queue`, `outcome`. Reviewed route placeholders omit IDs, query strings, payloads and credentials; unknown paths use `unknown`. Queue names are application-controlled: use a bounded set, not one queue per run.
+For the counter/duration pairs above, client tag keys are exactly `method`, `route`, `plane`, `status_code`, `outcome`; worker keys are `task_kind`, `task_queue`, `outcome`. Reviewed route placeholders omit IDs, query strings, payloads and credentials; unknown paths use `unknown`. Queue names are application-controlled: use a bounded set, not one queue per run.
 
 Client outcomes include `ok`, `http_error`, `bridge_rejected`, `TransportError`, `TimeoutError`, `SdkError` and `pending` for a cancelled future. `status_code` keeps an observed decimal HTTP status, otherwise `none`. Rust exception outcome names need not match another SDK’s names.
 
 One client observation includes internal transport/storage-admission retries and response/payload handling; application/worker-managed calls are separate observations. A lazy iterator observes each fetched page. Worker polls include managed retry/backoff and distinguish `task`, `empty`, `backpressure`, `error`. Task outcomes `completed`, `failed`, `expired` describe dispatch processing, not the workflow’s terminal state. These are process observations, not durable counts, billing units or schedule-to-start latency; abrupt process loss can omit a final sample.
+
+Rust SDK 4.16 adds the seventh instrument,
+`durable_workflow_worker_task_schedule_to_start_seconds`, with only
+`task_kind` and `task_queue` tags. It records Server-measured eligibility-to-claim
+delay in seconds when the producer advertises `claimed_task_ready_age` and
+supplies valid `ready_age_ms`. Missing, invalid or unsupported data produces no
+sample; the SDK never invents a zero. The
+[published 4.16/native 3.9.1 controls](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)
+(linux/amd64, SQLite) qualify all seven metrics, workflow/activity ready-age
+observations and the Prometheus adapter.
 
 For the official Prometheus adapter, enable the optional `metrics-prometheus` Cargo feature. This example uses the exact released dependency recipe:
 

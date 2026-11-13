@@ -334,7 +334,7 @@ SDK のプランナーは、通常の上限より小さくても、公開され�
 
 Python SDK 2.17 と Rust SDK 4.15 には型付き拒否の処理があります。Server 3.8.0 の公開済み Python 検証では HTTP 413 を受け取る前に `httpx.ReadError` が発生し、workflow が保留されました。native 3.9.1 は、残りのアップロードを最大 64 MiB、最大 2 秒間だけ破棄してから元の拒否を返し、接続を閉じることで応答経路を修正します。どちらかの境界を超えるアップロードでは、引き続きトランスポートエラーが起こり得ます。
 
-公開済み Python SDK 2.17.1 と検証済み native Server 3.9.1（linux/amd64、SQLite）は、[実際にインストールした Worker の検証](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)に合格しました。上限内の 300 × 10 KB fan-out、大きすぎる完了に対する型付き 413 が 1 回と構造的失敗が 1 回、部分的な Activity がゼロ、その後の同じ Worker でのタスク成功を確認しています。この特定の Python/Server 組み合わせの検証です。PHP と Rust にはそれぞれのインストール済み検証が必要で、共有 #228 は未完了です。共有 #216 のリクエストキー検証は別です。
+公開済み Python SDK 2.17.1 と検証済み native Server 3.9.1（linux/amd64、SQLite）は、[実際にインストールした Worker の検証](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)に合格しました。上限内の 300 × 10 KB fan-out、大きすぎる完了に対する型付き 413 が 1 回と構造的失敗が 1 回、部分的な Activity がゼロ、その後の同じ Worker でのタスク成功を確認しています。この特定の Python/Server 組み合わせの検証です。PHP には独自のインストール済み検証が必要です。Rust4.16 の検証は下記に示します。共有 #228 は未完了です。共有 #216 のリクエストキー検証は別です。
 
 完了を上限内に収めるには：
 
@@ -344,7 +344,7 @@ Python SDK 2.17 と Rust SDK 4.15 には型付き拒否の処理があります�
 
 #### Rust のコマンド計画 {#rust-completion-planning}
 
-Rust SDK 4.15.0 は、Server のより大きな完了上限より先に、通常のペイロード上限をコマンド計画全体の上限として適用します（既定は 2 MiB）。名前空間に外部ペイロードストレージがない場合、公開済みの 300 × 10 KB ファンアウトは `external_payload_unavailable` で拒否され、Worker が終了し、実行は保留中のままになります。[SDK の集約計画の修正](https://github.com/durable-workflow/sdk-rust/issues/254)が完了するまでは、小さなコマンドバッチを使ってください。この SDK の経路は、Server のより大きな上限にはまだ対応していません。
+Rust SDK 4.16 は producer が広告した明示的な正の完了予算を使います。[公開済み4.16/native3.9.1 の検証](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）は、外部ストレージなしの 300 × 10 KB inline fan-out、部分的な Activity ゼロで構造的に失敗する上限超過の 60 × 450 KB バッチ、その後の同じ Worker でのタスク成功を確認しています。明示的なフィールドがなければ、古い producer は保守的な通常の上限を維持します。予算が増えても、アップロードや参照配置の追加権限は得られず、Activity continuation のコマンド引数は inline のままです。この検証は共有 #216 のキー付き再試行や native のタイムアウト清理を確認するものではありません。
 
 ## Docker の初期化と出所情報 {#docker-bootstrap-and-provenance}
 

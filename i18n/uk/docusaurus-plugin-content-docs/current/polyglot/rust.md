@@ -141,9 +141,7 @@ Rust SDK 4.15 додає `Client::update_outcome` і
 null має вигляд `Ok(Value::Null)`. Підтвердження зберігають явний `update_status`.
 Інтерфейс Rust описано в [API Client](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome).
 
-Rust SDK 4.15.0 ще застосовує звичайну межу payload до всього пакета команд.
-Див. [відоме обмеження планувальника](./server-config-reference.md#rust-completion-planning)
-перед великим fan-out без зовнішнього сховища payload.
+Rust SDK 4.16 використовує явний бюджет Server `limits.max_workflow_task_completion_bytes` для планування завершень. Старіші producer без цього поля зберігають консервативну звичайну межу. Дивіться [планування завершень](./server-config-reference.md#rust-completion-planning) щодо кваліфікованої пари з native3.9.1 та меж розміщення payload.
 
 ## Строки очікування умови та оновлення worker {#condition-wait-deadlines}
 
@@ -231,11 +229,13 @@ Ok(())
 | `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
 | `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
 
-Ключі тегів клієнта — саме `method`, `route`, `plane`, `status_code`, `outcome`; worker — `task_kind`, `task_queue`, `outcome`. Перевірені шаблони маршрутів не містять ID, query string, payload чи credentials; невідомі шляхи мають `unknown`. Назви черг задає застосунок: використовуйте обмежений набір, а не чергу на кожен запуск.
+Для наведених пар лічильник/тривалість: Ключі тегів клієнта — саме `method`, `route`, `plane`, `status_code`, `outcome`; worker — `task_kind`, `task_queue`, `outcome`. Перевірені шаблони маршрутів не містять ID, query string, payload чи credentials; невідомі шляхи мають `unknown`. Назви черг задає застосунок: використовуйте обмежений набір, а не чергу на кожен запуск.
 
 Результати клієнта включають `ok`, `http_error`, `bridge_rejected`, `TransportError`, `TimeoutError`, `SdkError` і `pending` для скасованого future. `status_code` зберігає спостережений десятковий HTTP-статус, інакше `none`. Назви результатів винятків Rust не обов’язково збігаються з іншими SDK.
 
 Одне клієнтське спостереження включає внутрішні повтори транспорту/storage admission та обробку відповіді/payload; окремі виклики застосунку чи worker рахуються окремо. Лінивий ітератор спостерігає кожну отриману сторінку. Poll worker включає керовані retry/backoff і розрізняє `task`, `empty`, `backpressure`, `error`. Результати task `completed`, `failed`, `expired` описують обробку dispatch, а не завершення workflow. Це спостереження процесу, не durable-лічильники, одиниці оплати чи schedule-to-start latency; аварійна втрата процесу може втратити останній зразок.
+
+Rust SDK 4.16 додає сьомий інструмент `durable_workflow_worker_task_schedule_to_start_seconds` лише з тегами `task_kind` і `task_queue`. Він записує в секундах виміряну Server затримку від готовності до claim, коли producer оголошує `claimed_task_ready_age` і надає коректний `ready_age_ms`. Відсутні, некоректні чи непідтримувані дані не дають зразка; SDK ніколи не вигадує нуль. [Опубліковані контролі4.16/native3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) кваліфікують усі сім метрик, ready-age workflow/активностей і адаптер Prometheus.
 
 Для офіційного Prometheus adapter увімкніть необов’язковий Cargo feature `metrics-prometheus`. Цей приклад використовує опублікований рецепт залежностей:
 

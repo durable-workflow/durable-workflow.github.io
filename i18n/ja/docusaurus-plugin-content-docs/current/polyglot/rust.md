@@ -83,7 +83,7 @@ Server はメジャー `1` 内で Worker プロトコルヘッダーをネゴシ
 
 Rust SDK 4.15 では、受け付け済みの更新を ID で読み取り、再送信を避ける `Client::update_outcome` と `Client::update_outcome_receipt` が追加されました。これらには `capabilities.update_outcome_reads`（native Server 3.6.0 以降）が必要です。`update_outcome` は未完了の更新に対して `Error::UpdateStillPending` を返します。完了した null の結果は `Ok(Value::Null)` です。レシートは明示的な `update_status` を保持します。Rust のインターフェースは [Client API](https://rust.durable-workflow.com/durable_workflow/struct.Client.html#method.update_outcome) を参照してください。
 
-Rust SDK 4.15.0 は、通常のペイロード上限をコマンドバッチ全体に適用します。外部ペイロードストレージなしで大きなファンアウトを実行する前に、[既知の計画上限](./server-config-reference.md#rust-completion-planning)を確認してください。
+Rust SDK 4.16 は Server が明示する `limits.max_workflow_task_completion_bytes` 予算を完了計画に使います。このフィールドがない古い producer では、保守的な通常の上限を維持します。検証済み native3.9.1 との組み合わせと payload 配置の制限は[完了計画](./server-config-reference.md#rust-completion-planning)を参照してください。
 
 ## 条件待機の期限と Worker のアップグレード {#condition-wait-deadlines}
 
@@ -169,11 +169,13 @@ Ok(())
 | `durable_workflow_worker_polls` | `durable_workflow_worker_poll_duration_seconds` |
 | `durable_workflow_worker_tasks` | `durable_workflow_worker_task_duration_seconds` |
 
-クライアントのタグキーは `method`、`route`、`plane`、`status_code`、`outcome`、worker は `task_kind`、`task_queue`、`outcome` のみです。検証済みルートのプレースホルダーは ID、クエリ文字列、payload、資格情報を含まず、不明なパスは `unknown` です。キュー名はアプリが制御し、実行ごとに作らず有限の集合にします。
+上記のカウンターと処理時間の組では、クライアントのタグキーは `method`、`route`、`plane`、`status_code`、`outcome`、worker は `task_kind`、`task_queue`、`outcome` のみです。検証済みルートのプレースホルダーは ID、クエリ文字列、payload、資格情報を含まず、不明なパスは `unknown` です。キュー名はアプリが制御し、実行ごとに作らず有限の集合にします。
 
 クライアントの outcome は `ok`、`http_error`、`bridge_rejected`、`TransportError`、`TimeoutError`、`SdkError` と、キャンセルされた future の `pending` を含みます。`status_code` は観測した10進 HTTP 状態を保持し、なければ `none` です。Rust の例外名は他 SDK と同じとは限りません。
 
 クライアントの1観測には内部 transport/storage admission の再試行と応答/payload 処理を含み、アプリや worker が管理する別呼び出しは別観測です。遅延イテレーターは取得ページごとに観測します。worker poll は管理された retry/backoff を含み、`task`、`empty`、`backpressure`、`error` を区別します。task 結果の `completed`、`failed`、`expired` は処理結果であり workflow の終端状態ではありません。これはプロセス観測で、永続カウント、課金単位、schedule-to-start 遅延ではなく、突然のプロセス喪失で最後のサンプルが失われる場合があります。
+
+Rust SDK 4.16 は 7 番目の計測器 `durable_workflow_worker_task_schedule_to_start_seconds` を追加し、タグは `task_kind` と `task_queue` のみです。producer が `claimed_task_ready_age` を広告し、有効な `ready_age_ms` を返す場合に、Server が計測した実行可能時点から claim までの遅延を秒単位で記録します。データの欠落、不正、非対応時にはサンプルを出さず、ゼロを捏造しません。[公開済み4.16/native3.9.1 の検証](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)（linux/amd64、SQLite）は、7 メトリクスすべて、workflow/Activity の ready-age、Prometheus アダプターを確認しています。
 
 公式 Prometheus adapter には任意の Cargo feature `metrics-prometheus` を有効にします。この例は公開済みの依存関係設定を使います。
 

@@ -359,7 +359,7 @@ Ein größerer Abschluss wird mit `413 payload_too_large` und `limit_kind: workf
 
 Python SDK 2.17 und Rust SDK 4.15 behandeln die typisierte Ablehnung. Auf Server 3.8.0 traf ein veröffentlichter Python-Kontrolllauf vor HTTP 413 auf `httpx.ReadError` und ließ den Workflow offen. Native 3.9.1 korrigiert diesen Antwortpfad durch begrenztes Verwerfen der Anfrage: höchstens 64 MiB verbleibende Upload-Daten und höchstens zwei Sekunden, bevor die ursprüngliche Ablehnung zurückgegeben und die Verbindung geschlossen wird. Außerhalb dieser Grenzen können weiterhin Transportfehler auftreten.
 
-Das veröffentlichte Python SDK 2.17.1 mit qualifiziertem nativem Server 3.9.1 (linux/amd64, SQLite) besteht nun die [Kontrollen mit tatsächlich installiertem Worker](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512): Fan-out von 300 × 10 KB innerhalb der Grenze, genau ein typisiertes 413 und ein struktureller Fehler ohne teilweise gestartete Aktivitäten bei übergroßer Completion, danach eine erfolgreiche Aufgabe auf demselben Worker. Dies qualifiziert genau dieses Python/Server-Paar. PHP und Rust benötigen eigene installierte Akzeptanznachweise; das gemeinsame #228 bleibt offen. Die Request-Key-Akzeptanz unter dem gemeinsamen #216 ist separat.
+Das veröffentlichte Python SDK 2.17.1 mit qualifiziertem nativem Server 3.9.1 (linux/amd64, SQLite) besteht nun die [Kontrollen mit tatsächlich installiertem Worker](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512): Fan-out von 300 × 10 KB innerhalb der Grenze, genau ein typisiertes 413 und ein struktureller Fehler ohne teilweise gestartete Aktivitäten bei übergroßer Completion, danach eine erfolgreiche Aufgabe auf demselben Worker. Dies qualifiziert genau dieses Python/Server-Paar. PHP benötigt einen eigenen installierten Akzeptanznachweis; Rust4.16 ist unten qualifiziert. Das gemeinsame #228 bleibt offen. Die Request-Key-Akzeptanz unter dem gemeinsamen #216 ist separat.
 
 So bleibt ein Abschluss innerhalb der Grenze:
 
@@ -369,14 +369,7 @@ So bleibt ein Abschluss innerhalb der Grenze:
 
 #### Rust-Befehlsplanung {#rust-completion-planning}
 
-Rust SDK 4.15.0 verwendet die gewöhnliche Grenze je Payload weiterhin als
-Gesamtgrenze für die Befehlsplanung (standardmäßig 2 MiB), bevor die höhere
-Completion-Grenze des Servers greift. Ohne externen Payload-Speicher im
-Namespace wird der veröffentlichte Fan-out mit 300 × 10 KB mit
-`external_payload_unavailable` abgelehnt. Der Worker beendet sich und der Lauf
-bleibt ausstehend. Verwenden Sie kleinere Befehlsbatches, solange die
-[Korrektur des SDK-Gesamtplaners](https://github.com/durable-workflow/sdk-rust/issues/254)
-aussteht. Dieser SDK-Pfad unterstützt die höhere Server-Grenze noch nicht.
+Rust SDK 4.16 verwendet das positive explizite Completion-Budget des Producers. Die [Kontrollen mit veröffentlichtem4.16/native3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) bestehen einen Inline-Fan-out von 300 × 10 KB ohne externen Speicher, einen strukturell fehlschlagenden übergroßen Batch von 60 × 450 KB ohne teilweise gestartete Aktivitäten und eine erfolgreiche Folgeaufgabe auf demselben Worker. Fehlt das explizite Feld, behalten ältere Producer die konservative gewöhnliche Grenze. Das größere Budget gewährt keine neue Upload- oder Referenzplatzierungsberechtigung; Argumente von Activity-Continuation-Befehlen bleiben inline. Diese Kontrollen qualifizieren weder Request-Key-Retries unter dem gemeinsamen #216 noch natives Timeout-Cleanup.
 
 ## Docker-Initialisierung und Herkunft {#docker-bootstrap-and-provenance}
 

@@ -472,8 +472,8 @@ Published Python SDK 2.17.1 with qualified native Server 3.9.1
 [actual installed-worker controls](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512):
 300 × 10 KB within-cap fan-out, one typed 413 and one structural failure with
 zero partial activities for an oversized completion, then a successful task on
-the same worker. This qualifies that exact Python/Server tuple. PHP and Rust
-require their own installed acceptance; shared #228 remains open. Request-key
+the same worker. This qualifies that exact Python/Server tuple. PHP requires its own installed
+acceptance; Rust 4.16 is qualified below. Shared #228 remains open. Request-key
 acceptance under shared #216 is separate.
 
 To keep a completion within the limit:
@@ -486,13 +486,15 @@ To keep a completion within the limit:
 
 #### Rust command planning {#rust-completion-planning}
 
-Rust SDK 4.15.0 still uses the ordinary per-payload limit as the aggregate
-command-planning ceiling (2 MiB by default), before the Server's larger
-completion allowance. Without namespace external payload storage, the
-published 300 × 10 KB fan-out is refused with `external_payload_unavailable`;
-the worker exits and the run remains pending. Use smaller command batches
-while the [SDK aggregate planner fix](https://github.com/durable-workflow/sdk-rust/issues/254)
-is pending. This SDK path does not yet implement the larger Server allowance.
+Rust SDK 4.16 uses the positive explicit completion budget advertised by the
+producer. The [published 4.16/native 3.9.1 controls](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671)
+(linux/amd64, SQLite) pass 300 × 10 KB inline fan-out without external storage,
+an oversized 60 × 450 KB batch failing structurally with zero partial activities,
+and a successful follow-up on the same worker. Without the explicit field,
+older producers keep the conservative ordinary cap. The larger budget grants
+no new upload or reference-placement authority; activity-continuation command
+arguments remain inline. These controls do not qualify request-key retries
+under shared #216 or native timeout cleanup.
 
 ## Docker Bootstrap And Provenance
 

@@ -348,7 +348,7 @@ Un achèvement plus grand est refusé avec `413 payload_too_large` et `limit_kin
 
 Python SDK 2.17 et Rust SDK 4.15 gèrent le refus typé. Sur Server 3.8.0, un contrôle Python publié rencontrait `httpx.ReadError` avant HTTP 413 et laissait le workflow en attente. Le runtime natif 3.9.1 corrige cette réponse par une lecture puis un abandon bornés du reste de la requête : au plus 64 MiB pendant deux secondes avant de renvoyer le refus original et fermer la connexion. Au-delà de l’une de ces bornes, des erreurs de transport restent possibles.
 
-Le SDK Python 2.17.1 publié avec le Server natif 3.9.1 qualifié (linux/amd64, SQLite) réussit désormais les [contrôles sur le Worker réellement installé](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512) : fan-out de 300 × 10 KB dans la limite, un seul 413 typé et un seul échec structurel sans activité partielle pour une finalisation trop grande, puis une tâche réussie sur le même Worker. Cela qualifie ce couple exact Python/Server. PHP et Rust nécessitent leurs propres preuves sur installation ; le #228 partagé reste ouvert. L’acceptation des clés de requête du #216 partagé est distincte.
+Le SDK Python 2.17.1 publié avec le Server natif 3.9.1 qualifié (linux/amd64, SQLite) réussit désormais les [contrôles sur le Worker réellement installé](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512) : fan-out de 300 × 10 KB dans la limite, un seul 413 typé et un seul échec structurel sans activité partielle pour une finalisation trop grande, puis une tâche réussie sur le même Worker. Cela qualifie ce couple exact Python/Server. PHP nécessite sa propre preuve sur installation ; Rust4.16 est qualifié ci-dessous. Le #228 partagé reste ouvert. L’acceptation des clés de requête du #216 partagé est distincte.
 
 Pour garder un achèvement sous la limite :
 
@@ -358,14 +358,7 @@ Pour garder un achèvement sous la limite :
 
 #### Planification des commandes Rust {#rust-completion-planning}
 
-Rust SDK 4.15.0 utilise encore la limite ordinaire par charge utile comme
-plafond agrégé de planification des commandes (2 MiB par défaut), avant la
-capacité de complétion supérieure du Server. Sans stockage externe des charges
-utiles dans l'espace de noms, le fan-out publié de 300 × 10 KB est refusé avec
-`external_payload_unavailable`. Le worker s'arrête et l'exécution reste en
-attente. Utilisez des lots plus petits en attendant la
-[correction du planificateur agrégé du SDK](https://github.com/durable-workflow/sdk-rust/issues/254).
-Ce chemin du SDK ne fournit pas encore la capacité supérieure du Server.
+Rust SDK 4.16 utilise le budget de finalisation positif et explicite annoncé par le producteur. Les [contrôles publiés4.16/native3.9.1](https://github.com/durable-workflow/sdk-rust/pull/258#issuecomment-6854288671) (linux/amd64, SQLite) réussissent un fan-out inline de 300 × 10 KB sans stockage externe, un lot trop grand de 60 × 450 KB échouant structurellement sans activité partielle, puis une tâche réussie sur le même Worker. Sans le champ explicite, les anciens producteurs gardent le plafond ordinaire conservateur. Le budget supérieur n’accorde aucun droit supplémentaire de téléversement ou placement de références ; les arguments des commandes de continuation d’activité restent inline. Ces contrôles ne qualifient ni les reprises avec clé du #216 partagé ni le nettoyage natif après timeout.
 
 ## Initialisation Docker et provenance {#docker-bootstrap-and-provenance}
 
