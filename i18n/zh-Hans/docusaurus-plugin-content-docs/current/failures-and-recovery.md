@@ -429,7 +429,7 @@ class RetryableWorkflow extends Workflow
 
 Workflow **2.12.0 及以上**将完整的派生时间线摘要限制为 65,535 个 UTF-8 字节，包括标签、标点、` [truncated]` 标记和回调恢复提示。记录的权威失败、原始类型和不可重试决定保持不变。请检查接收端运行时实际的 `composer.lock`。[正常安装包的验证记录](https://github.com/durable-workflow/workflow/issues/915#issuecomment-6372539577)独立于 SDK 报告上限验证了摘要边界。
 
-SDK 的 62 KiB 报告余量不会修复旧 Core 的摘要写入，也不会消除独立的[权威失败存储上限](https://github.com/durable-workflow/.github/issues/225)。[基于历史的 datetime 修复](./features/search-attributes.md#repair-datetime-search-attributes)同样要求实际安装的 Workflow 2.12.0 及以上。它修复派生搜索行，不修复失败的时间线写入或缺失的权威历史。Server 镜像仍需对其中安装的 Core 和 HTTP/数据库路径独立验证后，才能称为已修复。
+SDK 的 62 KiB 报告余量不会修复旧 Core 的摘要写入。过大的活动失败可以端到端记录（[.github#225](https://github.com/durable-workflow/.github/issues/225)）：服务模式需要 PHP SDK 3.5.0、Python SDK 2.11.0 或 Rust SDK 4.10.1，并配合原生 Server 3.5.0 或 PHP Server 2.11.3 及以上；嵌入模式需要 Workflow 2.13.0 及以上。嵌入模式没有请求上限，因此 Workflow 会完整记录该失败，工作流收到的失败保留原始类型和完整消息。超出 MySQL `TEXT` 容量或包含 NUL 字节的消息会完整保存在新增的 `message_full` 列中；`WorkflowFailure::message`、保留的历史和历史导出返回完整消息，而旧的 `workflow_failures.message` 列和最近失败列表保存带标记的有界预览。Workflow 2.12.0 为时间线摘要设定上限，2.12.2 增加完整消息存储以及在 PostgreSQL 上读取含 NUL 的消息，2.13.0 增加读取被拒结果诊断的有界读取器。升级后请运行包的迁移；它们添加该列，不回填现有行。原生 Server 3.5.0 会记录超过 64 KiB 的失败消息，而早期版本在 MySQL 和 MariaDB 上会以 `503 storage_unavailable` 拒绝：其失败行保留带标记的预览，保留的历史携带完整失败。Waterline 2.16.0 在运行详情中标出每条被缩短的消息。[基于历史的 datetime 修复](./features/search-attributes.md#repair-datetime-search-attributes)同样要求实际安装的 Workflow 2.12.0 及以上。它修复派生搜索行，不修复失败的时间线写入或缺失的权威历史。
 
 ## PHP 服务模式失败报告上限 {#php-failure-report-limits}
 
