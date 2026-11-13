@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Викличний HTTP-транспорт
-description: Налаштування транспорту invocable_http лише для activities, щоб Server міг надсилати орендовані завдання activity до HTTPS-обробника й узгоджувати структурований результат.
+description: Налаштування транспорту invocable_http лише для activities, який зіставляє орендоване завдання activity з HTTPS-обробником і узгоджує структурований результат.
 tags:
   - external-execution
   - invocable-carrier
@@ -25,13 +25,19 @@ keywords:
 `version: 1` та `carrier_type: invocable_http`.
 
 Коли налаштоване зіставлення обробника визначає carrier `invocable_http`,
-Server викликає його endpoint з незалежною від carrier
+Процес carrier викликає його endpoint з незалежною від carrier
 [оболонкою вхідних даних external task](./external-execution.md#published-contract-seams)
 і узгоджує відповідь з
 [оболонкою результату external task](./external-execution.md#published-contract-seams).
 Workflow tasks, порядок signals/updates, replay і зміни історії
 залишаються всередині Server. Carrier лише передає визначені оболонки
 вхідних даних і результатів через межу HTTPS.
+
+:::warning
+
+**Поточне обмеження:** Server не надсилає HTTP-запит сам. Він перевіряє відображення й повертає його у відповіді на poll activity. Процес, який ви запускаєте, має опитувати чергу, викликати endpoint і повідомляти результат. Якщо чергу ніхто не опитує, activity task чекає. Диспетчер на боці Server буде створено, коли він знадобиться користувачам ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
 
 ## Призначення {#what-it-is}
 
@@ -120,7 +126,7 @@ Server перевіряє `target_fields` carrier перед публікаці�
 
 ## Оболонки запиту та відповіді {#request-and-response-envelope}
 
-Server надсилає незалежну від carrier оболонку вхідних даних
+Процес carrier надсилає незалежну від carrier оболонку вхідних даних
 і очікує таку саму незалежну оболонку результату:
 
 | Напрямок | Content type | Schema |

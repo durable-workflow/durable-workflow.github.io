@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: 可调用 HTTP 载体
-description: 配置仅支持活动的 invocable_http 载体，让服务器将已租用活动任务 POST 到 HTTPS 处理器端点，并核对结构化结果。
+description: 配置仅支持活动的 invocable_http 载体，将已租用活动任务映射到 HTTPS 处理器端点，并核对结构化结果。
 tags:
   - external-execution
   - invocable-carrier
@@ -19,7 +19,13 @@ keywords:
 
 可调用 HTTP 载体是[外部执行接口](./external-execution.md)定义的第一个具体载体。它由 `GET /api/cluster/info` 的 `worker_protocol.invocable_carrier_contract` 发布，使用 `schema: durable-workflow.v2.invocable-carrier.contract`、`version: 1` 和 `carrier_type: invocable_http`。
 
-配置的处理器映射解析到 `invocable_http` 载体时，服务器携带与载体无关的[外部任务输入封装](./external-execution.md#published-contract-seams)调用配置的端点，并根据[外部任务结果封装](./external-execution.md#published-contract-seams)核对响应。工作流任务、信号和更新排序、重放及历史变更仍在服务器内进行。载体仅跨 HTTPS 边界传递已声明的输入和结果封装。
+配置的处理器映射解析到 `invocable_http` 载体时，载体进程携带与载体无关的[外部任务输入封装](./external-execution.md#published-contract-seams)调用配置的端点，并根据[外部任务结果封装](./external-execution.md#published-contract-seams)核对响应。工作流任务、信号和更新排序、重放及历史变更仍在服务器内进行。载体仅跨 HTTPS 边界传递已声明的输入和结果封装。
+
+:::warning
+
+**当前限制：** Server 本身不会发送 HTTP 请求。它校验映射，并在 activity 轮询响应中返回该映射。你需要运行一个进程来轮询队列、调用端点并报告结果。如果没有进程轮询该队列，activity 任务会一直等待。等用户需要时，我们再构建 Server 端的分发器（[#527](https://github.com/durable-workflow/server/issues/527)）。
+
+:::
 
 ## 用途 {#what-it-is}
 
@@ -81,7 +87,7 @@ keywords:
 
 ## 请求与响应封装 {#request-and-response-envelope}
 
-服务器发送与载体无关的输入封装，并期望返回与载体无关的结果封装：
+载体进程发送与载体无关的输入封装，并期望返回与载体无关的结果封装：
 
 | 方向 | 内容类型 | Schema |
 | --- | --- | --- |

@@ -76,6 +76,30 @@ DW_ADMIN_SIGNATURE_KEY=admin-signature-secret
 Authentifizierungsgrenze jeder Route und darf niemals außerhalb eines
 vertrauenswürdigen lokalen Netzwerks erreichbar sein.
 
+### Token wegen Leerraum abgelehnt {#token-whitespace}
+
+Native Server ab 3.5.0 startet nicht, wenn `DW_AUTH_TOKEN`,
+`DW_WORKER_TOKEN`, `DW_OPERATOR_TOKEN`, `DW_ADMIN_TOKEN` oder eine ältere
+Tokeneinstellung führenden oder abschließenden Leerraum oder ein Steuerzeichen
+enthält. Die Diagnose nennt die Einstellung und meldet `has leading or trailing whitespace or a control character`.
+Der Tokenwert wird nicht ausgegeben.
+
+Häufig entsteht dies durch ein Kubernetes Secret aus einer Datei mit einem
+abschließenden Zeilenumbruch oder durch `echo` ohne `-n`. Erstellen Sie ein neues
+Secret aus dem vorgesehenen Tokenwert ohne Leerraum und ohne zusätzlichen
+Zeilenumbruch:
+
+```bash
+printf '%s' "$DW_WORKER_TOKEN" | kubectl create secret generic durable-workflow-worker \
+  --from-file=token=/dev/stdin
+```
+
+`printf` entfernt keinen Leerraum, der bereits in der Variablen enthalten ist.
+Korrigieren Sie zuerst den Quellwert, falls er fehlerhaft ist. Aktualisieren Sie
+ein vorhandenes Secret über Ihren Deploymentprozess und starten Sie die
+betroffenen Server- und Worker-Prozesse anschließend neu, damit sie den
+korrigierten Wert laden. Beide Seiten müssen dieselben Tokenbytes verwenden.
+
 ## Signalautorisierung und Zuordnung {#signal-authorization-and-attribution}
 
 Vor der Annahme eines Signals authentifiziert Server die Anfrage und erzwingt

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Transportador HTTP invocable
-description: Configura el transportador invocable_http exclusivo de actividades para que el servidor envíe por POST una tarea con lease a un manejador HTTPS y concilie el resultado estructurado.
+description: Configura el transportador invocable_http exclusivo de actividades, que asigna una tarea con lease a un manejador HTTPS y concilia el resultado estructurado.
 tags:
   - external-execution
   - invocable-carrier
@@ -24,13 +24,19 @@ la [interfaz de ejecución externa](./external-execution.md). Se publica mediant
 `carrier_type: invocable_http`.
 
 Cuando una asignación de manejador configurada se resuelve a un transportador
-`invocable_http`, el servidor invoca el endpoint configurado con el
+`invocable_http`, el proceso transportador invoca el endpoint configurado con el
 [sobre de entrada de tarea externa](./external-execution.md#published-contract-seams)
 independiente del transportador y concilia la respuesta con el
 [sobre de resultado de tarea externa](./external-execution.md#published-contract-seams).
 Las tareas de workflow, el orden de señales/actualizaciones, la reproducción y
 la modificación del historial permanecen en el servidor. El transportador solo
 traslada los sobres declarados de entrada y resultado a través de HTTPS.
+
+:::warning
+
+**Limitación actual:** el Server no envía la solicitud HTTP por sí mismo. Valida la asignación y la devuelve en la respuesta del poll de actividades. Un proceso que usted ejecute debe hacer poll de la cola, llamar al endpoint e informar el resultado. Si nadie hace poll de la cola, la tarea de actividad espera. Se construirá un despachador en el Server cuando los usuarios lo necesiten ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
 
 ## Qué es {#what-it-is}
 
@@ -119,7 +125,7 @@ la amplía, reemplaza ni sustituye.
 
 ## Sobres de solicitud y respuesta {#request-and-response-envelope}
 
-El servidor envía el sobre de entrada independiente del transportador y espera
+El proceso transportador envía el sobre de entrada independiente del transportador y espera
 recibir el sobre de resultado independiente del transportador:
 
 | Sentido | Tipo de contenido | Esquema |

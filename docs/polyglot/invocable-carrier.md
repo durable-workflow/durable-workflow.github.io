@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Invocable HTTP Carrier
-description: Configure the activity-only invocable_http carrier so the server can POST a leased activity task to an HTTPS handler endpoint and reconcile the structured result.
+description: Configure the activity-only invocable_http carrier, which maps a leased activity task to an HTTPS handler endpoint and reconciles the structured result.
 tags:
   - external-execution
   - invocable-carrier
@@ -25,13 +25,19 @@ The invocable HTTP carrier is the first concrete carrier defined under the
 `carrier_type: invocable_http`.
 
 When a configured handler mapping resolves to an `invocable_http` carrier, the
-server invokes the configured endpoint with the carrier-neutral
+configured endpoint is invoked with the carrier-neutral
 [external task input envelope](./external-execution.md#published-contract-seams)
 and reconciles the response against the
 [external task result envelope](./external-execution.md#published-contract-seams).
 Workflow tasks, signal/update ordering, replay, and history mutation stay
 inside the server. The carrier only moves declared input and result envelopes
 across an HTTPS boundary.
+
+:::warning
+
+**Current limitation:** the Server does not send the HTTP request itself. It validates the mapping and returns it on the activity poll response. A process you run must poll the queue, call the endpoint and report the result. If nothing polls the queue, the activity task waits. A Server-side dispatcher will be built when users need it ([#527](https://github.com/durable-workflow/server/issues/527)).
+
+:::
 
 ## What It Is
 
@@ -123,8 +129,8 @@ substitute for it.
 
 ## Request And Response Envelope
 
-The server sends the carrier-neutral input envelope and expects the
-carrier-neutral result envelope back:
+The carrier process sends the carrier-neutral input envelope and expects
+the carrier-neutral result envelope back:
 
 | Direction | Content type | Schema |
 | --- | --- | --- |
