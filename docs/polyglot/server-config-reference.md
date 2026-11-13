@@ -461,9 +461,13 @@ HTTP 413 and left the workflow pending. Native 3.9.1 corrects that response
 path with bounded request discard: at most 64 MiB of remaining upload data for
 at most two seconds before returning the original refusal and closing the
 connection. Uploads beyond either bound may still encounter transport errors.
-Actual installed-SDK within-cap, over-cap and same-worker follow-up acceptance
-remains separately tracked in [shared #228](https://github.com/durable-workflow/.github/issues/228).
-Server publication alone does not qualify those SDK paths.
+Published Python SDK 2.17.1 with qualified native Server 3.9.1 now passes the
+[actual installed-worker controls](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512):
+300 × 10 KB within-cap fan-out, one typed 413 and one structural failure with
+zero partial activities for an oversized completion, then a successful task on
+the same worker. This qualifies that exact Python/Server tuple. PHP and Rust
+require their own installed acceptance; shared #228 remains open. Request-key
+acceptance under shared #216 is separate.
 
 To keep a completion within the limit:
 
