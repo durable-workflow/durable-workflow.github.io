@@ -268,7 +268,7 @@ command-level Compose examples in the
 [Official Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)
 section.
 
-### Upgrading to Server 3.9.1 {#native-schema-upgrade-3-9}
+### Upgrading to Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Upgrading from native 3.8.x or earlier requires a schema upgrade on every
 backend. Server 3.9.1 adds the empty `dw_command_intents` table:
@@ -281,18 +281,22 @@ backend. Server 3.9.1 adds the empty `dw_command_intents` table:
 | MySQL | 14 → 15 |
 
 Stop every Server replica, keep the database running, back up the database and
-Server storage, then select and pull the 3.9.1 image. Run that image's
+Server storage, then select and pull the 3.9.2 image. Run that image's
 `schema-upgrade` once before restarting every replica on the same version.
 Server does not upgrade an existing schema at startup: it refuses an old
 schema with `native_schema_upgrade_required`. Verify readiness, reported
 version and worker registration after restart. The
-[qualified 3.9.1 release instructions](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade)
+[qualified 3.9.2 release instructions](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback)
 provide the source-free Compose commands.
 
 MySQL and MariaDB upgrades resume after interruption; SQLite and PostgreSQL
 apply the step transactionally. Rollback to 3.8.x requires restoring the backup:
 3.8.0 refuses the upgraded database with `native_schema_newer_than_binary`.
-From 3.9.0, no further schema step is needed. From older versions,
+From 3.9.0 or 3.9.1, no further schema step is needed: stop replicas, back up,
+select the new image, restart and verify readiness, version and worker
+registration. Physical schema and existing command/intent rows are unchanged.
+Rollback to 3.9.1 uses the same schema but restores the Unicode-key/receipt
+metadata defects and removes observation-owner hardening. From older versions,
 `schema-upgrade` applies the earlier steps too, including the
 [3.7 JSON rebuild](#native-schema-upgrade-3-7) where applicable. Worker protocol
 1.20 and control plane 2 are unchanged.
