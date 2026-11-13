@@ -267,10 +267,25 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 | `dw task-queue:build-ids <queue>` | 1キューの build-id 別コホートとロールアウト状態を検査。 | `--json` |
 | `dw task-queue:drain <queue>` | コホートをドレイン中として新規クレームを止める。 | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | 以前のドレインを消去して再び新規クレームを可能にする。 | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | 1 つのタスクキューで、再開するまで新しいアクティビティのディスパッチを保留する。 | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | 一時停止中のタスクキューでアクティビティのディスパッチを再開する。 | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | アクティビティのディスパッチが一時停止中かどうかと、誰がいつ、なぜ一時停止または再開したかを表示する。 | `--json` |
 
 タスクキューコマンドは、スロットリング、容量、Worker 不在を診断する推奨運用ビューです。Server 側のフィールドのポリシーは[タスクキューの受け入れ](/docs/polyglot/task-queue-admission)、バージョンなしからバージョン付きへの切り替え、カナリア、ドレイン、ロールバックの全手順は [Worker Build-Id のロールアウト](/docs/polyglot/worker-build-id-rollout)を参照してください。
 
 `dw task-queue:drain` と `dw task-queue:resume` は両方とも、特定ビルドコホートを対象とする `--build-id <value>`、または `build_id` なしで登録した Worker コホートを対象とする `--unversioned` のどちらかが必要です。併用すると不正オプションで早期に失敗します。両コマンドは冪等です。ドレインを繰り返しても `drained_at` はずれず、有効なコホートの再開は何もしません。
+
+`dw task-queue:pause-activities`、`dw task-queue:resume-activities`、`dw task-queue:activity-dispatch`（CLI 2.7.0 以降）は、選択した namespace の 1 つのタスクキューで、アクティビティのディスパッチを一時停止、再開、表示します。たとえば下流サービスの障害中に使います。
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+キューが一時停止中は、そのキューのアクティビティタスクはリースされません。準備済みのタスクは準備済みのまま試行回数を保ち、実行中のアクティビティは完了まで実行され、アクティビティの期限は進み続けるため、schedule-to-start や schedule-to-close のタイムアウトは引き続き発生します。ワークフロータスク、シグナル、クエリ、更新はこれまでどおり配信されます。`--reason` は最大 1000 文字です。一時停止と再開は冪等です。`--json` は Server の `outcome`（`paused`、`already_paused`、`resumed`、`not_paused`）を `activity_dispatch` の状態とともに返します。一時停止はビルド ID のドレインではありません。1 つのビルドの Worker を止めるには `dw task-queue:drain` を使います。
+
+この 3 つのコマンドには、`capabilities.task_queue_activity_dispatch_pause` を通知する Server（native Server 3.8.0 以降）が必要です。それ以外の Server（公開済みの PHP Server 2.x を含む）では、`dw` は要求を送信する前に終了コード `8` で終了します。`dw task-queue:describe` と `dw task-queue:list` は、Server が報告する場合にアクティビティのディスパッチ状態を表示します。
 
 ## Worker プロトコルコマンド {#worker-protocol-commands}
 
@@ -399,6 +414,7 @@ AI クライアントや CI ジョブが文章ドキュメントを解析せず�
 | `5` | リソースが見つからない。 |
 | `6` | Server 側 `5xx` 失敗。 |
 | `7` | タイムアウト。 |
+| `8` | 互換性エラー。コマンドは要求を送信する前に拒否した。 |
 
 サポート用には `dw doctor --output=json`、`dw server:info --output=json`、`dw debug workflow <workflow-id> --output=json` を収集します。
 

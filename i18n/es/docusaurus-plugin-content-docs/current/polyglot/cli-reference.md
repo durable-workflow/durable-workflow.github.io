@@ -267,10 +267,25 @@ Los tokens pertenecen al espacio de nombres y a la selección de filtros. Empiec
 | `dw task-queue:build-ids <queue>` | Inspeccionar estado de cohortes por build id y despliegue de una cola. | `--json` |
 | `dw task-queue:drain <queue>` | Marcar una cohorte como drenando para que deje de reclamar tareas nuevas. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Borrar un drenaje anterior para volver a reclamar tareas. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | Retener el despacho de nuevas actividades en una cola de tareas hasta reanudarlo. | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | Reanudar el despacho de actividades en una cola de tareas pausada. | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | Mostrar si el despacho de actividades está pausado, y quién lo pausó o reanudó, cuándo y por qué. | `--json` |
 
 Los comandos de cola son la vista operativa preferida para diagnosticar limitación, capacidad y ausencia de workers. Consulta [Admisión en colas de tareas](/docs/polyglot/task-queue-admission) para la política del servidor y [Despliegue de workers por build id](/docs/polyglot/worker-build-id-rollout) para transición de sin versión a versionado, canary, drenaje y reversión.
 
 `dw task-queue:drain` y `dw task-queue:resume` requieren `--build-id <value>` para una cohorte concreta o `--unversioned` para workers registrados sin `build_id`. Combinarlos falla de inmediato por opción no válida. Ambos son idempotentes: repetir el drenaje no desplaza `drained_at` y reanudar una cohorte ya activa no cambia nada.
+
+`dw task-queue:pause-activities`, `dw task-queue:resume-activities` y `dw task-queue:activity-dispatch` (CLI 2.7.0 y posteriores) pausan, reanudan y muestran el despacho de actividades en una cola de tareas del namespace seleccionado, por ejemplo durante una caída de un servicio externo:
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+Mientras una cola está pausada, no se concede ningún lease de tarea de actividad en ella. Las tareas listas siguen listas y conservan su número de intentos, las actividades que ya se ejecutan terminan y los plazos de actividad siguen corriendo, así que un timeout schedule-to-start o schedule-to-close sigue disparándose. Las tareas de workflow, señales, consultas y updates se entregan como antes. `--reason` admite hasta 1000 caracteres. Pausar y reanudar son idempotentes: `--json` devuelve el `outcome` del Server (`paused`, `already_paused`, `resumed` o `not_paused`) con el estado `activity_dispatch`. Una pausa no es un drenaje de build-id: para detener los workers de un build, use `dw task-queue:drain`.
+
+Los tres comandos necesitan un Server que anuncie `capabilities.task_queue_activity_dispatch_pause` (Server nativo 3.8.0 o posterior). Con cualquier otro Server, incluido el Server PHP 2.x publicado, `dw` termina con el código `8` antes de enviar la solicitud. `dw task-queue:describe` y `dw task-queue:list` muestran el estado del despacho de actividades cuando el Server lo informa.
 
 ## Comandos del protocolo de workers {#worker-protocol-commands}
 
@@ -399,6 +414,7 @@ Todos los comandos utilizan la política estable documentada en la [guía de CLI
 | `5` | Recurso no encontrado. |
 | `6` | Fallo `5xx` del servidor. |
 | `7` | Tiempo de espera agotado. |
+| `8` | Fallo de compatibilidad: el comando se negó antes de enviar la solicitud. |
 
 Para paquetes de soporte, recopila `dw doctor --output=json`, `dw server:info --output=json` y `dw debug workflow <workflow-id> --output=json`.
 

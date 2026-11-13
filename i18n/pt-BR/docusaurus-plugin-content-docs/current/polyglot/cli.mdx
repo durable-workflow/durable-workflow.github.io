@@ -415,6 +415,7 @@ estendem a partir deles.
 | `5` | `NOT_FOUND` | Recurso não encontrado. Retornado para HTTP `404`. |
 | `6` | `SERVER` | Erro do servidor. Retornado para HTTP `5xx`. |
 | `7` | `TIMEOUT` | A requisição expirou antes da resposta do servidor. Também retornado para HTTP `408`. |
+| `8` | `COMPATIBILITY` | Falha de compatibilidade. A CLI e o Server não conseguem executar o comando com segurança, por exemplo porque o Server não anuncia uma capacidade necessária, então o comando recusou antes de enviar a requisição. |
 
 Exemplo:
 
