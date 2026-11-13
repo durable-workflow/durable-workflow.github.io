@@ -378,6 +378,9 @@ Les jetons appartiennent à l’espace de noms et à la sélection de filtres. R
 | `dw task-queue:build-ids <queue>` | Inspecter l'état des cohortes par build-id et du déploiement d'une file. | `--json` |
 | `dw task-queue:drain <queue>` | Marquer une cohorte build-id en drainage pour arrêter les nouvelles prises de tâches. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Effacer un drainage antérieur pour reprendre les nouvelles prises de tâches. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:pause-activities <queue>` | Suspendre la distribution des nouvelles activités sur une file de tâches jusqu'à sa reprise. | `--reason <text>`, `--json` |
+| `dw task-queue:resume-activities <queue>` | Reprendre la distribution des activités sur une file de tâches suspendue. | `--json` |
+| `dw task-queue:activity-dispatch <queue>` | Indiquer si la distribution des activités est suspendue, et qui l'a suspendue ou reprise, quand et pourquoi. | `--json` |
 
 Les commandes de file de tâches sont la vue opérateur privilégiée pour
 diagnostiquer limitation, capacité et absence de workers. Consultez
@@ -391,6 +394,36 @@ de drainage et de retour arrière.
 workers inscrits sans `build_id`. Les combiner échoue immédiatement avec une
 erreur d'option invalide. Les deux commandes sont idempotentes : les drainages
 répétés ne décalent pas `drained_at`, et réactiver une cohorte déjà active ne fait rien.
+
+`dw task-queue:pause-activities`, `dw task-queue:resume-activities` et
+`dw task-queue:activity-dispatch` (CLI 2.7.0 et versions ultérieures)
+suspendent, reprennent et affichent la distribution des activités sur une file
+de tâches du namespace sélectionné, par exemple pendant une panne d'un système
+en aval :
+
+```bash
+dw task-queue:pause-activities orders --reason='payments vendor outage'
+dw task-queue:activity-dispatch orders
+dw task-queue:resume-activities orders
+```
+
+Tant qu'une file est suspendue, aucune tâche d'activité n'y est louée. Les
+tâches prêtes restent prêtes et conservent leur nombre de tentatives, les
+activités déjà en cours se terminent, et les délais des activités continuent de
+courir : un timeout schedule-to-start ou schedule-to-close se déclenche quand
+même. Les tâches de workflow, signaux, requêtes et updates sont livrés comme
+avant. `--reason` accepte jusqu'à 1000 caractères. La suspension et la reprise
+sont idempotentes : `--json` renvoie l'`outcome` du serveur (`paused`,
+`already_paused`, `resumed` ou `not_paused`) avec l'état `activity_dispatch`.
+Une suspension n'est pas un drainage de build-id : pour arrêter les workers
+d'un build, utilisez `dw task-queue:drain`.
+
+Les trois commandes exigent un serveur qui annonce
+`capabilities.task_queue_activity_dispatch_pause` (Server natif 3.8.0 ou
+ultérieur). Sur tout autre serveur, y compris le Server PHP 2.x publié, `dw`
+se termine avec le code `8` avant d'envoyer la requête.
+`dw task-queue:describe` et `dw task-queue:list` affichent l'état de la
+distribution des activités quand le serveur le communique.
 
 ## Commandes du protocole worker {#worker-protocol-commands}
 
@@ -569,6 +602,7 @@ Toutes les commandes utilisent la politique stable de codes de sortie du
 | `5` | Ressource introuvable. |
 | `6` | Échec `5xx` côté serveur. |
 | `7` | Délai dépassé. |
+| `8` | Échec de compatibilité : la commande a refusé avant d'envoyer la requête. |
 
 Pour les dossiers de support, collectez `dw doctor --output=json`,
 `dw server:info --output=json` et `dw debug workflow <workflow-id> --output=json`.

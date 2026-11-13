@@ -343,6 +343,7 @@ CLI 使用稳定退出码策略，使脚本和 CI 流水线无需解析 stderr �
 | `5` | `NOT_FOUND` | 资源不存在。HTTP `404` 返回此值。 |
 | `6` | `SERVER` | Server 错误。HTTP `5xx` 返回此值。 |
 | `7` | `TIMEOUT` | Server 响应前请求超时。HTTP `408` 也返回此值。 |
+| `8` | `COMPATIBILITY` | 兼容性失败。CLI 和 Server 无法安全运行该命令（例如 Server 未声明所需的能力），因此命令在发送请求之前拒绝。 |
 
 示例：
 
