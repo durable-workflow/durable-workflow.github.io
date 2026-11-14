@@ -502,6 +502,29 @@ historiques ou les mauvaises exécutions :
 
 Les commandes transportent les valeurs métier dans des enveloppes Avro. Les SDK officiels les encodent automatiquement. Un client HTTP direct doit utiliser l’enveloppe `{codec, blob}` de l’encodeur Avro officiel ou la référence du runtime ci-dessous. Le document HTTP extérieur reste JSON ; le JSON métier brut n’est pas un autre codec de charge utile.
 
+### Redrive natif des temporisateurs déclenchés et horloges de relecture {#native-redrive-timers}
+
+:::note Adoption stable et consommateurs installés en attente
+
+L’extension des temporisateurs simples et la correction fractionnaire sont intégrées dans le [code Server 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 dispose d’une image immuable publiée et d’une [qualification producteur/plateforme/corpus/Compose acceptée](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Les alias stables, le GitHub Release final, l’adoption du Chart et les preuves installées des consommateurs applicables restent en attente. Le Server publié sélectionné conserve ses refus de temporisateurs et son écriture d’horloge précédents. La qualification du producteur seule n’établit ni résultat de relecture du SDK installé ni sélection stable.
+
+:::
+
+Pour une exécution par ailleurs admissible ayant échoué dans une activité, le nouveau code accepte un temporisateur simple terminé avant cet échec. Son étape unique doit contenir exactement une paire ordonnée `TimerScheduled` / `TimerFired` avec la même `timer_id` source. Le successeur écrit la paire avec un nouvel ID de temporisateur partagé, ne crée ni ligne ni tâche de temporisateur, et reprend à l’activité échouée sans attendre à nouveau ce temporisateur. L’historique source reste inchangé.
+
+Le `TimerFired` réutilisé nomme le prédécesseur immédiat dans `reused_from_run_id`. Son `reused_recorded_at` conserve l’instant original de l’événement entre redrives répétés. Les activités et marqueurs réutilisés conservent aussi toute la précision fractionnaire disponible lors de la première écriture d’une horloge de repli. L’ancre initiale de relecture vient du début persisté de l’exécution source et passe dans `replayed_started_at` ; les étapes consommées utilisent l’autorité temporelle de leur événement. Les redrives répétés conservent les chaînes d’horloge enregistrées et l’ancre initiale existante. Les fractions omises par un ancien producteur ne peuvent pas être reconstruites. Le format des échéances reste inchangé.
+
+| Refus | Limite du temporisateur conservée par le nouveau code |
+| --- | --- |
+| `unsupported_timer` | Un temporisateur de scope, groupe parallèle, nettoyage d’annulation, condition ou délai de signal sort du périmètre des temporisateurs simples. |
+| `incomplete_timer_step` | Un événement manque, les événements sont inversés ou dupliqués, ou les IDs source manquent, ne sont pas des chaînes ou diffèrent. |
+
+Les temporisateurs annulés restent `unsupported_history`. Collisions d’étapes, trous et frontières d’échec invalides gardent leurs refus explicites. Les limites de définition/empreinte, parent/activité locale, payload externe et upsert dans le code workflow s’appliquent toujours. Ce périmètre n’ajoute pas le redrive natif des signaux, mises à jour ou workflows enfants. Describe et redrive partagent l’admissibilité structurelle ; la comparaison d’empreinte du worker s’applique toujours à la demande de redrive.
+
+La [cohorte réelle de workers froids PHP/Python/Rust](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) doit garder la même définition/empreinte lors du remplacement à froid et des redrives répétés. Elle compare des instants UTC analysés à pleine précision à un `TimerFired` source observé avec fraction non nulle, préserve l’historique source et vérifie les nombres originaux de callbacks, la nouvelle identité du temporisateur et l’absence de travail répété. Un affichage en secondes entières ne prouve pas cette précision ; l’historique installé ne doit pas être réécrit pour la fournir. Les tests source à horodatages contrôlés sont une preuve distincte.
+
+La qualification immuable producteur/plateforme/source a réussi. Les reçus SDK installés applicables, les alias stables/Release final et la publication réelle du Chart précèdent toujours l’adoption stable. Le [suivi de précision/référence de Core](https://github.com/durable-workflow/workflow/issues/992) reste distinct sous [Server #980](https://github.com/durable-workflow/server/issues/980). Le changement n’ajoute pas de prise en charge de l’horloge d’entrée ordinaire à un SDK qui ne l’annonce pas ; les SDK inchangés n’ont pas besoin de nouvelle version pour simplement aligner les numéros. Les formes du protocole, d’OpenAPI et du catalogue restent inchangées.
+
 ## Espaces de noms et stockage {#namespace-and-storage}
 
 Les routes des espaces de noms exigent les rôles operator ou admin. Leurs

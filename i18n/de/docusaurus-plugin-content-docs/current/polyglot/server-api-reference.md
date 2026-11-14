@@ -485,6 +485,29 @@ Laufbezogene Befehlsrouten lehnen historische oder falsche Laufziele explizit ab
 
 Befehle übertragen Geschäftswerte in Avro-Envelopes. Die offiziellen SDKs codieren sie automatisch. Direkte HTTP-Clients müssen den `{codec, blob}`-Envelope des offiziellen Avro-Encoders oder die unten beschriebene Runtime-Referenz verwenden. Das äußere HTTP-Dokument ist JSON; uncodiertes Geschäfts-JSON ist kein alternativer Nutzlast-Codec.
 
+### Native Redrive ausgelöster Timer und Replay-Uhren {#native-redrive-timers}
+
+:::note Stabile Übernahme und installierte Consumer ausstehend
+
+Die Plain-Timer-Erweiterung und Bruchteilkorrektur sind in [Server-Quellstand 5221ed82](https://github.com/durable-workflow/server/pull/1215) zusammengeführt. Native 3.11.0 hat ein veröffentlichtes unveränderliches Image und eine [akzeptierte Producer-/Plattform-/Korpus-/Compose-Qualifikation](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Stabile Aliasse, das endgültige GitHub Release, Chart-Übernahme und die jeweiligen installierten Consumer-Belege bleiben gesperrt. Der ausgewählte veröffentlichte Server behält seine bisherige Timer-Ablehnung und Uhrschreibweise. Die Producer-Qualifikation allein belegt keinen installierten SDK-Replay-Erfolg oder stabile Auswahl.
+
+:::
+
+Für einen sonst geeigneten Lauf, der bei einer Activity scheiterte, akzeptiert der neue Quellstand einen davor abgeschlossenen einfachen Timer. Dessen eindeutiger Schritt muss genau ein geordnetes Paar `TimerScheduled` / `TimerFired` mit übereinstimmender Quell-`timer_id` enthalten. Der Nachfolger schreibt das Paar mit einer neuen gemeinsamen Timer-ID, erzeugt weder Timer-Zeile noch Timer-Task und setzt an der gescheiterten Activity fort, ohne erneut auf den Timer zu warten. Die Quellhistorie bleibt unverändert.
+
+Das wiederverwendete `TimerFired` nennt den unmittelbaren Vorgänger in `reused_from_run_id`. Sein `reused_recorded_at` erhält die ursprüngliche Timer-Ereigniszeit über wiederholte Redrives. Wiederverwendete Activities und Marker erhalten bei der ersten Fallback-Uhrschreibung ebenfalls die volle verfügbare Bruchteilpräzision. Der anfängliche Replay-Anker stammt aus dem gespeicherten Start des Quelllaufs und wird in `replayed_started_at` weitergegeben; konsumierte Schritte verwenden ihre Ereigniszeit als Autorität. Wiederholte Redrives erhalten vorhandene Uhrstrings und den bestehenden Anfangsanker. Von älteren Producern ausgelassene Bruchteile lassen sich nicht rekonstruieren. Die Deadline-Formatierung bleibt unverändert.
+
+| Ablehnung | Vom neuen Quellstand bewahrte Timer-Grenze |
+| --- | --- |
+| `unsupported_timer` | Ein Scope-, Parallelgruppen-, Cancellation-Cleanup-, Condition- oder Signal-Timeout-Timer liegt außerhalb des Plain-Timer-Umfangs. |
+| `incomplete_timer_step` | Einem Timer-Schritt fehlt ein Ereignis, Ereignisse sind vertauscht oder doppelt, oder Quell-Timer-IDs fehlen, sind keine Strings oder stimmen nicht überein. |
+
+Abgebrochene Timer bleiben `unsupported_history`. Schritt-Kollisionen, Lücken und ungültige Fehlergrenzen behalten ihre expliziten Ablehnungen. Definition/Fingerprint-, Eltern-/Local-Activity-, externe Payload- und Workflow-Code-Upsert-Grenzen gelten weiter. Signals, Updates und Child-Workflows erhalten durch diesen Teil keine native Redrive-Unterstützung. Describe und Redrive teilen strukturelle Eignung; beim Redrive gilt weiterhin der Worker-Fingerprint-Vergleich.
+
+Die [tatsächliche PHP/Python/Rust-Cold-Worker-Kohorte](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) muss bei kaltem Austausch und wiederholtem Redrive dieselbe Workflow-Definition und denselben Fingerprint erhalten. Sie vergleicht vollständig geparste UTC-Zeitpunkte mit einem beobachteten Quell-`TimerFired` mit nichtnull Sekundenbruchteil, erhält die Quellhistorie und prüft ursprüngliche Callback-Zahlen, neue Timer-Identität und ausbleibende erneute Timer-Arbeit. Eine Ganzsekundendarstellung belegt diese Präzision nicht; installierte Historie darf dafür nicht umgeschrieben werden. Quelltests mit kontrollierten Zeitstempeln sind separate Evidenz.
+
+Die unveränderliche Producer-/Plattform-/Quellqualifikation ist bestanden. Die jeweiligen installierten SDK-Belege, stabile Aliasse/endgültiges Release und die tatsächliche Chart-Veröffentlichung gehen weiterhin stabiler Übernahme voraus. [Cores Präzisions-/Referenzarbeit](https://github.com/durable-workflow/workflow/issues/992) bleibt unter [Server #980](https://github.com/durable-workflow/server/issues/980) separat. Die Änderung ergänzt keine Ordinary-Entry-Uhrunterstützung in einem SDK, das sie nicht meldet; unveränderte SDKs benötigen keine bloße Versionsangleichungs-Release. Protokoll-, OpenAPI- und Katalogstrukturen bleiben unverändert.
+
 ## Namespace und Speicher {#namespace-and-storage}
 
 Namespace-Routen benötigen Operator- oder Admin-Rollen. Ändernde Namespace-

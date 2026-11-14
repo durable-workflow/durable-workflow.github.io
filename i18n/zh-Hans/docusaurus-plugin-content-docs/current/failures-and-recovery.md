@@ -261,7 +261,7 @@ Workflow 2.18.0 会复用已完成的活动、副作用、版本标记和已触�
 
 2.19.0 之前的版本会忽略复用的信号、备忘录和搜索属性步骤上的 `reused_recorded_at`。在 Workflow 2.19.0 或更高版本的后继运行复用这些步骤之后，请继续使用 2.19.0 或更高版本的 Worker，或在回滚前确认没有这样的历史会被重放。在嵌入模式下，对于复用了更新或链式信号等待的 2.20.0 后继运行，Workflow 2.19.0 的重放、导入和恢复方式与 2.20.0 相同（[验证记录](https://github.com/durable-workflow/workflow/issues/864#issuecomment-6617902412)）。
 
-从 3.7.0 起，原生 Server 的 redrive 会将启动时设置的备忘录和搜索属性传递给后继运行，`describe()` 会在 `actions` 下报告 `can_redrive` 和 `redrive_blocked_reason`。从 3.8.0 起，它还会复用失败步骤之前的副作用和版本标记，并以原始负载、`reused_from_run_id` 和 `reused_recorded_at` 记录每一项，因此其后的工作流时间与失败的运行一致。如果运行的工作流代码 upsert 过备忘录或搜索属性（`service_redrive_history_not_qualified`），或其副作用结果存储在外部（`external_side_effect_result_not_supported`），Server 3.8.0 会拒绝对该运行执行 redrive。除此之外，它仍适用 2.18.0 之前的规则，因此已触发的计时器仍会以 `unsupported_history` 被拒绝。原生 Server 对其余规则的支持在 [server#980](https://github.com/durable-workflow/server/issues/980) 中跟踪。
+从 3.7.0 起，原生 Server 重驱动将启动时设置的 memo 和搜索属性传给后继运行，`describe()` 在 `actions` 下报告 `can_redrive` 与 `redrive_blocked_reason`。从 3.8.0 起还复用失败步骤之前的副作用与版本标记，记录原始载荷、`reused_from_run_id` 和 `reused_recorded_at`。原生 3.8.0–3.10.x 保留已有复用时间戳字符串，但写入新的回退时钟时只保留整秒，因此这些写入不能证明重放时钟的小数精度相等。这些版本拒绝工作流代码的 memo/搜索属性 upsert（`service_redrive_history_not_qualified`）、外部保存的副作用结果（`external_side_effect_result_not_supported`）以及已触发定时器（`unsupported_history`）。[原生简单定时器与时钟精度扩展](./polyglot/server-api-reference.md#native-redrive-timers)已有通过资格验证的不可变生产者。稳定采用仍需要适用的已安装 SDK 回执及 Chart/release 条件。Core 的精度/参考后续工作及剩余原生一致性仍在 [server#980](https://github.com/durable-workflow/server/issues/980) 跟踪。
 
 ## 服务模式入口拒绝与恢复 {#service-entry-recovery}
 

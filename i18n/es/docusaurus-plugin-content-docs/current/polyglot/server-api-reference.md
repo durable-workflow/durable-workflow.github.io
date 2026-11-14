@@ -352,6 +352,29 @@ Los comandos dirigidos a ejecución rechazan explícitamente destinos histórico
 
 Los comandos llevan valores de negocio en sobres Avro. Los SDK oficiales los codifican automáticamente. Un cliente HTTP directo debe usar el sobre `{codec, blob}` del codificador Avro oficial o la referencia del runtime descrita abajo. El documento HTTP exterior es JSON; el JSON de negocio sin codificar no es un códec alternativo.
 
+### Redrive nativo de temporizadores disparados y relojes de replay {#native-redrive-timers}
+
+:::note Adopción estable y consumidores instalados pendientes
+
+La extensión de temporizadores simples y la corrección fraccionaria están integradas en el [código del Server 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 tiene una imagen inmutable publicada y [validación aceptada de productor/plataforma/corpus/Compose](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Siguen retenidos los alias estables, el GitHub Release final, la adopción del Chart y la evidencia instalada de consumidores aplicables. El Server publicado seleccionado conserva el rechazo de temporizadores y la escritura de relojes anteriores. La validación del productor por sí sola no acredita un resultado de replay del SDK instalado ni una selección estable.
+
+:::
+
+Para una ejecución elegible que falló en una actividad, el código nuevo acepta un temporizador simple completado antes del fallo. Su paso único debe contener exactamente un par ordenado `TimerScheduled` / `TimerFired` con la misma `timer_id` de origen. El sucesor escribe el par con un ID de temporizador nuevo y compartido, no crea fila ni tarea de temporizador y continúa en la actividad fallida sin esperar otra vez ese temporizador. El historial de origen no cambia.
+
+El `TimerFired` reutilizado nombra al predecesor inmediato en `reused_from_run_id`. Su `reused_recorded_at` conserva el instante original del evento entre redrives repetidos. Las actividades y los marcadores reutilizados también conservan toda la precisión fraccionaria disponible al escribir por primera vez un reloj de respaldo. El anclaje inicial del replay procede del inicio persistido de la ejecución de origen y se transporta en `replayed_started_at`; los pasos consumidos usan la autoridad temporal de su evento. Redrives repetidos conservan las cadenas de reloj ya registradas y el anclaje inicial existente. No se pueden reconstruir fracciones omitidas por un productor anterior. El formato de deadlines no cambia.
+
+| Rechazo | Límite del temporizador conservado por el código nuevo |
+| --- | --- |
+| `unsupported_timer` | Un temporizador de scope, grupo paralelo, limpieza de cancelación, condición o timeout de señal queda fuera de los temporizadores simples. |
+| `incomplete_timer_step` | Falta un evento del paso, los eventos están invertidos o duplicados, o los IDs de origen faltan, no son cadenas o no coinciden. |
+
+Los temporizadores cancelados siguen siendo `unsupported_history`. Colisiones, huecos y límites de fallo inválidos conservan sus rechazos explícitos. Siguen vigentes los límites de definición/fingerprint, padre/actividad local, payload externo y upserts desde el workflow. Este trabajo no añade redrive nativo para señales, actualizaciones o workflows hijos. Describe y redrive comparten elegibilidad estructural; al solicitar redrive sigue aplicándose la comparación de fingerprint del worker.
+
+La [cohorte real de workers fríos PHP/Python/Rust](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) debe mantener la misma definición/fingerprint durante el reemplazo frío y redrives repetidos. Compara instantes UTC analizados con precisión completa contra un `TimerFired` de origen observado con fracción no nula, conserva el historial de origen y comprueba los conteos originales de callbacks, la identidad nueva del temporizador y la ausencia de trabajo repetido. Mostrar segundos enteros no acredita esa precisión; no se puede reescribir el historial instalado para producirla. Las pruebas de código con timestamps controlados son evidencia separada.
+
+La validación inmutable de productor/plataforma/código ha pasado. Los recibos instalados aplicables de SDK, los alias estables/Release final y la publicación real del Chart siguen precediendo a la adopción estable. El [trabajo de precisión/referencia de Core](https://github.com/durable-workflow/workflow/issues/992) sigue separado bajo [Server #980](https://github.com/durable-workflow/server/issues/980). El cambio no añade relojes en la entrada ordinaria a un SDK que no los anuncia; un SDK sin cambios no requiere una versión nueva solo para alinear números. Las formas de protocolo, OpenAPI y catálogo no cambian.
+
 ## Espacios de nombres y almacenamiento {#namespace-and-storage}
 
 Estas rutas requieren operator o admin. Las que modifican espacios o almacenamiento externo requieren admin.
