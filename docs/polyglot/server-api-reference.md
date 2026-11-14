@@ -505,7 +505,7 @@ HTTP document is JSON; raw business JSON is not an alternative payload codec.
 
 :::note Pending native publication and consumer qualification
 
-The plain-timer extension and fractional-clock correction are merged in [Server source 5221ed82](https://github.com/durable-workflow/server/pull/1215), with native 3.11.0 [release preparation](https://github.com/durable-workflow/server/pull/1218) still pending. The selected published Server retains its earlier timer refusal and clock-writing behavior. This source description does not establish a published producer, SDK replay result or stable selection.
+The plain-timer extension and fractional-clock correction are merged in [Server source 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 [release preparation](https://github.com/durable-workflow/server/pull/1218) is also merged, while publication and consumer qualification remain pending. The selected published Server retains its earlier timer refusal and clock-writing behavior. This source description does not establish a published producer, SDK replay result or stable selection.
 
 :::
 

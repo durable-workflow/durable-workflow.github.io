@@ -351,6 +351,29 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 
 命令通过 Avro 负载封装传递业务值，官方 SDK 自动完成编码。直接 HTTP 客户端必须使用官方 Avro 编码器的 `{codec, blob}` 封装，或下述运行时外部引用。外围 HTTP 文档是 JSON，但原始业务 JSON 不是另一种负载编解码格式。
 
+### 原生已触发定时器重驱动与重放时钟 {#native-redrive-timers}
+
+:::note 等待原生发布与消费者资格验证
+
+简单定时器扩展和小数精度修复已合入 [Server 源码 5221ed82](https://github.com/durable-workflow/server/pull/1215)。原生 3.11.0 的[发布准备](https://github.com/durable-workflow/server/pull/1218)也已合并，但发布与消费者资格验证仍未完成。当前选定的已发布 Server 保留此前的定时器拒绝和时钟写入行为。此源码说明不代表已有已发布生产者、SDK 重放结果或稳定选择。
+
+:::
+
+对于其他条件合格、在活动处失败的运行，新源码接受失败之前已完成的简单定时器。其唯一的步骤必须恰好包含一对按顺序排列的 `TimerScheduled` / `TimerFired`，且源 `timer_id` 相同。后继运行用一个新的共享定时器 ID 写入这对事件，不创建定时器行或任务，并从失败活动处恢复，不再等待该定时器。源历史保持不变。
+
+复用的 `TimerFired` 在 `reused_from_run_id` 中指向直接前驱。其 `reused_recorded_at` 在重复重驱动中保留原始定时器事件时刻。复用活动和标记在首次写入回退时钟时也保留全部可用小数精度。初始重放锚点来自持久化的源运行开始时刻，通过 `replayed_started_at` 传递；已消费步骤使用各自事件时间作为权威。重复重驱动保留已记录时钟字符串和已有初始锚点。旧生产者省略的小数部分无法重建。截止时间格式不变。
+
+| 拒绝原因 | 新源码保留的定时器边界 |
+| --- | --- |
+| `unsupported_timer` | scope、并行组、取消清理、条件或信号超时定时器不属于简单定时器范围。 |
+| `incomplete_timer_step` | 定时器步骤缺少事件、事件逆序或重复，或源定时器 ID 缺失、不是字符串或不匹配。 |
+
+已取消定时器仍为 `unsupported_history`。步骤冲突、缺口和无效失败边界继续使用现有明确拒绝。定义/指纹、父级/本地活动、外部载荷和工作流代码 upsert 限制仍适用。此范围不为信号、更新或子工作流增加原生重驱动支持。Describe 与重驱动共享结构资格；请求重驱动时仍执行现有 Worker 指纹比较。
+
+[实际 PHP/Python/Rust 冷 Worker 验证组](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932)必须在冷替换和重复重驱动期间保持相同工作流定义/指纹。它将完整精度解析的 UTC 时刻与实际观察到的、含非零小数部分的源 `TimerFired` 比较，保留源历史，并检查原始回调次数、新定时器标识以及没有重复定时器工作。仅显示整秒不能证明该精度；不得改写已安装环境的历史来制造结果。使用受控时间戳的源码测试是独立证据。
+
+稳定采用之前必须完成不可变生产者/平台/源码资格验证、适用的已安装 SDK 回执以及实际 Chart 发布。[Core 的精度/参考后续工作](https://github.com/durable-workflow/workflow/issues/992)在 [Server #980](https://github.com/durable-workflow/server/issues/980) 下单独跟踪。该变更不会给未声明支持的 SDK 增加普通入口时钟支持；未修改的 SDK 无须仅为版本号对齐而发布。协议、OpenAPI 和目录结构不变。
+
 ## 命名空间与存储 {#namespace-and-storage}
 
 命名空间路由要求 operator 或 admin 角色。变更命名空间及外部存储的路由要求 admin 角色。

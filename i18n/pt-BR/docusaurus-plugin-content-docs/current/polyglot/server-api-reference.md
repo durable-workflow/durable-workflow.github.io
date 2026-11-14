@@ -481,6 +481,29 @@ Rotas por execução rejeitam explicitamente destinos históricos ou incorretos:
 
 Os comandos levam valores de negócio em envelopes Avro. Os SDKs oficiais os codificam automaticamente. Um cliente HTTP direto deve usar o envelope `{codec, blob}` do codificador Avro oficial ou a referência do runtime abaixo. O documento HTTP externo é JSON; JSON de negócio sem codificação não é um codec alternativo.
 
+### Redrive nativo de temporizadores disparados e relógios de replay {#native-redrive-timers}
+
+:::note Publicação nativa e qualificação dos consumidores pendentes
+
+A extensão de temporizadores simples e a correção de precisão fracionária foram integradas no [código do Server 5221ed82](https://github.com/durable-workflow/server/pull/1215). A [preparação da versão](https://github.com/durable-workflow/server/pull/1218) nativa 3.11.0 também foi integrada; publicação e qualificação dos consumidores continuam pendentes. O Server publicado selecionado mantém a recusa de temporizadores e a escrita de relógios anteriores. Esta descrição de código não comprova produtor publicado, resultado de replay do SDK ou seleção estável.
+
+:::
+
+Para uma execução elegível que falhou em uma atividade, o novo código aceita um temporizador simples concluído antes da falha. Seu passo único deve conter exatamente um par ordenado `TimerScheduled` / `TimerFired` com a mesma `timer_id` de origem. O sucessor escreve o par com um novo ID compartilhado, não cria linha nem tarefa de temporizador e continua na atividade que falhou sem aguardar o temporizador novamente. O histórico de origem permanece intacto.
+
+O `TimerFired` reutilizado identifica o predecessor imediato em `reused_from_run_id`. Seu `reused_recorded_at` preserva o instante original do evento entre redrives repetidos. Atividades e marcadores reutilizados também preservam toda a precisão fracionária disponível na primeira escrita de um relógio de fallback. A âncora inicial de replay vem do início persistido da execução de origem e é transportada em `replayed_started_at`; passos consumidos usam a autoridade temporal de seus eventos. Redrives repetidos preservam as strings de relógio já gravadas e a âncora inicial existente. Frações omitidas por produtores antigos não podem ser reconstruídas. A formatação de deadlines não muda.
+
+| Recusa | Limite de temporizador mantido pelo novo código |
+| --- | --- |
+| `unsupported_timer` | Temporizadores de scope, grupo paralelo, limpeza de cancelamento, condição ou timeout de sinal estão fora do escopo de temporizadores simples. |
+| `incomplete_timer_step` | Falta um evento, os eventos estão invertidos ou duplicados, ou IDs de origem estão ausentes, não são strings ou não correspondem. |
+
+Temporizadores cancelados continuam como `unsupported_history`. Colisões de passos, lacunas e limites de falha inválidos mantêm suas recusas explícitas. Limites de definição/fingerprint, pai/atividade local, payload externo e upserts no workflow continuam válidos. Este trabalho não adiciona redrive nativo a sinais, atualizações ou workflows filhos. Describe e redrive compartilham elegibilidade estrutural; a comparação de fingerprint do worker continua sendo aplicada ao solicitar redrive.
+
+A [coorte real de workers frios PHP/Python/Rust](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) deve manter a mesma definição/fingerprint durante substituição fria e redrives repetidos. Ela compara instantes UTC analisados com precisão completa contra um `TimerFired` de origem observado com fração não nula, preserva o histórico de origem e verifica contagens originais de callbacks, nova identidade do temporizador e ausência de trabalho repetido. Renderizar segundos inteiros não comprova essa precisão; o histórico instalado não pode ser reescrito para fornecê-la. Testes de código com timestamps controlados são evidências separadas.
+
+A qualificação do produtor/plataforma/código imutáveis, os recibos instalados aplicáveis de SDK e a publicação real do Chart precedem a adoção estável. O [trabalho de precisão/referência do Core](https://github.com/durable-workflow/workflow/issues/992) continua separado sob [Server #980](https://github.com/durable-workflow/server/issues/980). A mudança não adiciona relógios de entrada comum a um SDK que não os anuncia; SDKs inalterados não precisam de versão nova só para alinhar números. As formas de protocolo, OpenAPI e catálogo permanecem iguais.
+
 ## Namespace e armazenamento {#namespace-and-storage}
 
 Rotas de namespace exigem operator ou admin. Rotas que alteram namespace e

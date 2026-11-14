@@ -352,6 +352,29 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 
 コマンドは業務値を Avro ペイロードエンベロープで運びます。公式 SDK が自動でエンコードします。直接 HTTP クライアントは、公式 Avro エンコーダーの `{codec, blob}` エンベロープか、以下のランタイム外部参照を使ってください。外側の HTTP 文書は JSON ですが、生の業務 JSON は別のペイロードコーデックとして使えません。
 
+### 発火済みタイマーの native redrive とリプレイクロック {#native-redrive-timers}
+
+:::note native 公開と利用側の資格検証は未完了
+
+単純タイマーの拡張と小数精度の修正は [Server ソース 5221ed82](https://github.com/durable-workflow/server/pull/1215) にマージ済みです。native 3.11.0 の[リリース準備](https://github.com/durable-workflow/server/pull/1218)もマージ済みですが、公開と利用側の資格検証はまだ完了していません。選択中の公開 Server は以前のタイマー拒否とクロック書き込み動作を保持します。このソース説明は、公開済み producer、SDK のリプレイ結果、stable 選択を示しません。
+
+:::
+
+他の条件を満たし、アクティビティで失敗した実行では、新しいソースはその失敗前に完了した単純タイマーを受け入れます。一意のステップに、元の `timer_id` が一致する順序どおりの `TimerScheduled` / `TimerFired` が正確に一組必要です。後続実行は新しい共通タイマー ID でペアを書き込み、タイマー行やタイマータスクを作らず、再度タイマーを待たずに失敗したアクティビティから再開します。元の履歴は変更されません。
+
+再利用した `TimerFired` の `reused_from_run_id` は直接の前実行を指します。`reused_recorded_at` は繰り返しの redrive でも元のタイマーイベント時刻を保持します。再利用アクティビティやマーカーも、フォールバッククロックを初めて書く際に利用可能な小数精度をすべて保持します。初期リプレイアンカーは永続化した元実行の開始時刻で、`replayed_started_at` として引き継がれます。消費したステップはイベント時刻を基準にします。繰り返しの redrive は記録済みクロック文字列と既存の初期アンカーを保持します。古い producer が省略した小数部は復元できません。期限の書式は変わりません。
+
+| 拒否 | 新しいソースが保持するタイマーの境界 |
+| --- | --- |
+| `unsupported_timer` | scope、並列グループ、キャンセル cleanup、条件、シグナルタイムアウトのタイマーは単純タイマーの対象外です。 |
+| `incomplete_timer_step` | ステップのイベント不足、逆順、重複、または元タイマー ID の不在、文字列以外、不一致があります。 |
+
+キャンセル済みタイマーは引き続き `unsupported_history` です。ステップの衝突、欠落、無効な失敗境界は既存の明示的な拒否を維持します。定義/フィンガープリント、親/ローカルアクティビティ、外部ペイロード、ワークフロー内 upsert の制限も維持します。この範囲はシグナル、更新、子ワークフローの native redrive を追加しません。Describe と redrive は構造上の適格性を共有し、redrive リクエスト時には既存の Worker フィンガープリント比較も適用します。
+
+[実際の PHP/Python/Rust コールド Worker コホート](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932)は、コールド置換と繰り返し redrive で同じワークフロー定義/フィンガープリントを維持する必要があります。非ゼロ小数部を持つ元の `TimerFired` の観測時刻と、完全精度で解析した UTC 時点を比較し、元履歴を保持して元の callback 数、新しいタイマー ID、タイマー処理の再実行がないことを確認します。秒単位の表示では精度を検証できず、その結果を作るためにインストール済み環境の履歴を書き換えてはいけません。制御した時刻を使うソーステストは別の証拠です。
+
+不変の producer/platform/source の資格検証、対象となるインストール済み SDK の記録、実際の Chart 公開が stable 採用に先行します。[Core の精度/参照の追跡](https://github.com/durable-workflow/workflow/issues/992)は [Server #980](https://github.com/durable-workflow/server/issues/980) の下で別扱いです。この変更は通常エントリーのクロック対応を宣言しない SDK にその対応を追加しません。変更のない SDK は番号合わせだけのリリースを必要としません。プロトコル、OpenAPI、カタログの形は変わりません。
+
 ## 名前空間とストレージ {#namespace-and-storage}
 
 名前空間ルートは operator または admin ロールが必要です。名前空間と外部ストレージの変更には admin ロールが必要です。
