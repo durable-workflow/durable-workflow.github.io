@@ -277,7 +277,7 @@ Las rutas de workflow son de operador/plano de control. Requieren rol operator o
 
 | Método | Ruta | Finalidad |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Listar instancias. Admite filtros por estado, tipo, texto de consulta y límite. |
+| `GET` | `/api/workflows` | Listar ejecuciones de workflow del namespace, con estado, tipo, consulta de visibilidad, `page_size` y `next_page_token`. |
 | `POST` | `/api/workflows` | Iniciar una instancia. |
 | `GET` | `/api/workflows/{workflowId}` | Describir la ejecución actual de un ID de workflow. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Devolver diagnósticos acotados de una ejecución atascada. |
@@ -286,6 +286,8 @@ Las rutas de workflow son de operador/plano de control. Requieren rol operator o
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Devolver diagnósticos acotados de una ejecución seleccionada. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Paginar eventos de historial. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Exportar el paquete de reproducción para archivo. |
+
+Consulte campos, comparaciones tipadas, comillas, precedencia, errores y ejemplos de paginación en el [Lenguaje de consultas de visibilidad](./visibility-query-language.md). Esta gramática difiere de los manejadores de consultas con nombre del workflow y de los filtros de schedules.
 
 Las solicitudes de inicio utilizan la estructura independiente del lenguaje:
 

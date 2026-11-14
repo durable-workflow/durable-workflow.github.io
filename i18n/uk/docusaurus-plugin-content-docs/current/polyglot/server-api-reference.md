@@ -380,7 +380,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 
 | Метод | Шлях | Призначення |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Показати екземпляри workflow з фільтрами статусу, типу, тексту query й ліміту. |
+| `GET` | `/api/workflows` | Показати запуски workflow в namespace зі станом, типом, query видимості, `page_size` і `next_page_token`. |
 | `POST` | `/api/workflows` | Запустити екземпляр workflow. |
 | `GET` | `/api/workflows/{workflowId}` | Описати поточне виконання ID workflow. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Повернути обмежену діагностику застряглого виконання. |
@@ -389,6 +389,8 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Повернути обмежену діагностику вибраного виконання. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Прочитати події історії сторінками. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Експортувати архівний набір replay виконання. |
+
+Поля, типізовані порівняння, лапки, пріоритет, помилки й приклади пагінації описує [мова запитів видимості](./visibility-query-language.md). Ця граматика списків відрізняється від іменованих query-обробників workflow і фільтрів списку schedule.
 
 Запити запуску використовують незалежну від мови форму control-plane:
 

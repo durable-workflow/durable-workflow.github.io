@@ -139,6 +139,8 @@ Atributos de busca aparecem em:
 - **Linha do tempo do histórico**: cada evento `SearchAttributesUpserted` aparece como entrada tipada na linha do tempo da execução
 - **Exportação de histórico**: os atributos de busca são incluídos nas exportações de histórico em JSON
 
+Para comparações tipadas, intervalos de tempo, pertencimento, aspas e paginação HTTP no Server, use a [Linguagem de consultas de visibilidade](../polyglot/visibility-query-language.md). A listagem embedded atual e os filtros de vistas salvas do Waterline não implementam toda essa gramática. A paridade continua pendente no [recurso de consultas de visibilidade](https://github.com/durable-workflow/.github/issues/224).
+
 ### Filtros de lista de pais e filhos {#parent-child-list-filters}
 
 Filhos [herdam atributos de busca e memo na criação](./child-workflows.md#child-metadata-inheritance) e depois podem atualizar os valores de forma independente. Filtrar um atributo herdado não exclui filhos implicitamente. Para um atributo keyword registrado, a consulta do Server `customer = 'customer-42'` pode retornar o pai e cada filho que ainda mantenha esse valor. Memo continua sendo metadado não indexado, não outro filtro de atributos de busca.

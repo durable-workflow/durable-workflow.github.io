@@ -139,6 +139,8 @@ upsertSearchAttributes(['temporary_flag' => null]);
 - **历史时间线**：每个 `SearchAttributesUpserted` 事件作为类型化条目展示
 - **历史导出**：JSON 历史导出包含搜索属性
 
+Server 端的带类型比较、时间范围、成员关系、引号和 HTTP 分页请使用[可见性查询语言](../polyglot/visibility-query-language.md)。当前嵌入模式列表和 Waterline 已保存视图筛选器没有实现完整语法。共享一致性工作仍在[可见性查询功能](https://github.com/durable-workflow/.github/issues/224)中进行。
+
 ### 父子运行列表筛选 {#parent-child-list-filters}
 
 子运行[在创建时继承搜索属性和 memo](./child-workflows.md#child-metadata-inheritance)，随后可以独立更新自己的值。按继承属性筛选不会自动排除子运行。对于已注册的 keyword 属性，Server 查询 `customer = 'customer-42'` 可能返回父运行及所有仍保留该值的子运行。Memo 仍是未索引的元数据，不是另一种搜索属性筛选条件。
