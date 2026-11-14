@@ -249,6 +249,10 @@ Worker は `task` についてルート固有の想定をする前に `poll_stat
 
 `schedule_activity` は任意の `retry_policy`、`start_to_close_timeout`、`schedule_to_start_timeout`、`schedule_to_close_timeout`、`heartbeat_timeout` を受け入れます。`retry_policy` は `max_attempts`、`backoff_seconds`、`non_retryable_error_types` を使います。
 
+`max_attempts` は初回を含む総試行回数です。`backoff_seconds` を使い切ると、最後の値を繰り返します。`max_attempts: 5` と `backoff_seconds: [1, 2]` の場合、4 回のリトライ前の待機時間は `[1, 2, 2, 2]` 秒です。空のリスト `backoff_seconds: []` は、試行回数とタイムアウトの制限内で、バックオフなしの即時リトライを要求します。
+
+ポリシーはアクティビティのスケジュール時に記録されます。後の SDK でリプレイする場合も、そのアクティビティに記録された待機時間を維持してください。新しい既定値から再計算しないでください。
+
 `start_child_workflow` は任意の `parent_close_policy`、`retry_policy`、`execution_timeout_seconds`、`run_timeout_seconds` を受け入れます。`parent_close_policy` は `abandon`、`request_cancel`、`request_cancellation`、`terminate` のいずれかです。`request_cancel` は子を即時に閉じ、`request_cancellation` は元のキャンセル ID と期限で協調クリーンアップを要求します。[協調キャンセル](/docs/polyglot/cancellation)を参照してください。子の再試行ポリシーは、アクティビティと同じ `max_attempts`、`backoff_seconds`、`non_retryable_error_types` の構造です。子の実行失敗後に再試行バックオフを適用します。不正な子開始コマンドはプロトコルエラーであり、子の再試行回数を消費しません。
 
 `complete_update` は Worker のハンドラー適用後、`update_id` の受理済み更新を閉じます。ワークフロー完了結果と同じ `{codec, blob}` エンベロープの任意の `result` を受け入れます。`fail_update` は受理済み更新を失敗として閉じ、必須の `message` に加え、任意の `exception_class`、`exception_type`、`non_retryable` を受け入れます。

@@ -249,6 +249,10 @@ Al completar una tarea, el worker externo envía una lista de comandos tipados. 
 
 `schedule_activity` acepta campos opcionales `retry_policy`, `start_to_close_timeout`, `schedule_to_start_timeout`, `schedule_to_close_timeout` y `heartbeat_timeout`. `retry_policy` utiliza `max_attempts`, `backoff_seconds` y `non_retryable_error_types`.
 
+`max_attempts` cuenta los intentos totales, incluido el primero. Al agotarse `backoff_seconds`, se repite su última entrada. Con `max_attempts: 5` y `backoff_seconds: [1, 2]`, las cuatro demoras de reintento son `[1, 2, 2, 2]` segundos. Una lista vacía, `backoff_seconds: []`, solicita reintentos inmediatos sin espera, sujetos a los límites de intentos y tiempo.
+
+La política se registra al programar la actividad. Conserve sus demoras registradas para esa actividad, incluso al reproducirla con un SDK posterior. No las recalcule a partir de valores predeterminados nuevos.
+
 `start_child_workflow` acepta `parent_close_policy`, `retry_policy`, `execution_timeout_seconds` y `run_timeout_seconds` opcionales. `parent_close_policy` es `abandon`, `request_cancel`, `request_cancellation` o `terminate`. `request_cancel` cierra al hijo inmediatamente; `request_cancellation` solicita limpieza cooperativa con identidad y plazo de cancelación originales. Consulta [cancelación cooperativa](/docs/polyglot/cancellation). Los reintentos del hijo utilizan la misma estructura `max_attempts`, `backoff_seconds` y `non_retryable_error_types` que las actividades. La espera se aplica tras fallar una ejecución hija; comandos de inicio no válidos son errores de protocolo y no consumen intentos de reintento del hijo.
 
 `complete_update` cierra la actualización aceptada identificada por `update_id` tras aplicar el manejador. Acepta `result` opcional con el mismo sobre `{codec, blob}` que los resultados de workflow. `fail_update` la cierra como fallida y acepta `exception_class`, `exception_type` y `non_retryable` opcionales además del `message` obligatorio.

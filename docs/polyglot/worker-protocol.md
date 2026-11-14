@@ -296,6 +296,16 @@ When completing a workflow task, the external worker submits a list of typed com
 `heartbeat_timeout` fields. `retry_policy` uses `max_attempts`,
 `backoff_seconds`, and `non_retryable_error_types`.
 
+`max_attempts` counts total attempts, including the first one. When
+`backoff_seconds` runs out, repeat its final entry. For `max_attempts: 5`
+and `backoff_seconds: [1, 2]`, the four retry delays are `[1, 2, 2, 2]`
+seconds. An empty list, `backoff_seconds: []`, requests immediate retries
+(zero backoff), subject to the attempt and timeout limits.
+
+The policy is recorded when the activity is scheduled. Keep its recorded
+delays for that activity, including replay under a later SDK. Do not
+recompute them from newer defaults.
+
 `start_child_workflow` accepts optional `parent_close_policy`, `retry_policy`,
 `execution_timeout_seconds`, and `run_timeout_seconds` fields.
 `parent_close_policy` is one of `abandon`, `request_cancel`,
