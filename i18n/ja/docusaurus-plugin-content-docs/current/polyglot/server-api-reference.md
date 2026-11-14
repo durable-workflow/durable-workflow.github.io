@@ -277,7 +277,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 
 | メソッド | パス | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | インスタンスを一覧。状態、型、クエリテキスト、件数などでフィルター可能。 |
+| `GET` | `/api/workflows` | 名前空間内のワークフロー実行を、状態、型、可視性クエリ、`page_size`、`next_page_token` で一覧します。 |
 | `POST` | `/api/workflows` | インスタンスを開始。 |
 | `GET` | `/api/workflows/{workflowId}` | ワークフロー ID の現在の実行を説明。 |
 | `GET` | `/api/workflows/{workflowId}/debug` | 停滞した実行調査のための範囲付き診断情報を返す。 |
@@ -286,6 +286,8 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | 選択実行の範囲付き診断情報を返す。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | 履歴イベントをページ単位で読む。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | 実行のアーカイブ用リプレイバンドルをエクスポート。 |
+
+フィールド、型付き比較、引用符、優先順位、エラー、ページング例は[可視性クエリ言語](./visibility-query-language.md)を参照してください。この一覧の文法はワークフローの名前付きクエリハンドラーや schedule 一覧フィルターとは異なります。
 
 開始要求は言語中立のコントロールプレーン構造を使います。
 

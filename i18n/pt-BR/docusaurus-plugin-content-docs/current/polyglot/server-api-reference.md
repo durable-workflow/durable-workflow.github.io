@@ -404,7 +404,7 @@ operator ou admin e `X-Durable-Workflow-Control-Plane-Version: 2`.
 
 | Método | Caminho | Finalidade |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Lista instâncias de workflow. Suporta filtros como status, tipo, texto de consulta e limite. |
+| `GET` | `/api/workflows` | Lista execuções de workflow no namespace, com estado, tipo, consulta de visibilidade, `page_size` e `next_page_token`. |
 | `POST` | `/api/workflows` | Inicia uma instância de workflow. |
 | `GET` | `/api/workflows/{workflowId}` | Descreve a execução atual de um ID de workflow. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Retorna diagnósticos limitados para investigar execução presa. |
@@ -413,6 +413,8 @@ operator ou admin e `X-Durable-Workflow-Control-Plane-Version: 2`.
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Retorna diagnósticos limitados de uma execução selecionada. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Pagina eventos do histórico da execução. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Exporta o pacote de replay de arquivo da execução. |
+
+Veja campos, comparações tipadas, aspas, precedência, erros e exemplos de paginação na [Linguagem de consultas de visibilidade](./visibility-query-language.md). Essa gramática difere dos handlers de consultas nomeadas do workflow e dos filtros de schedules.
 
 Requisições de início usam o formato de controle independente de linguagem:
 

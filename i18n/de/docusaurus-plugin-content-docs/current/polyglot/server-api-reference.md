@@ -407,7 +407,7 @@ Operator oder Admin und `X-Durable-Workflow-Control-Plane-Version: 2`.
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Workflow-Instanzen auflisten. Unterstützt Filter wie Status, Typ, Abfragetext und Grenze. |
+| `GET` | `/api/workflows` | Workflow-Ausführungen im Namespace mit Status, Typ, Visibility-Abfrage, `page_size` und `next_page_token` auflisten. |
 | `POST` | `/api/workflows` | Workflow-Instanz starten. |
 | `GET` | `/api/workflows/{workflowId}` | Aktuellen Lauf einer Workflow-ID beschreiben. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Begrenzte Diagnoseangaben für festhängende Läufe liefern. |
@@ -416,6 +416,8 @@ Operator oder Admin und `X-Durable-Workflow-Control-Plane-Version: 2`.
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Begrenzte Diagnoseangaben für ausgewählten Lauf liefern. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Laufhistorienereignisse seitenweise lesen. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Replay-Archivpaket eines Laufs exportieren. |
+
+Felder, typisierte Vergleiche, Anführungszeichen, Rangfolge, Fehler und Seitenbeispiele beschreibt die [Visibility-Abfragesprache](./visibility-query-language.md). Diese Listengrammatik unterscheidet sich von benannten Workflow-Abfrage-Handlern und Schedule-Listenfiltern.
 
 Startanfragen verwenden die sprachneutrale Control-Plane-Struktur:
 

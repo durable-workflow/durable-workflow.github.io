@@ -139,6 +139,8 @@ upsertSearchAttributes(['temporary_flag' => null]);
 - **履歴タイムライン**: 各 `SearchAttributesUpserted` を型付き項目として表示。
 - **履歴エクスポート**: JSON 履歴に含む。
 
+Server 側の型付き比較、時間範囲、所属、引用符、HTTP ページングには[可視性クエリ言語](../polyglot/visibility-query-language.md)を使います。現在の embedded 一覧と Waterline の保存ビュー用フィルターは文法全体を実装していません。共通の同等性対応は[可視性クエリ機能](https://github.com/durable-workflow/.github/issues/224)で未完了です。
+
 ### 親子の一覧フィルター {#parent-child-list-filters}
 
 子は[作成時に検索属性と memo を継承](./child-workflows.md#child-metadata-inheritance)し、その後は独立して値を更新できます。継承属性でフィルターしても、子が自動的に除外されることはありません。登録済み keyword 属性の Server クエリ `customer = 'customer-42'` は、親と、その値を保持するすべての子を返す場合があります。Memo は引き続きインデックスのないメタデータであり、検索属性のフィルターではありません。
