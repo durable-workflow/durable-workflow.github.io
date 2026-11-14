@@ -121,6 +121,8 @@ Python SDK 2.15 and 2.16 add:
   so in-flight histories replay unchanged.
 - **Lazy pages (2.15).** `Client.iter_workflows`, `Client.iter_history` and
   `WorkflowHandle.iter_history` follow page tokens while holding one page.
+  See [workflow list and history pages](#workflow-list-and-history-pages)
+  for traversal, resume and error handling.
 - **Run activities (2.15).** `Client.get_run_activities` and
   `WorkflowHandle.get_activities` return typed activity and attempt metadata,
   and `ActivityInfo.activity_execution_id` exposes the logical activity
@@ -456,10 +458,13 @@ end-to-end rollout walkthrough; the CLI mirrors of these methods are
 | --- | --- | --- |
 | `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`, `InvalidArgument`, `Unauthorized`, `ServerError` |
 | `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`, auth/server errors |
-| `await client.list_workflows(...)` | `WorkflowList` | Auth/server errors |
+| `await client.list_workflows(...)` | `WorkflowList` (one page) | Auth/server errors |
+| `client.iter_workflows(...)` | `AsyncIterator[WorkflowExecution]` | Page errors and cancellation propagate during iteration. See [pagination](#workflow-list-and-history-pages). |
 | `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`, auth/server errors |
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, auth/server errors |
-| `await client.get_history(workflow_id, run_id)` | decoded history payload | `WorkflowNotFound`, auth/server errors |
+| `await client.get_history(workflow_id, run_id, ...)` | one page of decoded history | `WorkflowNotFound`, auth/server errors |
+| `client.iter_history(workflow_id, run_id, ...)` | `AsyncIterator[dict[str, Any]]` | Page errors and cancellation propagate during iteration. |
+| `handle.iter_history(...)` | `AsyncIterator[dict[str, Any]]` | Same history traversal. Requires a handle with an explicit `run_id`. |
 | `await client.export_history(workflow_id, run_id)` | decoded archival history payload | `WorkflowNotFound`, auth/server errors |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | admission receipt (`dict`) | `WorkflowNotFound`, `InvalidArgument`, auth/server errors |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | query receipt (`dict`) | `QueryFailed`, `WorkflowNotFound`, auth/server errors |
@@ -2245,4 +2250,31 @@ Server address. See
 
 ## Workflow list and history pages {#workflow-list-and-history-pages}
 
-These published calls return **one page**, not an automatic complete read: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published Python 2.9.0 client source](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) defines the current parameters; no new iterator capability is implied.
+The selected stable Python SDK provides lazy `Client.iter_workflows`,
+`Client.iter_history` and `WorkflowHandle.iter_history`. Use `async for` to
+consume workflow executions or history event dictionaries in Server order.
+See the [SDK-owned examples and pagination reference](https://python.durable-workflow.com/sdk-reference/#whole-run-histories-and-workflow-lists)
+and [published client source](https://github.com/durable-workflow/sdk-python/blob/2.17.2/src/durable_workflow/client.py).
+
+Each iterator fetches one page at a time without retaining earlier result pages.
+It follows empty pages that have a continuation and stops when the continuation
+is missing, `None` or empty. Stopping iteration fetches no subsequent page.
+HTTP errors, cancellation, malformed history events and malformed or repeated
+continuation tokens propagate. Earlier yielded items are not rolled back, so
+handle an interrupted traversal as incomplete.
+
+Keep namespace, filters and page size fixed throughout a traversal. History
+also requires the same explicit `workflow_id` and `run_id`; the handle helper
+refuses a handle without `run_id`. A namespace change is refused before the
+next request. Supply `next_page_token` to resume at an opaque continuation
+from the same selection. Do not parse, alter or reuse it for different filters,
+namespaces or runs. Traversing a changing workflow list does not create a
+snapshot.
+
+The existing `await client.list_workflows(...)` and
+`await client.get_history(workflow_id, run_id, ...)` still return **one page**.
+For manual paging, pass the returned `next_page_token` to the next call and
+stop at the final missing/null/empty token. A partial page or a sequence of
+event dictionaries is not a replay bundle. Use
+`await client.export_history(workflow_id, run_id)` or
+`await handle.export_history()` for offline replay.
