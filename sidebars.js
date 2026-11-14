@@ -52,7 +52,10 @@ const sidebars = {
         'polyglot/cli-python-parity',
         'polyglot/server-config-reference',
         'polyglot/server-api-reference',
-        'polyglot/visibility-query-language',
+        {
+          type: 'doc',
+          id: 'polyglot/visibility-query-language',
+        },
         'polyglot/server-role-topology',
         'polyglot/namespace-auth-workers',
         'polyglot/worker-compatibility-routing',
