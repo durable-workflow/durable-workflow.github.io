@@ -392,6 +392,31 @@ pub fn register_charge(worker: &mut Worker) {
 
 Ці SDK-межі не доводять виправлення похідного summary-сховища Core, доставку іншого SDK, embedded-поведінку чи оновлення образу Server. Старіші worker усе ще можуть не надіслати завелику помилку. Див. [політику опублікованого source](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) та [спільний довідник помилок](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Затримки повторних спроб activity {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` рахує загальну кількість спроб разом
+із першою. У `exponential_backoff(initial, coefficient, maximum_interval)`
+значення `None` не задає верхньої межі інтервалу. Передайте `Some(maximum)`,
+щоб явно обмежити інтервали. Типова політика передбачає одну спробу
+з порожнім списком затримок.
+
+Для дев’яти спроб загалом початкова затримка в одну секунду, коефіцієнт два
+та `None` кодують `1, 2, 4, 8, 16, 32, 64, 128` секунд для восьми повторних
+спроб. Скінченний бюджет спроб і початковий строк schedule-to-close, якщо
+його налаштовано, і далі обмежують повторні спроби. Арифметичне переповнення
+або вихід за межі протоколу повертає `ActivityOptionsErrorKind::BackoffOverflow`
+під час валідації.
+
+Replay зберігає весь записаний список затримок і точно порівнює його разом
+з іншими відомими полями політики. Зміна лише максимуму сумісна, якщо
+закодований список залишається ідентичним. Максимум, що змінює список,
+змінює політику, навіть якщо змінений елемент не використовувався. Додавання
+межі в 60 секунд до прикладу змінює його список і може спричинити відмову
+replay з `activity_retry_policy_mismatch`.
+
+Див. [приклад політики повторних спроб Rust](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+та опублікований [API ActivityRetryPolicy](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Локальні activity {#local-activities}
 
 Rust SDK 3.1.0 додає inline local execution на workers із налаштуванням

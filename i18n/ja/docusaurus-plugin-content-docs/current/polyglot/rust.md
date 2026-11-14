@@ -332,6 +332,29 @@ pub fn register_charge(worker: &mut Worker) {
 
 この SDK 上限は、Core の派生 summary 保存修正、他 SDK、embedded 動作、Server イメージ採用の提供を証明しません。旧 worker では大きすぎる失敗を報告できない場合があります。[公開 source の方針](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits)と[共通の失敗ガイド](../failures-and-recovery.md#rust-failure-report-limits)を参照してください。
 
+## アクティビティ再試行のバックオフ {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` は、最初の試行を含む総試行回数を数えます。
+`exponential_backoff(initial, coefficient, maximum_interval)` に `None` を渡すと、
+待機間隔の上限は設定されません。明示的に上限を設けるには `Some(maximum)` を
+渡してください。既定のポリシーは、試行 1 回と空のバックオフリストのままです。
+
+総試行回数が 9 回、初期待機時間が 1 秒、係数が 2、上限が `None` の場合、8 回の
+再試行に対して `1, 2, 4, 8, 16, 32, 64, 128` 秒をエンコードします。有限の試行回数と、
+設定されている場合は元の schedule-to-close 期限が、引き続き再試行を制限します。
+算術オーバーフローまたはプロトコルの範囲を超える値は、検証時に
+`ActivityOptionsErrorKind::BackoffOverflow` を返します。
+
+リプレイは記録済みの待機時間リスト全体を保持し、他の既知のポリシーフィールドと
+ともに厳密に比較します。最大値だけを変更する場合、エンコードされたリストが同一なら
+互換性があります。最大値によってリストが変わる場合、変更した要素が未使用でも
+ポリシー変更になります。この例に 60 秒の上限を追加するとリストが変わり、
+`activity_retry_policy_mismatch` でリプレイを拒否することがあります。
+
+[Rust の再試行ポリシーのレシピ](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+と、公開済みの [ActivityRetryPolicy API](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff)
+を参照してください。
+
 ## ローカルアクティビティ {#local-activities}
 
 Rust SDK 3.1.0 は `Worker::local_activities(true)` で設定した Worker にインラインのローカル実行を追加します。通常のアクティビティ登録メソッドでコールバックを登録し、ワークフローコンテキストのローカルアクティビティメソッドを使います。再試行とタイムアウトの設定は[実行可能な例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)と [LocalActivityOptions リファレンス](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)を参照してください。

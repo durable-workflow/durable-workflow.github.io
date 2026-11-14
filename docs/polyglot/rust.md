@@ -408,6 +408,30 @@ Local failures are bounded before workflow code observes them, including the pub
 
 These SDK reporting bounds do not establish a Core derived-summary storage fix, another SDK’s delivery, embedded behavior or Server image adoption. Older workers can still fail to report an oversized failure. See the [published-source policy](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) and [shared failure guidance](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Activity retry backoff {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` counts total attempts, including the
+first. With `exponential_backoff(initial, coefficient, maximum_interval)`,
+passing `None` selects no interval cap. Pass `Some(maximum)` to cap the
+intervals explicitly. The default policy remains one attempt with an empty
+backoff list.
+
+For nine total attempts, an initial one-second delay, coefficient two and
+`None` encode `1, 2, 4, 8, 16, 32, 64, 128` seconds for the eight retries.
+The finite attempt budget and original schedule-to-close deadline, when
+configured, still bound retries. Arithmetic or protocol overflow returns
+`ActivityOptionsErrorKind::BackoffOverflow` during validation.
+
+Replay preserves the complete recorded delay list and compares it and the
+other known policy fields exactly. Changing only the maximum is compatible
+when the encoded list stays identical. A maximum that changes the list is a
+policy change, even if a changed entry was unused. Adding a 60-second cap to
+the example changes its list and can refuse replay with
+`activity_retry_policy_mismatch`.
+
+See the [Rust retry policy recipe](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+and the published [ActivityRetryPolicy API](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Local activities
 
 Rust SDK 3.1.0 adds inline local execution on workers configured with
