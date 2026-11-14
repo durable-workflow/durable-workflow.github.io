@@ -51,7 +51,9 @@ Les activités s’exécutent au moins une fois : un appel d’avancement peut d
 
 ## Compensation déclenchée par une échéance {#deadline-driven-compensation}
 
-Une [expiration du workflow imposée par le moteur](./timeouts.md#timeout-outcome-and-cleanup) ferme le run avant que le code puisse exécuter la compensation. Un bloc `catch` ou `finally` ne change pas ce comportement. Les commandes immédiates `cancel()` et `terminate()` n’offrent pas non plus de fenêtre de nettoyage.
+Avec la politique par défaut d’expiration stricte : Une [expiration du workflow imposée par le moteur](./timeouts.md#timeout-outcome-and-cleanup) ferme le run avant que le code puisse exécuter la compensation. Un bloc `catch` ou `finally` ne change pas ce comportement. Les commandes immédiates `cancel()` et `terminate()` n’offrent pas non plus de fenêtre de nettoyage.
+
+L’[option expérimentale de nettoyage après timeout](./timeouts.md#timeout-cleanup) peut réserver du temps dans le plafond strict original pour un gestionnaire de compensation déclenché par interruption. Elle concerne les workers de file intégrés, avec publication et qualification installée encore en attente ; elle ne rend pas la compensation automatique et ne garantit pas d’effet sans worker disponible.
 
 Utilisez une échéance applicative plus courte si l’expiration doit annuler du travail déjà effectué. Ce workflow intégré réserve une ressource, puis attend un signal de confirmation pendant au plus 30 secondes. L’expiration reprend le code, qui libère la réservation avant de renvoyer le résultat métier `expired` :
 

@@ -53,10 +53,16 @@ Activities run at least once, so a forward call can take effect and still fail f
 
 ## Deadline-driven compensation
 
-An engine [workflow timeout](./timeouts.md#timeout-outcome-and-cleanup) closes
+With the default policy, an engine [workflow timeout](./timeouts.md#timeout-outcome-and-cleanup) closes
 the run before workflow code can run compensation. A `catch` or `finally` block
 does not change that behavior. Immediate `cancel()` and `terminate()` commands
 also provide no cleanup window.
+
+The separate [experimental timeout-cleanup option](./timeouts.md#timeout-cleanup)
+can reserve time for an interruption-driven compensation handler inside the
+original hard cap. It is embedded queue support with publication and installed
+qualification still pending; it does not make compensation automatic or
+guarantee an effect when workers are unavailable.
 
 Use an earlier application deadline when timeout should undo completed work.
 This embedded workflow reserves a resource, then waits up to 30 seconds for a

@@ -127,13 +127,56 @@ A linha de falha armazena `Workflow\V2\Exceptions\WorkflowTimeoutException` como
 
 ### Resultado do tempo limite e limpeza {#timeout-outcome-and-cleanup}
 
-Um prazo de workflow encerra a execução com estado `failed` e `closed_reason = timed_out`. O evento terminal é `WorkflowTimedOut`. O runtime registra `WorkflowTimeoutException` como dados da falha. Ele **não** lança essa exceção dentro do corpo do workflow nem retoma seu código para limpeza. Os blocos `catch` e `finally` e as compensações de saga registradas não executam quando o motor aplica esse prazo.
+Na política padrão de timeout rígido: Um prazo de workflow encerra a execução com estado `failed` e `closed_reason = timed_out`. O evento terminal é `WorkflowTimedOut`. O runtime registra `WorkflowTimeoutException` como dados da falha. Ele **não** lança essa exceção dentro do corpo do workflow nem retoma seu código para limpeza. Os blocos `catch` e `finally` e as compensações de saga registradas não executam quando o motor aplica esse prazo.
 
 Cancelar a execução durável de uma atividade não desfaz um efeito externo nem prova que seu callback parou. Use operações idempotentes e reconciliação da própria aplicação para os efeitos que já podem ter sido confirmados.
 
 Se for preciso limpar após um prazo da aplicação, use um temporizador durável mais curto ou uma espera com tempo limite que permita executar [compensação antes do encerramento](./sagas.md#deadline-driven-compensation). Reserve tempo para novas tentativas de atividades, agendamento de workers e limpeza antes de qualquer um dos prazos do motor. O tempo limite do motor continua sendo o limite final. Um worker atrasado pode alcançá-lo antes de terminar a compensação.
 
 Os comandos imediatos `cancel()` e `terminate()` também encerram a execução sem dar tempo ao código de limpeza. A operação cooperativa independente `requestCancellation()` pode entregar uma limpeza limitada a um worker compatível enquanto a execução estiver ativa. Um tempo limite de workflow não se transforma automaticamente em solicitação de cancelamento cooperativo, e uma proteção contra cancelamento não amplia o prazo completo ou individual. Consulte [Cancelar e terminar](./cancel-and-terminate.md) e [Cancelamento cooperativo](../polyglot/cancellation.md).
+
+## Limpeza experimental acionada pelo prazo {#timeout-cleanup}
+
+**Suporte embutido experimental ainda não publicado.** Esta jornada visa Workflow 2.29.0; a publicação e a qualificação do pacote instalado continuam pendentes. A versão estável selecionada mantém o timeout rígido padrão descrito acima.
+
+Antes de ativar a opção, instale a versão qualificada, execute as migrações da aplicação e implante workers de fila embutidos compatíveis. A nova migração adiciona `workflow_runs.timeout_cleanup_work_deadline_at`; não ativa a opção em runs existentes. Não habilite antes de a migração terminar.
+
+```bash
+php artisan migrate
+```
+
+Reserve uma parte finita do timeout rígido existente ao iniciar um run:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
+    $orderId,
+    StartOptions::rejectDuplicate()
+        ->withExecutionTimeout(70)
+        ->withTimeoutCleanup(10),
+);
+```
+
+`timeoutCleanupSeconds:` é a alternativa do construtor. A reserva deve ser de 1–86400 segundos, exige um timeout de execução ou de run e deve ser menor que cada timeout rígido configurado. `null` mantém a política padrão.
+
+No exemplo, o trabalho comum recebe 60 segundos e a limpeza pode usar os últimos 10 dentro do limite rígido original de 70 segundos. A reserva nunca adiciona tempo depois desse limite. Se ambos os prazos rígidos se aplicam, o anterior limita a limpeza. Detecção tardia, retries, substituição de worker e renovação de lease não reiniciam prazos. Continue-as-new e redrive preservam a reserva admitida e os relógios de execução originais; cada run deriva os próprios relógios.
+
+No prazo de trabalho, o run entra em limpeza uma vez e registra `WorkflowTimeoutCleanupStarted`. O código compatível recebe `WorkflowTimeoutCleanupRequested`, subtipo de `WorkflowCancellationRequestedException` com `cause: timeout`. Trate essa interrupção para executar compensações de saga registradas ou limpeza protegida; `compensate()` usa seu escudo de cancelamento. O escudo não estende o limite rígido. Veja [Sagas](./sagas.md#deadline-driven-compensation).
+
+A limpeza tem um `timeout_cleanup.outcome` separado:
+
+| Resultado | Significado |
+|---|---|
+| `completed` | A limpeza retornou ou relançou a interrupção de timeout antes do prazo. Um valor retornado não se torna o resultado de negócio. |
+| `failed` | A limpeza lançou outra exceção; `failure_id` vincula a falha da limpeza. |
+| `expired` | O limite rígido chegou antes de a limpeza terminar, inclusive quando nenhum worker pôde executá-la. |
+| `preempted` | `cancel()` ou `terminate()` imediato interrompeu a limpeza; o resultado de cancelamento/terminação correspondente permanece terminal. |
+
+Limpeza concluída, falha ou expirada ainda termina com status de negócio `failed`, `closed_reason = timed_out` e `WorkflowTimedOut`. Compensar com sucesso não transforma o timeout em workflow bem-sucedido. Inspecione describe/detalhe do run e o histórico retido para ambos os resultados. Workers indisponíveis ou atrasados não garantem um efeito externo de limpeza; mantenha compensações idempotentes e reconcilie efeitos incertos na aplicação.
+
+Este incremento só suporta workers de fila embutidos. Inícios poll e de serviço recusam a opção; workers bridge não podem reclamar um run embutido com ela ativada. Admissão nativa e entrega de runtime pelos SDKs seguem pendentes em [Server #1201](https://github.com/durable-workflow/server/issues/1201); suporte ao parser sozinho não implementa limpeza por timeout.
 
 ## Lease de uma tarefa de workflow {#workflow-task-lease}
 

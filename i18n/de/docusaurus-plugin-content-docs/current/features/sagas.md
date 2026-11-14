@@ -51,7 +51,9 @@ Aktivitäten laufen mindestens einmal. Ein vorwärts gerichteter Aufruf kann dah
 
 ## Kompensation bei einer Anwendungsfrist {#deadline-driven-compensation}
 
-Ein von der Engine durchgesetztes [Workflow-Zeitlimit](./timeouts.md#timeout-outcome-and-cleanup) schließt den Lauf, bevor Workflow-Code Kompensation ausführen kann. Ein `catch`- oder `finally`-Block ändert dies nicht. Auch die unmittelbaren Befehle `cancel()` und `terminate()` bieten kein Aufräumfenster.
+Bei der standardmäßigen harten Timeout-Regel gilt: Ein von der Engine durchgesetztes [Workflow-Zeitlimit](./timeouts.md#timeout-outcome-and-cleanup) schließt den Lauf, bevor Workflow-Code Kompensation ausführen kann. Ein `catch`- oder `finally`-Block ändert dies nicht. Auch die unmittelbaren Befehle `cancel()` und `terminate()` bieten kein Aufräumfenster.
+
+Die separate [experimentelle Timeout-Cleanup-Option](./timeouts.md#timeout-cleanup) kann innerhalb der ursprünglichen harten Grenze Zeit für einen durch Unterbrechung ausgelösten Kompensationshandler reservieren. Sie unterstützt Embedded-Queue-Worker; Veröffentlichung und Prüfung des installierten Pakets stehen noch aus. Sie macht Kompensation nicht automatisch und garantiert bei fehlenden Workern keine Wirkung.
 
 Verwenden Sie eine frühere Anwendungsfrist, wenn bei Ablauf bereits erledigte Arbeit zurückgenommen werden soll. Dieser eingebettete Workflow reserviert eine Ressource und wartet danach höchstens 30 Sekunden auf ein Bestätigungssignal. Bei Ablauf wird Workflow-Code fortgesetzt, der die Reservierung vor Rückgabe des fachlichen Ergebnisses `expired` freigibt:
 
