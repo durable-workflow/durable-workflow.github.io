@@ -168,6 +168,14 @@ Processe os sinais de forma idempotente para o evento de negócio. Um ID de requ
 
 Consulte os [exemplos completos da última tentativa e do sinal para a própria execução](https://php.durable-workflow.com/build/workflows-activities/) no guia do SDK PHP.
 
+## Identidade lógica de execução de atividade {#activity-identity}
+
+PHP SDK **3.10.0 ou posterior** expõe `ActivityContext::activityExecutionId`, somente leitura e nullable, recebido no claim da atividade. Ele identifica a atividade lógica entre tentativas. `workflowId` e `runId` identificam a instância e a execução do workflow proprietário; `activityAttemptId` identifica uma tentativa. Não substitua uma identidade lógica ausente por um ID de tarefa, tentativa ou sessão.
+
+O SDK preserva exatamente a string não vazia recebida. Valores omitidos, null, vazios ou que não sejam strings produzem `null`. Use uma chave de negócio da aplicação quando ela não estiver disponível. O [exemplo de chave de serviço do SDK](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) mostra esse fallback; a [referência da propriedade](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId) define a API pública. Delimite as chaves por aplicação e efeito, use chaves distintas para efeitos distintos e reconcilie resultados incertos com o destino. A identidade é metadado público, não autoridade do claim nem garantia de efeitos externos exatamente uma vez.
+
+Callbacks remotos comuns e supervisionados cooperativamente leem o campo real do claim. Callbacks de sessão só o expõem quando o claim o inclui. Callbacks locais inline e sem Server que não tenham admissão do Server têm identidade de execução `null`, mesmo quando os IDs do workflow/run pai são conhecidos. O código histórico prepared-local encaminha o ID de admissão validado; esse comportamento de código não comprova suporte prepared-local nativo. São limites de código/fluxo de dados, não observações instaladas de novas tentativas em todos os modos.
+
 ## Heartbeats de atividade {#activity-heartbeats}
 
 Para atividades remotas, chame `ActivityContext::heartbeat($details)` durante trabalho de atividade limitado, bem antes do tempo limite de heartbeat configurado. A primeira janela começa na reivindicação pelo runtime, não quando o PHP recebe a tarefa. Latência das requisições, pausas e novas tentativas de transporte consomem essa janela. Siga as [orientações de cadência](../features/heartbeats.md#heartbeat-cadence-and-receipts).

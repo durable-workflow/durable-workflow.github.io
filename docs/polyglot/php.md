@@ -163,6 +163,14 @@ Keep signal processing idempotent for the business event. A stable request ID al
 
 See the [complete final-attempt and own-run signal examples](https://php.durable-workflow.com/build/workflows-activities/) in the PHP SDK guide.
 
+## Logical activity execution identity {#activity-identity}
+
+PHP SDK **3.10.0 or later** exposes the read-only nullable `ActivityContext::activityExecutionId` received with an activity claim. It identifies the logical activity across retries. `workflowId` and `runId` identify its owning workflow instance and run; `activityAttemptId` identifies an attempt. Do not substitute a task, attempt or session ID for a missing logical execution ID.
+
+The SDK preserves the received nonempty string exactly. Omitted, null, empty or non-string identity values produce `null`. Use an application-owned business key when it is unavailable. The [SDK-owned service-key example](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) shows that fallback; the [property reference](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId) defines the public API. Scope keys to the application and effect, use distinct keys for distinct effects, and reconcile uncertain outcomes with the destination. Identity is public metadata, not claim authority or an exactly-once external-effects guarantee.
+
+Ordinary and cooperatively supervised remote callbacks read the actual claim field. Session callbacks expose it only when their claim includes it. Inline local and Server-free callbacks without Server admission have `null` execution identity, even when their parent workflow/run IDs are known. Historical prepared-local source forwards its validated admission ID; that source behavior does not establish native prepared-local support. These are source/dataflow boundaries, not installed retry observations for every execution mode.
+
 ## Activity heartbeats {#activity-heartbeats}
 
 For remote activities, call `ActivityContext::heartbeat($details)` during bounded work, well before the configured heartbeat timeout. The first window starts at runtime claim, not when PHP receives the task. Request latency, pauses and transport retries consume that window. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts).

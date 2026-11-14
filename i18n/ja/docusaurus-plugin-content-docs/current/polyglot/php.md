@@ -101,6 +101,14 @@ PHP SDK **3.6.1 以降**では、サービスモードのアクティビティ�
 
 PHP SDK ガイドの[最終試行の判定と自身の実行へのシグナル送信の完全な例](https://php.durable-workflow.com/build/workflows-activities/)を参照してください。
 
+## アクティビティの論理実行 ID {#activity-identity}
+
+PHP SDK **3.10.0 以降**は、アクティビティ claim で受け取った読み取り専用の nullable な `ActivityContext::activityExecutionId` を公開します。リトライを通じた論理アクティビティを識別します。`workflowId` と `runId` は所有ワークフローのインスタンスと実行を、`activityAttemptId` は試行を識別します。論理実行 ID がない場合、タスク、試行、セッションの ID で代用しないでください。
+
+SDK は受信した空でない文字列をそのまま保持します。省略、null、空文字列、文字列以外の値は `null` になります。使えない場合はアプリケーションが管理するビジネスキーを使います。[SDK のサービスキー例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)にフォールバックを、[プロパティリファレンス](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId)に公開 API を示しています。キーをアプリケーションと効果の範囲に限定し、異なる効果には異なるキーを使い、不確かな結果を宛先と照合してください。ID は公開メタデータであり、claim の権限や外部効果の厳密な一度限りの保証ではありません。
+
+通常のリモート callback と協調監視されるリモート callback は実際の claim フィールドを読みます。セッション callback は claim に含まれる場合だけ公開します。Server の admission がない inline-local と Server-free callback の実行 ID は、親 workflow/run ID が既知でも `null` です。過去の prepared-local ソースは検証済み admission ID を渡しますが、そのソース動作は native prepared-local 対応を示しません。これらはソースとデータフローの境界であり、全モードでインストール済み環境のリトライを観測した結果ではありません。
+
 ## アクティビティのハートビート {#activity-heartbeats}
 
 リモートアクティビティでは、上限を設けた処理の途中で、設定されたハートビートのタイムアウトより十分前に `ActivityContext::heartbeat($details)` を呼び出します。最初の期間はランタイムのタスク取得から始まり、PHP がタスクを受信した時点からではありません。リクエストの遅延、中断、通信の再試行も期間を消費します。[送信間隔の指針](../features/heartbeats.md#heartbeat-cadence-and-receipts)に従ってください。

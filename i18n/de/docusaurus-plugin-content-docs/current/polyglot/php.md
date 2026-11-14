@@ -166,6 +166,14 @@ Verarbeiten Sie Signale für das Geschäftsereignis idempotent. Eine stabile Req
 
 Die [vollständigen Beispiele zum letzten Versuch und zum Signal an den eigenen Lauf](https://php.durable-workflow.com/build/workflows-activities/) stehen im PHP-SDK-Leitfaden.
 
+## Logische Activity-Ausführungsidentität {#activity-identity}
+
+PHP SDK **3.10.0 oder neuer** stellt die schreibgeschützte nullable Eigenschaft `ActivityContext::activityExecutionId` aus dem Activity-Claim bereit. Sie identifiziert die logische Activity über Wiederholungen hinweg. `workflowId` und `runId` bezeichnen die besitzende Workflow-Instanz und ihren Lauf; `activityAttemptId` bezeichnet einen Versuch. Ersetzen Sie eine fehlende logische Ausführungs-ID nicht durch eine Task-, Versuchs- oder Session-ID.
+
+Das SDK erhält die empfangene nichtleere Zeichenfolge exakt. Fehlende, null, leere oder nicht als String empfangene Identitätswerte ergeben `null`. Verwenden Sie dann einen anwendungseigenen Geschäftsschlüssel. Das [Service-Key-Beispiel des SDKs](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) zeigt diesen Fallback; die [Eigenschaftsreferenz](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId) definiert die öffentliche API. Begrenzen Sie Schlüssel auf Anwendung und Effekt, verwenden Sie verschiedene Schlüssel für verschiedene Effekte und gleichen Sie ungewisse Ergebnisse mit dem Ziel ab. Identität ist öffentliche Metadateninformation, keine Claim-Autorität oder Garantie genau einmal ausgeführter externer Effekte.
+
+Gewöhnliche und kooperativ überwachte Remote-Callbacks lesen das tatsächliche Claim-Feld. Session-Callbacks liefern es nur, wenn ihr Claim es enthält. Inline-lokale und Server-freie Callbacks ohne Server-Zulassung haben `null` als Ausführungsidentität, auch bei bekannten Eltern-Workflow-/Run-IDs. Historischer Prepared-local-Quellcode reicht seine validierte Zulassungs-ID weiter; dieses Quellverhalten belegt keine native Prepared-local-Unterstützung. Dies sind Quell-/Datenflussgrenzen, keine installierten Retry-Beobachtungen für jeden Ausführungsmodus.
+
 ## Aktivitäts-Heartbeats {#activity-heartbeats}
 
 Rufen Sie bei entfernten Aktivitäten `ActivityContext::heartbeat($details)` während begrenzter Aktivitätsarbeit deutlich vor dem konfigurierten Heartbeat-Zeitlimit auf. Das erste Zeitfenster beginnt mit der Beanspruchung durch die Laufzeit, nicht beim Empfang der Aufgabe in PHP. Anfragelatenz, Pausen und Transportwiederholungen verbrauchen dieses Zeitfenster. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts).
