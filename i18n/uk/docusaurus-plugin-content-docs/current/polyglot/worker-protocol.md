@@ -330,6 +330,10 @@ Endpoints і тіла запитів:
 `retry_policy` використовує `max_attempts`, `backoff_seconds`
 і `non_retryable_error_types`.
 
+`max_attempts` рахує загальну кількість спроб, включно з першою. Коли `backoff_seconds` вичерпано, його останнє значення повторюється. Для `max_attempts: 5` і `backoff_seconds: [1, 2]` чотири затримки перед повторними спробами становлять `[1, 2, 2, 2]` секунди. Порожній список `backoff_seconds: []` запитує негайні повторні спроби без backoff у межах обмежень кількості спроб і часу.
+
+Політика записується під час планування activity. Зберігайте записані затримки для цієї activity, зокрема під час replay з пізнішим SDK. Не перераховуйте їх із нових типових значень.
+
 `start_child_workflow` приймає необов'язкові `parent_close_policy`,
 `retry_policy`, `execution_timeout_seconds` та `run_timeout_seconds`.
 `parent_close_policy` є `abandon`, `request_cancel`,

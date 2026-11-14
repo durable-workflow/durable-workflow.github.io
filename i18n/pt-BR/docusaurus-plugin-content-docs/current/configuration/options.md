@@ -93,7 +93,7 @@ As substituições de roteamento em `ActivityOptions` se aplicam ao agendar uma 
 Os campos de nova tentativa e tempo limite substituem a classe da atividade apenas nesta chamada:
 
 - `maxAttempts`: total de tentativas, contando a primeira. Deve ser pelo menos 1. Uma nova atividade agendada com 0 ou menos faz a execução falhar. Omita-o para usar o `$tries` da classe, em que `0` tenta indefinidamente.
-- `backoff`: segundos de espera antes de cada nova tentativa, como lista ou valor único. Substitui o `backoff()` da classe.
+- `backoff`: segundos de espera antes de cada nova tentativa, como lista ou valor único. Substitui o `backoff()` da classe. Quando a lista termina, sua última entrada é repetida. Uma lista vazia não acrescenta atraso. Veja [Intervalo entre tentativas](#backoff).
 - `nonRetryableErrorTypes`: nomes de tipos ou classes de erro que fazem a atividade falhar sem outra tentativa.
 - `startToCloseTimeout`: máximo de segundos para uma tentativa.
 - `scheduleToStartTimeout`: máximo de segundos que uma atividade pode esperar por um worker antes de começar.
@@ -122,7 +122,11 @@ A classe base `Activity` da v2 não tem uma propriedade de classe `$timeout`. Co
 
 ## Intervalo entre tentativas {#backoff}
 
-O método `backoff` retorna um array de inteiros correspondentes à tentativa atual. O método `backoff` padrão aplica um recuo exponencial até 2 minutos. Você pode substituí-lo implementando o método `backoff` na classe da atividade.
+O método `backoff()` retorna os atrasos de nova tentativa em segundos como inteiro ou lista. A lista padrão chega a 120 segundos (2 minutos). Substitua-a implementando `backoff()` na classe da atividade.
+
+Quando há mais novas tentativas que entradas na lista, o último atraso é repetido. Com `maxAttempts: 5` e `backoff: [1, 2]`, os quatro atrasos de nova tentativa são `[1, 2, 2, 2]` segundos. Uma lista vazia, `backoff: []`, solicita novas tentativas imediatas sem backoff, sujeitas aos limites de tentativas e tempo.
+
+A política de novas tentativas é registrada quando a atividade é agendada. Políticas já registradas mantêm seus atrasos quando código posterior muda os padrões da classe ou as opções.
 
 ## Namespace {#namespace}
 
