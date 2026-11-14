@@ -155,6 +155,8 @@ Suchattribute erscheinen in:
 - **Historienzeitleiste**: Jedes `SearchAttributesUpserted`-Ereignis erscheint als typisierter Eintrag in der Laufzeitleiste.
 - **Historienexport**: Suchattribute sind in JSON-Historienexporten enthalten.
 
+Für typisierte Vergleiche, Zeitbereiche, Mitgliedschaft, Anführungszeichen und HTTP-Seitennavigation auf dem Server verwenden Sie die [Visibility-Abfragesprache](../polyglot/visibility-query-language.md). Aktuelle Embedded-Listen und gespeicherte Waterline-Ansichtsfilter implementieren nicht die vollständige Grammatik. Die gemeinsame Parität bleibt im [Visibility-Query-Feature](https://github.com/durable-workflow/.github/issues/224) offen.
+
 ### Listenfilter für Eltern und Kinder {#parent-child-list-filters}
 
 Kinder [erben Suchattribute und Memo bei der Erstellung](./child-workflows.md#child-metadata-inheritance) und können ihre Werte danach unabhängig ändern. Das Filtern eines geerbten Attributs schließt Kinder nicht automatisch aus. Bei einem registrierten Keyword-Attribut kann die Server-Abfrage `customer = 'customer-42'` den Elternlauf und jedes Kind mit diesem Wert zurückgeben. Memo bleibt nicht indizierte Metadaten und ist kein weiterer Suchattributfilter.

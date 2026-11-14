@@ -139,6 +139,8 @@ Search attributes appear in:
 - **History timeline** — each `SearchAttributesUpserted` event appears as a typed entry in the run timeline
 - **History export** — search attributes are included in JSON history exports
 
+For Server-side typed comparisons, time ranges, membership, quoting and HTTP pagination, use the [Visibility Query Language](../polyglot/visibility-query-language.md). Current embedded listing and Waterline saved-view filters do not implement that full grammar. Shared parity remains pending in [the visibility-query feature](https://github.com/durable-workflow/.github/issues/224).
+
 ### Parent and child list filters {#parent-child-list-filters}
 
 Children [inherit search attributes and memo at creation](./child-workflows.md#child-metadata-inheritance), then can upsert their own values independently. Filtering an inherited attribute does not implicitly exclude children. For a registered keyword attribute, the Server query `customer = 'customer-42'` can return the parent and every child still carrying that value. Memo remains unindexed metadata; it is not another search-attribute filter.

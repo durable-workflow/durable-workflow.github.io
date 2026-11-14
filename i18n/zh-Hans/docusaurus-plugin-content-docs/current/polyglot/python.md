@@ -894,6 +894,27 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### 活动的逻辑执行标识 {#activity-identity}
+
+Python SDK 2.15.0 及更高版本提供只读的可选字段
+`activity.context().info.activity_execution_id`。它标识跨重试的同一次逻辑活动执行。
+`info.workflow_id` 和 `info.run_id` 标识其所属的工作流实例和运行。请将逻辑执行 ID
+用作外部服务的幂等键。任务 ID 和尝试 ID 会在重试时变化，不能用来替代它。
+
+执行 ID 缺失、无效或只含空白时仍为 `None`，旧 claim 也是如此。收到的非空白字符串
+会保留原样。如果操作要求此键，但 ID 不可用，请在产生外部副作用之前拒绝操作。
+通过会话路由的活动使用其普通 claim 的身份。预备本地活动使用经过验证的接纳回执中的
+执行 ID。内联本地活动没有已接纳的执行 ID，因此提供 `None`，但保留父工作流和运行的
+ID。不使用 Server 的 mock 不会创建 Server 活动身份。
+
+服务模式示例见 SDK 的[幂等键辅助函数和活动身份指南](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity)。
+为不同的外部操作添加稳定的操作后缀，并确保下游服务遵守幂等键。执行 ID 是公开元数据，
+既不能证明 claim 仍然有效，也不是产生外部副作用的授权。请保留凭据、当前尝试的
+fencing 和结果对账。[使用已发布包的普通重试回执](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+将 Python SDK 2.17.2 与原生 Server 3.9.2 绑定。它证明尝试 1 和 2 的逻辑执行、工作流和
+运行身份保持不变，而任务 ID 和尝试 ID 不同。本地和会话行为仍具有单独定义的范围。
+共享幂等契约见[执行保证](../constraints/execution-guarantees.md#service-activity-identity)。
+
 #### 收到的重试策略与原始尝试次数 {#activity-retry-metadata}
 
 需要 Python SDK **2.12.0 或更高版本**。`info = activity.context().info`

@@ -114,6 +114,15 @@ final class ChargeCard extends Activity
 
 Rust 服务模式活动可通过 SDK **4.9.0 或更新版本**的 `ActivityContext` 取得原始可选值 `activity_execution_id()`、`workflow_id()`（实例）和 `run_id()`。跨重试使用逻辑活动 ID；claim 缺失字段保持为 `None`，不能用每次尝试的 task/attempt ID 代替。[Rust 处理函数示例](../polyglot/rust.md#activity-identity)生成外部键，并解释旧 Server、本地活动及无 Server 测试的边界。键仍需要支持幂等性的外部 API 或持久化副作用账本；这些方法不提供可恢复检查点。
 
+Python 服务模式活动提供只读的可选字段
+`activity.context().info.activity_execution_id`，以及所属工作流实例和运行的 `workflow_id`
+和 `run_id`。请在重试之间使用逻辑执行 ID。身份缺失时仍为 `None`，绝不能替换为任务、
+尝试或会话 ID。[Python 身份指南](../polyglot/python.md#activity-identity)链接到 SDK
+维护的服务模式示例，并定义旧 claim、会话、预备本地活动、内联本地活动及不使用 Server
+时的行为。其中已发布包与原生 Server 的回执仅证明普通重试的身份。ID 是公开元数据，
+不是 claim 权限，也不会使外部副作用恰好发生一次。请保留下游幂等性、不同副作用使用
+不同键，以及结果对账。
+
 ## 开发者需要保证哪些操作幂等 {#what-developers-must-make-idempotent}
 
 你无需让工作流重放本身具有幂等性。框架通过已提交历史重建状态，负责处理重放。

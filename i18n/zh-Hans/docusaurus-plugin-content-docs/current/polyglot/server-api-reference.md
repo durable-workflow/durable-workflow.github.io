@@ -277,7 +277,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | 列出工作流实例。支持状态、类型、查询文本和数量上限等过滤。 |
+| `GET` | `/api/workflows` | 列出命名空间内的工作流运行，支持状态、类型、可见性查询、`page_size` 和 `next_page_token`。 |
 | `POST` | `/api/workflows` | 启动工作流实例。 |
 | `GET` | `/api/workflows/{workflowId}` | 描述某个工作流 ID 的当前运行。 |
 | `GET` | `/api/workflows/{workflowId}/debug` | 返回有限诊断信息，用于调查卡住的运行。 |
@@ -286,6 +286,8 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | 返回选定运行的有限诊断信息。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | 分页读取运行历史事件。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | 导出某次运行的归档重放包。 |
+
+支持的字段、带类型比较、引号、优先级、错误和分页示例见[可见性查询语言](./visibility-query-language.md)。该列表语法不同于工作流的命名查询处理程序，也不同于 schedule 列表筛选器。
 
 启动请求使用语言中立的控制平面结构：
 

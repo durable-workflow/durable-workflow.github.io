@@ -422,7 +422,7 @@ admin role and `X-Durable-Workflow-Control-Plane-Version: 2`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | List workflow instances. Supports filters such as status, type, query text, and limit. |
+| `GET` | `/api/workflows` | List workflow runs in the namespace, with status, type, visibility query, `page_size` and `next_page_token`. |
 | `POST` | `/api/workflows` | Start a workflow instance. |
 | `GET` | `/api/workflows/{workflowId}` | Describe the current run for one workflow id. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Return bounded diagnostic facts for stuck-run investigation. |
@@ -431,6 +431,8 @@ admin role and `X-Durable-Workflow-Control-Plane-Version: 2`.
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Return bounded diagnostic facts for a selected run. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Page through run history events. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Export the archival replay bundle for a run. |
+
+For supported fields, typed comparisons, quoting, precedence, errors and paging examples, see the [Visibility Query Language](./visibility-query-language.md). This listing grammar differs from a workflow's named query handlers and from schedule-list filters.
 
 Start requests use the language-neutral control-plane shape:
 

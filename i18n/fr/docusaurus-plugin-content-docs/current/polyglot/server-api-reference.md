@@ -422,7 +422,7 @@ exigent un rôle operator ou admin et `X-Durable-Workflow-Control-Plane-Version:
 
 | Méthode | Chemin | Rôle |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Lister les instances de workflow. Accepte les filtres d'état, de type, de texte de requête et de limite. |
+| `GET` | `/api/workflows` | Lister les exécutions du namespace, avec état, type, requête de visibilité, `page_size` et `next_page_token`. |
 | `POST` | `/api/workflows` | Démarrer une instance de workflow. |
 | `GET` | `/api/workflows/{workflowId}` | Décrire l'exécution actuelle d'un identifiant de workflow. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Renvoyer des diagnostics bornés pour examiner une exécution bloquée. |
@@ -431,6 +431,8 @@ exigent un rôle operator ou admin et `X-Durable-Workflow-Control-Plane-Version:
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Renvoyer des diagnostics bornés pour une exécution sélectionnée. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Parcourir par pages les événements d'historique d'une exécution. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Exporter l'ensemble de relecture archivable d'une exécution. |
+
+Pour les champs, comparaisons typées, guillemets, priorités, erreurs et exemples de pagination, voir le [Langage de requêtes de visibilité](./visibility-query-language.md). Cette grammaire diffère des gestionnaires de requêtes nommés du workflow et des filtres de liste des schedules.
 
 Les requêtes de démarrage suivent la forme du plan de contrôle indépendante du langage :
 

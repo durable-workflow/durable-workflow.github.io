@@ -13,7 +13,7 @@ Si vous hésitez entre l’intégration du package et un Server indépendant, co
 ## Prérequis {#requirements}
 
 - PHP 8.2 ou ultérieur dans la série 8.x
-- Laravel 12.69 ou ultérieur dans la série 12.x, ou Laravel 13.30 ou ultérieur dans la série 13.x
+- Laravel 12.72 ou ultérieur dans la série 12.x, ou Laravel 13.41 ou ultérieur dans la série 13.x
 - PHP 8.3 ou ultérieur pour Laravel 13
 
 Ces exigences concernent la version embarquée actuelle. Avant de mettre à jour

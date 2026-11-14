@@ -20,7 +20,7 @@ the embedded Laravel path.
 ## Requirements
 
 - PHP 8.2 or later in the supported PHP 8.x line
-- Laravel 12.69 or later in 12.x, or Laravel 13.30 or later in 13.x
+- Laravel 12.72 or later in 12.x, or Laravel 13.41 or later in 13.x
 - PHP 8.3 or later for Laravel 13
 
 These requirements apply to the current embedded release. For an older

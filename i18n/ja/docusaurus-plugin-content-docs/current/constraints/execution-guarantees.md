@@ -114,6 +114,18 @@ final class ChargeCard extends Activity
 
 Rust のサービスモードでは、SDK **4.9.0 以降**の `ActivityContext` から、元の任意フィールド `activity_execution_id()`、`workflow_id()`（インスタンス）、`run_id()` を取得できます。再試行をまたぐ論理アクティビティ ID を使ってください。claim の欠落フィールドは `None` のままで、試行ごとの task/attempt ID は代用になりません。[Rust ハンドラーの例](../polyglot/rust.md#activity-identity)では外部キーを作り、旧 Server、local activity、Server を使わないテストの制限を説明しています。キーには依然として冪等な外部 API または永続的な副作用台帳が必要です。これらのメソッドは再開可能な checkpoint を提供しません。
 
+Python のサービスモードのアクティビティは、読み取り専用の省略可能な
+`activity.context().info.activity_execution_id` と、所属するワークフローインスタンス
+および実行を示す `workflow_id` と `run_id` を公開します。再試行をまたいで論理実行
+ID を使ってください。ID がない場合は `None` のままです。タスク、試行、セッションの
+ID で代用してはいけません。[Python の ID ガイド](../polyglot/python.md#activity-identity)
+は SDK が管理するサービスモードの例にリンクし、古い claim、セッション、準備済み
+ローカル、インラインのローカル、Server を使わない場合の動作を定義します。そこで
+示す公開パッケージとネイティブ Server のレシートが証明するのは、通常の再試行の
+ID だけです。ID は公開メタデータであり claim の権限ではなく、外部への副作用を
+厳密に 1 回にするものでもありません。外部サービスの冪等性、異なる副作用ごとの
+別々のキー、結果の照合を維持してください。
+
 ## 開発者が冪等にする処理 {#what-developers-must-make-idempotent}
 
 ワークフローのリプレイ自体を冪等にする必要はありません。フレームワークが確定済み履歴から状態を再構築して処理します。

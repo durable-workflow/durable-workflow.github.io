@@ -114,6 +114,20 @@ final class ChargeCard extends Activity
 
 Für Rust-Aktivitäten im Service-Modus liefert SDK **4.9.0 oder neuer** die ursprünglichen optionalen Werte `activity_execution_id()`, `workflow_id()` (Instanz) und `run_id()` über `ActivityContext`. Nutzen Sie die logische Aktivitäts-ID über Retries hinweg; fehlende Claim-Felder bleiben `None`, und eine Task- oder Versuch-ID ist kein Ersatz. Das [Rust-Handler-Beispiel](../polyglot/rust.md#activity-identity) leitet einen externen Schlüssel ab und erläutert Grenzen älterer Server, lokaler Aktivitäten und serverfreier Tests. Der Schlüssel benötigt weiterhin eine idempotente externe API oder ein dauerhaftes Effektregister; diese Methoden liefern keine fortsetzbaren Checkpoints.
 
+Python-Aktivitäten im Dienstmodus stellen das schreibgeschützte optionale Feld
+`activity.context().info.activity_execution_id` sowie `workflow_id` und `run_id`
+für die zugehörige Workflow-Instanz und den Run bereit. Verwenden Sie die
+logische Ausführungs-ID über Wiederholungen hinweg. Fehlende Identität bleibt
+`None`. Ersetzen Sie sie niemals durch eine Task-, Versuchs- oder Sitzungs-ID.
+Der [Python-Identitätsleitfaden](../polyglot/python.md#activity-identity) verlinkt
+das Dienstmodus-Beispiel des SDKs und definiert das Verhalten älterer Claims,
+von Sitzungen, vorbereiteten und inline ausgeführten lokalen Aktivitäten sowie
+Tests ohne Server. Sein benannter Beleg mit veröffentlichtem Paket und nativem
+Server belegt nur die Identität bei gewöhnlichen Wiederholungen. Die ID ist
+öffentliche Metainformation, keine Claim-Autorität, und macht einen externen Effekt
+nicht Exactly-once. Behalten Sie nachgelagerte Idempotenz, unterschiedliche
+Schlüssel für verschiedene Effekte und Ergebnisabgleich bei.
+
 ## Was die Anwendung idempotent machen muss {#what-developers-must-make-idempotent}
 
 Workflow-Replay selbst müssen Sie nicht idempotent machen. Das Framework rekonstruiert den Zustand aus der festgeschriebenen Historie.

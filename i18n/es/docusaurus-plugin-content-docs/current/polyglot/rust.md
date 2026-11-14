@@ -342,6 +342,32 @@ Los fallos locales se acotan antes de que los observe el workflow, incluida la n
 
 Estos límites SDK no demuestran una corrección del almacenamiento de resúmenes de Core, entrega de otro SDK, comportamiento embedded ni adopción en imágenes Server. Los workers antiguos aún pueden no reportar un fallo excesivo. Consulta la [política en el source publicado](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) y la [guía común](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Backoff de reintentos de actividades {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` cuenta los intentos totales, incluido
+el primero. Con `exponential_backoff(initial, coefficient, maximum_interval)`,
+pasar `None` no establece un límite de intervalo. Pase `Some(maximum)` para
+limitar los intervalos explícitamente. La política predeterminada sigue
+siendo un intento con una lista de backoff vacía.
+
+Para nueve intentos totales, una demora inicial de un segundo, coeficiente
+dos y `None` codifican `1, 2, 4, 8, 16, 32, 64, 128` segundos para los ocho
+reintentos. El presupuesto finito de intentos y el plazo original de
+schedule-to-close, cuando está configurado, siguen limitando los reintentos.
+Un desbordamiento aritmético o del protocolo devuelve
+`ActivityOptionsErrorKind::BackoffOverflow` durante la validación.
+
+La reproducción conserva la lista completa de demoras registrada y la
+compara, junto con los demás campos conocidos de la política, de forma
+exacta. Cambiar solo el máximo es compatible si la lista codificada sigue
+siendo idéntica. Un máximo que cambia la lista cambia la política, aunque
+la entrada modificada no se haya usado. Añadir un límite de 60 segundos al
+ejemplo cambia su lista y puede rechazar la reproducción con
+`activity_retry_policy_mismatch`.
+
+Consulte la [receta de políticas de reintento de Rust](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+y la [API publicada de ActivityRetryPolicy](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Actividades locales {#local-activities}
 
 El SDK de Rust 3.1.0 añade ejecución local en el propio worker con `Worker::local_activities(true)`. Registra callbacks con los métodos ordinarios de registro de actividades y utiliza los métodos de actividad local del contexto de workflow. Consulta el [ejemplo ejecutable](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs) y la [referencia de LocalActivityOptions](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html) para configurar reintentos y tiempos de espera.
@@ -546,6 +572,22 @@ Un fallo manejado ejecuta el comando de actividad existente en orden inverso de 
 El SDK de Rust registra valores no deterministas pequeños con `WorkflowContext::side_effect` y deriva UUIDv4 deterministas con `WorkflowContext::uuid_v4`. Una reproducción desde cero decodifica el valor registrado sin volver a invocar el callback; marcadores reordenados, ausentes, duplicados o incompatibles con el códec devuelven `Error::NonDeterministicReplay` tipado.
 
 Utiliza `WorkflowContext::get_version(change_id, min_supported, max_supported)` para mantener compatibles con la reproducción las ramas antiguas y nuevas durante un despliegue. Las ejecuciones nuevas registran `max_supported`; las existentes reutilizan el marcador duradero. `patched(change_id)` ofrece la forma booleana del despliegue y `deprecate_patch(change_id)` conserva el marcador tras finalizar la rama heredada. Consulta [Efectos secundarios](/docs/features/side-effects/) y [Versionado](/docs/features/versioning/) para la semántica duradera compartida.
+
+## Logging de workflows consciente del replay {#workflow-logging}
+
+Rust SDK 4.17.0 añade `ctx.logger().info("message")` para observaciones desde el código del workflow. Envía los eventos al subscriber `tracing` existente de la aplicación con el target `durable_workflow::workflow` y los campos inmutables vinculados por el SDK `namespace`, `workflow_instance_id` y `workflow_run_id`. Configure el subscriber del host; el SDK no instala uno global.
+
+Las llamadas de log normales vuelven a ejecutarse cuando un worker reconstruye el historial del workflow. El logger del workflow permanece silencioso durante el replay del prefijo confirmado, las consultas/replay offline y los historiales completados, incluso tras reemplazar el worker en frío, y fuera de una invocación activa. Solo puede emitir en ejecución nueva más allá de ese prefijo y con una identidad de run completa y vinculada. `ctx.replay_state()` observa ese límite vivo del historial consumido, en lugar de un booleano fijado al iniciar la tarea:
+
+| `WorkflowReplayState` | Observación |
+| --- | --- |
+| `Replaying` | Reconstrucción de historial confirmado o de una consulta; se suprimen los logs del workflow. |
+| `Executing` | Ejecución nueva más allá del prefijo confirmado; reintentar una tarea no confirmada puede repetir logs. |
+| `Unavailable` | Fuera de esta invocación del workflow o sin lectura segura del estado; se suprimen los logs del workflow. |
+
+Mantenga el orden de comandos durables independiente de este estado de observación y de la entrega de logs. Un log de un intento no confirmado puede repetirse tras un fallo o retry; el logger no es un outbox exactamente una vez. Mantenga los handlers de la aplicación acotados y no bloqueantes, por ejemplo con una cola de logging propia. Los panics del subscriber con desenrollado de pila se aíslan del resultado del workflow; los abortos del proceso y handlers bloqueantes siguen siendo responsabilidad de la aplicación.
+
+Consulte la [guía de logging publicada](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), la [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) y la [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). Los [controles de ciclo de vida/deadline desde el registro](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) y la [aceptación de logging con cuatro procesos](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) se registraron en la tupla nombrada native Server 3.10.0 linux/amd64. Los demás bindings y la cualificación más amplia de replay/productor mantienen su propio alcance.
 
 ## Reglas de determinismo de Rust {#rust-determinism-rules}
 

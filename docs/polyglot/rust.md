@@ -408,6 +408,30 @@ Local failures are bounded before workflow code observes them, including the pub
 
 These SDK reporting bounds do not establish a Core derived-summary storage fix, another SDK’s delivery, embedded behavior or Server image adoption. Older workers can still fail to report an oversized failure. See the [published-source policy](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) and [shared failure guidance](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Activity retry backoff {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` counts total attempts, including the
+first. With `exponential_backoff(initial, coefficient, maximum_interval)`,
+passing `None` selects no interval cap. Pass `Some(maximum)` to cap the
+intervals explicitly. The default policy remains one attempt with an empty
+backoff list.
+
+For nine total attempts, an initial one-second delay, coefficient two and
+`None` encode `1, 2, 4, 8, 16, 32, 64, 128` seconds for the eight retries.
+The finite attempt budget and original schedule-to-close deadline, when
+configured, still bound retries. Arithmetic or protocol overflow returns
+`ActivityOptionsErrorKind::BackoffOverflow` during validation.
+
+Replay preserves the complete recorded delay list and compares it and the
+other known policy fields exactly. Changing only the maximum is compatible
+when the encoded list stays identical. A maximum that changes the list is a
+policy change, even if a changed entry was unused. Adding a 60-second cap to
+the example changes its list and can refuse replay with
+`activity_retry_policy_mismatch`.
+
+See the [Rust retry policy recipe](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+and the published [ActivityRetryPolicy API](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Local activities
 
 Rust SDK 3.1.0 adds inline local execution on workers configured with
@@ -718,6 +742,22 @@ runs record `max_supported`; existing runs reuse the durable marker.
 `deprecate_patch(change_id)` preserves the marker after the legacy branch has
 drained. See [Side Effects](/docs/features/side-effects/) and
 [Versioning](/docs/features/versioning/) for the shared durable semantics.
+
+## Replay-aware workflow logging {#workflow-logging}
+
+Rust SDK 4.17.0 adds `ctx.logger().info("message")` for observations from workflow code. It routes to the application's existing `tracing` subscriber using target `durable_workflow::workflow`, with SDK-bound immutable `namespace`, `workflow_instance_id` and `workflow_run_id` fields. Configure the host subscriber; the SDK installs no global subscriber.
+
+Ordinary log calls execute again as a worker reconstructs workflow history. The workflow logger stays quiet for committed-prefix, query/offline and completed-history replay, including cold worker replacement, and outside an active invocation. It can emit only in new execution beyond that prefix with a complete bound run identity. `ctx.replay_state()` observes that live consumed-history boundary rather than a Boolean fixed when the task starts:
+
+| `WorkflowReplayState` | Observation |
+| --- | --- |
+| `Replaying` | Reconstructing committed history or a query; workflow logs are suppressed. |
+| `Executing` | New execution beyond the committed prefix; an uncommitted task retry can repeat logs. |
+| `Unavailable` | Outside this workflow invocation, or the state cannot be read safely; workflow logs are suppressed. |
+
+Keep durable command order independent of this observation state and log delivery. A log from an uncommitted attempt can repeat after a crash or retry, so the logger is not an exactly-once outbox. Keep application handlers bounded and nonblocking, for example with an application-owned logging queue. Unwinding subscriber panics are isolated from the workflow result; process aborts and blocking handlers remain application responsibilities.
+
+See the [published logging guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) and [WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry lifecycle/deadline controls](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) and [four-process logging acceptance](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) were recorded on the named native Server 3.10.0 linux/amd64 tuple. Other bindings and broader replay/producer qualification retain their own scope.
 
 ## Rust determinism rules {#rust-determinism-rules}
 
