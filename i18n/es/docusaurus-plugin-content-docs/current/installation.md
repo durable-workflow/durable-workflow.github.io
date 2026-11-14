@@ -20,7 +20,7 @@ Esta página describe la integración en Laravel.
 ## Requisitos {#requirements}
 
 - PHP 8.2 o posterior de la serie 8.x
-- Laravel 12.69 o posterior de 12.x, o Laravel 13.30 o posterior de 13.x
+- Laravel 12.72 o posterior de 12.x, o Laravel 13.41 o posterior de 13.x
 - PHP 8.3 o posterior para Laravel 13
 
 Estos requisitos corresponden a la versión integrada actual. Antes de actualizar

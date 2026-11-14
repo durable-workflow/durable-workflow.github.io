@@ -35,12 +35,12 @@ Für ein unmittelbares v1-Upgrade auf Paketebene halten Sie den ausführlichen [
 | Eingebettetes 2.0-Laravel | PHP-SDK-Dienstmodus | Die Anwendung soll die Orchestrierungslaufzeit nicht mehr verwalten oder benötigt eine gemeinsame/mehrsprachige Laufzeitgrenze. | Neue Starts nach Bereitschaft der Worker an die Dienstlaufzeit leiten. Eingebettete Läufe an ihrem Ursprungsort abschließen lassen oder für selbst gehosteten Server das explizite Importverfahren für geeignete eingebettete v2-Läufe verwenden. |
 
 Prüfen Sie vor der Zielwahl die [veröffentlichten Laravel-Supportlinien](./compatibility.md#laravel-support).
-Das aktuelle eingebettete Paket und ab PHP-SDK 3.10 auch die Laravel-Bridge des
-Dienstmodus benötigen beide Laravel 12.69 oder 13.30 und passendes PHP. Der
-reine Dienstmodus-Client behält PHP 8.1 bei. PHP-SDK 3.9.x behält seinen
-früheren Bridge-Vertrag für gepatchtes Laravel 10–13. Eine ältere v1-Anwendung
-benötigt möglicherweise ein Framework-Upgrade, bevor sie auf eine der beiden
-aktuellen Linien wechselt. Bewahren Sie dabei ihre v1-Laufzeit und offenen Läufe.
+Das aktuelle eingebettete Paket benötigt Laravel 12.72 oder 13.41 und passendes
+PHP. Die Laravel-Bridge im Dienstmodus folgt ihren [eigenen PHP-SDK-Anforderungen](./polyglot/php.md#requirements).
+Der reine Dienstmodus-Client behält PHP 8.1 bei. PHP-SDK 3.9.x behält seinen
+früheren Laravel-10–13-Bridge-Vertrag. Eine ältere v1-Anwendung benötigt
+möglicherweise ein Framework-Upgrade, bevor sie auf eine der beiden aktuellen
+Linien wechselt. Bewahren Sie dabei ihre v1-Laufzeit und offenen Läufe.
 
 ## Verantwortungsgrenzen vergleichen {#compare-the-ownership-boundary}
 

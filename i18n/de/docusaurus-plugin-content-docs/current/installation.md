@@ -13,7 +13,7 @@ Wenn Sie zwischen der Einbettung des Pakets und dem eigenständigen Server wähl
 ## Voraussetzungen {#requirements}
 
 - PHP 8.2 oder neuer innerhalb der 8.x-Linie
-- Laravel 12.69 oder neuer in 12.x oder Laravel 13.30 oder neuer in 13.x
+- Laravel 12.72 oder neuer in 12.x oder Laravel 13.41 oder neuer in 13.x
 - PHP 8.3 oder neuer für Laravel 13
 
 Diese Anforderungen gelten für das aktuelle eingebettete Release. Wählen Sie vor

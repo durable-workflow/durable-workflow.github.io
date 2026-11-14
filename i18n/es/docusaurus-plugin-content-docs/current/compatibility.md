@@ -100,16 +100,24 @@ El paquete integrado y el SDK de modo servicio tienen contratos distintos.
 
 | Línea del paquete | PHP | Laravel |
 | --- | --- | --- |
-| Workflow integrado 2.28 actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
+| Workflow integrado %%artifact.workflowVersion%% actual | PHP 8.2+ de 8.x; PHP 8.3+ para Laravel 13 | `^12.72.0` o `^13.41.0` |
 | Workflow integrado 2.20.5 | PHP `^8.1`, sujeto al mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.14 publicado | SDK básico PHP `^8.1`; el puente Laravel necesita PHP `^8.2`, y PHP 8.3+ para Laravel 13 | `^12.69.0` o `^13.30.0` |
 | SDK PHP 3.9.5 | SDK básico PHP `^8.1`; el puente Laravel también exige el mínimo del framework | `^10.50.4`, `^11.56.1`, `^12.69.0` o `^13.30.0` |
 
-Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
+Las filas anteriores registran los requisitos de sus versiones indicadas.
+
+Las autoridades son el [contrato integrado publicado](https://github.com/durable-workflow/workflow/blob/2.28.1/resources/laravel-embedded-upgrade-contract.json)
 y el `composer.json` de cada versión. La versión integrada actual se verificó
 con Laravel 12/PHP 8.2–8.4 y Laravel 13/PHP 8.3–8.4. Retira PHP 8.1 y Laravel
 10/11. No cambia la [guía histórica de v1 estable](/docs/1.x/installation/)
 ni los [requisitos independientes del SDK PHP](https://php.durable-workflow.com/).
+
+Workflow 2.28.1 es un parche solo de seguridad que eleva los mínimos de
+Laravel indicados arriba. Los archivos de runtime y esquema son idénticos
+a los de 2.28.0, por lo que actualizar desde 2.28.0 no añade migraciones de
+base de datos. La [verificación del paquete publicado y cinco recorridos de actualización/reversión](https://github.com/durable-workflow/workflow/pull/1141#issuecomment-6871390667)
+validan este paquete.
 
 Actualiza primero PHP y Laravel a una combinación compatible. Si aún no puedes,
 `~2.20.5` mantiene Composer en los parches 2.20, sin prometer mantenimiento
@@ -164,7 +172,7 @@ Workflow 2.27 mantiene los mínimos de soporte de 2.21 y el protocolo de workers
 
 Consulte las [notas de la versión 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
 
-Workflow 2.28 mantiene los mínimos de soporte de 2.21 y el protocolo de workers integrado `1.22`, y no añade ninguna migración de base de datos. Cambio de comportamiento que conviene revisar antes de actualizar:
+Workflow 2.28.0 mantiene los mínimos de soporte de 2.21 y el protocolo de workers integrado `1.22`, y no añade ninguna migración de base de datos. Cambio de comportamiento que conviene revisar antes de actualizar:
 
 - Desde 2.28, una ejecución que se completa, falla o continúa como nueva cancela en la misma transacción las actividades y los temporizadores que nunca esperó, como los perdedores de `select()`, en lugar de dejarlos en ejecución. Un resultado tardío de esa actividad se rechaza con `run_closed`. Si un workflow necesita el efecto de un perdedor, espérelo antes de retornar. Consulte [Perdedores cuando se cierra la ejecución](./features/concurrency.md#selection-losers-at-close).
 

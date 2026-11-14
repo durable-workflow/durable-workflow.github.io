@@ -42,13 +42,14 @@ elegir aquí la política de transición.
 | Laravel 2.0 integrado | SDK PHP en modo servicio | La aplicación debe dejar de operar la orquestación o necesita un entorno compartido/políglota. | Dirige los nuevos inicios al servicio tras preparar sus workers. Drena las ejecuciones integradas en origen o usa la importación explícita de ejecuciones v2 elegibles a Server autogestionado. |
 
 Consulta las [líneas publicadas compatibles con Laravel](./compatibility.md#laravel-support)
-antes de elegir un destino. El paquete integrado actual y, desde el SDK PHP
-3.10, el puente Laravel de modo servicio requieren Laravel 12.69 o 13.30 y un
-PHP compatible. El cliente básico de modo servicio mantiene PHP 8.1. El SDK PHP
-3.9.x conserva su contrato anterior del puente para Laravel 10–13 con los
-parches mínimos. Una aplicación v1 antigua puede necesitar una actualización
-del framework antes de pasar a cualquiera de las dos líneas actuales. Conserva
-su runtime v1 y sus ejecuciones abiertas durante esa actualización.
+antes de elegir un destino. El paquete integrado actual requiere Laravel
+12.72 o 13.41 y un PHP compatible. El puente Laravel de modo servicio sigue
+sus [propios requisitos del SDK PHP](./polyglot/php.md#requirements). El cliente
+básico de modo servicio mantiene PHP 8.1. El SDK PHP 3.9.x conserva su contrato
+anterior del puente para Laravel 10–13. Una aplicación v1 antigua puede
+necesitar una actualización del framework antes de pasar a cualquiera de las
+dos líneas actuales. Conserva su runtime v1 y sus ejecuciones abiertas durante
+esa actualización.
 
 ## Compara los límites de responsabilidad {#compare-the-ownership-boundary}
 
