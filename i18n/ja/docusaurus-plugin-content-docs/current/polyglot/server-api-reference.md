@@ -354,9 +354,9 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 
 ### 発火済みタイマーの native redrive とリプレイクロック {#native-redrive-timers}
 
-:::note native 公開と利用側の資格検証は未完了
+:::note Stable 採用とインストール済み利用側の確認は未完了
 
-単純タイマーの拡張と小数精度の修正は [Server ソース 5221ed82](https://github.com/durable-workflow/server/pull/1215) にマージ済みです。native 3.11.0 の[リリース準備](https://github.com/durable-workflow/server/pull/1218)もマージ済みですが、公開と利用側の資格検証はまだ完了していません。選択中の公開 Server は以前のタイマー拒否とクロック書き込み動作を保持します。このソース説明は、公開済み producer、SDK のリプレイ結果、stable 選択を示しません。
+単純タイマーの拡張と小数精度の修正は [Server ソース 5221ed82](https://github.com/durable-workflow/server/pull/1215) にマージ済みです。Native 3.11.0 には公開済みの不変イメージがあり、[producer/platform/corpus/Compose の資格検証が受理されています](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894)。stable エイリアス、最終 GitHub Release、Chart 採用、対象のインストール済み利用側の証拠は保留中です。選択中の公開 Server は以前のタイマー拒否とクロック書き込み動作を保持します。producer の資格検証だけでは、インストール済み SDK のリプレイ結果や stable 選択を示しません。
 
 :::
 
@@ -373,7 +373,7 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 
 [実際の PHP/Python/Rust コールド Worker コホート](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932)は、コールド置換と繰り返し redrive で同じワークフロー定義/フィンガープリントを維持する必要があります。非ゼロ小数部を持つ元の `TimerFired` の観測時刻と、完全精度で解析した UTC 時点を比較し、元履歴を保持して元の callback 数、新しいタイマー ID、タイマー処理の再実行がないことを確認します。秒単位の表示では精度を検証できず、その結果を作るためにインストール済み環境の履歴を書き換えてはいけません。制御した時刻を使うソーステストは別の証拠です。
 
-不変の producer/platform/source の資格検証、対象となるインストール済み SDK の記録、実際の Chart 公開が stable 採用に先行します。[Core の精度/参照の追跡](https://github.com/durable-workflow/workflow/issues/992)は [Server #980](https://github.com/durable-workflow/server/issues/980) の下で別扱いです。この変更は通常エントリーのクロック対応を宣言しない SDK にその対応を追加しません。変更のない SDK は番号合わせだけのリリースを必要としません。プロトコル、OpenAPI、カタログの形は変わりません。
+不変の producer/platform/source の資格検証は成功しています。対象のインストール済み SDK の記録、stable エイリアス/最終 Release、実際の Chart 公開は、引き続き stable 採用に先行する条件です。[Core の精度/参照の追跡](https://github.com/durable-workflow/workflow/issues/992)は [Server #980](https://github.com/durable-workflow/server/issues/980) の下で別扱いです。この変更は通常エントリーのクロック対応を宣言しない SDK にその対応を追加しません。変更のない SDK は番号合わせだけのリリースを必要としません。プロトコル、OpenAPI、カタログの形は変わりません。
 
 ## 名前空間とストレージ {#namespace-and-storage}
 

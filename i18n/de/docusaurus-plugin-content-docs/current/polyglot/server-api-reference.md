@@ -487,9 +487,9 @@ Befehle übertragen Geschäftswerte in Avro-Envelopes. Die offiziellen SDKs codi
 
 ### Native Redrive ausgelöster Timer und Replay-Uhren {#native-redrive-timers}
 
-:::note Native Veröffentlichung und Consumer-Qualifikation ausstehend
+:::note Stabile Übernahme und installierte Consumer ausstehend
 
-Die Plain-Timer-Erweiterung und Korrektur der Sekundenbruchteile sind in [Server-Quellstand 5221ed82](https://github.com/durable-workflow/server/pull/1215) zusammengeführt. Auch die [Release-Vorbereitung](https://github.com/durable-workflow/server/pull/1218) für native 3.11.0 ist zusammengeführt; Veröffentlichung und Consumer-Qualifikation stehen noch aus. Der ausgewählte veröffentlichte Server behält seine bisherige Timer-Ablehnung und Uhrschreibweise. Diese Quellbeschreibung belegt keinen veröffentlichten Producer, SDK-Replay-Erfolg oder stabile Auswahl.
+Die Plain-Timer-Erweiterung und Bruchteilkorrektur sind in [Server-Quellstand 5221ed82](https://github.com/durable-workflow/server/pull/1215) zusammengeführt. Native 3.11.0 hat ein veröffentlichtes unveränderliches Image und eine [akzeptierte Producer-/Plattform-/Korpus-/Compose-Qualifikation](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Stabile Aliasse, das endgültige GitHub Release, Chart-Übernahme und die jeweiligen installierten Consumer-Belege bleiben gesperrt. Der ausgewählte veröffentlichte Server behält seine bisherige Timer-Ablehnung und Uhrschreibweise. Die Producer-Qualifikation allein belegt keinen installierten SDK-Replay-Erfolg oder stabile Auswahl.
 
 :::
 
@@ -506,7 +506,7 @@ Abgebrochene Timer bleiben `unsupported_history`. Schritt-Kollisionen, Lücken u
 
 Die [tatsächliche PHP/Python/Rust-Cold-Worker-Kohorte](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) muss bei kaltem Austausch und wiederholtem Redrive dieselbe Workflow-Definition und denselben Fingerprint erhalten. Sie vergleicht vollständig geparste UTC-Zeitpunkte mit einem beobachteten Quell-`TimerFired` mit nichtnull Sekundenbruchteil, erhält die Quellhistorie und prüft ursprüngliche Callback-Zahlen, neue Timer-Identität und ausbleibende erneute Timer-Arbeit. Eine Ganzsekundendarstellung belegt diese Präzision nicht; installierte Historie darf dafür nicht umgeschrieben werden. Quelltests mit kontrollierten Zeitstempeln sind separate Evidenz.
 
-Unveränderliche Producer-/Plattform-/Quellqualifikation, die jeweiligen installierten SDK-Belege und die tatsächliche Chart-Veröffentlichung gehen stabiler Übernahme voraus. [Cores Präzisions-/Referenzarbeit](https://github.com/durable-workflow/workflow/issues/992) bleibt unter [Server #980](https://github.com/durable-workflow/server/issues/980) separat. Die Änderung ergänzt keine Ordinary-Entry-Uhrunterstützung in einem SDK, das sie nicht meldet; unveränderte SDKs benötigen keine bloße Versionsangleichungs-Release. Protokoll-, OpenAPI- und Katalogstrukturen bleiben unverändert.
+Die unveränderliche Producer-/Plattform-/Quellqualifikation ist bestanden. Die jeweiligen installierten SDK-Belege, stabile Aliasse/endgültiges Release und die tatsächliche Chart-Veröffentlichung gehen weiterhin stabiler Übernahme voraus. [Cores Präzisions-/Referenzarbeit](https://github.com/durable-workflow/workflow/issues/992) bleibt unter [Server #980](https://github.com/durable-workflow/server/issues/980) separat. Die Änderung ergänzt keine Ordinary-Entry-Uhrunterstützung in einem SDK, das sie nicht meldet; unveränderte SDKs benötigen keine bloße Versionsangleichungs-Release. Protokoll-, OpenAPI- und Katalogstrukturen bleiben unverändert.
 
 ## Namespace und Speicher {#namespace-and-storage}
 

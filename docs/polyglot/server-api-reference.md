@@ -503,9 +503,9 @@ HTTP document is JSON; raw business JSON is not an alternative payload codec.
 
 ### Native fired-timer redrive and replay clocks {#native-redrive-timers}
 
-:::note Pending native publication and consumer qualification
+:::note Pending stable adoption and installed consumers
 
-The plain-timer extension and fractional-clock correction are merged in [Server source 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 [release preparation](https://github.com/durable-workflow/server/pull/1218) is also merged, while publication and consumer qualification remain pending. The selected published Server retains its earlier timer refusal and clock-writing behavior. This source description does not establish a published producer, SDK replay result or stable selection.
+The plain-timer extension and fractional-clock correction are merged in [Server source 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 has a published immutable image and [accepted producer/platform/corpus/Compose qualification](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Stable aliases, the final GitHub Release, Chart adoption and applicable installed-consumer evidence remain held. The selected published Server retains its earlier timer refusal and clock-writing behavior. Producer qualification alone does not establish an installed SDK replay result or stable selection.
 
 :::
 
@@ -522,7 +522,7 @@ Cancelled timers remain `unsupported_history`. Step collisions, gaps and invalid
 
 The [actual PHP/Python/Rust cold-worker cohort](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) must retain the same workflow definition/fingerprint through cold replacement and repeated redrive. It compares parsed full-precision UTC instants against an observed nonzero-fraction source `TimerFired`, preserves source history, and checks original callback counts, fresh timer identity and absence of repeated timer work. Whole-second rendering cannot establish that precision result, and installed history must not be rewritten to supply it. Source-controlled timestamp tests are separate evidence.
 
-Immutable producer/platform/source qualification, the applicable installed SDK receipts and actual Chart publication precede stable adoption. [Core's precision/reference follow-through](https://github.com/durable-workflow/workflow/issues/992) remains separate under [Server #980](https://github.com/durable-workflow/server/issues/980). The change adds no ordinary-entry clock support to an SDK that does not advertise it, and unchanged SDKs need no release solely to align version numbers. Protocol, OpenAPI and catalog shapes are unchanged.
+The immutable producer/platform/source qualification has passed. Applicable installed SDK receipts, stable aliases/final Release and actual Chart publication still precede stable adoption. [Core's precision/reference follow-through](https://github.com/durable-workflow/workflow/issues/992) remains separate under [Server #980](https://github.com/durable-workflow/server/issues/980). The change adds no ordinary-entry clock support to an SDK that does not advertise it, and unchanged SDKs need no release solely to align version numbers. Protocol, OpenAPI and catalog shapes are unchanged.
 
 ## Namespace And Storage
 

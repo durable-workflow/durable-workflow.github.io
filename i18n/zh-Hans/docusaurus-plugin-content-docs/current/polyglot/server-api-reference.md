@@ -353,9 +353,9 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 
 ### 原生已触发定时器重驱动与重放时钟 {#native-redrive-timers}
 
-:::note 等待原生发布与消费者资格验证
+:::note 等待稳定采用与已安装消费者验证
 
-简单定时器扩展和小数精度修复已合入 [Server 源码 5221ed82](https://github.com/durable-workflow/server/pull/1215)。原生 3.11.0 的[发布准备](https://github.com/durable-workflow/server/pull/1218)也已合并，但发布与消费者资格验证仍未完成。当前选定的已发布 Server 保留此前的定时器拒绝和时钟写入行为。此源码说明不代表已有已发布生产者、SDK 重放结果或稳定选择。
+简单定时器扩展和小数精度修复已合入 [Server 源码 5221ed82](https://github.com/durable-workflow/server/pull/1215)。原生 3.11.0 已有公开的不可变镜像，以及[已接受的生产者/平台/语料库/Compose 资格验证](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894)。稳定别名、最终 GitHub Release、Chart 采用和适用的已安装消费者证据仍被保留。当前选定的已发布 Server 保留此前的定时器拒绝和时钟写入行为。仅生产者资格验证不代表已安装 SDK 重放结果或稳定选择。
 
 :::
 
@@ -372,7 +372,7 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 
 [实际 PHP/Python/Rust 冷 Worker 验证组](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932)必须在冷替换和重复重驱动期间保持相同工作流定义/指纹。它将完整精度解析的 UTC 时刻与实际观察到的、含非零小数部分的源 `TimerFired` 比较，保留源历史，并检查原始回调次数、新定时器标识以及没有重复定时器工作。仅显示整秒不能证明该精度；不得改写已安装环境的历史来制造结果。使用受控时间戳的源码测试是独立证据。
 
-稳定采用之前必须完成不可变生产者/平台/源码资格验证、适用的已安装 SDK 回执以及实际 Chart 发布。[Core 的精度/参考后续工作](https://github.com/durable-workflow/workflow/issues/992)在 [Server #980](https://github.com/durable-workflow/server/issues/980) 下单独跟踪。该变更不会给未声明支持的 SDK 增加普通入口时钟支持；未修改的 SDK 无须仅为版本号对齐而发布。协议、OpenAPI 和目录结构不变。
+不可变生产者/平台/源码资格验证已通过。适用的已安装 SDK 回执、稳定别名/最终 Release 和实际 Chart 发布仍是稳定采用之前的条件。[Core 的精度/参考后续工作](https://github.com/durable-workflow/workflow/issues/992)在 [Server #980](https://github.com/durable-workflow/server/issues/980) 下单独跟踪。该变更不会给未声明支持的 SDK 增加普通入口时钟支持；未修改的 SDK 无须仅为版本号对齐而发布。协议、OpenAPI 和目录结构不变。
 
 ## 命名空间与存储 {#namespace-and-storage}
 
