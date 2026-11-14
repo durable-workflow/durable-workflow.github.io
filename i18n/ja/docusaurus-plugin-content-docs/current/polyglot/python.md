@@ -913,6 +913,36 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### アクティビティの論理実行 ID {#activity-identity}
+
+Python SDK 2.15.0 以降は、読み取り専用の省略可能な
+`activity.context().info.activity_execution_id` を公開します。これは再試行をまたぐ
+1 つの論理アクティビティ実行を識別します。`info.workflow_id` と `info.run_id` は、
+その実行が属するワークフローインスタンスと実行を識別します。外部サービスの
+冪等性キーには論理実行 ID を使ってください。タスク ID と試行 ID は再試行時に
+変わるため、代わりには使えません。
+
+実行 ID が欠落、無効、空白のみの場合は、古い claim も含めて `None` のままです。
+受信した空白以外の文字を含む文字列は、その表記を正確に保持します。操作にこの
+キーが必要で ID を利用できない場合は、外部への副作用を実行する前に拒否して
+ください。セッション経由のアクティビティは通常の claim の ID を使います。
+準備済みローカルアクティビティは、検証済み受理レシートの実行 ID を使います。
+インラインのローカルアクティビティには受理済みの実行 ID がなく、`None` を公開
+しますが、親ワークフローと実行の ID は保持します。Server を使わないモックは
+Server のアクティビティ ID を作りません。
+
+サービスモードの例は、SDK の[冪等性キーヘルパーとアクティビティ ID のガイド](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity)
+を参照してください。異なる外部操作には安定した操作サフィックスを付け、外部
+サービスがキーを尊重することを確認します。実行 ID は公開メタデータであり、有効な
+claim の証明でも外部への副作用の認可でもありません。認証情報、現在の試行の
+fencing、結果の照合を維持してください。[公開パッケージによる通常の再試行のレシート](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+は Python SDK 2.17.2 とネイティブ Server 3.9.2 を結び付けています。この証拠は、
+試行 1 と 2 の間で論理アクティビティ実行 ID、ワークフロー ID、ワークフロー実行 ID
+が同じで、タスク ID と試行 ID
+が異なることを示します。ローカル動作とセッション動作の範囲は別途定義されたままです。
+共通の冪等性契約は[実行保証](../constraints/execution-guarantees.md#service-activity-identity)
+を参照してください。
+
 #### 受信した再試行ポリシーと元の試行回数 {#activity-retry-metadata}
 
 Python SDK **2.12.0 以降**が必要です。`info = activity.context().info` は

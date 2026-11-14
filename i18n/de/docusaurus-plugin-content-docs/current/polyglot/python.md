@@ -1110,6 +1110,41 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### Logische Aktivitätsausführung identifizieren {#activity-identity}
+
+Python SDK 2.15.0 und neuer stellen das schreibgeschützte optionale Feld
+`activity.context().info.activity_execution_id` bereit. Es identifiziert eine
+logische Aktivitätsausführung über Wiederholungen hinweg. `info.workflow_id`
+und `info.run_id` identifizieren die zugehörige Workflow-Instanz und den Run.
+Verwenden Sie die logische Ausführungs-ID als Idempotenzschlüssel für einen
+externen Dienst. Task-IDs und Versuchs-IDs ändern sich bei einer Wiederholung
+und dürfen sie nicht ersetzen.
+
+Fehlende, ungültige oder leere Ausführungs-IDs bleiben `None`, auch bei älteren
+Claims. Empfangene Zeichenfolgen mit mindestens einem Nicht-Leerzeichen
+behalten ihre exakte Schreibweise. Wenn eine Operation diesen Schlüssel
+benötigt, lehnen Sie sie bei fehlender ID vor dem externen Effekt ab.
+Sitzungsgebundene Aktivitäten verwenden die Identität ihres gewöhnlichen Claims.
+Vorbereitete lokale Aktivitäten verwenden die Ausführungs-ID ihres validierten
+Zulassungsbelegs. Inline ausgeführte lokale Aktivitäten besitzen keine
+zugelassene Ausführungs-ID und liefern `None`, behalten aber die IDs ihres
+übergeordneten Workflows und Runs. Mocks ohne Server erzeugen keine
+Server-Aktivitätsidentität.
+
+Das Dienstmodus-Beispiel finden Sie im [SDK-Leitfaden mit Idempotenzschlüssel-Helfer und Aktivitätsidentität](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity).
+Geben Sie verschiedenen externen Operationen stabile Operationssuffixe und
+stellen Sie sicher, dass der nachgelagerte Dienst den Schlüssel berücksichtigt.
+Eine Ausführungs-ID ist öffentliche Metainformation, kein Nachweis eines aktiven
+Claims und keine Berechtigung für einen externen Effekt. Behalten Sie
+Zugangsdaten, Fencing des aktuellen Versuchs und Ergebnisabgleich bei. Der
+[Beleg für gewöhnliche Wiederholungen mit dem veröffentlichten Paket](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+bindet Python SDK 2.17.2 an den nativen Server 3.9.2. Er belegt stabile
+logische Ausführungs-, Workflow- und Run-Identität sowie unterschiedliche
+Task- und Versuchs-IDs für die Versuche 1 und 2. Lokales und Sitzungsverhalten
+behalten ihren gesondert definierten Geltungsbereich. Siehe
+[Ausführungsgarantien](../constraints/execution-guarantees.md#service-activity-identity)
+für den gemeinsamen Idempotenzvertrag.
+
 #### Empfangene Wiederholungsrichtlinie und ursprünglicher Versuch {#activity-retry-metadata}
 
 Erfordert Python SDK **2.12.0 oder neuer**. `info = activity.context().info`
