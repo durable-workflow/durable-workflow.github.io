@@ -117,6 +117,7 @@ O SDK Python 2.15 e 2.16 adicionam:
 - **Sufixos de histórico sticky (2.16).** Workers com cache sticky (`sticky_cache_capacity > 0`) anunciam `sticky_history_suffix`. No Server 3.5.0 ou posterior, um acerto sticky recebe só o histórico após a sequência em cache. Um sufixo que não continua exatamente o histórico em cache é descartado e o histórico completo é buscado.
 - **Valores de workflow tipados (2.15).** `@workflow.defn(..., typed=True)` decodifica os argumentos de `run` e dos handlers conforme suas anotações, e `result_type=` decodifica resultados de workflows filhos e do cliente. Workflows sem tipos recebem valores simples como antes, então históricos em andamento são reproduzidos sem mudança.
 - **Páginas preguiçosas (2.15).** `Client.iter_workflows`, `Client.iter_history` e `WorkflowHandle.iter_history` seguem tokens de página mantendo só uma página.
+  Veja [páginas de lista e histórico de workflows](#workflow-list-and-history-pages) para travessia, retomada e tratamento de erros.
 - **Atividades de uma execução (2.15).** `Client.get_run_activities` e `WorkflowHandle.get_activities` retornam metadados tipados de atividades e tentativas, e `ActivityInfo.activity_execution_id` expõe a identidade lógica da atividade.
 - **Backoff de atividades locais (2.15.1).** Tentativas após o fim da lista de backoff repetem a última entrada em vez de tentar de novo imediatamente.
 
@@ -411,10 +412,13 @@ o procedimento completo; os equivalentes CLI são `dw task-queue:build-ids`,
 | --- | --- | --- |
 | `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`, `InvalidArgument`, `Unauthorized`, `ServerError` |
 | `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`, erros de autenticação/servidor |
-| `await client.list_workflows(...)` | `WorkflowList` | Erros de autenticação/servidor |
+| `await client.list_workflows(...)` | `WorkflowList` (uma página) | Erros de autenticação/servidor |
+| `client.iter_workflows(...)` | `AsyncIterator[WorkflowExecution]` | Erros de página e cancelamento são propagados durante a iteração. [Paginação](#workflow-list-and-history-pages). |
 | `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, erros de autenticação/servidor |
-| `await client.get_history(workflow_id, run_id)` | payload de histórico decodificado | `WorkflowNotFound`, erros de autenticação/servidor |
+| `await client.get_history(workflow_id, run_id, ...)` | uma página de histórico decodificado | `WorkflowNotFound`, erros de autenticação/servidor |
+| `client.iter_history(workflow_id, run_id, ...)` | `AsyncIterator[dict[str, Any]]` | Erros de página e cancelamento são propagados durante a iteração. |
+| `handle.iter_history(...)` | `AsyncIterator[dict[str, Any]]` | A mesma travessia de histórico. Requer um handle com `run_id` explícito. |
 | `await client.export_history(workflow_id, run_id)` | payload de histórico de arquivo decodificado | `WorkflowNotFound`, erros de autenticação/servidor |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | recibo de admissão (`dict`) | `WorkflowNotFound`, `InvalidArgument`, erros de autenticação/servidor |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | recibo de consulta (`dict`) | `QueryFailed`, `WorkflowNotFound`, erros de autenticação/servidor |
@@ -2199,4 +2203,12 @@ sua administração. Veja [Runtime gerenciado do Cloud](/docs/polyglot/cloud-con
 
 ## Páginas de lista e histórico de workflows {#workflow-list-and-history-pages}
 
-Estas chamadas publicadas retornam **uma página**, não uma leitura completa automática: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Continue com o token opaco retornado preservando namespace, filtros e workflow/execução selecionados; encerre no token nulo/vazio e trate erros de página. Uma página parcial não é um bundle de replay. Use a API de exportação de histórico do SDK para replay sem servidor. O [cliente publicado Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) define os parâmetros atuais; não se afirma um novo iterador.
+O SDK Python estável selecionado fornece os iteradores sob demanda `Client.iter_workflows`, `Client.iter_history` e `WorkflowHandle.iter_history`. Use `async for` para consumir execuções de workflows ou dicionários de eventos de histórico na ordem do Server. Veja os [exemplos e a referência de paginação do SDK](https://python.durable-workflow.com/sdk-reference/#whole-run-histories-and-workflow-lists) e o [código publicado do cliente](https://github.com/durable-workflow/sdk-python/blob/2.17.2/src/durable_workflow/client.py).
+
+Cada iterador busca uma página por vez sem reter as páginas de resultados anteriores. Ele segue páginas vazias que tenham continuação e termina quando a continuação está ausente, é `None` ou está vazia. Encerrar a iteração não busca páginas seguintes. Erros HTTP, cancelamento, páginas de histórico cujo campo `events` não é uma lista de dicionários e continuações malformadas ou cíclicas são propagados. Os itens já entregues não são revertidos, portanto trate uma travessia interrompida como incompleta.
+
+Mantenha namespace, filtros e tamanho de página fixos durante a travessia. O histórico também exige os mesmos `workflow_id` e `run_id` explícitos. O helper do handle recusa um handle sem `run_id`. Uma mudança de namespace é recusada antes da próxima solicitação. Forneça `next_page_token` para retomar em uma continuação opaca da mesma seleção. Não analise, altere ou reutilize esse token com outros filtros, namespaces ou execuções. Percorrer uma lista de workflows que muda não cria um snapshot.
+
+As chamadas existentes `await client.list_workflows(...)` e `await client.get_history(workflow_id, run_id, ...)` continuam retornando **uma página**. Para paginação manual, passe o `next_page_token` retornado à próxima chamada e termine quando o token final estiver ausente, for nulo ou estiver vazio. Uma página parcial ou sequência de dicionários de eventos não é um bundle de replay. Use `await client.export_history(workflow_id, run_id)` ou `await handle.export_history()` para replay offline.
+
+A [verificação de paginação com SDK 2.17.2 instalado / Server nativo 3.9.2](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877331165) cobriu listas filtradas, histórico de uma execução selecionada, retomada opaca, fechamento antecipado e recusa de mudança de namespace, com [aceitação independente](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877373099).

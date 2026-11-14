@@ -2259,8 +2259,8 @@ and [published client source](https://github.com/durable-workflow/sdk-python/blo
 Each iterator fetches one page at a time without retaining earlier result pages.
 It follows empty pages that have a continuation and stops when the continuation
 is missing, `None` or empty. Stopping iteration fetches no subsequent page.
-HTTP errors, cancellation, malformed history events and malformed or repeated
-continuation tokens propagate. Earlier yielded items are not rolled back, so
+HTTP errors, cancellation, history pages whose `events` field is not a list of
+dictionaries, and malformed or cyclic continuations propagate. Earlier yielded items are not rolled back, so
 handle an interrupted traversal as incomplete.
 
 Keep namespace, filters and page size fixed throughout a traversal. History
@@ -2278,3 +2278,7 @@ stop at the final missing/null/empty token. A partial page or a sequence of
 event dictionaries is not a replay bundle. Use
 `await client.export_history(workflow_id, run_id)` or
 `await handle.export_history()` for offline replay.
+
+The [installed SDK 2.17.2 / native Server 3.9.2 pagination check](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877331165)
+covered filtered lists, selected-run history, opaque resume, early close and
+namespace refusal, with [independent acceptance](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877373099).

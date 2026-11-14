@@ -84,6 +84,7 @@ Python SDK 2.15 と 2.16 では次が追加されています。
 - **sticky 履歴サフィックス（2.16）。** sticky キャッシュを持つワーカー（`sticky_cache_capacity > 0`）は `sticky_history_suffix` を示します。Server 3.5.0 以降では、sticky ヒットはキャッシュしたシーケンスより後の履歴だけを受け取ります。キャッシュした履歴に正確に続かないサフィックスは破棄され、完全な履歴を取得します。
 - **型付きワークフロー値（2.15）。** `@workflow.defn(..., typed=True)` は `run` とハンドラーの引数をアノテーションに従ってデコードし、`result_type=` は子ワークフローとクライアントの結果をデコードします。型なしのワークフローはこれまでどおりプレーンな値を受け取るため、進行中の履歴は変わらずリプレイされます。
 - **遅延ページ（2.15）。** `Client.iter_workflows`、`Client.iter_history`、`WorkflowHandle.iter_history` は、1 ページだけを保持しながらページトークンをたどります。
+  走査、再開、エラー処理については[ワークフロー一覧と履歴のページ](#workflow-list-and-history-pages)を参照してください。
 - **実行のアクティビティ（2.15）。** `Client.get_run_activities` と `WorkflowHandle.get_activities` は型付きのアクティビティと試行のメタデータを返し、`ActivityInfo.activity_execution_id` は論理的なアクティビティ ID を公開します。
 - **ローカルアクティビティのバックオフ（2.15.1）。** バックオフリストの終わりを超えたリトライは、すぐにリトライせず最後の項目を繰り返します。
 
@@ -338,10 +339,13 @@ driver = external_storage_driver_from_policy(
 | --- | --- | --- |
 | `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`、`InvalidArgument`、`Unauthorized`、`ServerError` |
 | `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`、認証・Server エラー |
-| `await client.list_workflows(...)` | `WorkflowList` | 認証・Server エラー |
+| `await client.list_workflows(...)` | `WorkflowList` (1 ページ) | 認証・Server エラー |
+| `client.iter_workflows(...)` | `AsyncIterator[WorkflowExecution]` | ページのエラーとキャンセルは反復中に伝播します。 [ページング](#workflow-list-and-history-pages). |
 | `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`、認証・Server エラー |
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`、認証・Server エラー |
-| `await client.get_history(workflow_id, run_id)` | デコード済み履歴ペイロード | `WorkflowNotFound`、認証・Server エラー |
+| `await client.get_history(workflow_id, run_id, ...)` | デコードされた履歴の 1 ページ | `WorkflowNotFound`、認証・Server エラー |
+| `client.iter_history(workflow_id, run_id, ...)` | `AsyncIterator[dict[str, Any]]` | ページのエラーとキャンセルは反復中に伝播します。 |
+| `handle.iter_history(...)` | `AsyncIterator[dict[str, Any]]` | 同じ履歴の走査です。明示的な `run_id` を持つハンドルが必要です。 |
 | `await client.export_history(workflow_id, run_id)` | デコード済みアーカイブ履歴ペイロード | `WorkflowNotFound`、認証・Server エラー |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | 受け付けレシート (`dict`) | `WorkflowNotFound`、`InvalidArgument`、認証・Server エラー |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | クエリレシート (`dict`) | `QueryFailed`、`WorkflowNotFound`、認証・Server エラー |
@@ -1885,4 +1889,12 @@ client = Client(
 
 ## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
 
-公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 Python 2.9.0 クライアントのソース](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py)が現在の引数を定義しており、新たな自動イテレーターの提供を意味しません。
+選択されている安定版 Python SDK は、遅延イテレーター `Client.iter_workflows`、`Client.iter_history`、`WorkflowHandle.iter_history` を提供します。`async for` を使うと、ワークフロー実行や履歴イベントの辞書を Server の順序で読み取れます。[SDK 側の例とページングリファレンス](https://python.durable-workflow.com/sdk-reference/#whole-run-histories-and-workflow-lists)および[公開済みクライアントソース](https://github.com/durable-workflow/sdk-python/blob/2.17.2/src/durable_workflow/client.py)を参照してください。
+
+各イテレーターは一度に 1 ページを取得し、以前の結果ページを保持しません。継続情報のある空のページにも進み、継続情報がない、`None`、または空の場合に終了します。反復を停止すると、後続ページは取得されません。HTTP エラー、キャンセル、`events` フィールドが辞書のリストでない履歴ページ、不正または循環する継続情報は伝播します。すでに渡された項目は取り消されないため、中断された走査は未完了として扱ってください。
+
+走査中は名前空間、フィルター、ページサイズを固定してください。履歴では、同じ明示的な `workflow_id` と `run_id` も必要です。ハンドルのヘルパーは `run_id` のないハンドルを拒否します。名前空間の変更は次のリクエスト前に拒否されます。同じ選択の不透明な継続位置から再開するには `next_page_token` を指定してください。トークンを解析、変更したり、異なるフィルター、名前空間、実行に再利用したりしないでください。変化するワークフロー一覧を走査してもスナップショットにはなりません。
+
+既存の `await client.list_workflows(...)` と `await client.get_history(workflow_id, run_id, ...)` は引き続き **1 ページ**を返します。手動でページングする場合、返された `next_page_token` を次の呼び出しに渡し、最後のトークンが欠落、null、または空なら終了してください。部分的なページやイベント辞書の列はリプレイバンドルではありません。オフラインリプレイには `await client.export_history(workflow_id, run_id)` または `await handle.export_history()` を使用してください。
+
+[インストール済み SDK 2.17.2 / ネイティブ Server 3.9.2 のページング検証](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877331165)では、フィルター付き一覧、選択した実行の履歴、不透明な継続情報による再開、早期終了、名前空間変更の拒否を確認し、[独立した受け入れ確認](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877373099)を得ています。

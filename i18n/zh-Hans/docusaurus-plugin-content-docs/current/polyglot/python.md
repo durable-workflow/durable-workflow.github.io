@@ -81,6 +81,7 @@ Python SDK 2.15 和 2.16 新增：
 - **Sticky 历史后缀（2.16）。** 带 sticky 缓存（`sticky_cache_capacity > 0`）的 worker 声明 `sticky_history_suffix`。在 Server 3.5.0 或更高版本上，sticky 命中只接收缓存序列之后的历史。不能精确接续缓存历史的后缀会被丢弃，并重新获取完整历史。
 - **类型化工作流值（2.15）。** `@workflow.defn(..., typed=True)` 按注解解码 `run` 和处理器的参数，`result_type=` 解码子工作流和客户端的结果。未类型化的工作流仍像以前一样接收普通值，因此进行中的历史会原样重放。
 - **惰性分页（2.15）。** `Client.iter_workflows`、`Client.iter_history` 和 `WorkflowHandle.iter_history` 按分页令牌遍历，同时只保留一页。
+  遍历、恢复和错误处理请参阅[工作流列表与历史页面](#workflow-list-and-history-pages)。
 - **运行的活动（2.15）。** `Client.get_run_activities` 和 `WorkflowHandle.get_activities` 返回类型化的活动和尝试元数据，`ActivityInfo.activity_execution_id` 暴露逻辑活动标识。
 - **本地活动的退避（2.15.1）。** 超出退避列表末尾的重试会重复最后一项，而不是立即重试。
 
@@ -335,10 +336,13 @@ driver = external_storage_driver_from_policy(
 | --- | --- | --- |
 | `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`, `InvalidArgument`, `Unauthorized`, `ServerError` |
 | `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`, 认证/Server 错误 |
-| `await client.list_workflows(...)` | `WorkflowList` | 认证/Server 错误 |
+| `await client.list_workflows(...)` | `WorkflowList` (一页) | 认证/Server 错误 |
+| `client.iter_workflows(...)` | `AsyncIterator[WorkflowExecution]` | 页面错误和取消会在迭代期间向上传播。 [分页](#workflow-list-and-history-pages). |
 | `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, 认证/Server 错误 |
-| `await client.get_history(workflow_id, run_id)` | 已解码历史负载 | `WorkflowNotFound`, 认证/Server 错误 |
+| `await client.get_history(workflow_id, run_id, ...)` | 一页已解码历史 | `WorkflowNotFound`, 认证/Server 错误 |
+| `client.iter_history(workflow_id, run_id, ...)` | `AsyncIterator[dict[str, Any]]` | 页面错误和取消会在迭代期间向上传播。 |
+| `handle.iter_history(...)` | `AsyncIterator[dict[str, Any]]` | 相同的历史遍历方式。需要带有显式 `run_id` 的句柄。 |
 | `await client.export_history(workflow_id, run_id)` | 已解码归档历史负载 | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | 接纳回执 (`dict`) | `WorkflowNotFound`, `InvalidArgument`, 认证/Server 错误 |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | 查询回执 (`dict`) | `QueryFailed`, `WorkflowNotFound`, 认证/Server 错误 |
@@ -1848,4 +1852,12 @@ client = Client(
 
 ## 工作流列表与历史页面 {#workflow-list-and-history-pages}
 
-这些已发布调用每次返回**一页**，不会自动完整读取：`await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 Python 2.9.0 客户端源码](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py)定义当前参数；这里不声称新增自动迭代器。
+所选稳定版 Python SDK 提供惰性迭代器 `Client.iter_workflows`、`Client.iter_history` 和 `WorkflowHandle.iter_history`。使用 `async for` 可按 Server 顺序读取工作流运行或历史事件字典。请参阅 [SDK 提供的示例与分页参考](https://python.durable-workflow.com/sdk-reference/#whole-run-histories-and-workflow-lists)和[已发布客户端源码](https://github.com/durable-workflow/sdk-python/blob/2.17.2/src/durable_workflow/client.py)。
+
+每个迭代器一次获取一页，不保留之前的结果页。即使页面为空，只要有继续标记就会继续；继续标记缺失、为 `None` 或为空时结束。停止迭代不会再获取后续页面。HTTP 错误、取消、`events` 字段不是字典列表的历史页面，以及格式错误或形成循环的继续标记都会向上传播。已返回的条目不会回滚，因此应将中断的遍历视为未完成。
+
+遍历期间保持命名空间、筛选条件和页面大小不变。历史还要求使用相同且显式指定的 `workflow_id` 和 `run_id`。句柄辅助方法会拒绝没有 `run_id` 的句柄。命名空间更改会在下一个请求前被拒绝。传入 `next_page_token` 可从同一选择的不透明继续位置恢复。不要解析、修改令牌，也不要将其用于其他筛选条件、命名空间或运行。遍历正在变化的工作流列表不会创建快照。
+
+现有的 `await client.list_workflows(...)` 和 `await client.get_history(workflow_id, run_id, ...)` 仍然只返回**一页**。手动分页时，将返回的 `next_page_token` 传给下一次调用，并在最终令牌缺失、为 null 或为空时结束。部分页面或事件字典序列不是重放包。离线重放请使用 `await client.export_history(workflow_id, run_id)` 或 `await handle.export_history()`。
+
+[已安装 SDK 2.17.2 / 原生 Server 3.9.2 的分页验证](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877331165)覆盖了筛选列表、所选运行的历史、不透明令牌恢复、提前关闭及命名空间更改拒绝，并已获得[独立验收](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877373099)。

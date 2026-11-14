@@ -115,6 +115,7 @@ Python SDK 2.15 і 2.16 додають:
 - **Sticky-суфікси історії (2.16).** Workers зі sticky-кешем (`sticky_cache_capacity > 0`) оголошують `sticky_history_suffix`. На Server 3.5.0 або новішому sticky-влучання отримує лише історію після закешованої послідовності. Суфікс, що не продовжує закешовану історію точно, відкидається, і завантажується повна історія.
 - **Типізовані значення workflow (2.15).** `@workflow.defn(..., typed=True)` декодує аргументи `run` і handlers за їхніми анотаціями, а `result_type=` декодує результати дочірніх workflows і клієнта. Нетипізовані workflows, як і раніше, отримують прості значення, тож поточні історії відтворюються без змін.
 - **Ліниві сторінки (2.15).** `Client.iter_workflows`, `Client.iter_history` і `WorkflowHandle.iter_history` переходять за токенами сторінок, тримаючи лише одну сторінку.
+  Див. [сторінки списку workflow та історії](#workflow-list-and-history-pages) щодо обходу, відновлення та обробки помилок.
 - **Активності запуску (2.15).** `Client.get_run_activities` і `WorkflowHandle.get_activities` повертають типізовані метадані активностей і спроб, а `ActivityInfo.activity_execution_id` надає логічну ідентичність активності.
 - **Backoff локальних активностей (2.15.1).** Повторні спроби після кінця списку backoff повторюють останній запис замість негайної повторної спроби.
 
@@ -405,10 +406,13 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 | --- | --- | --- |
 | `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`, `InvalidArgument`, `Unauthorized`, `ServerError` |
 | `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`, помилки автентифікації/Server |
-| `await client.list_workflows(...)` | `WorkflowList` | Помилки автентифікації/Server |
+| `await client.list_workflows(...)` | `WorkflowList` (одна сторінка) | Помилки автентифікації/Server |
+| `client.iter_workflows(...)` | `AsyncIterator[WorkflowExecution]` | Помилки сторінок і скасування поширюються під час ітерації. [Посторінковий обхід](#workflow-list-and-history-pages). |
 | `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, помилки автентифікації/Server |
-| `await client.get_history(workflow_id, run_id)` | декодований payload історії | `WorkflowNotFound`, помилки автентифікації/Server |
+| `await client.get_history(workflow_id, run_id, ...)` | одна сторінка декодованої історії | `WorkflowNotFound`, помилки автентифікації/Server |
+| `client.iter_history(workflow_id, run_id, ...)` | `AsyncIterator[dict[str, Any]]` | Помилки сторінок і скасування поширюються під час ітерації. |
+| `handle.iter_history(...)` | `AsyncIterator[dict[str, Any]]` | Той самий обхід історії. Потрібен handle з явним `run_id`. |
 | `await client.export_history(workflow_id, run_id)` | декодований архівний payload історії | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | квитанція прийняття (`dict`) | `WorkflowNotFound`, `InvalidArgument`, помилки автентифікації/Server |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | квитанція запиту (`dict`) | `QueryFailed`, `WorkflowNotFound`, помилки автентифікації/Server |
@@ -2169,4 +2173,12 @@ Cloud створює namespace. Не заміняйте URL адресою са�
 
 ## Сторінки списку workflow та історії {#workflow-list-and-history-pages}
 
-Ці опубліковані виклики повертають **одну сторінку**, а не автоматично повний результат: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Продовжуйте з повернутим непрозорим token, зберігаючи namespace, фільтри та вибрані workflow/run; зупиняйтеся на null/порожньому token й явно обробляйте помилки сторінок. Часткова сторінка не є replay-bundle. Для офлайн-replay використовуйте API експорту історії SDK. [Опублікований клієнт Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) визначає поточні параметри; нові ітератори не заявляються.
+Вибраний стабільний Python SDK надає ліниві ітератори `Client.iter_workflows`, `Client.iter_history` і `WorkflowHandle.iter_history`. Використовуйте `async for`, щоб читати запуски workflow або словники подій історії в порядку Server. Див. [приклади та довідник посторінкового обходу SDK](https://python.durable-workflow.com/sdk-reference/#whole-run-histories-and-workflow-lists) і [опублікований код клієнта](https://github.com/durable-workflow/sdk-python/blob/2.17.2/src/durable_workflow/client.py).
+
+Кожен ітератор отримує одну сторінку за раз і не зберігає попередні сторінки результатів. Він проходить порожні сторінки з продовженням і завершується, коли продовження відсутнє, дорівнює `None` або порожнє. Зупинка ітерації не отримує наступні сторінки. Помилки HTTP, скасування, сторінки історії, чиє поле `events` не є списком словників, а також некоректні або циклічні продовження поширюються до викликача. Уже видані елементи не відкочуються, тому перерваний обхід слід вважати неповним.
+
+Протягом обходу зберігайте незмінними namespace, фільтри та розмір сторінки. Історія також потребує тих самих явних `workflow_id` і `run_id`. Допоміжний метод handle відмовляє для handle без `run_id`. Зміна namespace відхиляється перед наступним запитом. Передайте `next_page_token`, щоб відновити обхід із непрозорого продовження того самого вибору. Не розбирайте, не змінюйте й не використовуйте його для інших фільтрів, namespace або run. Обхід списку workflow, який змінюється, не створює знімка.
+
+Наявні виклики `await client.list_workflows(...)` і `await client.get_history(workflow_id, run_id, ...)` і далі повертають **одну сторінку**. Для ручного обходу передавайте отриманий `next_page_token` до наступного виклику й завершуйтеся, коли останній токен відсутній, null або порожній. Часткова сторінка або послідовність словників подій не є replay-bundle. Для офлайн-replay використовуйте `await client.export_history(workflow_id, run_id)` або `await handle.export_history()`.
+
+[Перевірка пагінації зі встановленим SDK 2.17.2 / native Server 3.9.2](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877331165) охопила фільтровані списки, історію вибраного run, відновлення за непрозорим токеном, дострокове закриття та відмову при зміні namespace, з [незалежним підтвердженням](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877373099).
