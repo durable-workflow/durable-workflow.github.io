@@ -42,13 +42,14 @@ choisi ici votre politique de transition.
 | Laravel 2.0 embarqué | SDK PHP en mode service | L'application doit cesser de posséder le runtime d'orchestration ou nécessite un runtime partagé ou polyglotte. | Dirigez les nouveaux démarrages vers le service une fois ses workers prêts. Terminez les exécutions embarquées là où elles ont démarré, ou utilisez la procédure explicite d'import embarqué-v2 éligible pour Server auto-hébergé. |
 
 Consultez les [branches publiées compatibles avec Laravel](./compatibility.md#laravel-support)
-avant de choisir la destination. Le paquet embarqué actuel et, à partir du SDK
-PHP 3.10, le pont Laravel en mode service exigent tous deux Laravel 12.69 ou 13.30
-et une version PHP compatible. Le client de base en mode service conserve PHP 8.1.
-Le SDK PHP 3.9.x conserve son contrat de pont antérieur pour Laravel 10–13 avec
-les correctifs minimaux. Une ancienne application v1 peut nécessiter une mise à
-niveau du framework avant le passage à l'une ou l'autre des branches actuelles.
-Conservez son runtime v1 et ses exécutions ouvertes pendant cette mise à niveau.
+avant de choisir la destination. Le paquet embarqué actuel exige Laravel
+12.72 ou 13.41 et une version PHP compatible. Le pont Laravel en mode service
+suit les [exigences propres au SDK PHP](./polyglot/php.md#requirements). Le client
+de base en mode service conserve PHP 8.1. Le SDK PHP 3.9.x conserve son contrat
+de pont antérieur pour Laravel 10–13. Une ancienne application v1 peut nécessiter
+une mise à niveau du framework avant le passage à l’une ou l’autre des branches
+actuelles. Préservez son runtime v1 et ses exécutions ouvertes pendant cette
+mise à niveau.
 
 ## Comparer les responsabilités {#compare-the-ownership-boundary}
 

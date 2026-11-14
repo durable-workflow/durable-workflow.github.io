@@ -35,10 +35,10 @@ Laravel 应用有两个第一方 Durable Workflow 2.0 目标。嵌入模式让�
 | 2.0 嵌入式 Laravel | PHP SDK 服务模式 | 应用应不再拥有编排运行时，或需要共享/多语言运行时边界。 | 服务 Worker 就绪后，将新启动路由到服务运行时。嵌入运行实例在原处排空，或对自托管 Server 使用明确的符合条件的嵌入 v2 导入流程。 |
 
 选择目标前，请查看[已发布的 Laravel 支持范围](./compatibility.md#laravel-support)。
-当前嵌入式包，以及从 PHP SDK 3.10 起的服务模式 Laravel 桥接，均需要 Laravel 12.69 或 13.30 以及兼容的 PHP。
-基础服务模式客户端仍支持 PHP 8.1。PHP SDK 3.9.x 保留其此前支持满足最低补丁要求的 Laravel 10 至 13 的桥接契约。
-旧版 v1 应用可能需要先升级框架才能迁移到任一当前版本线。
-升级期间须保留原 v1 运行时及其未完成的运行。
+当前嵌入式包需要 Laravel 12.72 或 13.41 以及兼容的 PHP。服务模式 Laravel 桥接遵循
+[PHP SDK 的独立要求](./polyglot/php.md#requirements)。基础服务模式客户端仍支持 PHP 8.1。
+PHP SDK 3.9.x 保留其此前的 Laravel 10 至 13 桥接契约。旧版 v1 应用可能需要先升级框架
+才能迁移到任一当前版本线。升级期间须保留原 v1 运行时及其未完成的运行。
 
 ## 比较归属边界 {#compare-the-ownership-boundary}
 

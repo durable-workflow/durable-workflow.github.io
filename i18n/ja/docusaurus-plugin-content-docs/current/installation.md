@@ -13,7 +13,7 @@ sidebar_position: 3
 ## 必要な環境 {#requirements}
 
 - PHP 8.x 系の 8.2 以降
-- Laravel 12.x 系の 12.69 以降、または 13.x 系の 13.30 以降
+- Laravel 12.x 系の 12.72 以降、または 13.x 系の 13.41 以降
 - Laravel 13 では PHP 8.3 以降
 
 これは現在の組み込みリリースの要件です。古いアプリの Composer を更新する前に、

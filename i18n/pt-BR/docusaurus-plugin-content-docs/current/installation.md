@@ -21,7 +21,7 @@ trata do Laravel integrado.
 ## Requisitos {#requirements}
 
 - PHP 8.2 ou superior na linha 8.x
-- Laravel 12.69 ou superior na linha 12.x, ou Laravel 13.30 ou superior na linha 13.x
+- Laravel 12.72 ou superior na linha 12.x, ou Laravel 13.41 ou superior na linha 13.x
 - PHP 8.3 ou superior para Laravel 13
 
 Estes requisitos se aplicam à versão embutida atual. Antes de atualizar Composer
