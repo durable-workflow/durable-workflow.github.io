@@ -462,7 +462,7 @@ Server також надає кооперативні маршрути `request-
 
 :::note Stable-адаптація та встановлені споживачі очікуються
 
-Розширення простих timer і виправлення дробової точності злиті в [Server-коді 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 має опублікований незмінний образ і [прийняту producer/platform/corpus/Compose-кваліфікацію](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Stable-аліаси, фінальний GitHub Release, адаптація Chart та відповідні докази встановлених споживачів залишаються на утриманні. Вибраний опублікований Server зберігає попередню відмову timer і запис годинника. Сама producer-кваліфікація не доводить встановлений SDK replay-результат чи stable-вибір.
+Розширення простих timer і виправлення дробової точності злиті в [Server-коді 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 має опублікований незмінний образ і [прийняту producer/platform/corpus/Compose-кваліфікацію](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Підвищення stable-аліасів, фінальний GitHub Release, адаптація Chart і відповідна перевірка встановлених споживачів ще очікують завершення. Вибраний опублікований Server зберігає попередню відмову timer і запис годинника. Сама producer-кваліфікація не доводить встановлений SDK replay-результат чи stable-вибір.
 
 :::
 

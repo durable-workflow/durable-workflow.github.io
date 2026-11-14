@@ -355,7 +355,7 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 
 :::note 等待稳定采用与已安装消费者验证
 
-简单定时器扩展和小数精度修复已合入 [Server 源码 5221ed82](https://github.com/durable-workflow/server/pull/1215)。原生 3.11.0 已有公开的不可变镜像，以及[已接受的生产者/平台/语料库/Compose 资格验证](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894)。稳定别名、最终 GitHub Release、Chart 采用和适用的已安装消费者证据仍被保留。当前选定的已发布 Server 保留此前的定时器拒绝和时钟写入行为。仅生产者资格验证不代表已安装 SDK 重放结果或稳定选择。
+简单定时器扩展和小数精度修复已合入 [Server 源码 5221ed82](https://github.com/durable-workflow/server/pull/1215)。原生 3.11.0 已有公开的不可变镜像，以及[已接受的生产者/平台/语料库/Compose 资格验证](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894)。稳定别名提升、最终 GitHub Release、Chart 采用以及适用的已安装消费者验证仍待完成。当前选定的已发布 Server 保留此前的定时器拒绝和时钟写入行为。仅生产者资格验证不代表已安装 SDK 重放结果或稳定选择。
 
 :::
 
