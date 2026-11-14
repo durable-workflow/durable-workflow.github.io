@@ -13,6 +13,12 @@ Here are some examples of things you shouldn't do inside of a workflow class:
 - Don't make network requests to external resources, as these may be slow or unavailable at different times. Instead, pass the necessary data as inputs to the workflow when it is started or use an activity to retrieve the data.
 - Don't use random number generators (unless using a side effect) or other sources of randomness, as these will produce different results each time they are called. Instead, pass any necessary randomness as an input to the workflow when it is started.
 
+## Logging from workflow code {#workflow-logging}
+
+A worker reconstructs committed workflow history after activations and cold replacement, so ordinary application logging can repeat earlier messages. Use the replay-aware logger documented for your binding when available. Rust service mode provides the [Rust SDK 4.17 workflow logger](../polyglot/rust.md#workflow-logging); other bindings retain their separately documented contracts.
+
+Logging is a process observation. Keep durable workflow commands independent of replay-state observations and log delivery. Even a replay-aware logger can repeat a message from an uncommitted attempt after a crash or retry; it is not an exactly-once outbox. Keep host handlers bounded and nonblocking so logging does not stall the worker. Put durable business effects behind the appropriate activity or recorded workflow operation instead.
+
 ## Boot-Time Guardrails
 
 When workflow classes are registered under `workflows.v2.types.workflows`, the package scans them at boot time for obvious replay-unsafe calls (`Carbon::now()`, `Auth::user()`, `DB::`, `Http::`, `random_int()`, and similar) and surfaces findings according to `workflows.v2.guardrails.boot`:
