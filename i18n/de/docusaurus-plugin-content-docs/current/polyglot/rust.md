@@ -718,6 +718,22 @@ Marker erneut. `patched(change_id)` bietet die boolesche Rollout-Form.
 Die gemeinsame dauerhafte Semantik beschreiben [Seiteneffekte](/docs/features/side-effects/)
 und [Versionierung](/docs/features/versioning/).
 
+## Replay-bewusstes Workflow-Logging {#workflow-logging}
+
+Rust SDK 4.17.0 ergänzt `ctx.logger().info("message")` für Beobachtungen aus Workflow-Code. Die Ereignisse gehen an den bestehenden `tracing`-Subscriber der Anwendung mit dem Target `durable_workflow::workflow` und den unveränderlichen, vom SDK gebundenen Feldern `namespace`, `workflow_instance_id` und `workflow_run_id`. Konfigurieren Sie den Host-Subscriber; das SDK installiert keinen globalen Subscriber.
+
+Gewöhnliche Log-Aufrufe werden erneut ausgeführt, wenn ein Worker den Workflow-Verlauf rekonstruiert. Der Workflow-Logger bleibt bei Replay des persistierten Präfixes, Query-/Offline-Replay und abgeschlossenen Verläufen still, auch nach einem kalten Worker-Wechsel und außerhalb eines aktiven Aufrufs. Er kann nur in neuer Ausführung hinter diesem Präfix und mit vollständiger gebundener Run-Identität ausgeben. `ctx.replay_state()` beobachtet diese aktuelle Grenze des konsumierten Verlaufs statt eines beim Task-Start fixierten Boolean:
+
+| `WorkflowReplayState` | Beobachtung |
+| --- | --- |
+| `Replaying` | Rekonstruktion des persistierten Verlaufs oder einer Query; Workflow-Logs werden unterdrückt. |
+| `Executing` | Neue Ausführung hinter dem persistierten Präfix; ein Retry eines noch nicht persistierten Tasks kann Logs wiederholen. |
+| `Unavailable` | Außerhalb dieses Workflow-Aufrufs oder Zustand nicht sicher lesbar; Workflow-Logs werden unterdrückt. |
+
+Halten Sie die dauerhafte Befehlsreihenfolge unabhängig von diesem Beobachtungszustand und der Log-Zustellung. Ein Log aus einem nicht persistierten Versuch kann nach Absturz oder Retry erneut erscheinen; der Logger ist keine Outbox mit Exactly-once-Garantie. Halten Sie Anwendungshandler begrenzt und nicht blockierend, etwa mit einer anwendungseigenen Logging-Queue. Subscriber-Panics mit Stack-Unwinding werden vom Workflow-Ergebnis isoliert; Prozessabbrüche und blockierende Handler bleiben Anwendungsverantwortung.
+
+Siehe den [veröffentlichten Logging-Guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), die [WorkflowLogger-API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) und die [WorkflowReplayState-API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-Lifecycle-/Deadline-Kontrollen](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) und [Logging-Abnahme mit vier Prozessen](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) wurden auf dem benannten Tupel mit native Server 3.10.0 unter linux/amd64 erfasst. Andere Bindings und weitergehende Replay-/Producer-Qualifikation behalten ihren eigenen Umfang.
+
 ## Rust-Regeln für Determinismus {#rust-determinism-rules}
 
 Ein Replay muss für aufgezeichnete Eingabe und Historie dieselben dauerhaften Befehle in derselben Reihenfolge erzeugen. Gewöhnliche Rust-Sammlungen, Uhren und Nebenläufigkeitsprimitive erhalten diesen Vertrag nicht automatisch:

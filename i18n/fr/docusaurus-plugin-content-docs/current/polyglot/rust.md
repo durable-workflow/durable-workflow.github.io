@@ -724,6 +724,22 @@ la forme booléenne de déploiement et `deprecate_patch(change_id)` préserve
 le marqueur après la fin des anciennes branches. Les [effets de bord](/docs/features/side-effects/)
 et la [gestion des versions](/docs/features/versioning/) décrivent ces règles communes.
 
+## Journalisation de workflow consciente du replay {#workflow-logging}
+
+Rust SDK 4.17.0 ajoute `ctx.logger().info("message")` pour les observations issues du code de workflow. Les événements passent par le subscriber `tracing` existant de l’application, avec la cible `durable_workflow::workflow` et les champs immuables liés par le SDK `namespace`, `workflow_instance_id` et `workflow_run_id`. Configurez le subscriber hôte ; le SDK n’en installe aucun globalement.
+
+Les appels de journalisation ordinaires s’exécutent à nouveau lorsqu’un worker reconstruit l’historique du workflow. Le logger de workflow reste silencieux pendant le replay du préfixe validé, les requêtes/replays hors ligne et les historiques terminés, y compris après un remplacement à froid, ainsi qu’en dehors d’une invocation active. Il peut émettre uniquement dans une nouvelle exécution au-delà du préfixe avec une identité de run complète et liée. `ctx.replay_state()` observe cette frontière vivante de l’historique consommé, plutôt qu’un booléen figé au début de la tâche :
+
+| `WorkflowReplayState` | Observation |
+| --- | --- |
+| `Replaying` | Reconstruction de l’historique validé ou d’une requête ; les logs du workflow sont supprimés. |
+| `Executing` | Nouvelle exécution au-delà du préfixe validé ; le retry d’une tâche non validée peut répéter des logs. |
+| `Unavailable` | En dehors de cette invocation du workflow ou si l’état ne peut pas être lu sûrement ; les logs sont supprimés. |
+
+Gardez l’ordre des commandes durables indépendant de cet état d’observation et de la livraison des logs. Un log d’une tentative non validée peut se répéter après un crash ou un retry ; ce logger n’est pas une outbox garantissant exactement une fois. Gardez les handlers de l’application bornés et non bloquants, par exemple via une file de journalisation gérée par l’application. Les panics du subscriber avec déroulement de pile sont isolés du résultat du workflow ; les arrêts du processus et handlers bloquants restent à la charge de l’application.
+
+Consultez le [guide de journalisation publié](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), l’[API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) et l’[API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). Les [contrôles cycle de vie/deadline depuis le registre](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) et l’[acceptation de journalisation avec quatre processus](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) ont été enregistrés sur le tuple nommé native Server 3.10.0 linux/amd64. Les autres bindings et qualifications plus larges de replay/producteur gardent leur propre périmètre.
+
 ## Règles de déterminisme Rust {#rust-determinism-rules}
 
 Une relecture doit produire les mêmes commandes durables dans le même ordre pour l’entrée et l’historique enregistrés. Les collections, horloges et primitives de concurrence ordinaires de Rust ne préservent pas automatiquement ce contrat :

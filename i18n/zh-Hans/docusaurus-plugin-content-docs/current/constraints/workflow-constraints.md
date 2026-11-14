@@ -15,6 +15,12 @@ description: 保持重放的确定性，并在应用启动时发现不安全的�
 - 不要直接请求外部网络资源，因为其响应、速度和可用性可能变化。在启动时传入所需数据，或通过活动获取数据。
 - 不要直接使用随机数生成器或其他随机来源，除非将结果记录在 `sideEffect` 中。也可以在启动工作流时把所需随机值作为输入传入。
 
+## 从 workflow 代码记录日志 {#workflow-logging}
+
+worker 在激活和冷替换后重建已提交的 workflow 历史，因此普通应用日志可能重复先前的消息。若对应 binding 提供了已文档化的重放感知 logger，请使用该接口。Rust 服务模式提供 [Rust SDK 4.17 workflow logger](../polyglot/rust.md#workflow-logging)；其他 binding 保留各自文档中的契约。
+
+日志是进程观测。持久 workflow 命令应独立于重放状态观测和日志投递。即使使用重放感知 logger，未提交尝试的消息也可能在崩溃或 retry 后重复；它不是 exactly-once outbox。主机 handler 应有界且非阻塞，避免日志阻塞 worker。应通过合适的 activity 或有记录的 workflow 操作执行持久业务效果。
+
 ## 启动时检查 {#boot-time-guardrails}
 
 注册在 `workflows.v2.types.workflows` 下的工作流类，会在应用启动时接受扫描，检测 `Carbon::now()`、`Auth::user()`、`DB::`、`Http::`、`random_int()` 等明显不安全的重放调用。`workflows.v2.guardrails.boot` 决定如何处理结果：

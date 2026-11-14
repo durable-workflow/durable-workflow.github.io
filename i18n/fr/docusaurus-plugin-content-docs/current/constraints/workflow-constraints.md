@@ -15,6 +15,12 @@ Dans le corps d’un workflow :
 - Évitez les requêtes réseau directes, dont la réponse, la vitesse et la disponibilité varient. Passez les données en entrée ou récupérez-les dans une activité.
 - Évitez les générateurs de nombres aléatoires et les autres sources d’aléa, sauf si le résultat est enregistré avec un effet de bord durable. Vous pouvez aussi passer la valeur aléatoire en entrée au démarrage.
 
+## Journaliser depuis le code de workflow {#workflow-logging}
+
+Un worker reconstruit l’historique validé du workflow après les activations et remplacements à froid ; la journalisation ordinaire de l’application peut donc répéter les messages précédents. Utilisez le logger conscient du replay documenté pour votre binding lorsqu’il existe. Le mode service Rust fournit le [logger de workflow de Rust SDK 4.17](../polyglot/rust.md#workflow-logging) ; les autres bindings conservent leurs contrats documentés séparément.
+
+La journalisation est une observation du processus. Gardez les commandes durables indépendantes des observations du replay et de la livraison des logs. Même un logger conscient du replay peut répéter un message d’une tentative non validée après un crash ou un retry ; ce n’est pas une outbox garantissant exactement une fois. Les handlers hôtes doivent rester bornés et non bloquants pour ne pas immobiliser le worker. Placez les effets métier durables dans l’activité ou l’opération de workflow enregistrée appropriée.
+
 ## Contrôles au démarrage {#boot-time-guardrails}
 
 Au démarrage, le package analyse les classes enregistrées dans `workflows.v2.types.workflows`. Il repère les appels manifestement incompatibles avec la relecture, comme `Carbon::now()`, `Auth::user()`, `DB::`, `Http::` et `random_int()`. La configuration `workflows.v2.guardrails.boot` détermine la réaction :
