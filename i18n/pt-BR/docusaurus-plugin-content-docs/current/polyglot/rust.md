@@ -706,6 +706,22 @@ durável. `patched(change_id)` fornece a forma booleana de rollout, e
 drenado. Veja [Efeitos colaterais](/docs/features/side-effects/) e
 [Versionamento](/docs/features/versioning/) para a semântica durável compartilhada.
 
+## Logging de workflow consciente de replay {#workflow-logging}
+
+O Rust SDK 4.17.0 adiciona `ctx.logger().info("message")` para observações no código do workflow. Os eventos vão para o subscriber `tracing` existente da aplicação, com target `durable_workflow::workflow` e os campos imutáveis vinculados pelo SDK `namespace`, `workflow_instance_id` e `workflow_run_id`. Configure o subscriber do host; o SDK não instala um subscriber global.
+
+Chamadas comuns de log executam novamente quando um worker reconstrói o histórico do workflow. O logger fica silencioso no replay do prefixo confirmado, de consultas/offline e de históricos concluídos, inclusive após substituição a frio do worker, e fora de uma invocação ativa. Ele só pode emitir em execução nova além desse prefixo com uma identidade de run completa e vinculada. `ctx.replay_state()` observa essa fronteira viva do histórico consumido, em vez de um booleano fixado no início da tarefa:
+
+| `WorkflowReplayState` | Observação |
+| --- | --- |
+| `Replaying` | Reconstrução de histórico confirmado ou consulta; logs do workflow são suprimidos. |
+| `Executing` | Execução nova além do prefixo confirmado; repetir uma tarefa não confirmada pode repetir logs. |
+| `Unavailable` | Fora desta invocação do workflow ou sem leitura segura do estado; os logs são suprimidos. |
+
+Mantenha a ordem de comandos duráveis independente desse estado de observação e da entrega de logs. Um log de tentativa não confirmada pode repetir após falha ou retry; o logger não é um outbox exatamente uma vez. Mantenha os handlers da aplicação limitados e não bloqueantes, por exemplo com uma fila de logging própria. Panics do subscriber com desempilhamento são isolados do resultado do workflow; abortos do processo e handlers bloqueantes continuam sendo responsabilidade da aplicação.
+
+Veja o [guia publicado de logging](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), a [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) e a [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). Os [controles de lifecycle/deadline do registro](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) e a [aceitação de logging com quatro processos](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) foram registrados na tupla nomeada native Server 3.10.0 linux/amd64. Outros bindings e qualificações mais amplas de replay/produtor mantêm seus próprios escopos.
+
 ## Regras de determinismo do Rust {#rust-determinism-rules}
 
 Um replay deve produzir os mesmos comandos duráveis, na mesma ordem, para a entrada e o histórico registrados. Coleções, relógios e primitivas de concorrência comuns do Rust não preservam automaticamente esse contrato:

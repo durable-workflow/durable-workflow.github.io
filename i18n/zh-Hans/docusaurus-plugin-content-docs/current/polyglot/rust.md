@@ -531,6 +531,22 @@ Rust SDK 使用 `WorkflowContext::side_effect` 记录小型非确定性值，并
 
 使用 `WorkflowContext::get_version(change_id, min_supported, max_supported)`，在发布期间保持新旧工作流分支重放兼容。新运行记录 `max_supported`；现有运行复用持久标记。`patched(change_id)` 提供布尔形式的发布控制；旧分支排空后，`deprecate_patch(change_id)` 保留标记。共享持久语义见[副作用](/docs/features/side-effects/)和[版本管理](/docs/features/versioning/)。
 
+## 感知重放的 workflow 日志 {#workflow-logging}
+
+Rust SDK 4.17.0 添加 `ctx.logger().info("message")`，用于 workflow 代码中的观测。它通过应用已有的 `tracing` subscriber 发送事件，使用 target `durable_workflow::workflow`，以及由 SDK 绑定的不可变字段 `namespace`、`workflow_instance_id` 和 `workflow_run_id`。请配置主机 subscriber；SDK 不安装全局 subscriber。
+
+worker 重建 workflow 历史时，普通日志调用会再次执行。workflow logger 在已提交前缀、query/offline 和已完成历史的重放期间保持静默，包括 worker 冷替换后；在活动调用之外也保持静默。它只能在前缀之后的新执行中、且有完整绑定的 run identity 时发送日志。`ctx.replay_state()` 观测已消费历史的实时边界，而不是 task 开始时固定的布尔值：
+
+| `WorkflowReplayState` | 观测 |
+| --- | --- |
+| `Replaying` | 正在重建已提交历史或 query；抑制 workflow 日志。 |
+| `Executing` | 已提交前缀之后的新执行；未提交 task 的重试可能重复日志。 |
+| `Unavailable` | 在本次 workflow 调用之外，或无法安全读取状态；抑制日志。 |
+
+持久命令顺序应独立于该观测状态及日志投递。未提交尝试的日志可能在崩溃或 retry 后重复，因此 logger 不是 exactly-once outbox。应用 handler 应有界且非阻塞，例如使用应用自行管理的日志队列。会展开栈的 subscriber panic 与 workflow 结果隔离；进程 abort 和阻塞 handler 仍由应用负责。
+
+参见[已发布日志指南](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging)、[WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) 和 [WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html)。[registry lifecycle/deadline 控制](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853)与[四进程日志验收](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262)记录于明确指定的 native Server 3.10.0 linux/amd64 组合。其他 binding 以及更广泛的 replay/producer 验收各自保留范围。
+
 ## Rust 确定性规则 {#rust-determinism-rules}
 
 对于已记录的输入和历史，重放必须按相同顺序生成相同的持久命令。Rust 常规集合、时钟和并发原语不会自动保持这一约定：

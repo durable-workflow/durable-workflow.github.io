@@ -536,6 +536,22 @@ Rust SDK は `WorkflowContext::side_effect` で小さな非決定的値を記録
 
 ロールアウト中に古いワークフロー分岐と新しい分岐のリプレイ互換性を保つには `WorkflowContext::get_version(change_id, min_supported, max_supported)` を使います。新しい実行は `max_supported` を記録し、既存の実行は永続マーカーを再利用します。`patched(change_id)` は真偽値形式のロールアウトを提供し、`deprecate_patch(change_id)` は古い分岐の処理完了後もマーカーを維持します。共有の永続的意味は[副作用](/docs/features/side-effects/)と[バージョニング](/docs/features/versioning/)を参照してください。
 
+## リプレイを認識するワークフローロギング {#workflow-logging}
+
+Rust SDK 4.17.0 はワークフローコードからの観測に `ctx.logger().info("message")` を提供します。アプリケーションの既存 `tracing` subscriber に、target `durable_workflow::workflow` と SDK が結び付けた不変の `namespace`、`workflow_instance_id`、`workflow_run_id` を付けて送ります。ホスト側 subscriber を設定してください。SDK はグローバル subscriber を登録しません。
+
+通常のログ呼び出しは、worker がワークフロー履歴を再構築するたびに再実行されます。ワークフローロガーは、確定済みプレフィックス、query/offline、完了済み履歴のリプレイ中、worker のコールド置換後も、また有効な呼び出しの外でも出力しません。そのプレフィックスを越える新規実行で、完全な run identity が結び付いている場合にのみ出力できます。`ctx.replay_state()` は、タスク開始時に固定した boolean ではなく、消費した履歴の現在の境界を観測します。
+
+| `WorkflowReplayState` | 観測 |
+| --- | --- |
+| `Replaying` | 確定済み履歴または query を再構築中です。ワークフローのログを抑制します。 |
+| `Executing` | 確定済みプレフィックスを越える新規実行です。未確定タスクの再試行ではログが重複し得ます。 |
+| `Unavailable` | このワークフロー呼び出しの外、または状態を安全に読めない場合です。ログを抑制します。 |
+
+永続コマンドの順序を、この観測状態やログ配送から独立させてください。未確定の試行のログはクラッシュや retry 後に重複し得るため、このロガーは exactly-once outbox ではありません。アプリ所有のログキューなどを用い、handler を有界かつ非ブロッキングにしてください。スタックを巻き戻す subscriber panic はワークフロー結果から隔離されます。プロセスの abort とブロッキング handler はアプリケーションの責任です。
+
+[公開済みロギングガイド](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging)、[WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html)、[WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html)を参照してください。[registry からの lifecycle/deadline 検証](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853)と[4プロセスのロギング受入検証](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262)は、明記された native Server 3.10.0 linux/amd64 の組合せで記録されました。他の binding や、より広い replay/producer の適格性は別の範囲です。
+
 ## Rust の決定性ルール {#rust-determinism-rules}
 
 リプレイでは、記録済みの入力と履歴に対して、同じ順序で同じ永続コマンドを生成する必要があります。Rust の通常のコレクション、時計、並行処理のプリミティブは、この契約を自動では保ちません。

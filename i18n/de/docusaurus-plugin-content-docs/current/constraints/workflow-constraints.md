@@ -13,6 +13,12 @@ Beispiele für Operationen, die nicht in den Workflow-Code gehören:
 - Führen Sie keine Netzwerkaufrufe zu externen Ressourcen aus. Verfügbarkeit und Laufzeit können schwanken. Übergeben Sie benötigte Daten beim Start oder lesen Sie sie in einer Aktivität.
 - Verwenden Sie keine Zufallszahlengeneratoren oder andere Zufallsquellen außerhalb eines Side Effects. Jeder Aufruf kann ein anderes Ergebnis liefern. Übergeben Sie benötigte Zufallswerte als Eingabe.
 
+## Logging aus Workflow-Code {#workflow-logging}
+
+Ein Worker rekonstruiert nach Aktivierungen und kaltem Austausch den persistierten Workflow-Verlauf. Gewöhnliches Anwendungslogging kann deshalb frühere Meldungen wiederholen. Verwenden Sie den für Ihr Binding dokumentierten replay-bewussten Logger, sofern verfügbar. Rust Service Mode bietet den [Workflow-Logger des Rust SDK 4.17](../polyglot/rust.md#workflow-logging); andere Bindings behalten ihre gesondert dokumentierten Verträge.
+
+Logging ist eine Prozessbeobachtung. Halten Sie dauerhafte Workflow-Befehle unabhängig von Replay-Zustand und Log-Zustellung. Auch ein replay-bewusster Logger kann eine Meldung aus einem nicht persistierten Versuch nach Absturz oder Retry wiederholen; er ist keine Outbox mit Exactly-once-Garantie. Host-Handler müssen begrenzt und nicht blockierend bleiben, damit Logging den Worker nicht aufhält. Dauerhafte Geschäftseffekte gehören stattdessen in eine passende Activity oder aufgezeichnete Workflow-Operation.
+
 ## Prüfungen beim Anwendungsstart {#boot-time-guardrails}
 
 Für unter `workflows.v2.types.workflows` registrierte Workflow-Klassen prüft das Paket beim Start offensichtliche Replay-unsichere Aufrufe wie `Carbon::now()`, `Auth::user()`, `DB::`, `Http::` und `random_int()`. Die Einstellung `workflows.v2.guardrails.boot` bestimmt die Behandlung:

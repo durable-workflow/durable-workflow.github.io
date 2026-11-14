@@ -715,6 +715,22 @@ Rust SDK записує невеликі недетерміновані знач
 Спільну durable-семантику описано в
 [side effects](/docs/features/side-effects/) та [версіюванні](/docs/features/versioning/).
 
+## Журналювання workflow з урахуванням replay {#workflow-logging}
+
+Rust SDK 4.17.0 додає `ctx.logger().info("message")` для спостережень із коду workflow. Події надходять до наявного `tracing` subscriber застосунку з target `durable_workflow::workflow` та незмінними прив’язаними SDK полями `namespace`, `workflow_instance_id` і `workflow_run_id`. Налаштуйте subscriber хоста; SDK не встановлює глобальний subscriber.
+
+Звичайні виклики журналювання виконуються знову, коли worker відновлює історію workflow. Logger workflow не видає повідомлень під час replay зафіксованого префікса, query/offline та завершених історій, зокрема після холодної заміни worker, а також поза активним викликом. Він може видавати повідомлення лише в новому виконанні після цього префікса з повною прив’язаною ідентичністю run. `ctx.replay_state()` спостерігає поточну межу спожитої історії, а не Boolean, зафіксований на початку task:
+
+| `WorkflowReplayState` | Спостереження |
+| --- | --- |
+| `Replaying` | Відновлення зафіксованої історії або query; повідомлення workflow пригнічуються. |
+| `Executing` | Нове виконання після зафіксованого префікса; повтор незафіксованої task може повторити повідомлення. |
+| `Unavailable` | Поза цим викликом workflow або без можливості безпечно прочитати стан; повідомлення пригнічуються. |
+
+Порядок довговічних команд має бути незалежним від цього стану спостереження й доставки журналу. Повідомлення незафіксованої спроби може повторитися після збою чи retry; logger не є outbox із гарантією exactly-once. Обробники застосунку мають бути обмеженими й неблокувальними, наприклад із власною чергою журналювання. Panic subscriber з розкручуванням стека ізольовано від результату workflow; переривання процесу та блокувальні обробники залишаються відповідальністю застосунку.
+
+Дивіться [опублікований посібник журналювання](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) та [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-перевірки lifecycle/deadline](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) і [приймання журналювання з чотирма процесами](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) записано на вказаному кортежі native Server 3.10.0 linux/amd64. Інші binding та ширша кваліфікація replay/producer зберігають окремі межі.
+
 ## Правила детермінізму Rust {#rust-determinism-rules}
 
 Replay має створювати ті самі durable-команди в тому самому порядку для записаного входу й історії. Звичайні колекції, годинники та примітиви конкурентності Rust не зберігають цей контракт автоматично:
