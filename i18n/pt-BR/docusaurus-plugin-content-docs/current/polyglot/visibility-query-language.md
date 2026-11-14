@@ -1,4 +1,5 @@
 ---
+displayed_sidebar: tutorialSidebar
 title: Linguagem de consultas de visibilidade
 description: Filtre execuções do Server por estado, tempo, identidade e atributos de busca tipados, com exemplos HTTP e paginação.
 ---

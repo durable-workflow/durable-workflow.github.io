@@ -1,4 +1,5 @@
 ---
+displayed_sidebar: tutorialSidebar
 title: Langage de requêtes de visibilité
 description: Filtrer les exécutions du Server par état, temps, identité et attributs de recherche typés, avec exemples HTTP et pagination.
 ---

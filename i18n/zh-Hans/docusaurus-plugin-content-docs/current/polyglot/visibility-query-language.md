@@ -1,4 +1,5 @@
 ---
+displayed_sidebar: tutorialSidebar
 title: 可见性查询语言
 description: 按状态、时间、标识和带类型的搜索属性筛选 Server 工作流运行，包含 HTTP 示例和分页说明。
 ---

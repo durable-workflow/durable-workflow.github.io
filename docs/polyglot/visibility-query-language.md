@@ -1,4 +1,5 @@
 ---
+displayed_sidebar: tutorialSidebar
 title: Visibility Query Language
 description: Filter Server workflow runs by status, time, identity and typed search attributes, with HTTP examples and pagination.
 ---

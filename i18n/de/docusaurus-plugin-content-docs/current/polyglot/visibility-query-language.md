@@ -1,4 +1,5 @@
 ---
+displayed_sidebar: tutorialSidebar
 title: Visibility-Abfragesprache
 description: Server-Ausführungen nach Status, Zeit, Identität und typisierten Suchattributen filtern, mit HTTP-Beispielen und Seitennavigation.
 ---
