@@ -123,6 +123,8 @@ Python 服务模式活动提供只读的可选字段
 不是 claim 权限，也不会使外部副作用恰好发生一次。请保留下游幂等性、不同副作用使用
 不同键，以及结果对账。
 
+PHP 服务模式活动提供来自收到的领取的只读可空 `ActivityContext::activityExecutionId`，以及所属工作流和运行的 `workflowId`、`runId`。请在重试间保持逻辑执行 ID。缺失的标识保持 `null`；任务、尝试或会话 ID 不能作为回退。[PHP 标识指南](../polyglot/php.md#activity-identity)链接 SDK 服务键示例，并定义缺失、会话、历史 prepared-local、inline-local 和 Server-free 情况。这些访问器是公开元数据，不是领取权限。外部副作用仍需要目标系统的幂等性、不同副作用的不同键和结果核对。
+
 ## 开发者需要保证哪些操作幂等 {#what-developers-must-make-idempotent}
 
 你无需让工作流重放本身具有幂等性。框架通过已提交历史重建状态，负责处理重放。

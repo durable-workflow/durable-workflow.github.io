@@ -154,6 +154,17 @@ not claim authority, and does not make an external effect exactly once. Keep
 downstream idempotency, distinct keys for different effects and outcome
 reconciliation.
 
+PHP service-mode activities expose the read-only nullable
+`ActivityContext::activityExecutionId` from the received claim, with `workflowId`
+and `runId` for the owning workflow and run. Keep the logical execution ID
+across retries. Missing identity stays `null`; a task, attempt or session ID is
+not a fallback. The [PHP identity guide](../polyglot/php.md#activity-identity)
+links the SDK-owned service-key example and defines absent, session,
+historical prepared-local, inline-local and Server-free cases. These accessors
+are public metadata, not claim authority. External effects still need
+downstream idempotency, distinct keys for different effects and outcome
+reconciliation.
+
 ## What Developers Must Make Idempotent
 
 You do **not** need to make workflow replay itself idempotent. The framework

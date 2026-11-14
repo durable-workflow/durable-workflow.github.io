@@ -101,6 +101,14 @@ PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retry
 
 请参阅 PHP SDK 指南中的[最后一次尝试检查与向自身运行发送信号的完整示例](https://php.durable-workflow.com/build/workflows-activities/)。
 
+## 活动的逻辑执行标识 {#activity-identity}
+
+PHP SDK **3.10.0 或更新版本**提供从活动领取中收到的只读可空 `ActivityContext::activityExecutionId`。它标识跨重试的逻辑活动。`workflowId` 和 `runId` 标识所属工作流实例和运行；`activityAttemptId` 标识一次尝试。不要用任务、尝试或会话 ID 替代缺失的逻辑执行 ID。
+
+SDK 原样保留收到的非空字符串。省略、null、空字符串或非字符串标识值会产生 `null`。不可用时请使用应用自有的业务键。[SDK 服务键示例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)展示了回退方式；[属性参考](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId)定义了公开 API。按应用和副作用限定键，为不同副作用使用不同键，并与目标系统核对不确定结果。标识是公开元数据，不是领取权限，也不保证外部副作用恰好执行一次。
+
+普通远程回调和协作式监督远程回调读取实际领取字段。会话回调仅在其领取包含该字段时提供它。没有 Server 准入的 inline-local 和 Server-free 回调具有 `null` 执行标识，即使已知父工作流/run ID。历史 prepared-local 源码传递经过验证的准入 ID；这种源码行为不代表支持原生 prepared-local。这些是源码和数据流边界，不是所有执行模式下已安装环境的重试观察结果。
+
 ## 活动心跳 {#activity-heartbeats}
 
 对于远程活动，在有界工作期间调用 `ActivityContext::heartbeat($details)`，并在配置的心跳超时到期前留足时间。第一个窗口从运行时领取任务开始，而不是 PHP 收到任务时开始。请求延迟、暂停和传输重试都会消耗该窗口。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。

@@ -166,6 +166,14 @@ PHP SDK **3.6.1 або новіший** надає `$context->retryInfo`, `$cont
 
 Дивіться [повні приклади перевірки останньої спроби та сигналу власному запуску](https://php.durable-workflow.com/build/workflows-activities/) у посібнику PHP SDK.
 
+## Логічна ідентичність виконання activity {#activity-identity}
+
+PHP SDK **3.10.0 або новіший** надає nullable властивість лише для читання `ActivityContext::activityExecutionId`, отриману з activity claim. Вона ідентифікує логічну activity між повторними спробами. `workflowId` і `runId` позначають екземпляр і запуск workflow-власника; `activityAttemptId` позначає спробу. Не підставляйте ID завдання, спроби чи сесії замість відсутньої логічної ідентичності.
+
+SDK точно зберігає отриманий непорожній рядок. Пропущені, null, порожні або не-рядкові значення ідентичності дають `null`. Якщо вона недоступна, використовуйте бізнес-ключ застосунку. [Приклад service key від SDK](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) показує цей fallback; [довідник властивості](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId) визначає публічний API. Обмежуйте ключі застосунком та ефектом, беріть різні ключі для різних ефектів і звіряйте невизначені результати з цільовою системою. Ідентичність є публічними метаданими, а не повноваженням claim чи гарантією зовнішніх ефектів рівно один раз.
+
+Звичайні й кооперативно контрольовані віддалені callbacks читають фактичне поле claim. Сесійні callbacks надають його лише за наявності в їхньому claim. Inline-local і Server-free callbacks без Server admission мають ідентичність виконання `null`, навіть коли ID батьківського workflow/run відомі. Історичний prepared-local код передає перевірений admission ID; така поведінка коду не встановлює підтримку native prepared-local. Це межі коду/потоку даних, а не встановлені спостереження повторних спроб у кожному режимі.
+
 ## Heartbeat activity {#activity-heartbeats}
 
 Для віддалених activities викликайте `ActivityContext::heartbeat($details)` під час обмеженої роботи activity, задовго до налаштованого тайм-ауту heartbeat. Перше вікно починається, коли runtime отримує повноваження на завдання, а не коли PHP отримує його. Затримки запитів, паузи й транспортні повтори витрачають це вікно. Дотримуйтеся [порад щодо періодичності](../features/heartbeats.md#heartbeat-cadence-and-receipts).
