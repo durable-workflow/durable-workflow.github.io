@@ -723,7 +723,7 @@ drained. See [Side Effects](/docs/features/side-effects/) and
 
 Rust SDK 4.17.0 adds `ctx.logger().info("message")` for observations from workflow code. It routes to the application's existing `tracing` subscriber using target `durable_workflow::workflow`, with SDK-bound immutable `namespace`, `workflow_instance_id` and `workflow_run_id` fields. Configure the host subscriber; the SDK installs no global subscriber.
 
-Ordinary log calls execute again as a worker reconstructs workflow history. The workflow logger stays quiet for committed-prefix, query/offline and completed-history replay, including cold worker replacement, and outside an active invocation. It emits in new execution beyond the committed prefix. `ctx.replay_state()` observes that live consumed-history boundary rather than a Boolean fixed when the task starts:
+Ordinary log calls execute again as a worker reconstructs workflow history. The workflow logger stays quiet for committed-prefix, query/offline and completed-history replay, including cold worker replacement, and outside an active invocation. It can emit only in new execution beyond that prefix with a complete bound run identity. `ctx.replay_state()` observes that live consumed-history boundary rather than a Boolean fixed when the task starts:
 
 | `WorkflowReplayState` | Observation |
 | --- | --- |
@@ -733,7 +733,7 @@ Ordinary log calls execute again as a worker reconstructs workflow history. The 
 
 Keep durable command order independent of this observation state and log delivery. A log from an uncommitted attempt can repeat after a crash or retry, so the logger is not an exactly-once outbox. Keep application handlers bounded and nonblocking, for example with an application-owned logging queue. Unwinding subscriber panics are isolated from the workflow result; process aborts and blocking handlers remain application responsibilities.
 
-See the [published logging guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) and [WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-installed controls](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868474565) cover lifecycle/deadline and four fresh worker processes on the named native Server 3.10.0 linux/amd64 tuple. Other bindings and broader replay/producer qualification retain their own scope.
+See the [published logging guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) and [WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-installed controls](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) cover lifecycle/deadline and four fresh worker processes on the named native Server 3.10.0 linux/amd64 tuple. Other bindings and broader replay/producer qualification retain their own scope.
 
 ## Rust determinism rules {#rust-determinism-rules}
 
