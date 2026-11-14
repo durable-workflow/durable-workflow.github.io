@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: durable-workflow.v2.control-plane-api
-  version: "12"
+  version: "15"
   summary: Durable Workflow control-plane HTTP+JSON API
   description: >
     Normative OpenAPI specification for the standalone Durable Workflow
@@ -338,6 +338,11 @@ paths:
         "404": { $ref: "#/components/responses/ControlPlaneError" }
         "409": { $ref: "#/components/responses/ControlPlaneError" }
         "422": { $ref: "#/components/responses/ControlPlaneError" }
+        "503":
+          description: The original Nexus target temporarily has no eligible live Worker. No cancellation was admitted. Retryable availability diagnostics distinguish absence from known incompatibility.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ControlPlaneError" }
   /workflows/{workflowId}/runs/{runId}/request-cancellation:
     post:
       tags: [workflows]
@@ -359,6 +364,11 @@ paths:
         "404": { $ref: "#/components/responses/ControlPlaneError" }
         "409": { $ref: "#/components/responses/ControlPlaneError" }
         "422": { $ref: "#/components/responses/ControlPlaneError" }
+        "503":
+          description: The original Nexus target temporarily has no eligible live Worker. No cancellation was admitted. Retryable availability diagnostics distinguish absence from known incompatibility.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ControlPlaneError" }
   /workflows/{workflowId}/terminate:
     post:
       tags: [workflows]
@@ -486,6 +496,61 @@ paths:
         - $ref: "#/components/parameters/PageTokenQuery"
       responses:
         "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /workflows/{workflowId}/runs/{runId}/activities/{activityId}/result:
+    get:
+      tags: [workflows]
+      operationId: inspectWorkflowActivityResult
+      summary: Inspect one activity's canonical result in an exact workflow run.
+      description: >
+        Requires operator access and the workflow_activity_result_inspection
+        discovery capability. Bind the listing's activity ID to the selected
+        namespace, workflow and run. Read one canonical activity snapshot and
+        fetch no unrelated payloads. Mutable rows never replace missing history.
+        Local activity inspection is explicitly unsupported until qualified.
+        Available null results carry an encoded Avro null, not a missing field.
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/WorkflowIdPath"
+        - $ref: "#/components/parameters/RunIdPath"
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: The retained result or an explicit unavailable state.
+          headers:
+            X-Durable-Workflow-Control-Plane-Version:
+              schema: { type: string, const: "2" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workflow_id, run_id, activity_id, state, available, reason]
+                properties:
+                  workflow_id: { type: string }
+                  run_id: { type: string }
+                  activity_id: { type: string }
+                  history_sequence: { type: integer, minimum: 1 }
+                  state: { enum: [available, pending, failed, cancelled, pruned, unsupported, unavailable] }
+                  available: { type: boolean }
+                  reason: { type: [string, "null"] }
+                  result_envelope:
+                    type: object
+                    description: Present only for available results. Uses the existing inline or authenticated runtime-external Avro envelope.
+                    required: [codec]
+                    properties:
+                      codec: { type: string, const: avro }
+                      blob: { type: string }
+                      external_payload: { type: object }
+        "400": { $ref: "#/components/responses/JsonEnvelope" }
+        "401": { $ref: "#/components/responses/JsonEnvelope" }
+        "403": { $ref: "#/components/responses/JsonEnvelope" }
+        "404":
+          description: The selected run or activity does not belong to the authenticated scope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JsonObject" }
   /workflows/{workflowId}/runs/{runId}/history/export:
     get:
       tags: [workflows]
@@ -652,10 +717,64 @@ paths:
         - name: intent
           in: path
           required: true
-          schema: { type: string, enum: [drain, resume] }
+          schema: { type: string, enum: [promote, drain, resume] }
       requestBody: { $ref: "#/components/requestBodies/JsonObject" }
       responses:
         "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+  /task-queues/{taskQueue}/activity-dispatch:
+    get:
+      tags: [task-queues]
+      operationId: getTaskQueueActivityDispatch
+      summary: Read whether activity dispatch on the queue is paused.
+      description: >
+        Native Server only, advertised by cluster info
+        capabilities.task_queue_activity_dispatch_pause (Server #577). The
+        answer carries namespace, task_queue and activity_dispatch: state
+        (paused or active), paused, reason, paused_at, paused_by, resumed_at
+        and resumed_by of the last pause cycle. See
+        docs/contracts/task-queue-activity-dispatch-pause.md.
+      x-durable-workflow-server-capability: task_queue_activity_dispatch_pause
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/TaskQueuePath"
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
+  /task-queues/{taskQueue}/activity-dispatch/{action}:
+    post:
+      tags: [task-queues]
+      operationId: setTaskQueueActivityDispatch
+      summary: Pause or resume activity dispatch on the queue.
+      description: >
+        Native Server only, advertised by cluster info
+        capabilities.task_queue_activity_dispatch_pause (Server #577). pause
+        accepts an optional reason (at most 1000 characters) and answers
+        outcome paused or already_paused; resume takes no fields and answers
+        resumed or not_paused. Both are idempotent and record the
+        authenticated principal. While paused no activity task on the queue
+        is leased, ready tasks keep their attempt count, activity deadlines
+        keep running, and workflow, signal, query and update delivery is
+        unchanged. A concurrency cap of 0 is never a pause.
+      x-durable-workflow-server-capability: task_queue_activity_dispatch_pause
+      parameters:
+        - $ref: "#/components/parameters/ControlPlaneVersionHeader"
+        - $ref: "#/components/parameters/TaskQueuePath"
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [pause, resume] }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                reason: { type: [string, "null"], maxLength: 1000 }
+      responses:
+        "200": { $ref: "#/components/responses/ControlPlaneEnvelope" }
+        "422": { $ref: "#/components/responses/ControlPlaneError" }
   /deployments:
     get:
       tags: [deployments]
@@ -1098,10 +1217,74 @@ components:
               spec: { type: [object, "null"], additionalProperties: true }
               action: { type: [object, "null"], additionalProperties: true }
               search_attributes: { type: [object, "null"], additionalProperties: true }
+              dispatch_summary: { $ref: "#/components/schemas/ScheduleDispatchSummary" }
               created_at: { type: string, format: date-time }
               updated_at: { type: string, format: date-time }
         schedule_count: { type: integer, minimum: 0, maximum: 200 }
         next_page_token: { type: [string, "null"] }
+    ScheduleDispatchSummary:
+      description: >-
+        Native bounded dispatch authority, also at the top level of describe.
+        Older producers omit this member. Partial, null or unsupported objects
+        supply no v1 authority. A valid unavailable object overrides legacy
+        outcome evidence. A later describe owns its entire summary.
+      type: object
+      additionalProperties: false
+      required: [version, state, last_outcome, buffered_actions_count]
+      properties:
+        version: { type: integer, const: 1 }
+        state: { type: string, enum: [known, never, unavailable] }
+        last_outcome:
+          oneOf:
+            - { $ref: "#/components/schemas/ScheduleDispatchOutcome" }
+            - { type: "null" }
+        buffered_actions_count: { type: [integer, "null"], minimum: 0, maximum: 9007199254740991 }
+      oneOf:
+        - properties:
+            state: { const: known }
+            last_outcome: { $ref: "#/components/schemas/ScheduleDispatchOutcome" }
+            buffered_actions_count: { type: integer }
+        - properties:
+            state: { const: never }
+            last_outcome: { type: "null" }
+            buffered_actions_count: { const: 0 }
+        - properties:
+            state: { const: unavailable }
+            last_outcome: { type: "null" }
+            buffered_actions_count: { type: "null" }
+    ScheduleDispatchOutcome:
+      description: >-
+        Last committed dispatch, independently of current execution status.
+        Reason strings retain all text within 64 Unicode scalars and 256 UTF-8
+        bytes. Oversized or incomplete outcomes produce unavailable, without
+        changing the underlying scheduling operation. The complete summary is
+        at most 4096 serialized UTF-8 bytes.
+      type: object
+      additionalProperties: false
+      required: [id, outcome, recorded_at, reason, workflow_instance_id, workflow_run_id]
+      properties:
+        id: { type: string, pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$" }
+        outcome: { type: string, enum: [started, buffered, skipped, failed] }
+        recorded_at: { type: string, format: date-time, pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$' }
+        reason: { type: [string, "null"], maxLength: 64 }
+        workflow_instance_id: { type: [string, "null"], pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$" }
+        workflow_run_id: { type: [string, "null"], pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$" }
+      oneOf:
+        - properties:
+            outcome: { const: started }
+            reason: { type: "null" }
+            workflow_instance_id: { type: string }
+            workflow_run_id: { type: string }
+        - properties:
+            outcome: { const: buffered }
+            reason: { type: "null" }
+            workflow_instance_id: { type: "null" }
+            workflow_run_id: { type: "null" }
+        - properties:
+            outcome: { enum: [skipped, failed] }
+            reason: { type: string }
+            workflow_instance_id: { type: "null" }
+            workflow_run_id: { type: "null" }
     ScheduleListError:
       type: object
       additionalProperties: true

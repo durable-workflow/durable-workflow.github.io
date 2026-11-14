@@ -21,6 +21,8 @@ Er läuft als ein Prozess pro Knoten: Er erstellt und prüft sein Datenbankschem
 
 :::note Bestehende Installationen des PHP-Servers 2.x
 
+PHP Server 2.11.8 ist eingestellt und für die Laravel-Sicherheitshinweise vom November ungepatcht. Befolgen Sie bei fest gepinnten PHP-Deployments die [Bedingungen und Ingress-/Signatur-Link-Maßnahmen](./polyglot/server.md#retired-php-server-security), bevor Sie die alten Rezepte unten verwenden.
+
 Der PHP-2.x-Stack (Server, Queue-Worker, Scheduler, Bootstrap-Job und Redis)
 bleibt verfügbar. Am Veröffentlichungstag 2.11.8 ist er
 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml);
@@ -195,7 +197,22 @@ Upgrade-Reihenfolge:
 
 Der native Server prüft sein Schema beim Start. Patch-Veröffentlichungen innerhalb einer nativen Minor-Linie behalten das Schema bei, daher genügt ein Image-Wechsel. Eine Veröffentlichung, deren Hinweise eine Schemaänderung ankündigen, benötigt zusätzlich den Befehl `schema-upgrade` des Images, ausgeführt nach einer Datenbanksicherung, während alle Server gestoppt sind. Die Server-Referenz enthält aktuelle Compose-Befehlsbeispiele unter [Offizielles Image + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose).
 
-### Upgrade auf Server 3.9.1 {#native-schema-upgrade-3-9}
+### Upgrade auf Server 3.10.0 {#native-schema-upgrade-3-10}
+
+Native 3.10.0 benötigt von 3.9.x ein explizites additives Schema-Upgrade.
+
+| Backend | Schemaübergang von 3.9.x |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+Stoppen Sie alle Server-Replikate, lassen Sie die Datenbank laufen und sichern Sie Datenbank sowie externen Payload-Speicher. Wählen Sie das 3.10.0-Image und führen Sie dessen `schema-upgrade` einmal aus, bevor alle Replikate mit derselben Version neu starten. Prüfen Sie Readiness, gemeldete Version und Worker-Registrierung. Der Start aktualisiert kein altes Schema automatisch. Ältere Versionen benötigen auch die Zwischenschritte. Die [veröffentlichten 3.10.0-Upgrade-Anweisungen](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback) enthalten die Compose-Befehle. Worker-Protokoll 1.20 und Control Plane 2 bleiben unverändert.
+
+Die nullable Schedule-Zusammenfassung wird nicht aus alten Action-Arrays nachgetragen. Bestehende Schedules bleiben unverfügbar, bis ein zuständiger Übergang eine gültige Zusammenfassung aufzeichnet; siehe [Dispatch-Summary-Autorität](./polyglot/server-api-reference.md#schedule-dispatch-summary). MySQL und MariaDB setzen unterbrochene Upgrades fort; SQLite und PostgreSQL wenden den Schritt transaktional an. Rollback auf ein älteres Binary erfordert die Wiederherstellung der Datenbank- und Speicher-Sicherung vor dem Upgrade. Führen Sie kein älteres Binary mit dem neueren Schema aus.
+
+### Upgrade auf Server 3.9.2 {#native-schema-upgrade-3-9}
 
 Ein Upgrade von native 3.8.x oder früher erfordert auf jedem Backend ein Schema-Upgrade. Server 3.9.1 fügt die leere Tabelle `dw_command_intents` hinzu:
 
@@ -206,9 +223,9 @@ Ein Upgrade von native 3.8.x oder früher erfordert auf jedem Backend ein Schema
 | MariaDB | 13 → 14 |
 | MySQL | 14 → 15 |
 
-Stoppen Sie alle Server-Replikate, lassen Sie die Datenbank laufen, sichern Sie Datenbank und Server-Speicher und wählen und laden Sie dann das Image 3.9.1. Führen Sie dessen `schema-upgrade` einmal aus, bevor alle Replikate auf derselben Version neu starten. Server aktualisiert ein vorhandenes Schema nicht beim Start: Ein altes Schema wird mit `native_schema_upgrade_required` abgelehnt. Prüfen Sie danach Readiness, gemeldete Version und Worker-Registrierung. Die [qualifizierte Release-Anleitung für 3.9.1](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade) enthält die Compose-Befehle ohne Quellcode-Checkout.
+Stoppen Sie alle Server-Replikate, lassen Sie die Datenbank laufen, sichern Sie Datenbank und Server-Speicher und wählen und laden Sie dann das Image 3.9.2. Führen Sie dessen `schema-upgrade` einmal aus, bevor alle Replikate auf derselben Version neu starten. Server aktualisiert ein vorhandenes Schema nicht beim Start: Ein altes Schema wird mit `native_schema_upgrade_required` abgelehnt. Prüfen Sie danach Readiness, gemeldete Version und Worker-Registrierung. Die [qualifizierte Release-Anleitung für 3.9.2](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback) enthält die Compose-Befehle ohne Quellcode-Checkout.
 
-MySQL und MariaDB setzen unterbrochene Upgrades fort; SQLite und PostgreSQL führen den Schritt transaktional aus. Ein Rollback auf 3.8.x erfordert das Backup: 3.8.0 lehnt die aktualisierte Datenbank mit `native_schema_newer_than_binary` ab. Von 3.9.0 ist kein weiterer Schemaschritt nötig. Von älteren Versionen führt `schema-upgrade` auch die vorherigen Schritte aus, gegebenenfalls einschließlich des [JSON-Neuaufbaus aus 3.7](#native-schema-upgrade-3-7). Worker-Protokoll 1.20 und Control Plane 2 bleiben unverändert.
+MySQL und MariaDB setzen unterbrochene Upgrades fort; SQLite und PostgreSQL führen den Schritt transaktional aus. Ein Rollback auf 3.8.x erfordert das Backup: 3.8.0 lehnt die aktualisierte Datenbank mit `native_schema_newer_than_binary` ab. Von 3.9.0 oder 3.9.1 ist kein weiterer Schemaschritt nötig: Replikate stoppen, sichern, neues Image wählen, neu starten und Readiness, Version sowie Worker-Registrierung prüfen. Physisches Schema und vorhandene Command-/Intent-Zeilen bleiben unverändert. Ein Rollback auf 3.9.1 nutzt dasselbe Schema, stellt aber Unicode-Key-/Belegmetadatenfehler wieder her und entfernt die Beobachtungseigentümer-Härtung. Von älteren Versionen führt `schema-upgrade` auch die vorherigen Schritte aus, gegebenenfalls einschließlich des [JSON-Neuaufbaus aus 3.7](#native-schema-upgrade-3-7). Worker-Protokoll 1.20 und Control Plane 2 bleiben unverändert.
 
 ### Upgrade auf Server 3.8.0 {#native-schema-upgrade-3-8}
 

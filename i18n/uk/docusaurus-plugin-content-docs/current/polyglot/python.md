@@ -419,7 +419,9 @@ Namespace є межею орендарів workflow, schedule, атрибуті�
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, помилки автентифікації/Server |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | декодований результат workflow | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` повертає квитанцію прийняття разом із `request_id`. `query_workflow` і `WorkflowHandle.query` повертають квитанцію запиту; читайте `receipt["result"]` для декодованого значення обробника, навіть коли він успішно повертає `None`. Дивіться [посібник клієнта Python](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` повертає квитанцію прийняття разом із `request_id`. `query_workflow` і `WorkflowHandle.query` повертають квитанцію запиту; читайте `receipt["result"]` для декодованого значення обробника, навіть коли він успішно повертає `None`. Дивіться [посібник клієнта Python](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 виправляє коректні результати Avro-запитів, що містять байти. `result_envelope` залишається авторитетним поданням; пропускається лише необов’язкова проста JSON-проєкція, яку неможливо закодувати. [Перевірки встановленого опублікованого 2.17.2 / нативного Server 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) підтверджують квитанції запитів із вкладеними байтами та `None`, холодну заміну Worker і читання оновлень від очікування до завершеного null. Форма повернення запитів залишається описаною вище. Цей патч не оголошує можливостей очищення після тайм-ауту чи політик паралелізму. Попередні докази розміру завершення для 2.17.1 зберігають точний обсяг версії та експерименту.
 
 `update_workflow` за замовчуванням використовує `wait_for="accepted"`.
 Підтвердження може містити `update_status="accepted"` і `result=None`. З
@@ -1089,6 +1091,37 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### Ідентичність логічного виконання activity {#activity-identity}
+
+Python SDK 2.15.0 і новіші версії надають необов’язкове поле лише для читання
+`activity.context().info.activity_execution_id`. Воно ідентифікує одне
+логічне виконання activity між повторними спробами. `info.workflow_id`
+та `info.run_id` ідентифікують його екземпляр workflow і запуск. Використовуйте
+ID логічного виконання як ключ ідемпотентності зовнішнього сервісу. ID задачі
+та спроби змінюються під час повторної спроби й не можуть його замінювати.
+
+Відсутні, некоректні або порожні ID виконання залишаються `None`, зокрема
+в старих claims. Отримані рядки, що містять непробільні символи, зберігаються
+точно. Якщо операція потребує цього ключа, відмовтеся від неї до зовнішнього
+ефекту, коли ID недоступний. Activity, спрямовані до сесії, використовують
+ідентичність свого звичайного claim. Підготовлені локальні activity
+використовують ID виконання зі своєї перевіреної квитанції допуску. Локальні
+activity inline не мають допущеного ID виконання й надають `None`, але
+зберігають ID батьківського workflow та запуску. Моки без Server не створюють
+ідентичності activity Server.
+
+Приклад для сервісного режиму наведено в [посібнику SDK із допоміжною функцією ключа ідемпотентності та ідентичності activity](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity).
+Додавайте різним зовнішнім операціям сталі суфікси операцій і переконайтеся,
+що зовнішній сервіс враховує ключ. ID виконання є публічними метаданими,
+а не доказом активного claim чи дозволом на зовнішній ефект. Зберігайте
+облікові дані, fencing поточної спроби та узгодження результатів.
+[Квитанція звичайної повторної спроби з опублікованим пакетом](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+пов’язує Python SDK 2.17.2 із нативним Server 3.9.2. Вона доводить сталість
+ідентичності логічного виконання, workflow та запуску і різні ID задачі та
+спроби між спробами 1 і 2. Локальна й сесійна поведінка зберігають окремо
+визначені межі. Спільний контракт ідемпотентності див. у
+[гарантіях виконання](../constraints/execution-guarantees.md#service-activity-identity).
 
 #### Отримана retry policy та початкова спроба {#activity-retry-metadata}
 

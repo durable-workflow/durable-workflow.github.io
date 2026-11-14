@@ -292,6 +292,20 @@ ausgelieferten Service-Modus-Brücke, einschließlich Auslaufen und Rollback.
 [Bereitstellungsmodi](/docs/polyglot/deployment-modes/) vergleicht die
 Laufzeitgrenzen umfassender.
 
+## Query-Ergebnisse mit Binärwerten {#query-binary-results}
+
+PHP SDK 3.18.2 korrigiert Query-Completions für gültige Avro-Ergebnisse mit verschachtelten `AvroBinaryValue`-Bytes. `result_envelope` bleibt maßgeblich. Das SDK lässt nur die optionale einfache `result`-Projektion weg, wenn sie nicht JSON-kodiert werden kann; gewöhnliche JSON-kompatible Ergebnisse behalten diese Projektion.
+
+[Kontrollen mit veröffentlichtem, installiertem PHP 3.18.2 / nativem Server 3.9.1](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312) (PHP 8.3.36, linux/amd64, SQLite) prüfen einen tatsächlichen Worker-Roundtrip für verschachtelte Binärbytes, gewöhnliches JSON, vorzeichenbehaftete Null und `null` sowie Workflow-Abschluss und geordnete Worker-Abmeldung. Dies ist eine kompatible Query-Korrektur; sie fügt keine Capability hinzu und belegt weder vollständige Request-Key- noch Timeout-Cleanup-Unterstützung. Siehe den [PHP-Query-Leitfaden](https://php.durable-workflow.com/build/messages/#register-a-read-only-query).
+
+## Ein akzeptiertes Update später lesen {#read-an-update-outcome}
+
+Das ausgewählte PHP SDK %%artifact.publishedPhpSdkVersion%% liest ein aufbewahrtes Update anhand seiner stabilen ID, ohne es erneut anzunehmen. `Client::updateOutcome($workflowId, $updateId)` verwendet standardmäßig `waitFor: 'completed'`: Ausstehende Arbeit löst `UpdateStillPending` aus; ein abgeschlossenes Ergebnis darf `null` sein. `updateOutcomeReceipt()` verwendet standardmäßig `waitFor: 'accepted'` und liefert den Server-Beleg, sodass `update_status` und `wait_timed_out` getrennt vom abgeschlossenen Ergebnis geprüft werden können.
+
+Diese GET-Lesezugriffe benötigen die Capability `update_outcome_reads` (nativer Server ab 3.6.0). Ohne sie wirft das SDK `LogicException` und sendet das Update nicht erneut. Eine ausstehende erste `updateWorkflow()`-Annahme behält die Request-ID des Aufrufers. Ein ausstehender GET-Lesezugriff behält `updateId`, aber der ursprüngliche Request-Key kann fehlen: `$pending->requestId` ist dann `''`, also unbekannt. Lesen Sie mit dieser Update-ID weiter; senden Sie niemals einen leeren, abgeleiteten oder internen gehashten Schlüssel als ursprüngliche Request-ID.
+
+Der [veröffentlichte PHP-Leitfaden](https://php.durable-workflow.com/build/messages/#apply-a-tracked-update) zeigt Handler und Client-Ablauf. [Kontrollen mit installiertem PHP 3.18.1 / nativem Server 3.9.1](https://github.com/durable-workflow/sdk-php/pull/411#issuecomment-6855609359) prüfen den Übergang von ausstehend zu abgeschlossenem null ohne zweite Update-Annahme sowie die [Behandlung der Completion-Größe](./server-config-reference.md#workflow-task-completion-size). Diese Nachweise belegen weder die vollständige Request-Key-Akzeptanz unter dem gemeinsamen #216 noch native Timeout-Cleanup-Unterstützung.
+
 ## Upgrade auf PHP-SDK 3.12 bis 3.14 {#upgrade-to-3-12-through-3-14}
 
 PHP `^8.1`, die Mindestanforderungen der Laravel-Bridge, Worker-Protokoll `1.20` und Steuerungsebene `2` sind gegenüber 3.11 unverändert. Prüfen Sie vor dem Deployment diese Verhaltensänderungen:

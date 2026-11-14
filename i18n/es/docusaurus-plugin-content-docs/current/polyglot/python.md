@@ -420,7 +420,9 @@ Los equivalentes CLI son `dw task-queue:build-ids`, `dw task-queue:drain` y
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, errores de autenticación/servidor |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | salida de workflow decodificada | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` devuelve el recibo de admisión, incluido `request_id`. `query_workflow` y `WorkflowHandle.query` devuelven un recibo de consulta; lea `receipt["result"]` para el valor decodificado del handler, incluso cuando devuelve `None` correctamente. Véase la [guía del cliente Python](https://python.durable-workflow.com/reference/client/).
+`signal_workflow` devuelve el recibo de admisión, incluido `request_id`. `query_workflow` y `WorkflowHandle.query` devuelven un recibo de consulta; lea `receipt["result"]` para el valor decodificado del handler, incluso cuando devuelve `None` correctamente. Véase la [guía del cliente Python](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 corrige resultados Avro válidos de consultas que contienen bytes. `result_envelope` sigue siendo la representación autoritativa; solo se omite una proyección JSON simple opcional que no se pueda codificar. Los [controles instalados de 2.17.2 publicado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320) (linux/amd64, SQLite) verifican recibos de consulta con bytes anidados y `None`, reemplazo en frío del Worker y lecturas de actualizaciones desde pendientes hasta completadas con null. Las formas de retorno de las consultas siguen siendo las descritas arriba. Este parche no anuncia capacidades de limpieza por timeout ni políticas de paralelismo. La evidencia anterior del tamaño de finalización de 2.17.1 conserva su alcance exacto de versión y experimento.
 
 `update_workflow` usa `wait_for="accepted"` de forma predeterminada. Su recibo
 puede contener `update_status="accepted"` y `result=None`. Con
@@ -1083,6 +1085,40 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### Identidad de la ejecución lógica de una actividad {#activity-identity}
+
+Python SDK 2.15.0 y posteriores exponen el campo opcional de solo lectura
+`activity.context().info.activity_execution_id`. Identifica una ejecución
+lógica de actividad a través de sus reintentos. `info.workflow_id` e
+`info.run_id` identifican la instancia de workflow y la ejecución a las que
+pertenece. Use el ID de ejecución lógica como clave de idempotencia del
+servicio externo. Los ID de tarea y de intento cambian al reintentar y no
+deben sustituirlo.
+
+Los ID de ejecución ausentes, no válidos o en blanco siguen siendo `None`,
+también en claims antiguos. Las cadenas recibidas que no están en blanco
+conservan su escritura exacta. Si una operación requiere esta clave, rechácela
+antes del efecto externo cuando el ID no esté disponible. Las actividades
+dirigidas a una sesión usan la identidad de su claim ordinario. Las actividades
+locales preparadas usan el ID de ejecución de su recibo de admisión validado.
+Las actividades locales inline no tienen un ID de ejecución admitido y exponen
+`None`, aunque conservan los ID del workflow y de la ejecución padre. Los mocks
+sin Server no crean identidad de actividad de Server.
+
+Consulte el ejemplo de modo servicio en la [guía del SDK sobre el helper de claves de idempotencia y la identidad de actividad](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity).
+Asigne sufijos de operación estables a las distintas operaciones externas y
+asegúrese de que el servicio de destino respeta la clave. Un ID de ejecución
+es metadato público, no una prueba de un claim activo ni una autorización para
+un efecto externo. Mantenga las credenciales, el fencing del intento actual
+y la reconciliación de resultados. El [recibo de reintento ordinario con el paquete publicado](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+vincula Python SDK 2.17.2 con Server nativo 3.9.2. Demuestra que los ID de
+ejecución lógica de actividad, instancia de workflow y ejecución de workflow
+se mantienen estables, mientras los ID de tarea y de intento son distintos
+entre los intentos 1 y 2. El comportamiento local y de
+sesión mantiene su alcance definido por separado. Consulte las
+[garantías de ejecución](../constraints/execution-guarantees.md#service-activity-identity)
+para el contrato de idempotencia compartido.
 
 #### Política de reintentos recibida e intento original {#activity-retry-metadata}
 

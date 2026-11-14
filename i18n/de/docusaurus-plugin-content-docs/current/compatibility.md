@@ -66,16 +66,24 @@ Das eingebettete Paket und das Service-Modus-SDK haben eigene Supportverträge.
 
 | Paketlinie | PHP | Laravel |
 | --- | --- | --- |
-| Aktuelles eingebettetes Workflow 2.28 | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.69.0` oder `^13.30.0` |
+| Aktuelles eingebettetes Workflow %%artifact.workflowVersion%% | PHP 8.2+ in 8.x; PHP 8.3+ für Laravel 13 | `^12.72.0` oder `^13.41.0` |
 | Eingebettetes Workflow 2.20.5 | PHP `^8.1`, zusätzlich gilt das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 | Veröffentlichtes PHP-SDK 3.14 | Reines SDK PHP `^8.1`; die Laravel-Bridge benötigt PHP `^8.2` und für Laravel 13 PHP 8.3+ | `^12.69.0` oder `^13.30.0` |
 | PHP-SDK 3.9.5 | Reines SDK PHP `^8.1`; die Laravel-Bridge beachtet ebenfalls das Framework-Minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` oder `^13.30.0` |
 
-Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
+Die älteren Zeilen dokumentieren die Anforderungen ihrer benannten Versionen.
+
+Maßgeblich sind der [veröffentlichte eingebettete Upgrade-Vertrag](https://github.com/durable-workflow/workflow/blob/2.28.1/resources/laravel-embedded-upgrade-contract.json)
 und die jeweilige `composer.json`. Das aktuelle eingebettete Release wurde mit
 Laravel 12/PHP 8.2–8.4 und Laravel 13/PHP 8.3–8.4 geprüft. Es entfernt PHP 8.1
 und Laravel 10/11. Die [historische stabile v1-Anleitung](/docs/1.x/installation/)
 und die [eigenen PHP-SDK-Anforderungen](https://php.durable-workflow.com/) bleiben getrennt.
+
+Workflow 2.28.1 ist ein reines Sicherheitsupdate, das die oben angegebenen
+Laravel-Mindestversionen anhebt. Laufzeit- und Schemadateien sind mit 2.28.0
+identisch, daher fügt ein Upgrade von 2.28.0 keine Datenbankmigration hinzu.
+Die [Verifikation des veröffentlichten Pakets und fünf Upgrade-/Rollback-Abläufe](https://github.com/durable-workflow/workflow/pull/1141#issuecomment-6871390667)
+qualifizieren dieses Paket.
 
 Aktualisieren Sie PHP und Laravel zuerst auf eine unterstützte Kombination.
 Solange das nicht möglich ist, hält `~2.20.5` Composer in der 2.20-Patchlinie,
@@ -131,7 +139,7 @@ Workflow 2.27 behält die Mindestanforderungen von 2.21 und das eingebettete Wor
 
 Siehe die [Versionshinweise zu 2.27.0](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
 
-Workflow 2.28 behält die Mindestanforderungen von 2.21 und das eingebettete Worker-Protokoll `1.22` bei und fügt keine Datenbankmigration hinzu. Vor dem Upgrade zu prüfende Verhaltensänderung:
+Workflow 2.28.0 behält die Mindestanforderungen von 2.21 und das eingebettete Worker-Protokoll `1.22` bei und fügt keine Datenbankmigration hinzu. Vor dem Upgrade zu prüfende Verhaltensänderung:
 
 - Ab 2.28 bricht ein Lauf, der abgeschlossen wird, fehlschlägt oder mit Continue-as-new fortgesetzt wird, die Aktivitäten und Timer, auf die er nie gewartet hat, etwa `select()`-Verlierer, in derselben Transaktion ab, statt sie weiterlaufen zu lassen. Ein verspätetes Ergebnis einer solchen Aktivität wird mit `run_closed` abgelehnt. Braucht ein Workflow die Wirkung eines Verlierers, warten Sie vor der Rückgabe auf ihn. Siehe [Verlierer beim Schließen des Laufs](./features/concurrency.md#selection-losers-at-close).
 
@@ -244,6 +252,8 @@ Die Tabelle zeigt die für diese Dokumentation geprüfte stabile Kombination aus
 | Rust-SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
 Der ausgewählte Server ist der native Server 3.x. Der PHP-Server 2.x ist bei 2.11.8 eingefroren und erhält keine weiteren Veröffentlichungen; bestehende PHP-Installationen können mit `upgrade-takeover` auf den nativen Server wechseln; folgen Sie dazu dem [Runbook zur nativen Übernahme](%%artifact.serverTakeoverRunbookUrl%%). Die Übernahme ist auf dem veröffentlichten 3.0.4-Image innerhalb des im Runbook angegebenen Umfangs qualifiziert; sie ist einseitig und erfordert vorab eine Sicherung.
+
+PHP Server 2.11.8 bleibt für die Laravel-Sicherheitshinweise vom November ungepatcht. Bestehende fest gepinnte Deployments müssen die [Bedingungen und Stilllegungsmaßnahmen](./polyglot/server.md#retired-php-server-security) beachten; die historischen Takeover-Nachweise behalten ihre ursprünglichen Grenzen.
 
 Die aufgezeichnete `appVersion` des Helm-Charts ist `%%artifact.helmChartAppVersion%%` und entspricht dem ausgewählten Server; das Chart betreibt standardmäßig den nativen Server. Sein [veröffentlichter Release-Bericht](%%artifact.helmChartQualificationUrl%%) dokumentiert den Release-Lauf des Charts, OCI-/Paket-Digests, die Quellidentität und eine kind-Installation in diesem Lauf; er ist keine Qualifizierung für einen Produktionscluster. Lesen Sie vor der Installation oder einem Image-Override die [Chart-Auswahl und Upgrade-Hinweise](./deployment.md#helm-chart-selection).
 

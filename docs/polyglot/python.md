@@ -473,7 +473,17 @@ end-to-end rollout walkthrough; the CLI mirrors of these methods are
 `signal_workflow` returns the admission receipt, including its `request_id`.
 `query_workflow` and `WorkflowHandle.query` return a query receipt; read
 `receipt["result"]` for the decoded handler value, including when the handler successfully
-returns `None`. See the [Python client guide](https://python.durable-workflow.com/reference/client/).
+returns `None`. See the [Python query receipt guide](https://python.durable-workflow.com/reference/client/#read-a-query-result).
+
+Python SDK 2.17.2 fixes valid Avro query results containing bytes. The
+`result_envelope` stays authoritative; only an optional plain JSON projection
+that cannot be encoded is omitted. [Published 2.17.2 / native Server 3.9.1
+installed controls](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320)
+(linux/amd64, SQLite) verify nested-byte and `None` query receipts, cold Worker
+replacement and pending-to-completed-null update reads. Query return shapes
+remain as described above. This patch does not advertise timeout-cleanup or
+parallel-policy capabilities. The earlier 2.17.1 completion-size evidence keeps
+its exact version and experiment scope.
 
 `update_workflow` defaults to `wait_for="accepted"`. Its receipt can have
 `update_status="accepted"` and `result=None`. With `wait_for="completed"`,
@@ -1147,6 +1157,36 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### Logical activity execution identity {#activity-identity}
+
+Python SDK 2.15.0 and later expose the read-only optional
+`activity.context().info.activity_execution_id`. It identifies one logical
+activity execution across retries. `info.workflow_id` and `info.run_id`
+identify its owning workflow instance and run. Use the logical execution ID
+for an external service's idempotency key. Task IDs and attempt IDs change
+on retry and must not replace it.
+
+Missing, invalid or blank execution IDs remain `None`, including on older
+claims. Nonblank received strings retain their exact spelling. If an operation
+requires this key, refuse it before performing the external effect when the
+ID is unavailable. Session-routed activities use their ordinary claim identity.
+Prepared local activities use their validated admission receipt's execution
+ID. Inline local activities have no admitted execution ID and expose `None`,
+while retaining parent workflow/run IDs. Server-free mocks do not create
+Server activity identity.
+
+Use the SDK's [idempotency-key helper and activity identity guide](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity)
+for the service-mode example. Give different external operations stable
+operation suffixes, and ensure the downstream service honors the key. An
+execution ID is public metadata, not proof of a live claim or authorization
+for an external effect. Keep credentials, current-attempt fencing and outcome
+reconciliation. The [published-package ordinary retry receipt](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+binds Python SDK 2.17.2 to native Server 3.9.2. It proves a stable logical
+execution/workflow/run identity and distinct task/attempt IDs across attempts
+1 and 2. Local and session behavior retain their separately defined scope.
+See [execution guarantees](../constraints/execution-guarantees.md#service-activity-identity)
+for the shared idempotency contract.
 
 #### Received retry policy and original attempt {#activity-retry-metadata}
 

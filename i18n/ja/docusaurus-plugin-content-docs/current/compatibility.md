@@ -66,17 +66,25 @@ PHP と Laravel の要件を比較する前にパッケージのリリースを�
 
 | パッケージ系列 | PHP | Laravel |
 | --- | --- | --- |
-| 現在の組み込み Workflow 2.28 | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
+| 現在の組み込み Workflow %%artifact.workflowVersion%% | 8.x 系の PHP 8.2 以降。Laravel 13 は PHP 8.3 以降 | `^12.72.0` または `^13.41.0` |
 | 組み込み Workflow 2.20.5 | PHP `^8.1`。Laravel 自身の最低要件も適用 | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 | 公開済み PHP SDK 3.14 | 基本 SDK は PHP `^8.1`。Laravel ブリッジは PHP `^8.2` が必要で、Laravel 13 は PHP 8.3 以降 | `^12.69.0` または `^13.30.0` |
 | PHP SDK 3.9.5 | 基本 SDK は PHP `^8.1`。Laravel ブリッジはフレームワークの最低要件にも従う | `^10.50.4`、`^11.56.1`、`^12.69.0` または `^13.30.0` |
 
-[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
+古い行は、それぞれに示したリリースの要件を記録しています。
+
+[公開済み組み込みアップグレード契約](https://github.com/durable-workflow/workflow/blob/2.28.1/resources/laravel-embedded-upgrade-contract.json)
 と各リリースの `composer.json` がパッケージの根拠です。現在の組み込みリリースは
 Laravel 12/PHP 8.2～8.4 と Laravel 13/PHP 8.3～8.4 で検証されています。
 PHP 8.1 と Laravel 10/11 のサポートは終了しました。
 [従来の安定版 v1 ガイド](/docs/1.x/installation/)と
 [PHP SDK 独自の要件](https://php.durable-workflow.com/)は別に維持されます。
+
+Workflow 2.28.1 はセキュリティ修正のみのパッチで、上記の Laravel 最低バージョンを
+引き上げます。ランタイムとスキーマのファイルは 2.28.0 と同一のため、2.28.0 からの
+更新でデータベースマイグレーションは追加されません。
+[公開パッケージの検証と 5 つのアップグレード/ロールバック経路](https://github.com/durable-workflow/workflow/pull/1141#issuecomment-6871390667)
+が、このパッケージの検証根拠です。
 
 まず PHP と Laravel を対応する組み合わせへ更新してください。移行がまだできない場合、
 `~2.20.5` は Composer を 2.20 のパッチ系列内に保ちますが、無期限の保守を約束するものではありません。
@@ -127,7 +135,7 @@ Workflow 2.27 は 2.21 のサポート下限と組み込みワーカープロト
 
 [2.27.0 のリリースノート](https://github.com/durable-workflow/workflow/releases/tag/2.27.0)を参照してください。
 
-Workflow 2.28 は 2.21 のサポート下限と組み込みワーカープロトコル `1.22` を維持し、データベースマイグレーションは追加しません。アップグレード前に確認すべき動作の変更:
+Workflow 2.28.0 は 2.21 のサポート下限と組み込みワーカープロトコル `1.22` を維持し、データベースマイグレーションは追加しません。アップグレード前に確認すべき動作の変更:
 
 - 2.28 以降、完了、失敗、または continue-as-new する実行は、`select()` の敗者など一度も待たなかったアクティビティとタイマーを、実行し続けさせるのではなく同じトランザクション内でキャンセルします。そのようなアクティビティからの遅れた結果は `run_closed` で拒否されます。ワークフローが敗者の効果を必要とする場合は、戻る前にそれを待ってください。[実行が閉じるときの敗者](./features/concurrency.md#selection-losers-at-close)を参照してください。
 
@@ -246,6 +254,8 @@ Durable Workflow の各公開インターフェースは、次の安定性レベ
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
 選択した Server はネイティブ 3.x Server です。PHP Server 2.x は 2.11.8 で凍結され、今後リリースはありません。既存の PHP インストールは、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従って `upgrade-takeover` でネイティブへ移行できます。テイクオーバーは、手順書に記載された範囲内で、公開済みの 3.0.4 イメージで適格性が確認されています。一方向の操作であり、事前のバックアップが前提です。
+
+PHP Server 2.11.8 は11月の Laravel アドバイザリに対して未修正です。既存の固定バージョン環境では[条件付きの露出と廃止の対策](./polyglot/server.md#retired-php-server-security)に従ってください。過去の takeover 実証の制限は変わりません。
 
 Helm チャートに記録された `appVersion` は `%%artifact.helmChartAppVersion%%` で、選択した Server と一致し、チャートは既定でネイティブ Server を実行します。[公開済みのリリース記録](%%artifact.helmChartQualificationUrl%%)には、チャートのリリース実行、OCI/パッケージのダイジェスト、ソース識別子、その実行内での kind へのインストールが記録されています。本番クラスターでの適格性確認ではありません。インストールやイメージの上書き前に、[チャートの選択とアップグレード](./deployment.md#helm-chart-selection)を確認してください。
 

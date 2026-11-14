@@ -114,6 +114,20 @@ final class ChargeCard extends Activity
 
 Pour les activités Rust en mode service, le SDK **4.9.0 ou ultérieur** expose les valeurs initiales facultatives `activity_execution_id()`, `workflow_id()` (instance) et `run_id()` via `ActivityContext`. Utilisez l’ID logique d’activité entre les retries ; les champs absents du claim restent `None`, et un ID de tâche ou de tentative ne les remplace pas. La [recette du handler Rust](../polyglot/rust.md#activity-identity) dérive une clé externe et précise les limites des anciens Server, des activités locales et des tests sans Server. La clé exige toujours une API externe idempotente ou un registre durable des effets ; ces méthodes ne fournissent pas de checkpoints permettant une reprise.
 
+Les activités Python en mode service exposent le champ facultatif en lecture
+seule `activity.context().info.activity_execution_id`, avec `workflow_id` et
+`run_id` pour l’instance de workflow et le run auxquels elles appartiennent.
+Utilisez l’identifiant d’exécution logique à travers les nouvelles tentatives.
+Une identité absente reste `None`. Ne la remplacez jamais par un identifiant
+de tâche, de tentative ou de session. Le [guide d’identité Python](../polyglot/python.md#activity-identity)
+renvoie à l’exemple en mode service du SDK et définit les anciens claims, les
+sessions, les activités locales préparées, les activités locales inline et les
+contextes sans Server. Son reçu avec paquet publié et Server natif prouve
+uniquement l’identité des nouvelles tentatives ordinaires. L’identifiant est
+une métadonnée publique, pas une autorité de claim, et ne garantit pas qu’un
+effet externe se produise exactement une fois. Conservez l’idempotence du destinataire, des
+clés distinctes pour des effets différents et la réconciliation des résultats.
+
 ## Effets que l’application doit rendre idempotents {#what-developers-must-make-idempotent}
 
 Vous n’avez pas besoin de rendre la relecture du workflow elle-même idempotente. Le framework gère la relecture en reconstruisant l’état depuis l’historique validé.

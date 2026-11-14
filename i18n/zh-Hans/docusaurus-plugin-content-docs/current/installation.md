@@ -13,7 +13,7 @@ sidebar_position: 3
 ## 环境要求 {#requirements}
 
 - PHP 8.x 系列中的 8.2 或更高版本
-- Laravel 12.x 中的 12.69 或更高版本，或 13.x 中的 13.30 或更高版本
+- Laravel 12.x 中的 12.72 或更高版本，或 13.x 中的 13.41 或更高版本
 - Laravel 13 需要 PHP 8.3 或更高版本
 
 这些要求适用于当前嵌入式版本。更新旧应用的 Composer 依赖前，请先选择

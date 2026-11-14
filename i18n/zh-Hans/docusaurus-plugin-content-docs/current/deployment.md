@@ -20,6 +20,8 @@ Durable Workflow v2 支持多种自托管形态。选择与你运维环境相符
 
 :::note 现有 PHP Server 2.x 安装
 
+PHP Server 2.11.8 已退役，仍未修补 11 月的 Laravel 安全公告问题。固定版本的 PHP 部署在使用下述旧配方前，应遵循[有条件的暴露说明及 ingress/签名链接措施](./polyglot/server.md#retired-php-server-security)。
+
 PHP 2.x 栈（Server、队列 Worker、调度器、bootstrap 任务和 Redis）仍然可用。在 2.11.8 发布标签中，它是 [`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)；从 3.0.0 起，Server 仓库以 [`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml) 保留同一个栈。现有 PHP 2.x 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。对于由 PHP 2.11.8 在 SQLite、MySQL 8.0 和 PostgreSQL 17 上写入的数据库，接管已在已发布的 3.0.4 镜像（arm64）上通过资格验证。MariaDB、amd64 以及来自其他 PHP 版本的数据库（布局 2.8.0–2.11.8）仅有基于源码构建的 CI 覆盖。接管是单向的，必须先备份，并且必须停止 PHP。接管会拒绝它无法迁移的数据库和状态；运行手册中的[拒绝情形表](%%artifact.serverTakeoverRunbookUrl%%#refusals)列出了每种情况。请先在由备份恢复出的副本上演练接管。接管后无法回滚到 PHP，且接管计划在 3.1.x 系列中弃用。下文提及 Redis、队列 Worker、调度器或 bootstrap 的部分描述的是 PHP 2.x 拓扑。
 
 :::
@@ -169,7 +171,22 @@ docker compose --env-file durable-workflow.prod.env \
 
 原生 Server 在启动时检查其数据库模式。同一原生次版本线内的补丁发布保持模式不变，因此只需更换镜像。发布说明中宣布模式变更的版本还需要运行镜像的 `schema-upgrade` 命令，须在备份数据库后、所有 Server 都已停止时执行。Server 参考文档的[官方镜像 + Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)部分维护最新命令级 Compose 示例。
 
-### 升级到 Server 3.9.1 {#native-schema-upgrade-3-9}
+### 升级到 Server 3.10.0 {#native-schema-upgrade-3-10}
+
+原生 3.10.0 要求从 3.9.x 显式执行增量 schema 升级。
+
+| 后端 | 从 3.9.x 的 schema 迁移 |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+停止所有 Server 副本，保持数据库运行，并备份数据库及外部 payload 存储。选择 3.10.0 镜像，运行一次该镜像的 `schema-upgrade`，然后以同一版本重启所有副本。检查 readiness、报告版本和 Worker 注册。启动不会自动升级旧 schema。更早版本还需执行中间步骤。[已发布的 3.10.0 升级说明](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback)提供 Compose 命令。Worker protocol 1.20 和 control plane 2 不变。
+
+可空的调度摘要不会从旧 action 数组回填。已有调度保持 unavailable，直到负责该数据的状态转换记录有效摘要；参见[调度摘要权威](./polyglot/server-api-reference.md#schedule-dispatch-summary)。MySQL 和 MariaDB 可继续中断的升级；SQLite 和 PostgreSQL 在事务中执行。回退到旧二进制必须恢复升级前的数据库与存储备份。不要让旧二进制使用新 schema。
+
+### 升级到 Server 3.9.2 {#native-schema-upgrade-3-9}
 
 从 native 3.8.x 或更早版本升级时，所有后端都必须升级 schema。Server 3.9.1 添加空的 `dw_command_intents` 表：
 
@@ -180,9 +197,9 @@ docker compose --env-file durable-workflow.prod.env \
 | MariaDB | 13 → 14 |
 | MySQL | 14 → 15 |
 
-停止所有 Server 副本，保持数据库运行，备份数据库和 Server 存储，然后选择并拉取 3.9.1 镜像。在以相同版本重启所有副本前，用该镜像运行一次 `schema-upgrade`。Server 不会在启动时升级已有 schema：旧 schema 会被 `native_schema_upgrade_required` 拒绝。重启后检查 readiness、报告的版本和 Worker 注册。[经过验证的 3.9.1 发布说明](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade)提供无需 checkout 源码的 Compose 命令。
+停止所有 Server 副本，保持数据库运行，备份数据库和 Server 存储，然后选择并拉取 3.9.2 镜像。在以相同版本重启所有副本前，用该镜像运行一次 `schema-upgrade`。Server 不会在启动时升级已有 schema：旧 schema 会被 `native_schema_upgrade_required` 拒绝。重启后检查 readiness、报告的版本和 Worker 注册。[经过验证的 3.9.2 发布说明](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback)提供无需 checkout 源码的 Compose 命令。
 
-MySQL 和 MariaDB 可继续被中断的升级；SQLite 和 PostgreSQL 在事务中应用此步骤。回退到 3.8.x 必须恢复备份：3.8.0 会以 `native_schema_newer_than_binary` 拒绝升级后的数据库。从 3.9.0 升级不需要额外的 schema 步骤。更早版本的 `schema-upgrade` 还会应用之前的步骤，包括适用的 [3.7 JSON 重建](#native-schema-upgrade-3-7)。Worker protocol 1.20 和 control plane 2 保持不变。
+MySQL 和 MariaDB 可继续被中断的升级；SQLite 和 PostgreSQL 在事务中应用此步骤。回退到 3.8.x 必须恢复备份：3.8.0 会以 `native_schema_newer_than_binary` 拒绝升级后的数据库。从 3.9.0 或 3.9.1 升级不需要额外的 schema 步骤：停止副本、备份、选择新镜像、重启并验证 readiness、版本和 Worker 注册。物理 schema 与现有命令/意图行保持不变。回退到 3.9.1 使用同一 schema，但会恢复 Unicode 键/回执元数据缺陷并失去观测文件所有者加固。更早版本的 `schema-upgrade` 还会应用之前的步骤，包括适用的 [3.7 JSON 重建](#native-schema-upgrade-3-7)。Worker protocol 1.20 和 control plane 2 保持不变。
 
 ### 升级到 Server 3.8.0 {#native-schema-upgrade-3-8}
 

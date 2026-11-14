@@ -394,6 +394,32 @@ Lokale Fehler werden vor der Beobachtung durch Workflow-Code begrenzt, einschlie
 
 Diese SDK-Grenzen belegen keine Core-Korrektur abgeleiteter Zusammenfassungen, Lieferung anderer SDKs, Embedded-Verhalten oder Server-Image-Übernahme. Ältere Worker können übergroße Fehler weiterhin nicht melden. Siehe die [Richtlinie im veröffentlichten Source](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) und den [gemeinsamen Leitfaden](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Backoff für Aktivitätswiederholungen {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` zählt alle Versuche einschließlich
+des ersten. Bei `exponential_backoff(initial, coefficient, maximum_interval)`
+wählt `None` keine Intervallobergrenze. Übergeben Sie `Some(maximum)`, um
+die Intervalle ausdrücklich zu begrenzen. Die Standardrichtlinie bleibt
+ein Versuch mit einer leeren Backoff-Liste.
+
+Bei neun Versuchen insgesamt, einer anfänglichen Verzögerung von einer
+Sekunde, dem Koeffizienten zwei und `None` werden für die acht Wiederholungen
+`1, 2, 4, 8, 16, 32, 64, 128` Sekunden codiert. Das endliche Versuchslimit
+und die ursprüngliche Schedule-to-close-Frist, sofern konfiguriert, begrenzen
+Wiederholungen weiterhin. Arithmetischer Überlauf oder Protokollüberlauf
+liefert bei der Validierung `ActivityOptionsErrorKind::BackoffOverflow`.
+
+Replay bewahrt die vollständige aufgezeichnete Verzögerungsliste und vergleicht
+sie und die anderen bekannten Richtlinienfelder exakt. Nur die Obergrenze
+zu ändern ist kompatibel, wenn die codierte Liste identisch bleibt. Ändert
+eine Obergrenze die Liste, ändert sich die Richtlinie, selbst wenn ein
+geänderter Eintrag ungenutzt war. Eine Obergrenze von 60 Sekunden verändert
+die Liste im Beispiel. Dadurch kann Replay mit `activity_retry_policy_mismatch`
+zurückgewiesen werden.
+
+Siehe das [Rust-Beispiel für Wiederholungsrichtlinien](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+und die veröffentlichte [ActivityRetryPolicy-API](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Lokale Aktivitäten {#local-activities}
 
 Rust SDK 3.1.0 ergänzt lokale Inline-Ausführung auf Workern mit
@@ -717,6 +743,22 @@ Marker erneut. `patched(change_id)` bietet die boolesche Rollout-Form.
 `deprecate_patch(change_id)` erhält den Marker nach Auslaufen des alten Zweigs.
 Die gemeinsame dauerhafte Semantik beschreiben [Seiteneffekte](/docs/features/side-effects/)
 und [Versionierung](/docs/features/versioning/).
+
+## Replay-bewusstes Workflow-Logging {#workflow-logging}
+
+Rust SDK 4.17.0 ergänzt `ctx.logger().info("message")` für Beobachtungen aus Workflow-Code. Die Ereignisse gehen an den bestehenden `tracing`-Subscriber der Anwendung mit dem Target `durable_workflow::workflow` und den unveränderlichen, vom SDK gebundenen Feldern `namespace`, `workflow_instance_id` und `workflow_run_id`. Konfigurieren Sie den Host-Subscriber; das SDK installiert keinen globalen Subscriber.
+
+Gewöhnliche Log-Aufrufe werden erneut ausgeführt, wenn ein Worker den Workflow-Verlauf rekonstruiert. Der Workflow-Logger bleibt bei Replay des persistierten Präfixes, Query-/Offline-Replay und abgeschlossenen Verläufen still, auch nach einem kalten Worker-Wechsel und außerhalb eines aktiven Aufrufs. Er kann nur in neuer Ausführung hinter diesem Präfix und mit vollständiger gebundener Run-Identität ausgeben. `ctx.replay_state()` beobachtet diese aktuelle Grenze des konsumierten Verlaufs statt eines beim Task-Start fixierten Boolean:
+
+| `WorkflowReplayState` | Beobachtung |
+| --- | --- |
+| `Replaying` | Rekonstruktion des persistierten Verlaufs oder einer Query; Workflow-Logs werden unterdrückt. |
+| `Executing` | Neue Ausführung hinter dem persistierten Präfix; ein Retry eines noch nicht persistierten Tasks kann Logs wiederholen. |
+| `Unavailable` | Außerhalb dieses Workflow-Aufrufs oder Zustand nicht sicher lesbar; Workflow-Logs werden unterdrückt. |
+
+Halten Sie die dauerhafte Befehlsreihenfolge unabhängig von diesem Beobachtungszustand und der Log-Zustellung. Ein Log aus einem nicht persistierten Versuch kann nach Absturz oder Retry erneut erscheinen; der Logger ist keine Outbox mit Exactly-once-Garantie. Halten Sie Anwendungshandler begrenzt und nicht blockierend, etwa mit einer anwendungseigenen Logging-Queue. Subscriber-Panics mit Stack-Unwinding werden vom Workflow-Ergebnis isoliert; Prozessabbrüche und blockierende Handler bleiben Anwendungsverantwortung.
+
+Siehe den [veröffentlichten Logging-Guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), die [WorkflowLogger-API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) und die [WorkflowReplayState-API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-Lifecycle-/Deadline-Kontrollen](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) und [Logging-Abnahme mit vier Prozessen](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) wurden auf dem benannten Tupel mit native Server 3.10.0 unter linux/amd64 erfasst. Andere Bindings und weitergehende Replay-/Producer-Qualifikation behalten ihren eigenen Umfang.
 
 ## Rust-Regeln für Determinismus {#rust-determinism-rules}
 

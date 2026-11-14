@@ -99,17 +99,24 @@ The embedded package and the service-mode SDK have separate support contracts.
 
 | Package line | PHP | Laravel |
 | --- | --- | --- |
-| Current embedded Workflow 2.28 | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
+| Current embedded Workflow %%artifact.workflowVersion%% | PHP 8.2+ in 8.x; PHP 8.3+ for Laravel 13 | `^12.72.0` or `^13.41.0` |
 | Embedded Workflow 2.20.5 | PHP `^8.1`, subject to Laravel's own minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 | Published PHP SDK 3.14 | Bare SDK PHP `^8.1`; the Laravel bridge needs PHP `^8.2`, and PHP 8.3+ for Laravel 13 | `^12.69.0` or `^13.30.0` |
 | PHP SDK 3.9.5 | Bare SDK PHP `^8.1`; the Laravel bridge also follows Laravel's PHP minimum | `^10.50.4`, `^11.56.1`, `^12.69.0` or `^13.30.0` |
 
-The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
+The older rows record the requirements of their named releases.
+
+The [published embedded upgrade contract](https://github.com/durable-workflow/workflow/blob/2.28.1/resources/laravel-embedded-upgrade-contract.json)
 and each release's `composer.json` are the package authorities. The current
 embedded release was verified on Laravel 12 with PHP 8.2–8.4 and Laravel 13 with
 PHP 8.3–8.4. Its PHP 8.1 and Laravel 10/11 support has been removed. This does
 not change the [historical stable-v1 installation guide](/docs/1.x/installation/)
 or the independently published [PHP SDK requirements](https://php.durable-workflow.com/).
+
+Workflow 2.28.1 is a security-only patch that raises the Laravel minimums shown
+above. Runtime and schema files are identical to 2.28.0, so upgrading from
+2.28.0 adds no database migration. The [published package verification and five upgrade/rollback journeys](https://github.com/durable-workflow/workflow/pull/1141#issuecomment-6871390667)
+qualify this package.
 
 Before upgrading an older embedded application, upgrade PHP and Laravel to a
 supported combination. If that migration is not ready, `~2.20.5` keeps Composer
@@ -200,7 +207,7 @@ Workflow 2.27 keeps the 2.21 support floors and the embedded worker protocol `1.
 
 See the [2.27.0 release notes](https://github.com/durable-workflow/workflow/releases/tag/2.27.0).
 
-Workflow 2.28 keeps the 2.21 support floors and the embedded worker protocol `1.22`, and adds no database migration. Behavior change to check before upgrading:
+Workflow 2.28.0 keeps the 2.21 support floors and the embedded worker protocol `1.22`, and adds no database migration. Behavior change to check before upgrading:
 
 - From 2.28, a run that completes, fails or continues as new cancels the activities and timers it never awaited, such as `select()` losers, in the same transaction, instead of leaving them running. A late result from such an activity is refused with `run_closed`. If a workflow needs a loser's effect, await it before returning. See [Losers when the run closes](./features/concurrency.md#selection-losers-at-close).
 
@@ -341,6 +348,8 @@ and image digests used for each completed check.
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
 The selected Server is the native 3.x Server. PHP Server 2.x is frozen at 2.11.8 and receives no further releases; existing PHP installations can move to native with `upgrade-takeover` by following the [native takeover runbook](%%artifact.serverTakeoverRunbookUrl%%). Takeover is qualified on the published 3.0.4 image within the runbook's stated scope; it is one-way and backup-first.
+
+PHP Server 2.11.8 remains unpatched for the November Laravel advisories. Existing pinned deployments must follow the [conditional exposure and retirement actions](./polyglot/server.md#retired-php-server-security); the historical takeover evidence retains its original limits.
 
 The Helm chart's recorded `appVersion` is `%%artifact.helmChartAppVersion%%`, matching the selected Server, and the chart runs the native Server by default. Its [published release receipt](%%artifact.helmChartQualificationUrl%%) records the chart release run, OCI/package digests, source identity, and a kind install in that run; it is not a production cluster qualification. See [chart selection and upgrades](./deployment.md#helm-chart-selection) before installing or overriding the image.
 

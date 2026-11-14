@@ -24,6 +24,24 @@ PHP 2.x のスタック（Server、キュー Worker、スケジューラー、�
 
 :::
 
+## サポート終了 PHP Server のセキュリティ {#retired-php-server-security}
+
+:::warning サポート終了・未修正
+
+PHP Server 2.11.8 はサポート終了であり、11月の Laravel アドバイザリに対して未修正です。公開済みイメージには Laravel 13.34.0 が含まれます。ソースのチェックアウトで Composer 依存関係を更新しても、インストール済みイメージは修正されません。確認済みの条件は[2026年11月13日のセキュリティ通知](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md)を参照してください。
+
+Laravel は署名付きの `GET /storage/{path}` と `PUT /storage/{path}` を登録します。配布アプリケーションはその一時署名 URL を発行せず、`Concurrency::run()` も呼びません。依存関係の問題は、デフォルトの Server 経路で悪用可能と実証したものではありません。ストレージ経路の露出は、有効な一時署名 URL の入手または発行と、アドバイザリのリクエスト解析条件に依存します。独自のルートや拡張は別途確認してください。
+
+サポート終了 PHP サービスの公開を停止し、native への移行を計画してください。廃止までの間は次を実施します。
+
+- GET と PUT を含むすべての `/storage/*` リクエストを ingress で遮断し、実際のエンドポイントでルールを確認します。これらは認証付きの `/api/external-payloads/v1` 転送とは別のルートです。
+- ローカルディスクの一時ダウンロード・アップロード URL の発行と再利用を停止します。署名ルートを生成したり Laravel Concurrency を呼んだりする拡張を確認します。
+- 復元可能なデータベースと外部 payload ストレージのバックアップを保持します。データベースに書き込む移行では PHP の全ロールを停止します。
+
+これらの対策は確認されたストレージ経路の露出を減らしますが、修正を導入したり独自拡張の安全性を証明したりするものではありません。native はこの Laravel 依存関係の問題に該当しない Rust runtime を使用します。[バックアップ優先の takeover 手順](%%artifact.serverTakeoverRunbookUrl%%)の正確なバージョン・backend・状態の制限内でのみ実行し、復元したコピーで予行してください。native の起動は PHP データベースの変換ではなく、最新 native リリースが takeover を新たに適格化するわけでもありません。その後の native 更新にも[明示的な schema と復元の要件](../deployment.md#native-schema-upgrade-3-10)が適用されます。
+
+:::
+
 ## PHP チーム専用ですか？ {#is-this-only-for-php-teams}
 
 専用ではありません。PHP、Python、Rust はいずれも公式 SDK です。Python や Rust だけを使うチームでも、公開 Server を基盤としてデプロイし、各言語の SDK でワークフローとアクティビティを実装して公開プロトコルで通信できます。アプリケーションに Laravel を組み込んだり、Laravel アプリケーションへ変更したりする必要はありません。
@@ -114,7 +132,7 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 
 このスタックはネイティブ Server と MySQL で構成されます。`DW_AUTH_TOKEN` が設定されるまで Compose は起動を拒否します。本番用 env ファイル、バックアップ、アップグレードは [デプロイガイド](/docs/deployment#single-node-production)で説明しています。
 
-native 3.8.x 以前から 3.9.1 への更新では、再起動前に[明示的なスキーマ更新](../deployment.md#native-schema-upgrade-3-9)が必要です。
+3.9.x からを含む native 3.10.0 への更新では、再起動前に[明示的なスキーマ更新](../deployment.md#native-schema-upgrade-3-10)が必要です。さらに古いバージョンは途中の手順も必要です。DB と外部 payload ストレージをバックアップし、ロールバック時はそのバックアップを復元します。
 
 ### ポート {#ports}
 

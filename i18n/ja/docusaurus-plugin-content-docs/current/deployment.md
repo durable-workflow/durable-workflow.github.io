@@ -20,6 +20,8 @@ Server は Waterline を同梱・運用しません。運用 UI が必要な場�
 
 :::note 既存の PHP Server 2.x インストール
 
+PHP Server 2.11.8 はサポート終了で、11月の Laravel アドバイザリに対して未修正です。バージョン固定の PHP 環境では、以下の旧レシピを使う前に[条件付きの露出と ingress・署名リンク対策](./polyglot/server.md#retired-php-server-security)に従ってください。
+
 PHP 2.x のスタック（Server、キュー Worker、スケジューラー、ブートストラップジョブ、Redis）は引き続き利用できます。2.11.8 のリリースタグでは[`docker-compose.published.yml`](https://github.com/durable-workflow/server/blob/2.11.8/docker-compose.published.yml)で、3.0.0 以降の Server リポジトリでは同じスタックを[`docker-compose.php.yml`](https://github.com/durable-workflow/server/blob/main/docker-compose.php.yml)として維持しています。既存の PHP 2.x インストールは、[ネイティブ移行（テイクオーバー）手順書](%%artifact.serverTakeoverRunbookUrl%%)に従って `upgrade-takeover` でネイティブへ移行できます。テイクオーバーは、SQLite、MySQL 8.0、PostgreSQL 17 上で PHP 2.11.8 が書き込んだデータベースについて、公開済みの 3.0.4 イメージ（arm64）で適格性が確認されています。MariaDB、amd64、および他の PHP リリースのデータベース（スキーマレイアウト 2.8.0–2.11.8）は、ソースビルドでの CI による検証のみです。テイクオーバーは一方向で、事前のバックアップが前提であり、PHP を停止しておく必要があります。引き継げないデータベースや状態は拒否されます。各ケースは手順書の[拒否条件の表](%%artifact.serverTakeoverRunbookUrl%%#refusals)に記載されています。まずバックアップから復元したコピーでリハーサルしてください。テイクオーバー後に PHP へロールバックすることはできません。また、テイクオーバーは 3.1.x 系で非推奨とする予定です。以下の節で Redis、キュー Worker、スケジューラー、ブートストラップに触れている箇所は、PHP 2.x のトポロジーを説明しています。
 
 :::
@@ -170,7 +172,22 @@ docker compose --env-file durable-workflow.prod.env \
 
 ネイティブ Server は起動時にスキーマを確認します。ネイティブの同一マイナー系列内のパッチリリースはスキーマを維持するため、イメージの変更だけで済みます。リリースノートでスキーマ変更が告知されたリリースでは、データベースをバックアップし、全 Server を停止した状態で、イメージの `schema-upgrade` コマンドも実行する必要があります。最新のコマンド例は Server リファレンスの[公式イメージと Compose](https://github.com/durable-workflow/server/blob/main/docs/server-reference.md#official-image--compose)にあります。
 
-### Server 3.9.1 への更新 {#native-schema-upgrade-3-9}
+### Server 3.10.0 への更新 {#native-schema-upgrade-3-10}
+
+Native 3.10.0 は 3.9.x からの明示的な追加スキーマ更新を必要とします。
+
+| バックエンド | 3.9.x からのスキーマ遷移 |
+|---|---|
+| SQLite | 13 → 14 |
+| PostgreSQL | 14 → 15 |
+| MariaDB | 14 → 15 |
+| MySQL | 15 → 16 |
+
+すべての Server レプリカを停止し、DB は稼働させたまま、DB と外部 payload ストレージをバックアップします。3.10.0 イメージを選び、その `schema-upgrade` を一度実行してから全レプリカを同じバージョンで再起動します。readiness、報告バージョン、Worker 登録を確認します。起動時に旧スキーマを自動更新しません。さらに古いバージョンでは途中の更新手順も必要です。[公開済み 3.10.0 更新手順](https://github.com/durable-workflow/server/releases/tag/3.10.0#upgrade-and-rollback)に Compose コマンドがあります。Worker protocol 1.20 と control plane 2 は変わりません。
+
+null 許容のスケジュール要約は古い action 配列から埋め戻しません。既存スケジュールは、その更新を担う遷移が有効な要約を記録するまで unavailable のままです。[dispatch-summary の権威](./polyglot/server-api-reference.md#schedule-dispatch-summary)を参照してください。MySQL と MariaDB は中断した更新を再開し、SQLite と PostgreSQL はトランザクションで適用します。旧バイナリへ戻すには更新前の DB・ストレージのバックアップを復元します。新しいスキーマで古いバイナリを実行しないでください。
+
+### Server 3.9.2 への更新 {#native-schema-upgrade-3-9}
 
 native 3.8.x 以前からの更新では、すべてのバックエンドでスキーマ更新が必要です。Server 3.9.1 は空の `dw_command_intents` テーブルを追加します。
 
@@ -181,9 +198,9 @@ native 3.8.x 以前からの更新では、すべてのバックエンドでス�
 | MariaDB | 13 → 14 |
 | MySQL | 14 → 15 |
 
-すべての Server レプリカを停止し、データベースは動かしたまま、データベースと Server ストレージをバックアップしてから、3.9.1 イメージを選んで取得します。そのイメージの `schema-upgrade` を 1 回実行した後、全レプリカを同じバージョンで再起動します。Server は起動時に既存スキーマを更新せず、古いスキーマでは `native_schema_upgrade_required` で拒否します。再起動後に readiness、報告バージョン、Worker 登録を確認してください。[検証済み 3.9.1 リリースの手順](https://github.com/durable-workflow/server/releases/tag/3.9.1#upgrade)に、ソースの checkout が不要な Compose コマンドがあります。
+すべての Server レプリカを停止し、データベースは動かしたまま、データベースと Server ストレージをバックアップしてから、3.9.2 イメージを選んで取得します。そのイメージの `schema-upgrade` を 1 回実行した後、全レプリカを同じバージョンで再起動します。Server は起動時に既存スキーマを更新せず、古いスキーマでは `native_schema_upgrade_required` で拒否します。再起動後に readiness、報告バージョン、Worker 登録を確認してください。[検証済み 3.9.2 リリースの手順](https://github.com/durable-workflow/server/releases/tag/3.9.2#upgrade-and-rollback)に、ソースの checkout が不要な Compose コマンドがあります。
 
-MySQL と MariaDB は中断後の更新を再開でき、SQLite と PostgreSQL はトランザクションでこのステップを適用します。3.8.x へのロールバックにはバックアップの復元が必要です。3.8.0 は更新済みデータベースを `native_schema_newer_than_binary` で拒否します。3.9.0 からは追加のスキーマ更新は不要です。さらに古いバージョンでは、`schema-upgrade` が該当する [3.7 の JSON 再構築](#native-schema-upgrade-3-7)などの以前の手順も適用します。Worker protocol 1.20 と control plane 2 は変わりません。
+MySQL と MariaDB は中断後の更新を再開でき、SQLite と PostgreSQL はトランザクションでこのステップを適用します。3.8.x へのロールバックにはバックアップの復元が必要です。3.8.0 は更新済みデータベースを `native_schema_newer_than_binary` で拒否します。3.9.0 または 3.9.1 からは追加のスキーマ更新は不要です。レプリカを停止し、バックアップ後に新しいイメージを選択して再起動し、readiness、バージョン、Worker 登録を確認します。物理スキーマと既存のコマンド・intent 行は変わりません。3.9.1 に戻す場合は同じスキーマを使えますが、Unicode キー・レシートメタデータの不具合が戻り、観測ファイル所有者の強化が失われます。さらに古いバージョンでは、`schema-upgrade` が該当する [3.7 の JSON 再構築](#native-schema-upgrade-3-7)などの以前の手順も適用します。Worker protocol 1.20 と control plane 2 は変わりません。
 
 ### Server 3.8.0 へのアップグレード {#native-schema-upgrade-3-8}
 

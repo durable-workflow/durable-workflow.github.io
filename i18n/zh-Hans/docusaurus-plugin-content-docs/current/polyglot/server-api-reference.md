@@ -277,7 +277,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | 列出工作流实例。支持状态、类型、查询文本和数量上限等过滤。 |
+| `GET` | `/api/workflows` | 列出命名空间内的工作流运行，支持状态、类型、可见性查询、`page_size` 和 `next_page_token`。 |
 | `POST` | `/api/workflows` | 启动工作流实例。 |
 | `GET` | `/api/workflows/{workflowId}` | 描述某个工作流 ID 的当前运行。 |
 | `GET` | `/api/workflows/{workflowId}/debug` | 返回有限诊断信息，用于调查卡住的运行。 |
@@ -286,6 +286,8 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | 返回选定运行的有限诊断信息。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | 分页读取运行历史事件。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | 导出某次运行的归档重放包。 |
+
+支持的字段、带类型比较、引号、优先级、错误和分页示例见[可见性查询语言](./visibility-query-language.md)。该列表语法不同于工作流的命名查询处理程序，也不同于 schedule 列表筛选器。
 
 启动请求使用语言中立的控制平面结构：
 
@@ -609,6 +611,20 @@ Worker 应将租约 ID、尝试、任务 ID 和心跳端点视为 Server 签发�
 | `DELETE` | `/api/search-attributes/{name}` | 删除搜索属性。 |
 
 搜索属性名称和类型是命名空间搜索契约的一部分。避免在运维仪表盘或指标标签中使用高基数属性。
+
+### 调度派发摘要的权威 {#schedule-dispatch-summary}
+
+已发布的原生 Server 3.10.0 为调度列表项和 describe 响应添加完整的 `dispatch_summary`，包含 `version: 1`、`state`、`last_outcome`、`buffered_actions_count`。旧 producer 省略该字段；空列表不代表支持。应检查完整字段，而不是根据版本推断。[标签固定的调度契约](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules)定义确切结构。
+
+| 状态 | 最近结果 | 当前缓冲数量 |
+|---|---|---|
+| `known` | 完整记录的派发 | 0 到 9007199254740991 的整数 |
+| `never` | `null`，仅新建时确立 | `0` |
+| `unavailable` | `null`，包括旧数据或无效的已存储权威 | `null` |
+
+已知结果为 `started`、`buffered`、`skipped`、`failed`，保留完整结果 ID、记录时间、原因以及适用的 workflow/run 标识。当前缓冲数量独立：之后清空缓冲仍可保留 buffered 结果而数量为零。最新 workflow 的执行状态也独立；Started 派发可能指向后来 Failed 的 workflow。
+
+每个摘要最多为 4096 个序列化 UTF-8 字节。转换若无法记录完整契约，则存储 unavailable 权威，不截断原因，也不改变调度操作。缺失、null、部分或不支持的数据均不是 v1 权威。有效 unavailable 摘要覆盖旧证据。后续 describe 拥有整个摘要，包括缺失或 null；切勿逐字段与旧列表结果合并。schema 升级不会从旧数组重建权威。有界列表页读取不需要每行单独 describe。这是 producer 行为；Waterline 已发布 consumer 与可见刷新验收仍需单独验证。
 
 ### 计划列表筛选与继续读取 {#schedule-list-filters}
 

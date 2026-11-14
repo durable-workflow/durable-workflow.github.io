@@ -294,6 +294,20 @@ modo de serviço distribuída, incluindo drenagem e rollback. Use
 [Modos de implantação](/docs/polyglot/deployment-modes/) para a comparação
 mais ampla dos limites de runtime.
 
+## Resultados de consulta com valores binários {#query-binary-results}
+
+O PHP SDK 3.18.2 corrige a conclusão de consultas para resultados Avro válidos com bytes `AvroBinaryValue` aninhados. `result_envelope` continua sendo a representação autoritativa. O SDK omite apenas a projeção simples opcional `result` quando não pode ser codificada em JSON; resultados comuns compatíveis com JSON mantêm essa projeção.
+
+Os [controles instalados do PHP 3.18.2 publicado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312) (PHP 8.3.36, linux/amd64, SQLite) verificam uma ida e volta real do Worker para bytes binários aninhados, JSON comum, zero com sinal e `null`, além de conclusão do workflow e desregistro limpo do Worker. É uma correção compatível de consultas; não adiciona capability nem estabelece suporte completo a chaves de requisição ou limpeza por timeout. Consulte o [guia PHP de consultas](https://php.durable-workflow.com/build/messages/#register-a-read-only-query).
+
+## Ler uma atualização aceita mais tarde {#read-an-update-outcome}
+
+O PHP SDK %%artifact.publishedPhpSdkVersion%% selecionado permite ler uma atualização retida pelo ID estável sem admiti-la novamente. `Client::updateOutcome($workflowId, $updateId)` usa `waitFor: 'completed'` por padrão: trabalho pendente lança `UpdateStillPending`; um resultado concluído pode legitimamente ser `null`. `updateOutcomeReceipt()` usa `waitFor: 'accepted'` por padrão e retorna o recibo do Server para inspecionar `update_status` e `wait_timed_out` separadamente do resultado concluído.
+
+Essas leituras GET exigem a capability `update_outcome_reads` (Server nativo 3.6.0 ou posterior). Sem ela, o SDK lança `LogicException` e não reenvia a atualização. Uma exceção pendente do `updateWorkflow()` inicial preserva o ID de requisição do chamador. Uma leitura GET pendente preserva `updateId`, mas a chave original pode estar indisponível: `$pending->requestId` então é `''`, ou seja, desconhecida. Continue lendo com esse ID de atualização; nunca envie uma chave vazia, inferida ou com hash interno como ID original.
+
+O [guia PHP publicado](https://php.durable-workflow.com/build/messages/#apply-a-tracked-update) mostra o handler e a jornada do cliente. Os [controles com PHP 3.18.1 instalado / Server nativo 3.9.1](https://github.com/durable-workflow/sdk-php/pull/411#issuecomment-6855609359) verificam leituras de pendente até concluído com null sem uma segunda admissão, além do [tratamento do tamanho de conclusão](./server-config-reference.md#workflow-task-completion-size). Essa evidência não estabelece aceitação completa de chaves no #216 compartilhado nem suporte nativo a limpeza por timeout.
+
 ## Atualizar para o SDK PHP 3.12 a 3.14 {#upgrade-to-3-12-through-3-14}
 
 PHP `^8.1`, os pisos da ponte Laravel, o protocolo de workers `1.20` e o plano de controle `2` não mudam em relação à 3.11. Verifique estas mudanças de comportamento antes de implantar:

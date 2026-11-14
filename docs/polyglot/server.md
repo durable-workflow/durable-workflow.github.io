@@ -44,6 +44,24 @@ Configuration below marked as PHP 2.x does not apply to the native Server.
 
 :::
 
+## Retired PHP Server security {#retired-php-server-security}
+
+:::warning Retired and unpatched
+
+PHP Server 2.11.8 is retired and remains unpatched for the November Laravel advisories. Its published image contains Laravel 13.34.0. Updating a source checkout's Composer dependencies does not patch that installed image. Read the [13 November 2026 security notice](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md) for the reviewed conditions.
+
+Laravel registers signed `GET /storage/{path}` and `PUT /storage/{path}` routes. The shipped application does not issue their temporary signed URLs or call `Concurrency::run()`. The dependency finding does not demonstrate an exploitable default Server journey. Storage-route exposure depends on obtaining or issuing a valid temporary signed URL and the advisory's request-parsing conditions. Review custom routes and extensions separately.
+
+Stop exposing the retired PHP service and plan migration to native. Until retirement:
+
+- Block all `/storage/*` requests at ingress, including GET and PUT, and verify the rule on the actual endpoint. These routes are separate from authenticated `/api/external-payloads/v1` transport.
+- Stop issuing and reusing local-disk temporary download or upload URLs. Review extensions that generate signed routes or call Laravel Concurrency.
+- Preserve a restorable database and external-payload-storage backup. Stop every PHP role during a migration that writes the database.
+
+These controls reduce the identified storage-route exposure; they do not install the fixes or establish that custom extensions are safe. Native uses a Rust runtime outside this Laravel dependency finding. Follow the [backup-first takeover runbook](%%artifact.serverTakeoverRunbookUrl%%) only within its exact version/backend/state limits and rehearse on a restored copy. Native startup is not a PHP database conversion, and the latest native release does not newly qualify takeover. Subsequent native upgrades retain their [explicit schema and restore requirements](../deployment.md#native-schema-upgrade-3-10).
+
+:::
+
 ## Is this only for PHP teams?
 
 No. PHP, Python, and Rust are first-party SDK surfaces. A Python- or Rust-only
@@ -175,8 +193,10 @@ curl -H "Authorization: Bearer $DW_AUTH_TOKEN" \
 The stack is the native Server and MySQL. Compose refuses to start until
 `DW_AUTH_TOKEN` is set. The [deployment guide](/docs/deployment#single-node-production)
 covers the production env file, backups and upgrades.
-Upgrades from native 3.8.x or earlier to 3.9.1 require the
-[explicit schema upgrade](../deployment.md#native-schema-upgrade-3-9) before restart.
+Upgrading to native 3.10.0, including from 3.9.x, requires the
+[explicit schema upgrade](../deployment.md#native-schema-upgrade-3-10) before restart.
+Older versions also need their intervening schema steps. Back up both the
+database and external-payload storage; rollback restores that backup.
 
 ### Ports
 

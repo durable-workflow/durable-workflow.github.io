@@ -332,6 +332,29 @@ pub fn register_charge(worker: &mut Worker) {
 
 この SDK 上限は、Core の派生 summary 保存修正、他 SDK、embedded 動作、Server イメージ採用の提供を証明しません。旧 worker では大きすぎる失敗を報告できない場合があります。[公開 source の方針](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits)と[共通の失敗ガイド](../failures-and-recovery.md#rust-failure-report-limits)を参照してください。
 
+## アクティビティ再試行のバックオフ {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` は、最初の試行を含む総試行回数を数えます。
+`exponential_backoff(initial, coefficient, maximum_interval)` に `None` を渡すと、
+待機間隔の上限は設定されません。明示的に上限を設けるには `Some(maximum)` を
+渡してください。既定のポリシーは、試行 1 回と空のバックオフリストのままです。
+
+総試行回数が 9 回、初期待機時間が 1 秒、係数が 2、上限が `None` の場合、8 回の
+再試行に対して `1, 2, 4, 8, 16, 32, 64, 128` 秒をエンコードします。有限の試行回数と、
+設定されている場合は元の schedule-to-close 期限が、引き続き再試行を制限します。
+算術オーバーフローまたはプロトコルの範囲を超える値は、検証時に
+`ActivityOptionsErrorKind::BackoffOverflow` を返します。
+
+リプレイは記録済みの待機時間リスト全体を保持し、他の既知のポリシーフィールドと
+ともに厳密に比較します。最大値だけを変更する場合、エンコードされたリストが同一なら
+互換性があります。最大値によってリストが変わる場合、変更した要素が未使用でも
+ポリシー変更になります。この例に 60 秒の上限を追加するとリストが変わり、
+`activity_retry_policy_mismatch` でリプレイを拒否することがあります。
+
+[Rust の再試行ポリシーのレシピ](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+と、公開済みの [ActivityRetryPolicy API](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff)
+を参照してください。
+
 ## ローカルアクティビティ {#local-activities}
 
 Rust SDK 3.1.0 は `Worker::local_activities(true)` で設定した Worker にインラインのローカル実行を追加します。通常のアクティビティ登録メソッドでコールバックを登録し、ワークフローコンテキストのローカルアクティビティメソッドを使います。再試行とタイムアウトの設定は[実行可能な例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)と [LocalActivityOptions リファレンス](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)を参照してください。
@@ -535,6 +558,22 @@ saga.finish(outcome).await
 Rust SDK は `WorkflowContext::side_effect` で小さな非決定的値を記録し、`WorkflowContext::uuid_v4` で決定的な UUIDv4 値を導出します。コールドリプレイはコールバックを再呼び出しせず、記録した値をデコードします。マーカーの順序変更、欠落、重複、コーデック非互換は型付き `Error::NonDeterministicReplay` を返します。
 
 ロールアウト中に古いワークフロー分岐と新しい分岐のリプレイ互換性を保つには `WorkflowContext::get_version(change_id, min_supported, max_supported)` を使います。新しい実行は `max_supported` を記録し、既存の実行は永続マーカーを再利用します。`patched(change_id)` は真偽値形式のロールアウトを提供し、`deprecate_patch(change_id)` は古い分岐の処理完了後もマーカーを維持します。共有の永続的意味は[副作用](/docs/features/side-effects/)と[バージョニング](/docs/features/versioning/)を参照してください。
+
+## リプレイを認識するワークフローロギング {#workflow-logging}
+
+Rust SDK 4.17.0 はワークフローコードからの観測に `ctx.logger().info("message")` を提供します。アプリケーションの既存 `tracing` subscriber に、target `durable_workflow::workflow` と SDK が結び付けた不変の `namespace`、`workflow_instance_id`、`workflow_run_id` を付けて送ります。ホスト側 subscriber を設定してください。SDK はグローバル subscriber を登録しません。
+
+通常のログ呼び出しは、worker がワークフロー履歴を再構築するたびに再実行されます。ワークフローロガーは、確定済みプレフィックス、query/offline、完了済み履歴のリプレイ中、worker のコールド置換後も、また有効な呼び出しの外でも出力しません。そのプレフィックスを越える新規実行で、完全な run identity が結び付いている場合にのみ出力できます。`ctx.replay_state()` は、タスク開始時に固定した boolean ではなく、消費した履歴の現在の境界を観測します。
+
+| `WorkflowReplayState` | 観測 |
+| --- | --- |
+| `Replaying` | 確定済み履歴または query を再構築中です。ワークフローのログを抑制します。 |
+| `Executing` | 確定済みプレフィックスを越える新規実行です。未確定タスクの再試行ではログが重複し得ます。 |
+| `Unavailable` | このワークフロー呼び出しの外、または状態を安全に読めない場合です。ログを抑制します。 |
+
+永続コマンドの順序を、この観測状態やログ配送から独立させてください。未確定の試行のログはクラッシュや retry 後に重複し得るため、このロガーは exactly-once outbox ではありません。アプリ所有のログキューなどを用い、handler を有界かつ非ブロッキングにしてください。スタックを巻き戻す subscriber panic はワークフロー結果から隔離されます。プロセスの abort とブロッキング handler はアプリケーションの責任です。
+
+[公開済みロギングガイド](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging)、[WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html)、[WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html)を参照してください。[registry からの lifecycle/deadline 検証](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853)と[4プロセスのロギング受入検証](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262)は、明記された native Server 3.10.0 linux/amd64 の組合せで記録されました。他の binding や、より広い replay/producer の適格性は別の範囲です。
 
 ## Rust の決定性ルール {#rust-determinism-rules}
 

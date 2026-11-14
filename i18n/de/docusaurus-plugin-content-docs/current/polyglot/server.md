@@ -42,6 +42,24 @@ Als PHP 2.x gekennzeichnete Konfiguration unten gilt nicht für den nativen Serv
 
 :::
 
+## Sicherheit des eingestellten PHP-Servers {#retired-php-server-security}
+
+:::warning Eingestellt und ungepatcht
+
+PHP Server 2.11.8 ist eingestellt und bleibt für die Laravel-Sicherheitshinweise vom November ungepatcht. Das veröffentlichte Image enthält Laravel 13.34.0. Aktualisierte Composer-Abhängigkeiten in einem Quellcode-Checkout patchen dieses installierte Image nicht. Die geprüften Bedingungen stehen im [Sicherheitshinweis vom 13. November 2026](https://github.com/durable-workflow/server/blob/3f21b754418ffea5e786f2bd48481a35c92ab1a2/docs/security/retired-php-server-2026-11-13.md).
+
+Laravel registriert signierte Routen `GET /storage/{path}` und `PUT /storage/{path}`. Die ausgelieferte Anwendung stellt deren temporäre signierte URLs nicht aus und ruft `Concurrency::run()` nicht auf. Der Abhängigkeitsbefund weist keinen ausnutzbaren Standardablauf des Servers nach. Die Exposition der Speicherrouten hängt vom Erhalt oder Ausstellen einer gültigen temporären signierten URL und den Request-Parsing-Bedingungen des Hinweises ab. Prüfen Sie eigene Routen und Erweiterungen gesondert.
+
+Beenden Sie die Erreichbarkeit des eingestellten PHP-Dienstes und planen Sie die Migration zu native. Bis zur Stilllegung:
+
+- Blockieren Sie am Ingress alle `/storage/*`-Anfragen einschließlich GET und PUT und prüfen Sie die Regel am tatsächlichen Endpunkt. Diese Routen sind vom authentifizierten Transport `/api/external-payloads/v1` getrennt.
+- Stellen Sie keine temporären Download- oder Upload-URLs für den lokalen Datenträger mehr aus und verwenden Sie bestehende nicht weiter. Prüfen Sie Erweiterungen, die signierte Routen erzeugen oder Laravel Concurrency aufrufen.
+- Bewahren Sie eine wiederherstellbare Sicherung der Datenbank und des externen Payload-Speichers auf. Stoppen Sie bei einer Migration mit Datenbankschreibzugriff jede PHP-Rolle.
+
+Diese Maßnahmen verringern die festgestellte Exposition der Speicherrouten; sie installieren keine Fehlerbehebung und bestätigen nicht die Sicherheit eigener Erweiterungen. Native verwendet eine Rust-Runtime außerhalb dieses Laravel-Abhängigkeitsbefunds. Befolgen Sie das [Backup-first-Takeover-Runbook](%%artifact.serverTakeoverRunbookUrl%%) nur innerhalb seiner genauen Versions-, Backend- und Zustandsgrenzen und proben Sie mit einer wiederhergestellten Kopie. Der native Start konvertiert keine PHP-Datenbank, und das neueste native Release qualifiziert Takeover nicht neu. Für spätere native Upgrades gelten weiterhin die [expliziten Schema- und Restore-Anforderungen](../deployment.md#native-schema-upgrade-3-10).
+
+:::
+
 ## Ist dies nur für PHP-Teams? {#is-this-only-for-php-teams}
 
 Nein. PHP, Python und Rust haben offizielle SDKs. Ein reines Python- oder Rust-Team kann Server als Infrastruktur betreiben, Workflows und Aktivitäten mit seinem nativen SDK schreiben und über das öffentliche Protokoll kommunizieren. Seine Anwendung bettet Laravel nicht ein und wird keine Laravel-Anwendung.
@@ -135,7 +153,7 @@ Der Stack besteht aus dem nativen Server und MySQL. Compose verweigert den Start
 `DW_AUTH_TOKEN` nicht gesetzt ist. Der [Bereitstellungsleitfaden](/docs/deployment#single-node-production)
 behandelt die Produktions-Env-Datei, Sicherungen und Upgrades.
 
-Upgrades von native 3.8.x oder früher auf 3.9.1 benötigen vor dem Neustart das [explizite Schema-Upgrade](../deployment.md#native-schema-upgrade-3-9).
+Ein Upgrade auf native 3.10.0, auch von 3.9.x, erfordert vor dem Neustart das [explizite Schema-Upgrade](../deployment.md#native-schema-upgrade-3-10). Ältere Versionen benötigen auch ihre Zwischenschritte. Sichern Sie Datenbank und externen Payload-Speicher; ein Rollback stellt diese Sicherung wieder her.
 
 ### Ports {#ports}
 

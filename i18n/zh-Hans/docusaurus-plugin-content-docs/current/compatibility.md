@@ -65,15 +65,22 @@ import protocolCatalog from '@site/static/platform-protocol-specs.json';
 
 | 包版本线 | PHP | Laravel |
 | --- | --- | --- |
-| 当前嵌入式 Workflow 2.28 | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
+| 当前嵌入式 Workflow %%artifact.workflowVersion%% | PHP 8.x 中的 8.2+；Laravel 13 需要 PHP 8.3+ | `^12.72.0` 或 `^13.41.0` |
 | 嵌入式 Workflow 2.20.5 | PHP `^8.1`，并满足框架自身最低要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 | 已发布 PHP SDK 3.14 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接需要 PHP `^8.2`，Laravel 13 需要 PHP 8.3+ | `^12.69.0` 或 `^13.30.0` |
 | PHP SDK 3.9.5 | 基础 SDK 为 PHP `^8.1`；Laravel 桥接还需满足框架的 PHP 要求 | `^10.50.4`、`^11.56.1`、`^12.69.0` 或 `^13.30.0` |
 
-包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.28.0/resources/laravel-embedded-upgrade-contract.json)
+较早的行记录了其中所列发行版的要求。
+
+包的依据是[已发布的嵌入式升级契约](https://github.com/durable-workflow/workflow/blob/2.28.1/resources/laravel-embedded-upgrade-contract.json)
 及各版本的 `composer.json`。当前嵌入式版本已验证 Laravel 12/PHP 8.2–8.4 与 Laravel 13/PHP 8.3–8.4，
 不再支持 PHP 8.1 和 Laravel 10/11。[历史稳定 v1 安装指南](/docs/1.x/installation/)与
 [PHP SDK 的独立要求](https://php.durable-workflow.com/)保持独立。
+
+Workflow 2.28.1 仅包含安全补丁，提升了上表中的 Laravel 最低版本要求。运行时和
+架构文件与 2.28.0 相同，因此从 2.28.0 升级不会新增数据库迁移。
+[已发布包验证及五条升级/回滚流程](https://github.com/durable-workflow/workflow/pull/1141#issuecomment-6871390667)
+验证了此包。
 
 先将 PHP 和 Laravel 升级到受支持的组合。若暂时无法迁移，`~2.20.5` 可将 Composer 保持在 2.20 补丁线，
 但不代表无限期维护。平台条件允许时，`^2.0` 可选中后续次要版本。
@@ -118,7 +125,7 @@ Workflow 2.27 保持 2.21 的支持下限和嵌入式 worker 协议 `1.22`，不
 
 参见 [2.27.0 发布说明](https://github.com/durable-workflow/workflow/releases/tag/2.27.0)。
 
-Workflow 2.28 保持 2.21 的支持下限和嵌入式 worker 协议 `1.22`，不新增数据库迁移。升级前需要检查的行为变更：
+Workflow 2.28.0 保持 2.21 的支持下限和嵌入式 worker 协议 `1.22`，不新增数据库迁移。升级前需要检查的行为变更：
 
 - 从 2.28 起，完成、失败或 continue-as-new 的运行会在同一事务中取消它从未等待的活动和计时器（例如 `select()` 的落选成员），而不是让它们继续运行。此类活动的迟到结果会以 `run_closed` 被拒绝。如果工作流需要某个落选成员的效果，请在返回之前等待它。参见[运行关闭时的落选成员](./features/concurrency.md#selection-losers-at-close)。
 
@@ -237,6 +244,8 @@ Durable Workflow 中每个公开接口恰好具有以下一个稳定性级别。
 | Rust SDK | `%%artifact.rustSdkVersion%%` | `%%artifact.rustCargoRequirement%%` |
 
 所选 Server 为原生 3.x Server。PHP Server 2.x 已冻结在 2.11.8，不再发布新版本；现有 PHP 安装可以按照[原生接管运行手册](%%artifact.serverTakeoverRunbookUrl%%)，使用 `upgrade-takeover` 迁移到原生 Server。接管已在运行手册说明的范围内于已发布的 3.0.4 镜像上通过资格验证；它是单向的，且必须先备份。
+
+PHP Server 2.11.8 仍未修补 11 月的 Laravel 安全公告问题。现有固定版本部署必须遵循[有条件的暴露说明和退役措施](./polyglot/server.md#retired-php-server-security)；历史 takeover 证据保留原有限制。
 
 Helm Chart 记录的 `appVersion` 为 `%%artifact.helmChartAppVersion%%`，与所选 Server 一致，且该 Chart 默认运行原生 Server。[已发布的版本发布记录](%%artifact.helmChartQualificationUrl%%)记录了 Chart 的发布运行、OCI/软件包摘要、源码标识，以及该次运行中的 kind 安装；它并不代表生产集群资格验证。安装或覆盖镜像前，请阅读 [Chart 选择与升级](./deployment.md#helm-chart-selection)。
 

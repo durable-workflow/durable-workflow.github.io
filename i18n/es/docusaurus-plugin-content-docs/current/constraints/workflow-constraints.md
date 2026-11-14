@@ -24,6 +24,12 @@ Ten en cuenta estas reglas al escribir un workflow:
   hacerlo durante la ejecución, usa un side effect para registrar el resultado.
   También puedes pasar el valor aleatorio como entrada al iniciar el workflow.
 
+## Logging desde el código del workflow {#workflow-logging}
+
+Un worker reconstruye el historial confirmado del workflow tras activaciones y reemplazos en frío, por lo que el logging normal de la aplicación puede repetir mensajes anteriores. Use el logger consciente del replay documentado para su binding cuando esté disponible. El modo servicio Rust ofrece el [logger de workflow de Rust SDK 4.17](../polyglot/rust.md#workflow-logging); los demás bindings conservan sus contratos documentados por separado.
+
+El logging es una observación del proceso. Mantenga los comandos durables del workflow independientes de las observaciones de replay y de la entrega de logs. Incluso un logger consciente del replay puede repetir un mensaje de un intento no confirmado tras un fallo o retry; no es un outbox exactamente una vez. Los handlers del host deben estar acotados y no bloquear para no detener al worker. Sitúe los efectos de negocio durables en la actividad u operación de workflow registrada adecuada.
+
 ## Comprobaciones al iniciar la aplicación {#boot-time-guardrails}
 
 Cuando registras clases de workflow en `workflows.v2.types.workflows`, el paquete

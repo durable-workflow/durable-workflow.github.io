@@ -277,7 +277,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 
 | メソッド | パス | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | インスタンスを一覧。状態、型、クエリテキスト、件数などでフィルター可能。 |
+| `GET` | `/api/workflows` | 名前空間内のワークフロー実行を、状態、型、可視性クエリ、`page_size`、`next_page_token` で一覧します。 |
 | `POST` | `/api/workflows` | インスタンスを開始。 |
 | `GET` | `/api/workflows/{workflowId}` | ワークフロー ID の現在の実行を説明。 |
 | `GET` | `/api/workflows/{workflowId}/debug` | 停滞した実行調査のための範囲付き診断情報を返す。 |
@@ -286,6 +286,8 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/health" \
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | 選択実行の範囲付き診断情報を返す。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | 履歴イベントをページ単位で読む。 |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | 実行のアーカイブ用リプレイバンドルをエクスポート。 |
+
+フィールド、型付き比較、引用符、優先順位、エラー、ページング例は[可視性クエリ言語](./visibility-query-language.md)を参照してください。この一覧の文法はワークフローの名前付きクエリハンドラーや schedule 一覧フィルターとは異なります。
 
 開始要求は言語中立のコントロールプレーン構造を使います。
 
@@ -610,6 +612,20 @@ Worker はリース ID、試行、タスク ID、ハートビートエンドポ�
 | `DELETE` | `/api/search-attributes/{name}` | 検索属性を削除。 |
 
 検索属性名と型は名前空間検索契約の一部です。運用ダッシュボードやメトリクスラベルに、値の種類が多い高カーディナリティ属性を使うのは避けてください。
+
+### スケジュール dispatch-summary の権威 {#schedule-dispatch-summary}
+
+公開済み native Server 3.10.0 は、スケジュール一覧項目と describe 応答に `version: 1`、`state`、`last_outcome`、`buffered_actions_count` を持つ完全な `dispatch_summary` を追加します。古い producer は省略します。空の一覧では対応を証明できません。バージョンから推測せず、フィールド全体を確認してください。[タグ固定のスケジュール契約](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules)に正確な形式があります。
+
+| 状態 | 直近の結果 | 現在のバッファ件数 |
+|---|---|---|
+| `known` | 完全に記録された dispatch | 0 から 9007199254740991 の整数 |
+| `never` | `null`、新規作成時のみ確定 | `0` |
+| `unavailable` | `null`、旧データや不正な保存済み権威を含む | `null` |
+
+既知の結果は `started`、`buffered`、`skipped`、`failed` で、完全な結果 ID、記録時刻、理由、該当する workflow/run ID を含みます。現在のバッファ件数は別です。後で排出されても、記録済み buffered 結果と件数ゼロが共存できます。最新 workflow の実行状態も別で、Started の dispatch が後で Failed になった workflow を指す場合があります。
+
+要約はシリアライズ後の UTF-8 で 4096 バイト以下です。遷移が完全な契約を記録できなければ、理由を切り詰めたりスケジュール処理を変更したりせず unavailable の権威を保存します。欠落、null、部分的、未対応のデータは v1 の権威ではありません。有効な unavailable 要約は旧証拠より優先されます。後の describe が欠落や null も含む要約全体を所有し、古い一覧の各フィールドと結合してはいけません。スキーマ更新は旧配列から権威を再構築しません。サイズを制限した一覧ページの読み取りでは、行ごとの describe は不要です。これは producer の動作で、Waterline の公開済み consumer と画面更新の検証は別です。
 
 ### スケジュール一覧のフィルターと継続 {#schedule-list-filters}
 

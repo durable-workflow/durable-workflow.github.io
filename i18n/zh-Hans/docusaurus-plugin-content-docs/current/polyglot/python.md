@@ -349,7 +349,9 @@ driver = external_storage_driver_from_policy(
 | `await client.archive_workflow(workflow_id, reason=None)` | `WorkflowCommandResult` | `WorkflowNotFound`, 认证/Server 错误 |
 | `await client.get_result(handle, poll_interval=0.5, timeout=30.0)` | 已解码工作流输出 | `WorkflowFailed`, `WorkflowCancelled`, `WorkflowTerminated`, `TimeoutError` |
 
-`signal_workflow` 返回包含 `request_id` 的接纳回执。`query_workflow` 和 `WorkflowHandle.query` 返回查询回执；通过 `receipt["result"]` 读取解码后的处理器值，包括成功返回的 `None`。参阅 [Python 客户端指南](https://python.durable-workflow.com/reference/client/)。
+`signal_workflow` 返回包含 `request_id` 的接纳回执。`query_workflow` 和 `WorkflowHandle.query` 返回查询回执；通过 `receipt["result"]` 读取解码后的处理器值，包括成功返回的 `None`。参阅 [Python 客户端指南](https://python.durable-workflow.com/reference/client/#read-a-query-result)。
+
+Python SDK 2.17.2 修复了包含字节的有效 Avro 查询结果。`result_envelope` 仍是权威表示，仅省略无法编码的可选普通 JSON 投影。[已发布 2.17.2 / 原生 Server 3.9.1 的安装后验证](https://github.com/durable-workflow/sdk-python/pull/318#issuecomment-6857958320)（linux/amd64、SQLite）确认嵌套字节与 `None` 查询回执、Worker 冷替换以及从待完成到完成 null 的更新读取。查询返回形态仍如上所述。此补丁不会通告超时清理或并行策略 capability。此前 2.17.1 的完成大小证据保留其确切版本和实验范围。
 
 `update_workflow` 默认为 `wait_for="accepted"`。其回执可能包含 `update_status="accepted"` 和 `result=None`。使用 `wait_for="completed"` 时，`wait_timeout_seconds` 限制等待时间。等待到期后，回执仍为已接受，并设置 `wait_timed_out=True`。只有 `update_status="completed"` 才表示结果已完成，包括 `None`。请保留 `update_id`，以便[稍后读取结果](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 
@@ -891,6 +893,27 @@ async def long_running_task(items: list) -> dict:
 
     return {"processed": len(items)}
 ```
+
+#### 活动的逻辑执行标识 {#activity-identity}
+
+Python SDK 2.15.0 及更高版本提供只读的可选字段
+`activity.context().info.activity_execution_id`。它标识跨重试的同一次逻辑活动执行。
+`info.workflow_id` 和 `info.run_id` 标识其所属的工作流实例和运行。请将逻辑执行 ID
+用作外部服务的幂等键。任务 ID 和尝试 ID 会在重试时变化，不能用来替代它。
+
+执行 ID 缺失、无效或只含空白时仍为 `None`，旧 claim 也是如此。收到的非空白字符串
+会保留原样。如果操作要求此键，但 ID 不可用，请在产生外部副作用之前拒绝操作。
+通过会话路由的活动使用其普通 claim 的身份。预备本地活动使用经过验证的接纳回执中的
+执行 ID。内联本地活动没有已接纳的执行 ID，因此提供 `None`，但保留父工作流和运行的
+ID。不使用 Server 的 mock 不会创建 Server 活动身份。
+
+服务模式示例见 SDK 的[幂等键辅助函数和活动身份指南](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity)。
+为不同的外部操作添加稳定的操作后缀，并确保下游服务遵守幂等键。执行 ID 是公开元数据，
+既不能证明 claim 仍然有效，也不是产生外部副作用的授权。请保留凭据、当前尝试的
+fencing 和结果对账。[使用已发布包的普通重试回执](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+将 Python SDK 2.17.2 与原生 Server 3.9.2 绑定。它证明尝试 1 和 2 的逻辑执行、工作流和
+运行身份保持不变，而任务 ID 和尝试 ID 不同。本地和会话行为仍具有单独定义的范围。
+共享幂等契约见[执行保证](../constraints/execution-guarantees.md#service-activity-identity)。
 
 #### 收到的重试策略与原始尝试次数 {#activity-retry-metadata}
 

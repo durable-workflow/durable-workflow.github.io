@@ -407,7 +407,7 @@ Operator oder Admin und `X-Durable-Workflow-Control-Plane-Version: 2`.
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Workflow-Instanzen auflisten. Unterstützt Filter wie Status, Typ, Abfragetext und Grenze. |
+| `GET` | `/api/workflows` | Workflow-Ausführungen im Namespace mit Status, Typ, Visibility-Abfrage, `page_size` und `next_page_token` auflisten. |
 | `POST` | `/api/workflows` | Workflow-Instanz starten. |
 | `GET` | `/api/workflows/{workflowId}` | Aktuellen Lauf einer Workflow-ID beschreiben. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Begrenzte Diagnoseangaben für festhängende Läufe liefern. |
@@ -416,6 +416,8 @@ Operator oder Admin und `X-Durable-Workflow-Control-Plane-Version: 2`.
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Begrenzte Diagnoseangaben für ausgewählten Lauf liefern. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Laufhistorienereignisse seitenweise lesen. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Replay-Archivpaket eines Laufs exportieren. |
+
+Felder, typisierte Vergleiche, Anführungszeichen, Rangfolge, Fehler und Seitenbeispiele beschreibt die [Visibility-Abfragesprache](./visibility-query-language.md). Diese Listengrammatik unterscheidet sich von benannten Workflow-Abfrage-Handlern und Schedule-Listenfiltern.
 
 Startanfragen verwenden die sprachneutrale Control-Plane-Struktur:
 
@@ -796,6 +798,20 @@ Zeitplanrouten sind Control-Plane-Routen.
 
 Suchattributnamen und -typen gehören zum Namespace-Suchvertrag. Vermeiden Sie
 Attribute mit hoher Kardinalität für Betriebsdashboards oder Metrikbezeichnungen.
+
+### Dispatch-Summary-Autorität für Schedules {#schedule-dispatch-summary}
+
+Der veröffentlichte native Server 3.10.0 ergänzt Schedule-Listeneinträge und Describe-Antworten um ein vollständiges `dispatch_summary` mit `version: 1`, `state`, `last_outcome` und `buffered_actions_count`. Ältere Produzenten lassen es weg; eine leere Liste belegt keine Unterstützung. Prüfen Sie das vollständige Feld, statt Unterstützung aus einer Version abzuleiten. Der [getaggte Schedule-Vertrag](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules) definiert die genaue Form.
+
+| Zustand | Letztes Ergebnis | Aktueller Pufferstand |
+|---|---|---|
+| `known` | Vollständig aufgezeichneter Dispatch | Ganzzahl von 0 bis 9007199254740991 |
+| `never` | `null`, nur durch Neuanlage belegt | `0` |
+| `unavailable` | `null`, einschließlich alter oder ungültiger gespeicherter Autorität | `null` |
+
+Bekannte Ergebnisse sind `started`, `buffered`, `skipped` oder `failed`, mit vollständiger Ergebnis-ID, Aufzeichnungszeit, Begründung und zutreffenden Workflow-/Run-Identitäten. Der aktuelle Pufferstand ist separat: Nach späterem Leeren kann ein aufgezeichnetes buffered-Ergebnis mit Zählerstand 0 verbleiben. Der Ausführungsstatus des neuesten Workflows ist ebenfalls separat; ein Started-Dispatch kann auf einen später Failed-Workflow zeigen.
+
+Jede Zusammenfassung ist auf 4096 serialisierte UTF-8-Bytes begrenzt. Kann ein Übergang den vollständigen Vertrag nicht speichern, wird unverfügbare Autorität gespeichert, ohne Begründungskürzung oder Änderung der Scheduling-Operation. Fehlende, null, unvollständige oder nicht unterstützte Daten sind keine v1-Autorität. Eine gültige unavailable-Zusammenfassung überschreibt alte Nachweise. Ein späteres Describe besitzt die gesamte Zusammenfassung einschließlich Fehlen oder null; mischen Sie sie nie feldweise mit einem älteren Listenergebnis. Schema-Upgrades rekonstruieren keine Autorität aus alten Arrays. Die begrenzte Listenseite benötigt keine Describe-Anfrage pro Zeile. Dies ist Produzentenverhalten; Waterlines veröffentlichter Consumer und sichtbare Aktualisierung werden separat qualifiziert.
 
 ### Filter und Fortsetzung für Zeitplanlisten {#schedule-list-filters}
 

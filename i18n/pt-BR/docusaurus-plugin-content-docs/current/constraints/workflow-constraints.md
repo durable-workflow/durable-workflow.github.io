@@ -15,6 +15,12 @@ Evite estas operações dentro de uma classe de workflow:
 - Não faça chamadas de rede para recursos externos, que podem estar lentos ou indisponíveis em momentos diferentes. Passe os dados necessários como entrada ao iniciar o workflow ou use uma atividade para buscá-los.
 - Não use geradores de números aleatórios, exceto dentro de um efeito registrado com `sideEffect`, nem outras fontes de aleatoriedade. Passe os valores aleatórios necessários como entrada ao iniciar o workflow.
 
+## Logging no código do workflow {#workflow-logging}
+
+Um worker reconstrói o histórico confirmado após ativações e substituição a frio, por isso o logging comum da aplicação pode repetir mensagens anteriores. Use o logger consciente de replay documentado para seu binding quando disponível. O modo serviço Rust oferece o [logger de workflow do Rust SDK 4.17](../polyglot/rust.md#workflow-logging); outros bindings mantêm seus contratos documentados separadamente.
+
+Logging é uma observação do processo. Mantenha os comandos duráveis independentes das observações de replay e da entrega dos logs. Mesmo um logger consciente de replay pode repetir uma mensagem de tentativa não confirmada após falha ou retry; ele não é um outbox exatamente uma vez. Os handlers do host devem ser limitados e não bloqueantes para não parar o worker. Coloque efeitos duráveis de negócio na atividade ou operação registrada do workflow apropriada.
+
 ## Verificações na inicialização {#boot-time-guardrails}
 
 Quando classes de workflow são registradas em `workflows.v2.types.workflows`, o pacote analisa o código na inicialização da aplicação para identificar chamadas obviamente inseguras para replay, como `Carbon::now()`, `Auth::user()`, `DB::`, `Http::` e `random_int()`. O tratamento dos resultados é definido por `workflows.v2.guardrails.boot`:

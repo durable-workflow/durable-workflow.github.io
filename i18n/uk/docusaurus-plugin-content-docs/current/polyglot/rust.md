@@ -392,6 +392,31 @@ pub fn register_charge(worker: &mut Worker) {
 
 Ці SDK-межі не доводять виправлення похідного summary-сховища Core, доставку іншого SDK, embedded-поведінку чи оновлення образу Server. Старіші worker усе ще можуть не надіслати завелику помилку. Див. [політику опублікованого source](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) та [спільний довідник помилок](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Затримки повторних спроб activity {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` рахує загальну кількість спроб разом
+із першою. У `exponential_backoff(initial, coefficient, maximum_interval)`
+значення `None` не задає верхньої межі інтервалу. Передайте `Some(maximum)`,
+щоб явно обмежити інтервали. Типова політика передбачає одну спробу
+з порожнім списком затримок.
+
+Для дев’яти спроб загалом початкова затримка в одну секунду, коефіцієнт два
+та `None` кодують `1, 2, 4, 8, 16, 32, 64, 128` секунд для восьми повторних
+спроб. Скінченний бюджет спроб і початковий строк schedule-to-close, якщо
+його налаштовано, і далі обмежують повторні спроби. Арифметичне переповнення
+або вихід за межі протоколу повертає `ActivityOptionsErrorKind::BackoffOverflow`
+під час валідації.
+
+Replay зберігає весь записаний список затримок і точно порівнює його разом
+з іншими відомими полями політики. Зміна лише максимуму сумісна, якщо
+закодований список залишається ідентичним. Максимум, що змінює список,
+змінює політику, навіть якщо змінений елемент не використовувався. Додавання
+межі в 60 секунд до прикладу змінює його список і може спричинити відмову
+replay з `activity_retry_policy_mismatch`.
+
+Див. [приклад політики повторних спроб Rust](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+та опублікований [API ActivityRetryPolicy](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Локальні activity {#local-activities}
 
 Rust SDK 3.1.0 додає inline local execution на workers із налаштуванням
@@ -714,6 +739,22 @@ Rust SDK записує невеликі недетерміновані знач
 а `deprecate_patch(change_id)` зберігає маркер після завершення старої гілки.
 Спільну durable-семантику описано в
 [side effects](/docs/features/side-effects/) та [версіюванні](/docs/features/versioning/).
+
+## Журналювання workflow з урахуванням replay {#workflow-logging}
+
+Rust SDK 4.17.0 додає `ctx.logger().info("message")` для спостережень із коду workflow. Події надходять до наявного `tracing` subscriber застосунку з target `durable_workflow::workflow` та незмінними прив’язаними SDK полями `namespace`, `workflow_instance_id` і `workflow_run_id`. Налаштуйте subscriber хоста; SDK не встановлює глобальний subscriber.
+
+Звичайні виклики журналювання виконуються знову, коли worker відновлює історію workflow. Logger workflow не видає повідомлень під час replay зафіксованого префікса, query/offline та завершених історій, зокрема після холодної заміни worker, а також поза активним викликом. Він може видавати повідомлення лише в новому виконанні після цього префікса з повною прив’язаною ідентичністю run. `ctx.replay_state()` спостерігає поточну межу спожитої історії, а не Boolean, зафіксований на початку task:
+
+| `WorkflowReplayState` | Спостереження |
+| --- | --- |
+| `Replaying` | Відновлення зафіксованої історії або query; повідомлення workflow пригнічуються. |
+| `Executing` | Нове виконання після зафіксованого префікса; повтор незафіксованої task може повторити повідомлення. |
+| `Unavailable` | Поза цим викликом workflow або без можливості безпечно прочитати стан; повідомлення пригнічуються. |
+
+Порядок довговічних команд має бути незалежним від цього стану спостереження й доставки журналу. Повідомлення незафіксованої спроби може повторитися після збою чи retry; logger не є outbox із гарантією exactly-once. Обробники застосунку мають бути обмеженими й неблокувальними, наприклад із власною чергою журналювання. Panic subscriber з розкручуванням стека ізольовано від результату workflow; переривання процесу та блокувальні обробники залишаються відповідальністю застосунку.
+
+Дивіться [опублікований посібник журналювання](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) та [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-перевірки lifecycle/deadline](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) і [приймання журналювання з чотирма процесами](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) записано на вказаному кортежі native Server 3.10.0 linux/amd64. Інші binding та ширша кваліфікація replay/producer зберігають окремі межі.
 
 ## Правила детермінізму Rust {#rust-determinism-rules}
 

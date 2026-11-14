@@ -187,6 +187,20 @@ Worker は `workflow_entry_arguments_validation` を自動的に通知します�
 
 これらのブリッジは、`durable-workflow/workflow` によって Laravel アプリケーション自体が永続状態を所有し Laravel キューで実行する[組み込み Laravel ワークフロー](/docs/installation/)とは別です。ドレインとロールバックを含め、v1、v2 組み込み、同梱サービスモードブリッジで同じ代表的な Laravel ユースケースを比較するには、[Laravel の採用とランタイム移行](/docs/laravel-adoption/)を参照してください。より広いランタイム境界の比較には[デプロイモード](/docs/polyglot/deployment-modes/)を使います。
 
+## バイナリ値を含む Query 結果 {#query-binary-results}
+
+PHP SDK 3.18.2 は、入れ子の `AvroBinaryValue` バイトを含む正当な Avro 結果の Query 完了を修正します。`result_envelope` が引き続き正規の結果です。SDK は JSON にエンコードできない場合だけ任意のプレーン `result` 表現を省略し、通常の JSON 互換の結果ではその表現を保持します。
+
+[公開済み PHP 3.18.2 / native Server 3.9.1 のインストール後検証](https://github.com/durable-workflow/sdk-php/pull/415#issuecomment-6858062312)（PHP 8.3.36、linux/amd64、SQLite）では、実際の Worker で入れ子のバイナリバイト、通常の JSON、符号付きゼロ、`null` を往復させ、Workflow 完了と正常な Worker 登録解除を確認しています。これは互換性を保つ Query 修正であり、capability の追加や、リクエストキー全体・timeout-cleanup の対応を意味しません。[PHP Query ガイド](https://php.durable-workflow.com/build/messages/#register-a-read-only-query)を参照してください。
+
+## 受理済み Update を後から読む {#read-an-update-outcome}
+
+選択中の PHP SDK %%artifact.publishedPhpSdkVersion%% は、保持された Update を安定した ID で読み取り、再度受理させずに結果を取得できます。`Client::updateOutcome($workflowId, $updateId)` の既定値は `waitFor: 'completed'` です。保留中は `UpdateStillPending` を投げ、完了した結果は正当に `null` になり得ます。`updateOutcomeReceipt()` の既定値は `waitFor: 'accepted'` で、Server のレシートを返すため、`update_status` と `wait_timed_out` を完了結果と分けて確認できます。
+
+これらの GET 読み取りには `update_outcome_reads` capability（native Server 3.6.0 以降）が必要です。非対応なら SDK は `LogicException` を投げ、Update を再送しません。最初の `updateWorkflow()` が保留中の例外には呼び出し元のリクエスト ID が残ります。保留中の GET 読み取りでも `updateId` は保持されますが、元のリクエストキーが不明な場合があります。そのとき `$pending->requestId` は `''`（不明）です。その Update ID で読み取りを続け、空、推測値、内部ハッシュのキーを元のリクエスト ID として送信しないでください。
+
+[公開済み PHP ガイド](https://php.durable-workflow.com/build/messages/#apply-a-tracked-update)にハンドラーとクライアントの手順があります。[インストール済み PHP 3.18.1 / native Server 3.9.1 の検証](https://github.com/durable-workflow/sdk-php/pull/411#issuecomment-6855609359)は、2 回目の Update 受理なしで保留から完了 null への読み取りと、[完了サイズの処理](./server-config-reference.md#workflow-task-completion-size)を確認しています。この証拠は共有 #216 のリクエストキー全体の検証や native timeout-cleanup 対応を意味しません。
+
 ## PHP SDK 3.12 から 3.14 へのアップグレード {#upgrade-to-3-12-through-3-14}
 
 PHP `^8.1`、Laravel ブリッジの下限、ワーカープロトコル `1.20`、コントロールプレーン `2` は 3.11 から変わりません。デプロイ前に次の動作の変更を確認してください。

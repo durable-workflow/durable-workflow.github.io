@@ -139,6 +139,8 @@ Les attributs apparaissent dans :
 - la **chronologie d’historique** : chaque `SearchAttributesUpserted` apparaît comme une entrée typée
 - l’**export d’historique** : les attributs sont inclus dans les exports JSON
 
+Pour les comparaisons typées, intervalles temporels, appartenance, guillemets et pagination HTTP côté Server, utilisez le [Langage de requêtes de visibilité](../polyglot/visibility-query-language.md). Les listes embedded actuelles et les filtres de vues enregistrées de Waterline n’implémentent pas toute cette grammaire. La parité reste en attente dans la [fonction de requêtes de visibilité](https://github.com/durable-workflow/.github/issues/224).
+
 ### Filtres de liste parent/enfant {#parent-child-list-filters}
 
 Les enfants [héritent des attributs de recherche et du memo à la création](./child-workflows.md#child-metadata-inheritance), puis peuvent modifier leurs valeurs indépendamment. Filtrer un attribut hérité n’exclut pas implicitement les enfants. Pour un attribut keyword enregistré, la requête Server `customer = 'customer-42'` peut renvoyer le parent et tous les enfants conservant cette valeur. Le memo reste une métadonnée non indexée, pas un autre filtre d’attribut de recherche.

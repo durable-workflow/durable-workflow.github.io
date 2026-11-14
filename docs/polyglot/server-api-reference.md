@@ -422,7 +422,7 @@ admin role and `X-Durable-Workflow-Control-Plane-Version: 2`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | List workflow instances. Supports filters such as status, type, query text, and limit. |
+| `GET` | `/api/workflows` | List workflow runs in the namespace, with status, type, visibility query, `page_size` and `next_page_token`. |
 | `POST` | `/api/workflows` | Start a workflow instance. |
 | `GET` | `/api/workflows/{workflowId}` | Describe the current run for one workflow id. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Return bounded diagnostic facts for stuck-run investigation. |
@@ -431,6 +431,8 @@ admin role and `X-Durable-Workflow-Control-Plane-Version: 2`.
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Return bounded diagnostic facts for a selected run. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Page through run history events. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Export the archival replay bundle for a run. |
+
+For supported fields, typed comparisons, quoting, precedence, errors and paging examples, see the [Visibility Query Language](./visibility-query-language.md). This listing grammar differs from a workflow's named query handlers and from schedule-list filters.
 
 Start requests use the language-neutral control-plane shape:
 
@@ -848,6 +850,37 @@ Schedule routes are control-plane routes.
 Search attribute names and types are part of the namespace search contract.
 Avoid using high-cardinality attributes for operator dashboards or metric
 labels.
+
+### Schedule dispatch-summary authority {#schedule-dispatch-summary}
+
+Published native Server 3.10.0 adds a complete `dispatch_summary` with
+`version: 1`, `state`, `last_outcome` and `buffered_actions_count` to schedule
+list items and describe responses. Older producers omit it; an empty list
+does not establish support. Inspect the complete field rather than infer
+support from a version. The [tagged schedule contract](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules)
+defines the exact shape.
+
+| State | Last outcome | Current buffer count |
+|---|---|---|
+| `known` | Complete recorded dispatch | Integer from 0 through 9007199254740991 |
+| `never` | `null`, established only by new creation | `0` |
+| `unavailable` | `null`, including legacy or invalid stored authority | `null` |
+
+Known outcomes are `started`, `buffered`, `skipped` or `failed`, with the
+complete outcome ID, recording time, reason and applicable workflow/run
+identities. The current buffer count is separate: a later drain can leave a
+recorded buffered outcome with count zero. The latest workflow's execution
+status is also separate; a Started dispatch may point to a workflow that later Failed.
+
+Each summary is bounded to 4096 serialized UTF-8 bytes. A transition that
+cannot record the complete contract stores unavailable authority, without
+truncating its reason or changing the scheduling operation. Absent, null,
+partial or unsupported data is not v1 authority. A valid unavailable summary
+overrides legacy evidence. A later describe owns the whole summary, including
+absence or null; never merge it field by field with an older list result.
+Schema upgrades do not reconstruct authority from legacy arrays. The bounded
+list-page read needs no per-row describe requests. This is producer behavior;
+Waterline's published consumer and visible-refresh acceptance remain separately qualified.
 
 ### Schedule list filters and continuation {#schedule-list-filters}
 

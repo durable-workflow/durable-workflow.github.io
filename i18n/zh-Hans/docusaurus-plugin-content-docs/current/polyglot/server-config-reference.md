@@ -18,6 +18,8 @@ keywords:
 
 本页说明 Durable Workflow Server 镜像面向运维人员的 `DW_*` 环境变量契约。构建部署模板、检查生产配置，或将旧的 `WORKFLOW_*` / `ACTIVITY_*` 名称迁移到 v2 Server 契约时，请参考本页。当前 Server 是原生 3.x Server；[原生 Server 3.x](#native-server-3x) 列出它遵循、忽略或拒绝的设置。PHP Server 2.x 已冻结在 2.11.8。
 
+PHP Server 2.11.8 仍未修补 11 月的 Laravel 安全公告问题。现有固定版本部署应遵循[有条件的暴露说明及 ingress/签名链接措施](./server.md#retired-php-server-security)；更改这些设置不会修补镜像。
+
 PHP 2.x Server 还使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_*`、`QUEUE_CONNECTION` 和 `CACHE_STORE`。这些变量属于部署基础设施，并非 Durable Workflow API 控制项，因此单独列出。
 
 ## 原生 Server 3.x {#native-server-3x}
@@ -50,7 +52,6 @@ PHP 2.x Server 还使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_
 | 原生 Server 没有命名空间持久化状态限制 | `DW_NAMESPACE_DURABLE_HARD_LIMITS`: 未设置或 `{}`<br />`DW_NAMESPACE_DURABLE_LIMITS`: 未设置或 `{}`<br />`DW_NAMESPACE_DURABLE_OVERRIDES`: 未设置或 `{}` |
 | 原生 Server 没有命名空间请求准入限制 | `DW_NAMESPACE_ADMISSION_OVERRIDES`: 未设置或 `{}`<br />`DW_NAMESPACE_HARD_MAX_CONCURRENT_REQUESTS`: 未设置或为空<br />`DW_NAMESPACE_HARD_MAX_REQUESTS_PER_MINUTE`: 未设置或为空<br />`DW_NAMESPACE_MAX_CONCURRENT_REQUESTS`: 未设置或为空<br />`DW_NAMESPACE_MAX_REQUESTS_PER_MINUTE`: 未设置或为空 |
 | 原生 Server 没有服务边界策略 | `DW_SERVICE_BOUNDARY_CROSS_NAMESPACE_DEFAULT`: 未设置或 `allow`<br />`DW_SERVICE_BOUNDARY_HARD_MAX_IN_FLIGHT`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_HARD_RATE_LIMIT_PER_MINUTE`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_MAX_IN_FLIGHT`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_NAMESPACE_MAX_IN_FLIGHT`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_NAMESPACE_OVERRIDES`: 未设置或 `{}`<br />`DW_SERVICE_BOUNDARY_NAMESPACE_RATE_LIMIT_PER_MINUTE`: 未设置或为空<br />`DW_SERVICE_BOUNDARY_RATE_LIMIT_PER_MINUTE`: 未设置或为空 |
-| 原生 Server 没有存储准入文件 | `DW_STORAGE_ADMISSION_FILE`: 未设置或为空<br />`DW_STORAGE_ADMISSION_SOURCE`: 未设置或为空 |
 | 原生 Server 没有任务准入限制 | `DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: 未设置、为空或不是正数<br />`DW_ACTIVITY_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: 未设置、为空或不是正数<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE`: 未设置、为空或不是正数<br />`DW_ACTIVITY_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: 未设置、为空或不是正数<br />`DW_TASK_QUEUE_ADMISSION_OVERRIDES`: 未设置或 `{}`<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_NAMESPACE`: 未设置、为空或不是正数<br />`DW_WORKFLOW_TASK_MAX_ACTIVE_LEASES_PER_QUEUE`: 未设置、为空或不是正数<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE`: 未设置、为空或不是正数<br />`DW_WORKFLOW_TASK_MAX_DISPATCHES_PER_MINUTE_PER_NAMESPACE`: 未设置、为空或不是正数 |
 | 原生 Server 只实现一个 Worker 协议版本 | `DW_WORKER_PROTOCOL_VERSION`: 未设置或 `1.20` |
 | 原生 Server 从不信任转发的归属请求头 | `DW_TRUST_FORWARDED_ATTRIBUTION_HEADERS`: 未设置或 `false` |
@@ -61,7 +62,11 @@ PHP 2.x Server 还使用常规 Laravel 运行时设置，例如 `DB_*`、`REDIS_
 | 原生 Server 只将外部载荷存储在本地磁盘上 | `DW_EXTERNAL_PAYLOAD_S3_BUCKET`: 未设置或为空 |
 | 原生 Server 只支持自身的令牌认证 | `DW_AUTH_BACKWARD_COMPATIBLE`: 未设置或 `true`<br />`DW_AUTH_PROVIDER`: 未设置或为空<br />`DW_PRINCIPAL_TOKENS`: 未设置或为空 |
 
-原生 Server 接受但忽略：`DW_ADMIN_SIGNATURE_KEY`、`DW_AUTH_METHOD_HEADER`、`DW_AUTH_STATUS_HEADER`、`DW_BOOTSTRAP_DELAY_SECONDS`、`DW_BOOTSTRAP_RETRIES`、`DW_CALLER_LABEL_HEADER`、`DW_CALLER_TYPE_HEADER`、`DW_COMPRESSION_ENABLED`、`DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`、`DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`、`DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`、`DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`、`DW_EXTERNAL_PAYLOAD_S3_REGION`、`DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`、`DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`、`DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`、`DW_MAX_HISTORY_EVENTS`、`DW_MAX_TASKS_PER_POLL`、`DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`、`DW_OBSERVABILITY_CONTEXT_ENABLED`、`DW_OPERATOR_SIGNATURE_KEY`、`DW_PACKAGE_PROVENANCE_PATH`、`DW_POLLING_CACHE_PATH`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_SIGNATURE_KEY`、`DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`、`DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`、`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS`、`DW_V2_CACHE_VALIDATION_MODE`、`DW_V2_GUARDRAILS_BOOT`、`DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`、`DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`、`DW_V2_MATCHING_ROLE_QUEUE_WAKE`、`DW_V2_TASK_DISPATCH_MODE`、`DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`、`DW_V2_TENANCY_ENVIRONMENT`、`DW_V2_TENANCY_ORGANIZATION`、`DW_V2_TENANCY_PROJECT`、`DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`、`DW_V2_VALIDATE_CACHE_BACKEND`、`DW_WAKE_SIGNAL_TTL_SECONDS`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`、`DW_WORKER_POLL_INTERVAL_MS`、`DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`、`DW_WORKER_SIGNATURE_KEY`。
+原生 Server 接受但忽略：`DW_ADMIN_SIGNATURE_KEY`、`DW_AUTH_METHOD_HEADER`、`DW_AUTH_STATUS_HEADER`、`DW_BOOTSTRAP_DELAY_SECONDS`、`DW_BOOTSTRAP_RETRIES`、`DW_CALLER_LABEL_HEADER`、`DW_CALLER_TYPE_HEADER`、`DW_COMPRESSION_ENABLED`、`DW_DUE_TIMER_RECOVERY_SCAN_LIMIT`、`DW_EXPIRED_WORKFLOW_TASK_RECOVERY_TTL_SECONDS`、`DW_EXTERNAL_PAYLOAD_S3_ACCESS_KEY_ID`、`DW_EXTERNAL_PAYLOAD_S3_ENDPOINT`、`DW_EXTERNAL_PAYLOAD_S3_REGION`、`DW_EXTERNAL_PAYLOAD_S3_SECRET_ACCESS_KEY`、`DW_EXTERNAL_PAYLOAD_S3_SESSION_TOKEN`、`DW_EXTERNAL_PAYLOAD_S3_USE_PATH_STYLE_ENDPOINT`、`DW_MAX_HISTORY_EVENTS`、`DW_MAX_TASKS_PER_POLL`、`DW_OBSERVABILITY_BAGGAGE_ALLOWLIST`、`DW_OBSERVABILITY_CONTEXT_ENABLED`、`DW_OPERATOR_SIGNATURE_KEY`、`DW_PACKAGE_PROVENANCE_PATH`、`DW_POLLING_CACHE_PATH`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT`、`DW_QUERY_TASK_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_SIGNATURE_KEY`、`DW_SQLITE_CLAIM_LOCK_TTL_SECONDS`、`DW_SQLITE_CLAIM_LOCK_WAIT_SECONDS`、`DW_V2_CACHE_VALIDATION_MODE`、`DW_V2_GUARDRAILS_BOOT`、`DW_V2_LIMIT_SEARCH_ATTRIBUTE_SIZE_BYTES`、`DW_V2_LIMIT_WARNING_THRESHOLD_PERCENT`、`DW_V2_MATCHING_ROLE_QUEUE_WAKE`、`DW_V2_TASK_DISPATCH_MODE`、`DW_V2_TASK_REPAIR_LOOP_THROTTLE_SECONDS`、`DW_V2_TENANCY_ENVIRONMENT`、`DW_V2_TENANCY_ORGANIZATION`、`DW_V2_TENANCY_PROJECT`、`DW_V2_UPDATE_WAIT_POLL_INTERVAL_MS`、`DW_V2_VALIDATE_CACHE_BACKEND`、`DW_WAKE_SIGNAL_TTL_SECONDS`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT`、`DW_WORKER_LONG_POLL_MAX_CONCURRENT_PER_NAMESPACE`、`DW_WORKER_LONG_POLL_RESERVED_HTTP_WORKERS`、`DW_WORKER_POLL_INTERVAL_MS`、`DW_WORKER_POLL_SIGNAL_CHECK_INTERVAL_MS`、`DW_WORKER_SIGNATURE_KEY`。
+
+原生 3.9.1 支持通过操作方发布的本地观测启用存储准入控制。将 `DW_STORAGE_ADMISSION_FILE` 设为绝对路径，将 `DW_STORAGE_ADMISSION_SOURCE` 设为预期来源标识；`DW_STORAGE_ADMISSION_MAX_AGE_SECONDS` 默认为 15（允许范围 1–300）。路径和来源均未设置时禁用。缺失、无效或过期观测会以 `503 storage_admission_unavailable` 拒绝新工作；`draining` 或 `fenced` 观测以 `503 storage_pressure` 拒绝。Readiness 同样返回 503，而数据库健康检查可能仍为 200。[已发布的 3.9.1 文件消费验证](https://github.com/durable-workflow/server/issues/951#issuecomment-6853859351)确认这些情况以及原子替换文件后的恢复；不验证物理配额测量或生产 Cloud 映射。这是准入控制，不是写入屏障或字节预留。
+
+原生 3.9.2 还要求已打开的观测文件描述符归 root 或 Server 的有效 UID 所有。其他所有者会导致 `storage_admission_unavailable`；所有者、类型、模式、内容检查均使用同一描述符。操作方仍须提供可信祖先目录及预期的只读容器映射：运行时不强制检查祖先所有权。[已发布的 3.9.2 修正](https://github.com/durable-workflow/server/releases/tag/3.9.2#storage-admission-observation-ownership)不代表物理采集器或 Cloud 采用验收，也不会增加 draining 期间的完成上传许可。
 
 原生 Server 没有服务器端任务队列租约上限或派发上限、预算组、命名空间请求准入、命名空间持久状态配额或保持中轮询上限，目前也没有对应的原生替代方案。每个原生 Server 进程最多打开四个数据库连接。查询任务有固定上限：每个命名空间最多16个待处理或已租用的任务，超出后新查询会与 PHP 一样以 HTTP `429` 和 `query_task_queue_full` 被拒绝；该上限不可配置。要在原生 Server 上限制任务并发，请调整每个 SDK Worker 的执行槽数量和 Worker 数量。PHP 2.x 的控制项见[任务队列准入](/docs/polyglot/task-queue-admission)。
 
@@ -282,7 +287,9 @@ Sticky 执行没有独立的 Server 镜像环境变量。关于 sticky 缓存生
 
 PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器校验上限是固定的。Native Server 3.x 支持的设置见其[实现说明](#native-server-3x)。在 native 3.8.0 中，`DW_MAX_PAYLOAD_BYTES=0` 会将普通请求和工作流任务完成请求的上限设为零字节，拒绝非空请求体。操作名上限固定为 256 字节。
 
-原生 3.9.1 仍对信号的 `request_id` 执行 255 个 UTF-8 字节的检查。因此，255 个字符的多字节键也可能返回 `422 invalid_request_id`。[安装后 CLI 验证](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)跟踪这一已发布版本的限制；该验证不代表共享 #216 的请求键完整验收通过。
+原生 3.9.2 在信号和更新命令键的整个受理路径上应用现有的 255 Unicode 码点上限。255 字符的多字节 `request_id` 可被接受，256 字符则不经受理即被拒绝。这修复了 [3.9.1 按 UTF-8 字节数拒绝的问题](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)。重试键是请求体中的 `request_id`；HTTP `X-Request-Id` 头不是命令键。
+
+3.9.2 的新键控信号和已接受更新回执返回字面 `request_id`，并标明 `retained:false`、`intent_verified:true`。保留回执返回该键及 `retained:true`，保留原始命令、run、更新的标识。现代意图证明标明 `intent_verified:true`；兼容的意图记录引入前的旧式读取标明 `intent_verified:false`。无键和 bridge 回执保持原状。[已发布修正](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)不代表[共享 #216](https://github.com/durable-workflow/.github/issues/216) 的所有已安装客户端组合均已验证；此前 3.9.1 的失败必须在确切的修正后组合上重跑。
 
 当前配置值发布在 `GET /api/cluster/info` 响应的 `limits` 下，客户端可在运行时发现这些限制：
 
@@ -334,7 +341,9 @@ Rust SDK 4.16 完成规划器遵守公布的正整数上限，即使它低于普
 
 Python SDK 2.17 和 Rust SDK 4.15 包含类型化拒绝处理。Server 3.8.0 的已发布 Python 验证在收到 HTTP 413 前遇到 `httpx.ReadError`，使 workflow 保持待定。原生 3.9.1 通过有界丢弃请求余下数据修复此响应路径：最多 64 MiB、最多两秒，然后返回原始拒绝并关闭连接。超出任一边界的上传仍可能遇到传输错误。
 
-已发布的 Python SDK 2.17.1 与经过验证的原生 Server 3.9.1（linux/amd64、SQLite）现已通过[实际安装 Worker 的验证](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)：预算内 300 × 10 KB fan-out；过大的完成请求只产生一次类型化 413 和一次结构性失败，部分 activity 为零；随后同一 Worker 成功执行后续任务。此结果只验证这个确切的 Python/Server 组合。PHP 仍需独立的安装后验证；Rust 4.16 的验证如下。共享 #228 仍未关闭。共享 #216 的请求键验证是独立的。
+已发布的 Python SDK 2.17.1 与经过验证的原生 Server 3.9.1（linux/amd64、SQLite）现已通过[实际安装 Worker 的验证](https://github.com/durable-workflow/.github/issues/228#issuecomment-6853834512)：预算内 300 × 10 KB fan-out；过大的完成请求只产生一次类型化 413 和一次结构性失败，部分 activity 为零；随后同一 Worker 成功执行后续任务。此结果只验证这个确切的 Python/Server 组合。
+
+[已发布 PHP SDK 3.18.1 / 原生 Server 3.9.1 的验证](https://github.com/durable-workflow/.github/issues/228#issuecomment-6855610551)（PHP 8.3.36、linux/amd64、SQLite）也通过了无外部存储的 300 × 10 KB、60 × 450 KB 完成请求仅产生一次类型化 413 和一次结构性失败且部分 activity 为零、随后同一 Worker 完成新工作的验证。此结果只验证这个确切的 PHP/Server 组合；Rust 4.16 的验证如下。共享 #228 的跨产品关闭和共享 #216 的请求键验收仍需分别处理。
 
 要让完成请求保持在上限之内：
 

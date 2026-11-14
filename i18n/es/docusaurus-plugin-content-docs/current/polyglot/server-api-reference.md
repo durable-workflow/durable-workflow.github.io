@@ -277,7 +277,7 @@ Las rutas de workflow son de operador/plano de control. Requieren rol operator o
 
 | Método | Ruta | Finalidad |
 | --- | --- | --- |
-| `GET` | `/api/workflows` | Listar instancias. Admite filtros por estado, tipo, texto de consulta y límite. |
+| `GET` | `/api/workflows` | Listar ejecuciones de workflow del namespace, con estado, tipo, consulta de visibilidad, `page_size` y `next_page_token`. |
 | `POST` | `/api/workflows` | Iniciar una instancia. |
 | `GET` | `/api/workflows/{workflowId}` | Describir la ejecución actual de un ID de workflow. |
 | `GET` | `/api/workflows/{workflowId}/debug` | Devolver diagnósticos acotados de una ejecución atascada. |
@@ -286,6 +286,8 @@ Las rutas de workflow son de operador/plano de control. Requieren rol operator o
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/debug` | Devolver diagnósticos acotados de una ejecución seleccionada. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history` | Paginar eventos de historial. |
 | `GET` | `/api/workflows/{workflowId}/runs/{runId}/history/export` | Exportar el paquete de reproducción para archivo. |
+
+Consulte campos, comparaciones tipadas, comillas, precedencia, errores y ejemplos de paginación en el [Lenguaje de consultas de visibilidad](./visibility-query-language.md). Esta gramática difiere de los manejadores de consultas con nombre del workflow y de los filtros de schedules.
 
 Las solicitudes de inicio utilizan la estructura independiente del lenguaje:
 
@@ -610,6 +612,20 @@ Las programaciones son rutas del plano de control.
 | `DELETE` | `/api/search-attributes/{name}` | Eliminar un atributo. |
 
 Los nombres y tipos de atributos forman parte del contrato de búsqueda del espacio. Evita atributos de alta cardinalidad en paneles operativos o etiquetas de métricas.
+
+### Autoridad del resumen de despacho de programaciones {#schedule-dispatch-summary}
+
+El Server nativo 3.10.0 publicado añade un `dispatch_summary` completo con `version: 1`, `state`, `last_outcome` y `buffered_actions_count` a los elementos de lista y respuestas describe de programaciones. Los productores antiguos lo omiten; una lista vacía no demuestra soporte. Inspeccione el campo completo en vez de inferir soporte por versión. El [contrato de programaciones etiquetado](https://github.com/durable-workflow/server/blob/3.10.0/docs/server-reference.md#schedules) define la forma exacta.
+
+| Estado | Último resultado | Recuento actual del búfer |
+|---|---|---|
+| `known` | Despacho completo registrado | Entero de 0 a 9007199254740991 |
+| `never` | `null`, establecido solo al crear | `0` |
+| `unavailable` | `null`, incluida autoridad antigua o almacenada inválida | `null` |
+
+Los resultados conocidos son `started`, `buffered`, `skipped` o `failed`, con ID de resultado, instante de registro, motivo e identidades workflow/run aplicables completos. El recuento actual del búfer es independiente: vaciarlo después puede dejar un resultado buffered registrado con recuento cero. El estado de ejecución del workflow más reciente también es independiente; un despacho Started puede apuntar a un workflow que después Failed.
+
+Cada resumen está limitado a 4096 bytes UTF-8 serializados. Una transición incapaz de registrar el contrato completo guarda autoridad no disponible, sin truncar el motivo ni cambiar la operación de programación. Datos ausentes, null, parciales o no soportados no son autoridad v1. Un resumen unavailable válido prevalece sobre evidencia antigua. Un describe posterior es dueño del resumen completo, incluso ausencia o null; nunca lo combine campo por campo con una lista anterior. Las actualizaciones de esquema no reconstruyen autoridad a partir de arrays antiguos. La lectura acotada de la página no necesita describir cada fila. Es comportamiento del productor; el consumidor publicado y la actualización visible de Waterline se cualifican por separado.
 
 ### Filtros y continuación de listas de programaciones {#schedule-list-filters}
 
