@@ -115,6 +115,7 @@ Python-SDK 2.15 und 2.16 ergänzen:
 - **Sticky-History-Suffixe (2.16).** Worker mit Sticky-Cache (`sticky_cache_capacity > 0`) melden `sticky_history_suffix`. Auf Server 3.5.0 oder neuer erhält ein Sticky-Treffer nur die Historie nach der zwischengespeicherten Sequenz. Ein Suffix, das die zwischengespeicherte Historie nicht exakt fortsetzt, wird verworfen und die vollständige Historie abgerufen.
 - **Typisierte Workflow-Werte (2.15).** `@workflow.defn(..., typed=True)` dekodiert Argumente von `run` und Handlern gemäß ihren Annotationen, und `result_type=` dekodiert Ergebnisse von Kind-Workflows und Clients. Untypisierte Workflows erhalten wie bisher einfache Werte, laufende Historien werden also unverändert abgespielt.
 - **Lazy Seiten (2.15).** `Client.iter_workflows`, `Client.iter_history` und `WorkflowHandle.iter_history` folgen Seiten-Tokens und halten dabei nur eine Seite.
+  Siehe [Seiten für Workflow-Listen und Verlauf](#workflow-list-and-history-pages) für Traversierung, Fortsetzung und Fehlerbehandlung.
 - **Aktivitäten einer Ausführung (2.15).** `Client.get_run_activities` und `WorkflowHandle.get_activities` liefern typisierte Aktivitäts- und Versuchsmetadaten, und `ActivityInfo.activity_execution_id` stellt die logische Aktivitätsidentität bereit.
 - **Backoff lokaler Aktivitäten (2.15.1).** Wiederholungen nach dem Ende der Backoff-Liste verwenden erneut den letzten Eintrag, statt sofort erneut zu versuchen.
 
@@ -407,10 +408,13 @@ Die entsprechenden CLI-Befehle sind `dw task-queue:build-ids`,
 | --- | --- | --- |
 | `await client.start_workflow(...)` | `WorkflowHandle` | `WorkflowAlreadyStarted`, `InvalidArgument`, `Unauthorized`, `ServerError` |
 | `await client.describe_workflow(workflow_id)` | `WorkflowExecution` | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
-| `await client.list_workflows(...)` | `WorkflowList` | Authentifizierungs-/Serverfehler |
+| `await client.list_workflows(...)` | `WorkflowList` (eine Seite) | Authentifizierungs-/Serverfehler |
+| `client.iter_workflows(...)` | `AsyncIterator[WorkflowExecution]` | Seitenfehler und Abbruch werden während der Iteration weitergegeben. [Seitennavigation](#workflow-list-and-history-pages). |
 | `await client.list_workflow_runs(workflow_id)` | `WorkflowRunList` | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
 | `await client.describe_workflow_run(workflow_id, run_id)` | `WorkflowRun` | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
-| `await client.get_history(workflow_id, run_id)` | decodierte Historiennutzlast | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
+| `await client.get_history(workflow_id, run_id, ...)` | eine Seite dekodierter Historie | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
+| `client.iter_history(workflow_id, run_id, ...)` | `AsyncIterator[dict[str, Any]]` | Seitenfehler und Abbruch werden während der Iteration weitergegeben. |
+| `handle.iter_history(...)` | `AsyncIterator[dict[str, Any]]` | Dieselbe Historientraversierung. Erfordert ein Handle mit expliziter `run_id`. |
 | `await client.export_history(workflow_id, run_id)` | decodierte Archivhistoriennutzlast | `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
 | `await client.signal_workflow(workflow_id, signal_name, args=None)` | Annahmequittung (`dict`) | `WorkflowNotFound`, `InvalidArgument`, Authentifizierungs-/Serverfehler |
 | `await client.query_workflow(workflow_id, query_name, args=None)` | Query-Quittung (`dict`) | `QueryFailed`, `WorkflowNotFound`, Authentifizierungs-/Serverfehler |
@@ -2199,4 +2203,12 @@ bereit. Setzen Sie keine selbst gehostete Server-Adresse ein. Siehe
 
 ## Seiten für Workflow-Listen und Verlauf {#workflow-list-and-history-pages}
 
-Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `await client.list_workflows(...)` / `await client.get_history(workflow_id, run_id, ...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client Python 2.9.0](https://github.com/durable-workflow/sdk-python/blob/2.9.0/src/durable_workflow/client.py) definiert aktuelle Parameter; neue automatische Iteratoren werden damit nicht zugesagt.
+Das ausgewählte stabile Python SDK bietet die verzögerten Iteratoren `Client.iter_workflows`, `Client.iter_history` und `WorkflowHandle.iter_history`. Verwenden Sie `async for`, um Workflow-Ausführungen oder Dictionaries mit Historienereignissen in der Reihenfolge des Servers zu lesen. Siehe die [SDK-eigenen Beispiele und die Referenz zur Seitennavigation](https://python.durable-workflow.com/sdk-reference/#whole-run-histories-and-workflow-lists) und den [veröffentlichten Client-Quellcode](https://github.com/durable-workflow/sdk-python/blob/2.17.2/src/durable_workflow/client.py).
+
+Jeder Iterator lädt jeweils eine Seite und behält frühere Ergebnisseiten nicht im Speicher. Er folgt auch leeren Seiten mit Fortsetzung und endet, wenn die Fortsetzung fehlt, `None` oder leer ist. Nach dem Beenden der Iteration wird keine weitere Seite geladen. HTTP-Fehler, Abbruch, Historienseiten, deren `events`-Feld keine Liste von Dictionaries ist, sowie ungültige oder zyklische Fortsetzungen werden weitergegeben. Bereits gelieferte Elemente werden nicht zurückgenommen. Behandeln Sie daher eine unterbrochene Traversierung als unvollständig.
+
+Behalten Sie Namespace, Filter und Seitengröße während der Traversierung bei. Die Historie erfordert außerdem dieselben expliziten Werte für `workflow_id` und `run_id`. Der Handle-Helfer lehnt ein Handle ohne `run_id` ab. Eine Namespace-Änderung wird vor der nächsten Anfrage abgelehnt. Übergeben Sie `next_page_token`, um dieselbe Auswahl an einer undurchsichtigen Fortsetzung fortzusetzen. Parsen oder verändern Sie das Token nicht und verwenden Sie es nicht für andere Filter, Namespaces oder Läufe. Die Traversierung einer sich ändernden Workflow-Liste erzeugt keinen Snapshot.
+
+Die bestehenden Aufrufe `await client.list_workflows(...)` und `await client.get_history(workflow_id, run_id, ...)` liefern weiterhin **eine Seite**. Übergeben Sie bei manueller Seitennavigation das zurückgegebene `next_page_token` an den nächsten Aufruf und enden Sie beim letzten fehlenden/null/leeren Token. Eine Teilseite oder eine Folge von Ereignis-Dictionaries ist kein Replay-Bundle. Verwenden Sie für Offline-Replay `await client.export_history(workflow_id, run_id)` oder `await handle.export_history()`.
+
+Die [Pagination-Prüfung mit installiertem SDK 2.17.2 / nativem Server 3.9.2](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877331165) deckte gefilterte Listen, die Historie eines ausgewählten Laufs, undurchsichtige Fortsetzung, frühzeitiges Schließen und die Ablehnung einer Namespace-Änderung ab, mit [unabhängiger Abnahme](https://github.com/durable-workflow/sdk-python/pull/332#issuecomment-6877373099).
