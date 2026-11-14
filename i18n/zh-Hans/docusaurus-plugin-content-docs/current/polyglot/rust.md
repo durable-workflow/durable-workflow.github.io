@@ -327,6 +327,26 @@ pub fn register_charge(worker: &mut Worker) {
 
 这些 SDK 限制不能证明 Core 派生 summary 存储已修复、其他 SDK 已交付、embedded 行为已验证或 Server 镜像已采用。旧 worker 仍可能无法报告过大的失败。请参阅[已发布源码策略](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits)和[共享失败指南](../failures-and-recovery.md#rust-failure-report-limits)。
 
+## 活动重试退避 {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` 计算包括首次尝试在内的总尝试次数。
+对于 `exponential_backoff(initial, coefficient, maximum_interval)`，传入 `None`
+表示不设置间隔上限。请传入 `Some(maximum)` 来显式限制间隔。默认策略仍为一次尝试
+和空的退避列表。
+
+总共九次尝试、初始延迟一秒、系数为二并传入 `None` 时，八次重试编码的延迟为
+`1, 2, 4, 8, 16, 32, 64, 128` 秒。有限的尝试次数预算和原始 schedule-to-close
+期限（如果已配置）仍然约束重试。算术溢出或超出协议范围会在验证时返回
+`ActivityOptionsErrorKind::BackoffOverflow`。
+
+重放保留完整的已记录延迟列表，并将它和其他已知策略字段进行精确比较。仅更改最大值时，
+只要编码后的列表保持相同，就仍然兼容。如果最大值改变了列表，即使改变的条目未曾使用，
+也是策略变更。为该示例添加 60 秒上限会改变其列表，可能以
+`activity_retry_policy_mismatch` 拒绝重放。
+
+请参阅 [Rust 重试策略示例](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+和已发布的 [ActivityRetryPolicy API](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff)。
+
 ## 本地活动 {#local-activities}
 
 Rust SDK 3.1.0 在配置了 `Worker::local_activities(true)` 的 Worker 上增加内联本地执行。使用普通活动注册方法注册回调，然后使用工作流上下文的本地活动方法。重试和超时配置见[可运行示例](https://github.com/durable-workflow/sdk-rust/blob/3.1.0/examples/local_activities.rs)及 [LocalActivityOptions 参考](https://rust.durable-workflow.com/durable_workflow/struct.LocalActivityOptions.html)。

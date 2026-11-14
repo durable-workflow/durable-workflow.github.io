@@ -392,6 +392,31 @@ Falhas locais são limitadas antes da observação pelo workflow, incluindo a no
 
 Estes limites SDK não comprovam correção de armazenamento de resumo Core, entrega de outro SDK, comportamento embedded ou adoção em imagem Server. Workers antigos ainda podem não enviar uma falha excessiva. Veja a [política no source publicado](https://github.com/durable-workflow/sdk-rust/blob/dd58dd146f1337c3be24ad18fe65e3bb31d78b58/README.md#failure-report-limits) e a [orientação comum](../failures-and-recovery.md#rust-failure-report-limits).
 
+## Backoff de novas tentativas de atividade {#activity-retry-backoff}
+
+`ActivityRetryPolicy::new(max_attempts)` conta todas as tentativas, incluindo
+a primeira. Com `exponential_backoff(initial, coefficient, maximum_interval)`,
+passar `None` não define um limite de intervalo. Passe `Some(maximum)` para
+limitar os intervalos explicitamente. A política padrão continua sendo uma
+tentativa com uma lista de backoff vazia.
+
+Para nove tentativas no total, um atraso inicial de um segundo, coeficiente
+dois e `None` codificam `1, 2, 4, 8, 16, 32, 64, 128` segundos para as oito
+novas tentativas. O orçamento finito de tentativas e o prazo original de
+schedule-to-close, quando configurado, continuam limitando as tentativas.
+Um estouro aritmético ou dos limites do protocolo retorna
+`ActivityOptionsErrorKind::BackoffOverflow` durante a validação.
+
+O replay preserva a lista completa de atrasos registrada e a compara
+exatamente, junto com os outros campos conhecidos da política. Alterar apenas
+o máximo é compatível se a lista codificada continuar idêntica. Um máximo
+que muda a lista muda a política, mesmo que a entrada alterada não tenha
+sido usada. Adicionar um limite de 60 segundos ao exemplo muda sua lista
+e pode levar à recusa do replay com `activity_retry_policy_mismatch`.
+
+Veja a [receita Rust de políticas de nova tentativa](https://github.com/durable-workflow/sdk-rust/blob/7325699d7f09e57293d66169541d26efdd484f82/README.md#activity-retry-policies)
+e a [API publicada de ActivityRetryPolicy](https://rust.durable-workflow.com/durable_workflow/struct.ActivityRetryPolicy.html#method.exponential_backoff).
+
 ## Atividades locais {#local-activities}
 
 O SDK Rust 3.1.0 adiciona execução local inline em workers configurados com
