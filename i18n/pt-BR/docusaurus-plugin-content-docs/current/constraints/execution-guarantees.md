@@ -128,6 +128,8 @@ público, não autoridade do claim, e não faz um efeito externo ocorrer
 exatamente uma vez. Mantenha a idempotência do destino, chaves distintas
 para efeitos diferentes e reconciliação de resultados.
 
+Atividades PHP em modo serviço expõem `ActivityContext::activityExecutionId`, somente leitura e nullable, a partir do claim recebido, com `workflowId` e `runId` do workflow e execução proprietários. Mantenha o ID lógico de execução entre tentativas. Identidade ausente permanece `null`; um ID de tarefa, tentativa ou sessão não é fallback. O [guia de identidade PHP](../polyglot/php.md#activity-identity) vincula o exemplo de chave de serviço do SDK e define os casos ausente, sessão, prepared-local histórico, inline-local e sem Server. Esses acessores são metadados públicos, não autoridade do claim. Efeitos externos continuam exigindo idempotência no destino, chaves distintas para efeitos distintos e reconciliação de resultados.
+
 ## O que a aplicação precisa tornar idempotente {#what-developers-must-make-idempotent}
 
 Você **não** precisa tornar o próprio replay idempotente. O framework reconstrói o estado a partir do histórico confirmado.
