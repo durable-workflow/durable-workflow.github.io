@@ -1108,6 +1108,39 @@ async def long_running_task(items: list) -> dict:
     return {"processed": len(items)}
 ```
 
+#### Identidade da execução lógica de uma atividade {#activity-identity}
+
+Python SDK 2.15.0 e posteriores expõem o campo opcional somente leitura
+`activity.context().info.activity_execution_id`. Ele identifica uma execução
+lógica de atividade entre tentativas. `info.workflow_id` e `info.run_id`
+identificam a instância de workflow e a execução às quais ela pertence.
+Use o ID da execução lógica como chave de idempotência do serviço externo.
+Os IDs de tarefa e tentativa mudam ao tentar novamente e não devem substituí-lo.
+
+IDs de execução ausentes, inválidos ou em branco continuam sendo `None`,
+inclusive em claims antigos. Strings recebidas que não estão em branco
+preservam a grafia exata. Se uma operação exigir essa chave, recuse-a antes
+do efeito externo quando o ID estiver indisponível. Atividades roteadas por
+sessão usam a identidade de seu claim comum. Atividades locais preparadas
+usam o ID de execução de seu recibo de admissão validado. Atividades locais
+inline não têm ID de execução admitido e expõem `None`, mas preservam os
+IDs do workflow e da execução pai. Mocks sem Server não criam identidade
+de atividade do Server.
+
+Consulte o exemplo de modo serviço no [guia do SDK sobre o helper de chave de idempotência e a identidade de atividade](https://python.durable-workflow.com/sdk-reference/#activity-execution-identity).
+Atribua sufixos de operação estáveis a operações externas diferentes e
+garanta que o serviço de destino respeite a chave. Um ID de execução é
+metadado público, não prova de um claim ativo nem autorização para um efeito
+externo. Mantenha credenciais, fencing da tentativa atual e reconciliação de
+resultados. O [recibo de nova tentativa comum com o pacote publicado](https://github.com/durable-workflow/.github/issues/211#issuecomment-6869562527)
+vincula Python SDK 2.17.2 ao Server nativo 3.9.2. Ele comprova que os IDs de
+execução lógica de atividade, instância de workflow e execução do workflow
+permanecem estáveis, enquanto os IDs de tarefa e tentativa são distintos entre
+as tentativas 1 e 2. Os comportamentos local e
+de sessão mantêm seu escopo definido separadamente. Veja as
+[garantias de execução](../constraints/execution-guarantees.md#service-activity-identity)
+para o contrato compartilhado de idempotência.
+
 #### Política de tentativas recebida e tentativa original {#activity-retry-metadata}
 
 Requer Python SDK **2.12.0 ou posterior**. `info = activity.context().info`

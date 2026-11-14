@@ -143,6 +143,20 @@ final class ChargeCard extends Activity
 
 Para actividades Rust en modo servicio, SDK **4.9.0 o posterior** expone los valores originales opcionales `activity_execution_id()`, `workflow_id()` (instancia) y `run_id()` mediante `ActivityContext`. Usa el ID lógico de actividad entre reintentos; los campos ausentes del claim siguen en `None`, y un ID de tarea o intento no los sustituye. La [receta del handler Rust](../polyglot/rust.md#activity-identity) deriva una clave externa y explica los límites de Server anteriores, actividades locales y pruebas sin Server. La clave sigue necesitando una API externa idempotente o un registro duradero de efectos; estos métodos no proporcionan checkpoints reanudables.
 
+Las actividades Python en modo servicio exponen el campo opcional de solo
+lectura `activity.context().info.activity_execution_id`, con `workflow_id` y
+`run_id` para la instancia de workflow y la ejecución a las que pertenecen.
+Use el ID de ejecución lógica a través de los reintentos. Una identidad ausente
+sigue siendo `None`. Nunca la sustituya por un ID de tarea, intento o sesión.
+La [guía de identidad de Python](../polyglot/python.md#activity-identity) enlaza
+el ejemplo de modo servicio mantenido por el SDK y define el comportamiento
+de claims antiguos, sesiones, actividades locales preparadas, actividades
+locales inline y contextos sin Server. Su recibo con el paquete publicado y
+Server nativo solo demuestra identidad en reintentos ordinarios. El ID es
+metadato público, no autoridad del claim, y no hace que un efecto externo ocurra
+exactamente una vez. Mantenga la idempotencia del destino, claves distintas
+para efectos diferentes y reconciliación de resultados.
+
 ## Qué debe ser idempotente en tu aplicación {#what-developers-must-make-idempotent}
 
 No necesitas hacer idempotente la reproducción del workflow. El framework se
