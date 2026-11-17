@@ -845,6 +845,10 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `ctx.uuid4()` | Deterministic UUID |
 | `ctx.logger` | Logger that is silent during replay |
 
+Before raising `min` in `ctx.get_version(...)` or removing a legacy branch, use
+the [version-usage check](/docs/features/versioning/#check-version-usage) to
+find open runs that still depend on it.
+
 ### Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
 **Released support.** Python SDK 2.6.2 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.
