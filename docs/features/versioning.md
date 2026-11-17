@@ -257,8 +257,7 @@ $result = match($version) {
 Before you raise `minSupported` or delete a `patched()` legacy branch, find the
 open runs that still depend on it. Ask for one workflow type, one change ID and
 the minimum version you want to keep supporting. For a `patched()` change point,
-the new branch records version `1` and the legacy branch records
-`DEFAULT_VERSION` (`-1`), so use a minimum of `1`.
+use a minimum of `1`: new runs record version `1` for the new branch.
 
 Every open run lands in one of three states:
 
@@ -269,6 +268,13 @@ Every open run lands in one of three states:
   history is unavailable (`history_unavailable`) or invalid (`history_invalid`).
   A run that has not reached the change point yet is unknown, even when it runs
   current code. It can still record the legacy version.
+
+A run that started before you deployed the change point takes the legacy
+branch (`DEFAULT_VERSION`) on replay without recording a marker. It therefore
+shows as **unknown** (`marker_absent`), not legacy. That is the usual state of
+pre-`patched()` runs, and it is why unknown must also reach zero before you
+remove the old branch. Legacy counts runs that recorded an explicit version
+below the minimum, such as `getVersion()` runs pinned to an older `maxSupported`.
 
 The counts always cover every open run before any state filter or page limit.
 Closed runs are not included. The answer is the same whichever SDK recorded the
