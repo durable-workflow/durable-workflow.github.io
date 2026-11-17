@@ -46,7 +46,7 @@ Cloud の利用者は、プロビジョニングで返されたランタイム U
 ## 要件 {#requirements}
 
 - フレームワーク非依存の SDK は PHP 8.1 以降
-- PHP SDK 3.10 以降の Laravel サービスモードブリッジは、PHP 8.2 以降と 12.x の Laravel 12.69 以降、または PHP 8.3 以降と 13.x の Laravel 13.30 以降
+- PHP SDK 3.10 以降の Laravel サービスモードブリッジは、PHP 8.2 以降と 12.x の Laravel 12.72 以降、または PHP 8.3 以降と 13.x の Laravel 13.41 以降
 - 到達可能な[セルフホスト Server](/docs/polyglot/server/)、またはプロビジョニング済みの [Cloud 名前空間ランタイム](/docs/polyglot/cloud-control-plane)
 
 ## インストール {#install}
@@ -259,6 +259,8 @@ PHP SDK は Laravel パッケージとは独立にバージョン管理します
 公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)がページの引数を定義しています。
 
 PHP SDK 3.10.0 以降では `Client::iterateWorkflows()` と `Client::iterateWorkflowHistory()` も提供されます。これらは、不透明なカーソル、namespace、フィルターを維持しながら、ワークフロー一覧全体または特定の実行の履歴全体を 1 ページずつ遅延して読み取ります。後続ページのエラーは呼び出し元へ伝播し、不正な継続 token や token の循環は、途中で切り詰めたりループしたりせずに拒否されます。[公開 PHP 3.11.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php)を参照してください。
+
+レジストリから通常インストールしたPHP SDK **3.18.2** とネイティブServer **3.8.0** の観測では、フィルタに一致する5件のworkflowを2件ずつの一覧3ページで取得し、元のrunの全3イベントを2件ずつの履歴2ページで取得しました。遅延作成と最初の要素の取得、別の型の除外、Workerの登録解除も確認しています。[インストール済みパッケージの検証結果](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985)と[PHPクライアントガイド](https://php.durable-workflow.com/getting-started/client-setup/)を参照してください。この証拠は指定された組み合わせだけに適用され、別の言語実装やruntimeを認定するものではありません。
 
 ## 障害レポートのサイズ制限 {#bounded-failure-reports}
 
