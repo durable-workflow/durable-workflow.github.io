@@ -93,7 +93,7 @@ Routing overrides in `ActivityOptions` apply when a new activity execution is sc
 Retry and timeout fields override the activity class for this call only:
 
 - `maxAttempts`: total attempts, counting the first one. It must be at least 1. A new activity scheduled with 0 or less fails the run. Omit it to use the class `$tries`, where `0` retries forever.
-- `backoff`: seconds to wait before each retry, as a list or a single value. It overrides the class `backoff()`.
+- `backoff`: seconds to wait before each retry, as a list or a single value. It overrides the class `backoff()`. When the list runs out, repeat its final entry. An empty list adds no delay. See [Backoff](#backoff).
 - `nonRetryableErrorTypes`: error type or class names that fail the activity without another attempt.
 - `startToCloseTimeout`: maximum seconds for one attempt.
 - `scheduleToStartTimeout`: maximum seconds an activity may wait for a worker before it starts.
@@ -122,7 +122,11 @@ The v2 `Activity` base class has no `$timeout` class property. Configure activit
 
 ## Backoff
 
-The `backoff` method returns an array of integers corresponding to the current attempt. The default `backoff` method decays exponentially to 2 minutes. This can be overridden by implementing the `backoff` method on the activity class.
+The `backoff()` method returns retry delays in seconds as an integer or a list. The default list reaches 120 seconds (2 minutes). Override it by implementing `backoff()` on the activity class.
+
+When retries outnumber the list entries, the final delay repeats. For `maxAttempts: 5` and `backoff: [1, 2]`, the four retry delays are `[1, 2, 2, 2]` seconds. An empty list, `backoff: []`, requests immediate retries (zero backoff), subject to the attempt and timeout limits.
+
+The retry policy is recorded when the activity is scheduled. Already recorded policies keep their recorded delays when later code changes the class defaults or options.
 
 ## Namespace
 

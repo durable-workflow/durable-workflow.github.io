@@ -76,7 +76,7 @@ for the complete ownership comparison.
 
 - PHP 8.1 or later for the framework-neutral SDK
 - For the Laravel service-mode bridge in PHP SDK 3.10 and later: PHP 8.2 or
-  later and Laravel 12.69 or later in 12.x, or Laravel 13.30 or later in 13.x
+  later and Laravel 12.72 or later in 12.x, or Laravel 13.41 or later in 13.x
   with PHP 8.3 or later
 - A reachable [self-hosted Server](/docs/polyglot/server/) or provisioned
   [Cloud namespace runtime](/docs/polyglot/cloud-control-plane)
@@ -452,6 +452,8 @@ not matching package version numbers.
 These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the page parameters.
 
 PHP SDK 3.10.0 and later also provide `Client::iterateWorkflows()` and `Client::iterateWorkflowHistory()`. They read a complete workflow listing or exact-run history lazily, one page at a time, keeping the opaque cursor, namespace and filters. Errors on later pages propagate, and malformed continuations or token cycles are refused instead of truncating or looping. See the [published PHP 3.11.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
+
+A normal registry-installed observation on PHP SDK **3.18.2** and native Server **3.8.0** returned 5 filtered workflows over 3 two-item list pages and all 3 original-run history events over 2 two-item pages. It checked lazy construction and first yield, foreign-type exclusion and Worker deregistration. See the [installed proof](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985) and [PHP client guide](https://php.durable-workflow.com/getting-started/client-setup/). This evidence stays bound to its named tuple; it does not qualify another binding or runtime.
 
 ## Bounded failure reports {#bounded-failure-reports}
 

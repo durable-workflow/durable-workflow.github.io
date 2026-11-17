@@ -80,7 +80,7 @@ completa de responsabilidades.
 
 - PHP 8.1 ou posterior para o SDK independente de framework
 - Para a ponte Laravel do modo de serviço no SDK PHP 3.10 e posteriores: PHP 8.2
-  ou posterior e Laravel 12.69 ou posterior na 12.x, ou Laravel 13.30 ou
+  ou posterior e Laravel 12.72 ou posterior na 12.x, ou Laravel 13.41 ou
   posterior na 13.x com PHP 8.3 ou posterior
 - Um [Server sob sua administração](/docs/polyglot/server/) acessível ou
   [runtime de namespace do Cloud](/docs/polyglot/cloud-control-plane) provisionado
@@ -410,6 +410,8 @@ igualdade de números de versão entre pacotes.
 Estas chamadas publicadas retornam **uma página**, não uma leitura completa automática: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue com o token opaco retornado preservando namespace, filtros e workflow/execução selecionados; encerre no token nulo/vazio e trate erros de página. Uma página parcial não é um bundle de replay. Use a API de exportação de histórico do SDK para replay sem servidor. O [cliente publicado PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) define os parâmetros de página.
 
 O SDK PHP 3.10.0 e posteriores também oferecem `Client::iterateWorkflows()` e `Client::iterateWorkflowHistory()`. Eles leem de forma preguiçosa uma listagem completa de workflows ou o histórico de uma execução exata, uma página por vez, preservando o cursor opaco, o namespace e os filtros. Erros em páginas posteriores são propagados, e continuações malformadas ou ciclos de token são recusados em vez de truncar ou entrar em loop. Consulte o [cliente publicado PHP 3.11.0](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
+
+Uma observação instalada normalmente pelo registro com PHP SDK **3.18.2** e Server nativo **3.8.0** retornou 5 workflows filtrados em 3 páginas de lista com dois itens e todos os 3 eventos da execução original em 2 páginas com dois itens. Ela verificou a criação sob demanda e a primeira entrega, a exclusão de um tipo externo e o cancelamento do registro do Worker. Consulte a [prova instalada](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985) e o [guia do cliente PHP](https://php.durable-workflow.com/getting-started/client-setup/). Essa evidência vale apenas para a tupla indicada; não qualifica outra implementação nem outro runtime.
 
 ## Relatórios de falha com limites {#bounded-failure-reports}
 

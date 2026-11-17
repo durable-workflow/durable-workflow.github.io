@@ -78,7 +78,7 @@ vollständigen Zuständigkeitsvergleich finden Sie unter
 
 - PHP 8.1 oder neuer für das Framework-neutrale SDK
 - Für die Laravel-Service-Modus-Brücke ab PHP SDK 3.10: PHP 8.2 oder neuer und
-  Laravel 12.69 oder neuer in 12.x oder Laravel 13.30 oder neuer in 13.x mit
+  Laravel 12.72 oder neuer in 12.x oder Laravel 13.41 oder neuer in 13.x mit
   PHP 8.3 oder neuer
 - Ein erreichbarer [selbst gehosteter Server](/docs/polyglot/server/) oder eine
   bereitgestellte [Cloud-Namespace-Laufzeitumgebung](/docs/polyglot/cloud-control-plane)
@@ -411,6 +411,8 @@ deklarierten SDK-Vertrag, nicht übereinstimmenden Paketversionsnummern.
 Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) definiert die Seitenparameter.
 
 PHP SDK 3.10.0 und neuer bieten zusätzlich `Client::iterateWorkflows()` und `Client::iterateWorkflowHistory()`. Sie lesen eine vollständige Workflow-Liste oder den Verlauf eines exakten Laufs verzögert, Seite für Seite, und behalten dabei den undurchsichtigen Cursor, Namespace und Filter bei. Fehler auf späteren Seiten werden weitergegeben; fehlerhafte Fortsetzungen oder Token-Zyklen werden abgelehnt, statt die Ausgabe abzuschneiden oder in eine Schleife zu geraten. Siehe den [veröffentlichten Client PHP 3.11.0](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
+
+Eine regulär aus der Registry installierte Beobachtung mit PHP SDK **3.18.2** und nativem Server **3.8.0** lieferte 5 gefilterte Workflows über 3 Listenseiten mit je zwei Einträgen sowie alle 3 Ereignisse des ursprünglichen Laufs über 2 Seiten mit je zwei Einträgen. Sie prüfte verzögerte Erstellung und erste Ausgabe, den Ausschluss eines fremden Typs und die Abmeldung des Workers. Siehe den [Installationsnachweis](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985) und den [PHP-Client-Leitfaden](https://php.durable-workflow.com/getting-started/client-setup/). Dieser Nachweis gilt nur für sein benanntes Tupel und qualifiziert keine andere Sprachbindung oder Runtime.
 
 ## Begrenzte Fehlerberichte {#bounded-failure-reports}
 

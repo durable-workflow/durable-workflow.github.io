@@ -93,7 +93,7 @@ Les surcharges de routage dans `ActivityOptions` s’appliquent lors de la plani
 Les champs de nouvelle tentative et de délai remplacent la classe de l’activité pour cet appel uniquement :
 
 - `maxAttempts` : nombre total de tentatives, la première comprise. Il doit valoir au moins 1. Une nouvelle activité planifiée avec 0 ou moins fait échouer l’exécution. Omettez-le pour utiliser le `$tries` de la classe, où `0` réessaie indéfiniment.
-- `backoff` : secondes d’attente avant chaque nouvelle tentative, sous forme de liste ou de valeur unique. Il remplace le `backoff()` de la classe.
+- `backoff` : secondes d’attente avant chaque nouvelle tentative, sous forme de liste ou de valeur unique. Il remplace le `backoff()` de la classe. Une fois la liste épuisée, sa dernière valeur est répétée. Une liste vide n’ajoute aucun délai. Voir [Espacement des tentatives](#backoff).
 - `nonRetryableErrorTypes` : noms de types ou de classes d’erreur qui font échouer l’activité sans nouvelle tentative.
 - `startToCloseTimeout` : nombre maximal de secondes pour une tentative.
 - `scheduleToStartTimeout` : nombre maximal de secondes pendant lesquelles une activité peut attendre un worker avant de démarrer.
@@ -122,7 +122,11 @@ La classe de base v2 `Activity` n’a pas de propriété de classe `$timeout`. C
 
 ## Espacement des tentatives {#backoff}
 
-La méthode `backoff` renvoie un tableau d’entiers correspondant à la tentative courante. Par défaut, la méthode `backoff` applique un espacement exponentiel jusqu’à 2 minutes. Redéfinissez-le en implémentant la méthode `backoff` dans la classe d’activité.
+La méthode `backoff()` renvoie les délais de nouvelle tentative en secondes, sous forme d’entier ou de liste. La liste par défaut atteint 120 secondes (2 minutes). Redéfinissez-la en implémentant `backoff()` dans la classe d’activité.
+
+Lorsque les nouvelles tentatives sont plus nombreuses que les valeurs de la liste, le dernier délai est répété. Avec `maxAttempts: 5` et `backoff: [1, 2]`, les quatre délais de nouvelle tentative sont `[1, 2, 2, 2]` secondes. Une liste vide, `backoff: []`, demande des nouvelles tentatives immédiates sans délai de backoff, sous réserve des limites de tentatives et de temps.
+
+La politique de nouvelle tentative est enregistrée à la planification de l’activité. Les politiques déjà enregistrées conservent leurs délais si un code ultérieur modifie les valeurs par défaut de la classe ou les options.
 
 ## Espace de noms {#namespace}
 
