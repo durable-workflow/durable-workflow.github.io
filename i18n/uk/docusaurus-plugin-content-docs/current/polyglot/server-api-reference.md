@@ -460,9 +460,9 @@ Server також надає кооперативні маршрути `request-
 
 ### Native redrive спрацьованих timer і годинники replay {#native-redrive-timers}
 
-:::note Stable-адаптація та встановлені споживачі очікуються
+:::note Доступно з native Server 3.11.0
 
-Розширення простих timer і виправлення дробової точності злиті в [Server-коді 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 має опублікований незмінний образ і [прийняту producer/platform/corpus/Compose-кваліфікацію](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Підвищення stable-аліасів, фінальний GitHub Release, адаптація Chart і відповідна перевірка встановлених споживачів ще очікують завершення. Вибраний опублікований Server зберігає попередню відмову timer і запис годинника. Сама producer-кваліфікація не доводить встановлений SDK replay-результат чи stable-вибір.
+Native Server [3.11.0](https://github.com/durable-workflow/server/releases/tag/3.11.0) приймає завершені прості timer і записує описані в цьому розділі годинники replay. Попередні native-релізи відхиляють спрацьовані timer з `unsupported_history`.
 
 :::
 
@@ -479,7 +479,7 @@ Server також надає кооперативні маршрути `request-
 
 [Фактична когорта холодних PHP/Python/Rust worker](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) має зберігати те саме визначення/fingerprint workflow під час холодної заміни й повторних redrive. Вона порівнює розібрані UTC-моменти повної точності зі спостереженим початковим `TimerFired` із ненульовою часткою, зберігає початкову історію та перевіряє початкову кількість callbacks, нову timer-ідентичність і відсутність повторної timer-роботи. Відображення цілих секунд не доводить такої точності; встановлену історію не можна переписувати заради результату. Source-тести з керованими часовими позначками є окремим доказом.
 
-Кваліфікація незмінних producer/platform/source пройдена. Відповідні встановлені SDK-результати, stable-аліаси/фінальний Release та фактична публікація Chart і далі передують stable-адаптації. [Супровід точності/посилань Core](https://github.com/durable-workflow/workflow/issues/992) залишається окремим під [Server #980](https://github.com/durable-workflow/server/issues/980). Зміна не додає підтримки годинника ordinary-entry до SDK, який її не оголошує; незміненим SDK не потрібен реліз лише для вирівнювання номерів. Форми протоколу, OpenAPI й каталогу не змінюються.
+Встановлені cold-worker-результати з опублікованими SDK пройшли на native Server 3.11.0 для Rust SDK 4.18.0, Python SDK 2.17.2 і PHP SDK 3.18.3 ([Server #980](https://github.com/durable-workflow/server/issues/980)). Server зберігає ці годинники з мілісекундною точністю. [Супровід точності/посилань Core](https://github.com/durable-workflow/workflow/issues/992) залишається окремим під [Server #980](https://github.com/durable-workflow/server/issues/980). Зміна не додає підтримки годинника ordinary-entry до SDK, який її не оголошує; незміненим SDK не потрібен реліз лише для вирівнювання номерів. Форми протоколу, OpenAPI й каталогу не змінюються.
 
 ## Namespace і сховище {#namespace-and-storage}
 

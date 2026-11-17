@@ -483,9 +483,9 @@ Os comandos levam valores de negócio em envelopes Avro. Os SDKs oficiais os cod
 
 ### Redrive nativo de temporizadores disparados e relógios de replay {#native-redrive-timers}
 
-:::note Adoção estável e consumidores instalados pendentes
+:::note Disponível a partir do Server nativo 3.11.0
 
-A extensão de temporizadores simples e a correção fracionária foram integradas no [código do Server 5221ed82](https://github.com/durable-workflow/server/pull/1215). Native 3.11.0 tem uma imagem imutável publicada e [qualificação aceita de produtor/plataforma/corpus/Compose](https://github.com/durable-workflow/server/pull/1218#issuecomment-6868218894). Aliases estáveis, GitHub Release final, adoção do Chart e evidências instaladas dos consumidores aplicáveis continuam retidos. O Server publicado selecionado mantém a recusa de temporizadores e a escrita de relógios anteriores. A qualificação do produtor, sozinha, não comprova replay de SDK instalado nem seleção estável.
+O Server nativo [3.11.0](https://github.com/durable-workflow/server/releases/tag/3.11.0) aceita os temporizadores simples concluídos e escreve os relógios de replay descritos nesta seção. Versões nativas anteriores recusam temporizadores disparados com `unsupported_history`.
 
 :::
 
@@ -502,7 +502,7 @@ Temporizadores cancelados continuam como `unsupported_history`. Colisões de pas
 
 A [coorte real de workers frios PHP/Python/Rust](https://github.com/durable-workflow/server/issues/980#issuecomment-6865541932) deve manter a mesma definição/fingerprint durante substituição fria e redrives repetidos. Ela compara instantes UTC analisados com precisão completa contra um `TimerFired` de origem observado com fração não nula, preserva o histórico de origem e verifica contagens originais de callbacks, nova identidade do temporizador e ausência de trabalho repetido. Renderizar segundos inteiros não comprova essa precisão; o histórico instalado não pode ser reescrito para fornecê-la. Testes de código com timestamps controlados são evidências separadas.
 
-A qualificação imutável de produtor/plataforma/código passou. Recibos instalados aplicáveis de SDK, aliases estáveis/Release final e publicação real do Chart continuam precedendo a adoção estável. O [trabalho de precisão/referência do Core](https://github.com/durable-workflow/workflow/issues/992) continua separado sob [Server #980](https://github.com/durable-workflow/server/issues/980). A mudança não adiciona relógios de entrada comum a um SDK que não os anuncia; SDKs inalterados não precisam de versão nova só para alinhar números. As formas de protocolo, OpenAPI e catálogo permanecem iguais.
+Os recibos instalados de workers a frio com SDKs publicados passaram contra o Server nativo 3.11.0 para Rust SDK 4.18.0, Python SDK 2.17.2 e PHP SDK 3.18.3 ([Server #980](https://github.com/durable-workflow/server/issues/980)). O servidor armazena esses relógios com precisão de milissegundos. O [trabalho de precisão/referência do Core](https://github.com/durable-workflow/workflow/issues/992) continua separado sob [Server #980](https://github.com/durable-workflow/server/issues/980). A mudança não adiciona relógios de entrada comum a um SDK que não os anuncia; SDKs inalterados não precisam de versão nova só para alinhar números. As formas de protocolo, OpenAPI e catálogo permanecem iguais.
 
 ## Namespace e armazenamento {#namespace-and-storage}
 
