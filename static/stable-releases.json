@@ -1,11 +1,11 @@
 {
   "schema": "durable-workflow.docs.stable-releases",
   "schema_version": 1,
-  "updated_at": "2026-11-14",
+  "updated_at": "2026-11-17",
   "artifacts": {
     "cli": "2.8.0",
     "helm-chart": "2.0.0",
-    "sdk-php": "3.18.2",
+    "sdk-php": "3.18.3",
     "sdk-python": "2.17.2",
     "sdk-rust": "4.17.0",
     "server": "3.10.0",

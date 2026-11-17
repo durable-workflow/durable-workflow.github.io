@@ -76,7 +76,7 @@ y ejecuta el trabajo mediante sus colas Laravel. Consulta
 
 - PHP 8.1 o posterior para el SDK independiente del framework
 - Para el puente Laravel de modo servicio en el SDK PHP 3.10 y posteriores: PHP
-  8.2 o posterior y Laravel 12.69 o posterior en 12.x, o Laravel 13.30 o
+  8.2 o posterior y Laravel 12.72 o posterior en 12.x, o Laravel 13.41 o
   posterior en 13.x con PHP 8.3 o posterior
 - Un [Server autohospedado](/docs/polyglot/server/) accesible o un
   [runtime de espacio de nombres de Cloud](/docs/polyglot/cloud-control-plane) aprovisionado
@@ -406,6 +406,8 @@ del SDK, no de que coincidan los números de versión de paquetes.
 Estas llamadas publicadas devuelven **una página**, no una lectura completa automática: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continúe con el token opaco devuelto manteniendo namespace, filtros y workflow/ejecución seleccionados; termine con token nulo/vacío y gestione los errores de página. Una página parcial no es un bundle de reproducción. Use la API de exportación de historial del SDK para reproducción sin servidor. El [cliente publicado PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) define los parámetros de página.
 
 El SDK PHP 3.10.0 y posteriores también ofrecen `Client::iterateWorkflows()` y `Client::iterateWorkflowHistory()`. Leen de forma diferida un listado completo de workflows o el historial de una ejecución exacta, una página cada vez, conservando el cursor opaco, el namespace y los filtros. Los errores de páginas posteriores se propagan, y las continuaciones mal formadas o los ciclos de tokens se rechazan en lugar de truncar el resultado o entrar en bucle. Consulte el [cliente publicado PHP 3.11.0](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
+
+Una observación instalada normalmente desde el registro con PHP SDK **3.18.2** y Server nativo **3.8.0** devolvió 5 workflows filtrados en 3 páginas de lista de dos elementos y los 3 eventos de la ejecución original en 2 páginas de dos elementos. Comprobó la creación diferida y la primera entrega, la exclusión de un tipo ajeno y la baja del Worker. Consulta la [prueba instalada](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985) y la [guía del cliente PHP](https://php.durable-workflow.com/getting-started/client-setup/). Esta evidencia corresponde solo a su tupla indicada; no califica otra implementación ni otro runtime.
 
 ## Informes de error acotados {#bounded-failure-reports}
 
