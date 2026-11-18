@@ -447,6 +447,10 @@ not matching package version numbers.
 - [PHP executable quickstart contract](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK source](https://github.com/durable-workflow/sdk-php)
 
+## Open runs on a version branch {#workflow-version-usage}
+
+PHP SDK 3.19.0 and later provide `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`. It returns a typed page of open runs: counts for legacy, current and unknown runs, each run's state, recorded version and unknown reason, and an opaque `nextCursor`. It requires a Server that advertises `capabilities.workflow_version_usage` (Server 3.12.0 or later). Older Servers raise `ServerCapabilityUnavailable` before any usage request is sent. Use it for the [version-usage check](/docs/features/versioning/#check-version-usage) before you retire a version branch.
+
 ## Workflow list and history pages {#workflow-list-and-history-pages}
 
 These published calls return **one page**, not an automatic complete read: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continue with the returned opaque token while keeping namespace, filters and selected workflow/run fixed; stop at the final null/empty token and handle page errors explicitly. A partial page is not a replay bundle. Use the SDK history-export API for offline replay. The [published PHP 3.2.0 client source](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) defines the page parameters.

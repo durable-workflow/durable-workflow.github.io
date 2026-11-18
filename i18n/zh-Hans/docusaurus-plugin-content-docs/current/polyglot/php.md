@@ -251,6 +251,10 @@ PHP SDK 独立于 Laravel 包进行版本管理。可运行示例中保留精确
 - [PHP 可执行快速入门契约](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK 源码](https://github.com/durable-workflow/sdk-php)
 
+## 版本分支上的未关闭运行 {#workflow-version-usage}
+
+PHP SDK 3.19.0 及更高版本提供 `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`。它返回未关闭运行的类型化分页结果：legacy、current 和 unknown 运行的计数，每个运行的状态、已记录版本和 unknown 原因，以及不透明的 `nextCursor`。它需要声明 `capabilities.workflow_version_usage` 的 Server（Server 3.12.0 或更高版本）。较旧的 Server 会在发送任何使用情况请求之前抛出 `ServerCapabilityUnavailable`。弃用版本分支前，用它执行[版本使用检查](/docs/features/versioning/#check-version-usage)。
+
 ## 工作流列表与历史页面 {#workflow-list-and-history-pages}
 
 这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义分页参数。

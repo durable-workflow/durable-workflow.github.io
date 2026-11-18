@@ -549,7 +549,7 @@ saga.finish(outcome).await
 
 Rust SDK 使用 `WorkflowContext::side_effect` 记录小型非确定性值，并使用 `WorkflowContext::uuid_v4` 派生确定性 UUIDv4 值。冷重放解码已记录值，不再次调用回调；标记顺序变化、缺失、重复或编解码器不兼容时返回类型化 `Error::NonDeterministicReplay`。
 
-使用 `WorkflowContext::get_version(change_id, min_supported, max_supported)`，在发布期间保持新旧工作流分支重放兼容。新运行记录 `max_supported`；现有运行复用持久标记。`patched(change_id)` 提供布尔形式的发布控制；旧分支排空后，`deprecate_patch(change_id)` 保留标记。共享持久语义见[副作用](/docs/features/side-effects/)和[版本管理](/docs/features/versioning/)。
+使用 `WorkflowContext::get_version(change_id, min_supported, max_supported)`，在发布期间保持新旧工作流分支重放兼容。新运行记录 `max_supported`；现有运行复用持久标记。`patched(change_id)` 提供布尔形式的发布控制；旧分支排空后，`deprecate_patch(change_id)` 保留标记。共享持久语义见[副作用](/docs/features/side-effects/)和[版本管理](/docs/features/versioning/)。提高 `min_supported` 或删除 `patched()` 分支之前，使用[版本使用检查](/docs/features/versioning/#check-version-usage)找出仍依赖它的未关闭运行。Rust SDK 记录的标记与其他 SDK 的标记按相同方式分类。
 
 ## 感知重放的 workflow 日志 {#workflow-logging}
 

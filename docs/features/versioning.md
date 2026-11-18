@@ -252,9 +252,54 @@ $result = match($version) {
 };
 ```
 
+## Check Open Runs Before Retiring a Branch {#check-version-usage}
+
+Before you raise `minSupported` or delete a `patched()` legacy branch, find the
+open runs that still depend on it. Ask for one workflow type, one change ID and
+the minimum version you want to keep supporting. For a `patched()` change point,
+use a minimum of `1`: new runs record version `1` for the new branch.
+
+Every open run lands in one of three states:
+
+- **legacy:** it recorded a version below the proposed minimum, so it would
+  replay through the branch you want to remove.
+- **current:** it recorded a version at or above the minimum.
+- **unknown:** it recorded no marker for this change ID (`marker_absent`), or its
+  history is unavailable (`history_unavailable`) or invalid (`history_invalid`).
+  A run that has not reached the change point yet is unknown, even when it runs
+  current code. It can still record the legacy version.
+
+A run that started before you deployed the change point takes the legacy
+branch (`DEFAULT_VERSION`) on replay without recording a marker. It therefore
+shows as **unknown** (`marker_absent`), not legacy. That is the usual state of
+pre-`patched()` runs, and it is why unknown must also reach zero before you
+remove the old branch. Legacy counts runs that recorded an explicit version
+below the minimum, such as `getVersion()` runs pinned to an older `maxSupported`.
+
+The counts always cover every open run before any state filter or page limit.
+Closed runs are not included. The answer is the same whichever SDK recorded the
+markers.
+
+| Where | How |
+| --- | --- |
+| Waterline | The **Version usage** page (Waterline main; embedded mode needs Workflow 2.29.0 or later, service mode needs PHP SDK 3.19.0 or later and Server 3.12.0 or later). |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`, with `--state`, `--limit`, `--namespace` and `--json` (CLI 2.10.0 or later). |
+| Server API | `GET /api/workflow-version-usage` on Server 3.12.0 or later, which advertises `capabilities.workflow_version_usage`. |
+| PHP SDK | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)` (3.19.0 or later). |
+| Embedded Laravel | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)` (Workflow 2.29.0 or later). |
+
+Older Servers and packages report the check as unavailable; they never return
+an empty result. Results are paged by run ID with an opaque cursor. Counts and
+membership can change between pages, so restart the query after you change
+anything.
+
+The check is a live observation, not a deployment fence. Retire a branch only
+when **legacy and unknown are both zero** after you have stopped or fenced new
+starts that could still take the old path. Investigate every unknown run first.
+
 ## Deprecating Old Versions
 
-After all workflows using an old version have completed, you can drop support by increasing `minSupported`. This removes the need to maintain old code paths.
+After the [version-usage check](#check-version-usage) reports no legacy or unknown open runs for the new minimum, you can drop support by increasing `minSupported`. This removes the need to maintain old code paths.
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
@@ -356,7 +401,7 @@ final class MyWorkflow extends Workflow
 Two-phase patch lifecycle and placement rules:
 
 1. **Introduce `patched()`** at the change point. Both branches stay in the workflow code. New runs take the new branch; older runs keep taking the legacy branch.
-2. **Wait for every legacy run to finish.** Use Waterline run search or `dw workflow:list` to confirm there are no open runs that could replay through the legacy branch.
+2. **Wait for every legacy run to finish.** Run the [version-usage check](#check-version-usage) with a minimum version of `1` and continue only when legacy and unknown are both zero.
 3. **Replace `patched()` with `deprecatePatch()`** at the same call site, with the same `changeId`, and delete the legacy branch from the function body. Keep the call there — do not remove it — so durable history still matches a known change point.
 4. **Optional: remove `deprecatePatch()` entirely** once you are also confident no historical replay (queries, exports, audits) will ever read history that committed this marker. That is an irreversible step; most workflows can leave `deprecatePatch()` in place indefinitely without paying any runtime cost.
 

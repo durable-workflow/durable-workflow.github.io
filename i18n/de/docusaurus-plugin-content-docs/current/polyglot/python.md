@@ -783,6 +783,10 @@ Der an `run` übergebene `WorkflowContext` bietet deterministische Operationen:
 | `ctx.uuid4()` | Deterministische UUID |
 | `ctx.logger` | Beim Replay stummer Logger |
 
+Bevor Sie `min` in `ctx.get_version(...)` erhöhen oder einen alten Zweig
+entfernen, ermitteln Sie mit der [Versionsnutzungsprüfung](/docs/features/versioning/#check-version-usage)
+die offenen Läufe, die noch davon abhängen.
+
 ### Kompatibilität am Einstieg und Wiederherstellung {#entry-compatibility-and-recovery}
 
 **Veröffentlichte Unterstützung.** Python SDK 2.6.2 hat den nachfolgenden Einstiegsschutz eingeführt, ergänzt durch Routing und Wiederherstellung in Server 2.9.9. Dies sind die Mindestversionen für diese Funktionen. Installieren Sie aktuelle stabile Versionen, um Sicherheitskorrekturen zu erhalten.

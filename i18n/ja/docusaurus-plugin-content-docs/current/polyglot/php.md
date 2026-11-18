@@ -254,6 +254,10 @@ PHP SDK は Laravel パッケージとは独立にバージョン管理します
 - [PHP 実行可能クイックスタート契約](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK ソース](https://github.com/durable-workflow/sdk-php)
 
+## バージョン分岐上の未完了実行 {#workflow-version-usage}
+
+PHP SDK 3.19.0 以降は `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)` を提供します。未完了実行の型付きページを返し、legacy、current、unknown の各実行件数、各実行の状態、記録済みバージョン、unknown の理由、不透明な `nextCursor` を含みます。`capabilities.workflow_version_usage` を通知する Server（Server 3.12.0 以降）が必要です。古い Server では、使用状況リクエストを送信する前に `ServerCapabilityUnavailable` が送出されます。バージョン分岐を廃止する前の[バージョン使用状況チェック](/docs/features/versioning/#check-version-usage)に使ってください。
+
 ## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
 
 公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)がページの引数を定義しています。

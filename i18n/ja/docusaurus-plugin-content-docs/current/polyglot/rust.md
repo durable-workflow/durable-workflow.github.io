@@ -557,7 +557,7 @@ saga.finish(outcome).await
 
 Rust SDK は `WorkflowContext::side_effect` で小さな非決定的値を記録し、`WorkflowContext::uuid_v4` で決定的な UUIDv4 値を導出します。コールドリプレイはコールバックを再呼び出しせず、記録した値をデコードします。マーカーの順序変更、欠落、重複、コーデック非互換は型付き `Error::NonDeterministicReplay` を返します。
 
-ロールアウト中に古いワークフロー分岐と新しい分岐のリプレイ互換性を保つには `WorkflowContext::get_version(change_id, min_supported, max_supported)` を使います。新しい実行は `max_supported` を記録し、既存の実行は永続マーカーを再利用します。`patched(change_id)` は真偽値形式のロールアウトを提供し、`deprecate_patch(change_id)` は古い分岐の処理完了後もマーカーを維持します。共有の永続的意味は[副作用](/docs/features/side-effects/)と[バージョニング](/docs/features/versioning/)を参照してください。
+ロールアウト中に古いワークフロー分岐と新しい分岐のリプレイ互換性を保つには `WorkflowContext::get_version(change_id, min_supported, max_supported)` を使います。新しい実行は `max_supported` を記録し、既存の実行は永続マーカーを再利用します。`patched(change_id)` は真偽値形式のロールアウトを提供し、`deprecate_patch(change_id)` は古い分岐の処理完了後もマーカーを維持します。共有の永続的意味は[副作用](/docs/features/side-effects/)と[バージョニング](/docs/features/versioning/)を参照してください。`min_supported` を上げる前、または `patched()` 分岐を削除する前に、[バージョン使用状況チェック](/docs/features/versioning/#check-version-usage)でまだそれに依存している未完了実行を見つけてください。Rust SDK が記録したマーカーは、他の SDK のマーカーと同じ方法で分類されます。
 
 ## リプレイを認識するワークフローロギング {#workflow-logging}
 
