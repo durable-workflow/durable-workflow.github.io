@@ -137,9 +137,9 @@ Auch die unmittelbaren Befehle `cancel()` und `terminate()` schließen den Lauf 
 
 ## Experimentelles deadlinegesteuertes Cleanup {#timeout-cleanup}
 
-**Unveröffentlichte experimentelle Embedded-Unterstützung.** Diese Anleitung zielt auf Workflow 2.29.0; Veröffentlichung und Qualifikation des installierten Pakets stehen noch aus. Die ausgewählte stabile Version behält das oben beschriebene harte Timeout als Standard.
+**Experimentelle Embedded-Unterstützung.** Verfügbar ab Workflow 2.29.0, nur für Embedded-Queue-Worker; Service- und Poll-Starts lehnen die Option ab. Die Option ist eine `experimental`-Oberfläche gemäß den [Stabilitätsstufen](../compatibility.md#stability-levels) und hat noch keine Zusage zur Abwärtskompatibilität. Runs ohne Anmeldung behalten das oben beschriebene harte Timeout als Standard.
 
-Installieren Sie vor Aktivierung die qualifizierte Version, führen Sie die Anwendungsmigrationen aus und stellen Sie kompatible Embedded-Queue-Worker bereit. Die neue Migration ergänzt `workflow_runs.timeout_cleanup_work_deadline_at`; vorhandene Runs werden dadurch nicht angemeldet. Aktivieren Sie die Option erst nach abgeschlossener Migration.
+Installieren Sie vor Aktivierung Workflow 2.29.0 oder neuer, führen Sie die Anwendungsmigrationen aus und stellen Sie kompatible Embedded-Queue-Worker bereit. Die neue Migration ergänzt `workflow_runs.timeout_cleanup_work_deadline_at`; vorhandene Runs werden dadurch nicht angemeldet. Aktivieren Sie die Option erst nach abgeschlossener Migration.
 
 ```bash
 php artisan migrate
@@ -159,11 +159,11 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 );
 ```
 
-`timeoutCleanupSeconds:` ist die Konstruktoralternative. Das Budget muss1–86400 Sekunden betragen, benötigt ein Ausführungs- oder Run-Timeout und muss kleiner als jedes konfigurierte harte Timeout sein. `null` belässt die Standardregel.
+Verketten Sie `withTimeoutCleanup()` nach `withExecutionTimeout()` oder `withRunTimeout()`; ein vorheriger Aufruf wirft eine Ausnahme, weil noch kein hartes Timeout gesetzt ist. `timeoutCleanupSeconds:` ist die Konstruktoralternative. Das Budget muss 1–86400 Sekunden betragen, benötigt ein Ausführungs- oder Run-Timeout und muss kleiner als jedes konfigurierte harte Timeout sein. `null` belässt die Standardregel.
 
 Im Beispiel erhält normale Arbeit 60 Sekunden; Cleanup darf die letzten 10 Sekunden innerhalb der ursprünglichen harten 70-Sekunden-Grenze nutzen. Das Budget fügt nach dieser Grenze keine Zeit hinzu. Gelten beide harten Deadlines, begrenzt die frühere das Cleanup. Späte Erkennung, Retries, Worker-Austausch und Lease-Verlängerung verschieben keine Deadline. Continue-as-new und Redrive erhalten das aufgenommene Budget und die ursprünglichen Ausführungsuhren; jeder Run leitet seine eigenen Run-Uhren ab.
 
-An der Arbeitsdeadline wechselt der Run einmal ins Cleanup und zeichnet `WorkflowTimeoutCleanupStarted` auf. Kompatibler Workflow-Code erhält `WorkflowTimeoutCleanupRequested`, einen Untertyp von `WorkflowCancellationRequestedException` mit Cancellation-`cause: timeout`. Behandeln Sie diese Unterbrechung für registrierte Saga-Kompensation oder geschütztes Cleanup; `compensate()` nutzt seinen Cancellation-Shield. Der Shield verlängert die harte Grenze nicht. Siehe [Sagas](./sagas.md#deadline-driven-compensation).
+Sobald ein Worker die Arbeitsdeadline bemerkt, wechselt der Run einmal ins Cleanup und zeichnet `WorkflowTimeoutCleanupStarted` auf. Bemerkt kein Worker sie vor der harten Deadline, wird dieses Ereignis nie geschrieben, und das Ergebnis `expired` hat kein `started_at`. Kompatibler Workflow-Code erhält `WorkflowTimeoutCleanupRequested`, einen Untertyp von `WorkflowCancellationRequestedException` mit Cancellation-`cause: timeout`. Behandeln Sie diese Unterbrechung für registrierte Saga-Kompensation oder geschütztes Cleanup; `compensate()` nutzt seinen Cancellation-Shield. Der Shield verlängert die harte Grenze nicht. Siehe [Sagas](./sagas.md#deadline-driven-compensation).
 
 Cleanup hat ein separates `timeout_cleanup.outcome`:
 
@@ -174,7 +174,11 @@ Cleanup hat ein separates `timeout_cleanup.outcome`:
 | `expired` | Die harte Grenze trat vor dem Cleanup-Ende ein, auch wenn kein Worker es ausführen konnte. |
 | `preempted` | Sofortiges `cancel()` oder `terminate()` unterbrach Cleanup; das entsprechende Cancellation-/Terminierungsergebnis bleibt terminal. |
 
-Abgeschlossenes, fehlgeschlagenes oder abgelaufenes Cleanup endet weiterhin mit Geschäftsstatus `failed`, `closed_reason = timed_out` und `WorkflowTimedOut`. Erfolgreiche Kompensation macht daraus keinen erfolgreichen Workflow. Prüfen Sie Describe/Run-Details und den aufbewahrten Verlauf für Geschäfts- und Cleanup-Ergebnis. Fehlende oder verzögerte Worker können keine externe Cleanup-Wirkung garantieren; halten Sie Kompensation idempotent und gleichen Sie unsichere Wirkungen in der Anwendung ab.
+Abgeschlossenes, fehlgeschlagenes oder abgelaufenes Cleanup endet weiterhin mit Geschäftsstatus `failed`, `closed_reason = timed_out` und `WorkflowTimedOut`. Erfolgreiche Kompensation macht daraus keinen erfolgreichen Workflow. Wird Cleanup früh abgeschlossen, schließt der Run sofort, die Timeout-Meldung nennt aber weiterhin den Zeitpunkt der ursprünglichen harten Deadline.
+
+Lesen Sie das Cleanup-Ergebnis aus dem Verlauf. Die `timeout_cleanup`-Payload am terminalen Ereignis `WorkflowTimedOut`, `WorkflowTerminated` oder `WorkflowCancelled`, die auch in der Ausgabe von `php artisan workflow:v2:history-export` enthalten ist, ist der maßgebliche Nachweis. Describe-Ausgabe der Control Plane und Run-Zusammenfassung enthalten kein Cleanup-Ergebnis; Run-Details zeigen höchstens einen Hinweis wie „Timeout cleanup failed.“ (bei `preempted` nichts).
+
+Fehlende oder verzögerte Worker können keine externe Cleanup-Wirkung garantieren; halten Sie Kompensation idempotent und gleichen Sie unsichere Wirkungen in der Anwendung ab.
 
 Dieser Schritt unterstützt nur Embedded-Queue-Worker. Poll- und Service-Starts lehnen die Option ab; Bridge-Worker können einen angemeldeten Embedded-Run nicht claimen. Native Admission und SDK-Laufzeitzustellung bleiben unter [Server #1201](https://github.com/durable-workflow/server/issues/1201) offen; Parser-Unterstützung allein implementiert kein Timeout-Cleanup.
 

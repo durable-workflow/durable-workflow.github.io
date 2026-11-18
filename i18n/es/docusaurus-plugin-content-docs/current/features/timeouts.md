@@ -137,9 +137,9 @@ Las órdenes inmediatas `cancel()` y `terminate()` también cierran la ejecució
 
 ## Limpieza experimental activada por el plazo {#timeout-cleanup}
 
-**Soporte embebido experimental sin publicar.** Esta guía apunta a Workflow 2.29.0; la publicación y la cualificación del paquete instalado siguen pendientes. La versión estable seleccionada conserva el timeout estricto predeterminado descrito arriba.
+**Soporte embebido experimental.** Disponible en Workflow 2.29.0 y posteriores solo para workers de cola embebidos; los inicios de servicio y en modo poll rechazan la opción. La opción es una superficie `experimental` según los [niveles de estabilidad](../compatibility.md#stability-levels) y aún no tiene promesa de compatibilidad hacia atrás. Las ejecuciones que no la activan conservan el timeout estricto predeterminado descrito arriba.
 
-Antes de activar la opción, instale la versión cualificada, ejecute las migraciones de la aplicación y despliegue workers de cola embebidos compatibles. La nueva migración añade `workflow_runs.timeout_cleanup_work_deadline_at`; no activa la opción para ejecuciones existentes. No la active antes de completar la migración.
+Antes de activar la opción, instale Workflow 2.29.0 o posterior, ejecute las migraciones de la aplicación y despliegue workers de cola embebidos compatibles. La nueva migración añade `workflow_runs.timeout_cleanup_work_deadline_at`; no activa la opción para ejecuciones existentes. No la active antes de completar la migración.
 
 ```bash
 php artisan migrate
@@ -159,11 +159,11 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 );
 ```
 
-`timeoutCleanupSeconds:` es la alternativa del constructor. La reserva debe ser de 1–86400 segundos, requiere un timeout de ejecución o de run y debe ser menor que cada timeout estricto configurado. `null` conserva la política predeterminada.
+Encadene `withTimeoutCleanup()` después de `withExecutionTimeout()` o `withRunTimeout()`; llamarlo antes lanza una excepción porque aún no hay un timeout estricto. `timeoutCleanupSeconds:` es la alternativa del constructor. La reserva debe ser de 1–86400 segundos, requiere un timeout de ejecución o de run y debe ser menor que cada timeout estricto configurado. `null` conserva la política predeterminada.
 
 En el ejemplo, el trabajo ordinario dispone de 60 segundos y la limpieza puede usar los últimos 10 dentro del límite original de 70 segundos. La reserva nunca añade tiempo después de ese límite. Si se aplican ambos plazos estrictos, el anterior limita la limpieza. La detección tardía, los reintentos, el reemplazo de workers y la renovación del lease no reinician plazos. Continue-as-new y redrive conservan la reserva admitida y los relojes de ejecución originales; cada run deriva sus propios relojes.
 
-Al llegar el plazo de trabajo, la ejecución entra en limpieza una sola vez y registra `WorkflowTimeoutCleanupStarted`. El código compatible recibe `WorkflowTimeoutCleanupRequested`, subtipo de `WorkflowCancellationRequestedException` con `cause: timeout`. Maneje esa interrupción para ejecutar compensaciones de saga registradas o limpieza protegida; `compensate()` usa su escudo de cancelación. El escudo no amplía el límite estricto. Véase [Sagas](./sagas.md#deadline-driven-compensation).
+Cuando un worker detecta el plazo de trabajo, la ejecución entra en limpieza una sola vez y registra `WorkflowTimeoutCleanupStarted`. Si ningún worker lo detecta antes del plazo estricto, ese evento nunca se escribe y el resultado `expired` no tiene `started_at`. El código compatible recibe `WorkflowTimeoutCleanupRequested`, subtipo de `WorkflowCancellationRequestedException` con `cause: timeout`. Maneje esa interrupción para ejecutar compensaciones de saga registradas o limpieza protegida; `compensate()` usa su escudo de cancelación. El escudo no amplía el límite estricto. Véase [Sagas](./sagas.md#deadline-driven-compensation).
 
 La limpieza tiene un `timeout_cleanup.outcome` independiente:
 
@@ -174,7 +174,11 @@ La limpieza tiene un `timeout_cleanup.outcome` independiente:
 | `expired` | Llegó el límite estricto antes de terminar, incluso si ningún worker pudo ejecutar la limpieza. |
 | `preempted` | `cancel()` o `terminate()` inmediato interrumpió la limpieza; el resultado de cancelación/terminación correspondiente sigue siendo terminal. |
 
-La limpieza completada, fallida o expirada mantiene el estado de negocio `failed`, `closed_reason = timed_out` y `WorkflowTimedOut`. Compensar correctamente no convierte el timeout en éxito. Inspeccione describe/detalle del run y el historial retenido para ambos resultados. Los workers ausentes o demorados no garantizan un efecto externo de limpieza; use compensaciones idempotentes y reconcilie los efectos inciertos en su aplicación.
+La limpieza completada, fallida o expirada mantiene el estado de negocio `failed`, `closed_reason = timed_out` y `WorkflowTimedOut`. Compensar correctamente no convierte el timeout en éxito. Si la limpieza termina antes, la ejecución se cierra de inmediato, pero el mensaje de timeout sigue citando la hora del plazo estricto original.
+
+Lea el resultado de la limpieza en el historial. El payload `timeout_cleanup` del evento terminal `WorkflowTimedOut`, `WorkflowTerminated` o `WorkflowCancelled`, incluido también en la salida de `php artisan workflow:v2:history-export`, es el registro autorizado. La salida de describe del plano de control y el resumen del run no incluyen el resultado de la limpieza, y el detalle del run muestra como mucho una nota como «Timeout cleanup failed.» (nada para `preempted`).
+
+Los workers ausentes o demorados no garantizan un efecto externo de limpieza; use compensaciones idempotentes y reconcilie los efectos inciertos en su aplicación.
 
 Este incremento solo admite workers de cola embebidos. Los inicios en modo poll y servicio rechazan la opción; los workers bridge no pueden reclamar una ejecución embebida con la opción. La admisión nativa y la entrega de runtime en los SDK siguen pendientes en [Server #1201](https://github.com/durable-workflow/server/issues/1201); el soporte de parser por sí solo no implementa la limpieza por timeout.
 

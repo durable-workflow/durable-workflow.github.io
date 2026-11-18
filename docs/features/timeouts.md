@@ -153,11 +153,14 @@ or run deadline. See [Cancel and Terminate](./cancel-and-terminate.md) and
 
 ## Experimental deadline-triggered cleanup {#timeout-cleanup}
 
-**Unreleased experimental embedded support.** This journey targets Workflow
-2.29.0; publication and installed-package qualification are still pending.
-The selected stable release keeps the default hard-timeout behavior above.
+**Experimental embedded support.** Available in Workflow 2.29.0 and later for
+embedded queue workers only; service and poll-mode starts refuse it. The option
+is an `experimental` surface under the
+[stability levels](../compatibility.md#stability-levels), with no
+backward-compatibility promise yet. Runs that do not opt in keep the default
+hard-timeout behavior above.
 
-Before enabling this option, install the qualified release, run the application
+Before enabling this option, install Workflow 2.29.0 or later, run the application
 migrations, and deploy compatible embedded queue workers. The new migration
 adds `workflow_runs.timeout_cleanup_work_deadline_at`; it does not opt existing
 runs in. Do not enable the option before the migration completes.
@@ -180,6 +183,8 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 );
 ```
 
+Chain `withTimeoutCleanup()` after `withExecutionTimeout()` or
+`withRunTimeout()`; calling it first throws because no hard timeout is set yet.
 `timeoutCleanupSeconds:` is the constructor alternative. The allowance must be
 1–86400 seconds, requires an execution or run timeout, and must be smaller than
 every configured hard timeout. Passing `null` leaves the default policy.
@@ -191,8 +196,10 @@ cleanup. Late detection, retries, worker replacement and lease renewal do not
 refresh any deadline. Continue-as-new and redrive preserve the admitted
 allowance and original execution clocks; each run derives its own run clocks.
 
-At the work deadline, the run enters cleanup once and records
-`WorkflowTimeoutCleanupStarted`. Compatible workflow code receives
+When a worker observes the work deadline, the run enters cleanup once and
+records `WorkflowTimeoutCleanupStarted`. If no worker observes it before the
+hard deadline, that event is never written and the `expired` outcome has no
+`started_at`. Compatible workflow code receives
 `WorkflowTimeoutCleanupRequested`, a subtype of
 `WorkflowCancellationRequestedException` with cancellation `cause: timeout`.
 Handle that interruption to run registered saga compensation or protected
@@ -210,8 +217,17 @@ Cleanup has a separate `timeout_cleanup.outcome`:
 
 Completed, failed or expired cleanup still ends with business status `failed`,
 `closed_reason = timed_out` and `WorkflowTimedOut`. Successful compensation does
-not turn that timeout into a successful workflow. Inspect describe/run detail
-and the retained history for both the business outcome and cleanup outcome.
+not turn that timeout into a successful workflow. When cleanup completes early,
+the run closes right away, but the timed-out message still cites the original
+hard-deadline time.
+
+Read the cleanup outcome from history. The `timeout_cleanup` payload on the
+terminal `WorkflowTimedOut`, `WorkflowTerminated` or `WorkflowCancelled` event,
+also included in `php artisan workflow:v2:history-export` output, is the
+authoritative record. Control-plane describe output and the run summary carry
+no cleanup outcome, and run detail shows at most a note such as "Timeout
+cleanup failed." (nothing for `preempted`).
+
 Unavailable or delayed workers cannot guarantee an external cleanup effect;
 keep compensation idempotent and reconcile uncertain effects in your application.
 

@@ -135,9 +135,9 @@ $description['run']['run_deadline_at'];       // ISO 8601 timestamp
 
 ## 期限による実験的なタイムアウトクリーンアップ {#timeout-cleanup}
 
-**未公開の実験的 embedded サポート。** この手順は Workflow 2.29.0 向けで、公開とインストール済みパッケージの検証はまだです。選択された安定版では、上記の既定のハードタイムアウトを維持します。
+**実験的な embedded サポート。** Workflow 2.29.0 以降で embedded queue worker のみに提供され、service と poll mode の開始はオプションを拒否します。このオプションは[安定性レベル](../compatibility.md#stability-levels)の `experimental` サーフェスで、後方互換性はまだ約束されていません。オプションを有効にしない run は上記の既定のハードタイムアウトを維持します。
 
-有効化する前に、検証済みリリースをインストールし、アプリケーションの migration を実行し、互換性のある embedded queue worker を配置してください。新しい migration は `workflow_runs.timeout_cleanup_work_deadline_at` を追加しますが、既存の run でオプションを有効にはしません。migration の完了前に有効化しないでください。
+有効化する前に、Workflow 2.29.0 以降をインストールし、アプリケーションの migration を実行し、互換性のある embedded queue worker を配置してください。新しい migration は `workflow_runs.timeout_cleanup_work_deadline_at` を追加しますが、既存の run でオプションを有効にはしません。migration の完了前に有効化しないでください。
 
 ```bash
 php artisan migrate
@@ -157,11 +157,11 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 );
 ```
 
-コンストラクターでは `timeoutCleanupSeconds:` も使えます。予約は 1–86400 秒で、execution または run timeout が必要であり、設定されたすべてのハードタイムアウトより短くなければなりません。`null` は既定の方針を維持します。
+`withTimeoutCleanup()` は `withExecutionTimeout()` または `withRunTimeout()` の後に連結してください。先に呼ぶとハードタイムアウトが未設定のため例外になります。コンストラクターでは `timeoutCleanupSeconds:` も使えます。予約は 1–86400 秒で、execution または run timeout が必要であり、設定されたすべてのハードタイムアウトより短くなければなりません。`null` は既定の方針を維持します。
 
 この例では通常の作業に 60 秒、クリーンアップに元の 70 秒のハード上限内の最後の 10 秒を使えます。予約は上限後の時間を追加しません。両方のハード期限が適用される場合は、早い方がクリーンアップを制限します。検出の遅れ、再試行、worker 交代、lease 更新で期限は延びません。continue-as-new と redrive は受け付け済みの予約と元の execution の時計を引き継ぎ、各 run は自分の時計を導出します。
 
-作業期限になると run は一度だけクリーンアップに入り、`WorkflowTimeoutCleanupStarted` を記録します。互換性のあるコードは、`cause: timeout` を持つ `WorkflowCancellationRequestedException` のサブタイプ `WorkflowTimeoutCleanupRequested` を受け取ります。この割り込みを処理して、登録した saga 補償や保護されたクリーンアップを実行してください。`compensate()` は cancellation shield を使いますが、shield はハード上限を延長しません。[Sagas](./sagas.md#deadline-driven-compensation)を参照してください。
+worker が作業期限を検出すると、run は一度だけクリーンアップに入り、`WorkflowTimeoutCleanupStarted` を記録します。ハード期限までにどの worker も検出しなかった場合、このイベントは書き込まれず、`expired` の結果には `started_at` がありません。互換性のあるコードは、`cause: timeout` を持つ `WorkflowCancellationRequestedException` のサブタイプ `WorkflowTimeoutCleanupRequested` を受け取ります。この割り込みを処理して、登録した saga 補償や保護されたクリーンアップを実行してください。`compensate()` は cancellation shield を使いますが、shield はハード上限を延長しません。[Sagas](./sagas.md#deadline-driven-compensation)を参照してください。
 
 クリーンアップには独立した `timeout_cleanup.outcome` があります。
 
@@ -172,7 +172,11 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 | `expired` | クリーンアップの完了前にハード上限に達しました。実行できる worker がいなかった場合も含みます。 |
 | `preempted` | 即時の `cancel()` または `terminate()` がクリーンアップを中断し、対応するキャンセル/終了の結果が終端となります。 |
 
-クリーンアップの完了、失敗、期限切れのいずれでも、業務状態は `failed`、`closed_reason = timed_out`、`WorkflowTimedOut` です。補償が成功しても、タイムアウトが workflow の成功には変わりません。describe、run detail、保持された履歴で、業務結果とクリーンアップ結果の両方を確認してください。不在または遅延した worker は外部クリーンアップの効果を保証できません。補償を冪等にし、効果が不明な場合はアプリケーションで照合してください。
+クリーンアップの完了、失敗、期限切れのいずれでも、業務状態は `failed`、`closed_reason = timed_out`、`WorkflowTimedOut` です。補償が成功しても、タイムアウトが workflow の成功には変わりません。クリーンアップが早く完了すると run はすぐに閉じますが、タイムアウトのメッセージには元のハード期限の時刻が記載されます。
+
+クリーンアップ結果は履歴で確認してください。終端イベント `WorkflowTimedOut`、`WorkflowTerminated`、`WorkflowCancelled` の `timeout_cleanup` ペイロードが正式な記録で、`php artisan workflow:v2:history-export` の出力にも含まれます。control plane の describe 出力と run summary にはクリーンアップ結果がなく、run detail には「Timeout cleanup failed.」のような注記が出る程度です（`preempted` では何も出ません）。
+
+不在または遅延した worker は外部クリーンアップの効果を保証できません。補償を冪等にし、効果が不明な場合はアプリケーションで照合してください。
 
 この実装は embedded queue worker のみを対象とします。poll mode と service の開始はオプションを拒否し、bridge worker は有効化された embedded run を claim できません。native admission と SDK の runtime delivery は [Server #1201](https://github.com/durable-workflow/server/issues/1201)で対応待ちです。parser の対応だけではタイムアウトクリーンアップは実装されません。
 

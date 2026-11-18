@@ -135,9 +135,9 @@ $description['run']['run_deadline_at'];       // ISO 8601 timestamp
 
 ## 截止时间触发的实验性清理 {#timeout-cleanup}
 
-**尚未发布的实验性嵌入式支持。** 此流程面向 Workflow 2.29.0；发布和安装后验证仍在等待中。当前选定的稳定版继续使用上述默认硬超时行为。
+**实验性嵌入式支持。** 从 Workflow 2.29.0 起提供，仅适用于嵌入式队列 worker；service 和 poll 模式启动会拒绝此选项。该选项按[稳定性级别](../compatibility.md#stability-levels)属于 `experimental` 接口，目前不承诺向后兼容。未启用该选项的运行继续使用上述默认硬超时行为。
 
-启用前，先安装经过验证的版本，运行应用 migration，并部署兼容的嵌入式队列 worker。新 migration 添加 `workflow_runs.timeout_cleanup_work_deadline_at`，不会为已有运行启用选项。migration 完成前不要启用。
+启用前，先安装 Workflow 2.29.0 或更高版本，运行应用 migration，并部署兼容的嵌入式队列 worker。新 migration 添加 `workflow_runs.timeout_cleanup_work_deadline_at`，不会为已有运行启用选项。migration 完成前不要启用。
 
 ```bash
 php artisan migrate
@@ -157,11 +157,11 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 );
 ```
 
-构造函数也可使用 `timeoutCleanupSeconds:`。预留范围为 1–86400 秒，必须设置 execution 或 run timeout，且必须小于每一个配置的硬超时。`null` 保持默认策略。
+`withTimeoutCleanup()` 必须链式调用在 `withExecutionTimeout()` 或 `withRunTimeout()` 之后；先调用会因尚未设置硬超时而抛出异常。构造函数也可使用 `timeoutCleanupSeconds:`。预留范围为 1–86400 秒，必须设置 execution 或 run timeout，且必须小于每一个配置的硬超时。`null` 保持默认策略。
 
 本例为普通工作提供 60 秒，清理可使用原始 70 秒硬上限内的最后 10 秒。预留绝不在硬上限后增加时间。若两个硬截止时间都适用，较早的一个限制清理。延迟检测、重试、worker 替换和 lease 续期都不重置任何截止时间。continue-as-new 和 redrive 保留已接纳的预留及原始 execution 时钟；每个 run 推导自己的时钟。
 
-达到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。兼容代码收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
+worker 发现已到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。如果在硬截止时间前没有 worker 发现，则不会写入该事件，`expired` 结果也没有 `started_at`。兼容代码收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
 
 清理具有独立的 `timeout_cleanup.outcome`：
 
@@ -172,7 +172,11 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 | `expired` | 硬上限先于清理完成到达，包括没有 worker 能运行清理的情况。 |
 | `preempted` | 立即 `cancel()` 或 `terminate()` 中断清理；对应的取消/终止结果仍为终态。 |
 
-清理完成、失败或过期后，业务状态仍是 `failed`、`closed_reason = timed_out` 和 `WorkflowTimedOut`。补偿成功不会把超时变为 workflow 成功。应查看 describe/run detail 和保留历史中的业务与清理结果。不可用或延迟的 worker 无法保证外部清理效果；补偿必须幂等，并由应用核对不确定的效果。
+清理完成、失败或过期后，业务状态仍是 `failed`、`closed_reason = timed_out` 和 `WorkflowTimedOut`。补偿成功不会把超时变为 workflow 成功。清理提前完成时，运行会立即关闭，但超时消息仍引用原始硬截止时间。
+
+请从历史读取清理结果。终止事件 `WorkflowTimedOut`、`WorkflowTerminated` 或 `WorkflowCancelled` 上的 `timeout_cleanup` 载荷是权威记录，也包含在 `php artisan workflow:v2:history-export` 的输出中。control plane 的 describe 输出和运行摘要不包含清理结果，run detail 最多显示类似“Timeout cleanup failed.”的说明（`preempted` 时不显示）。
+
+不可用或延迟的 worker 无法保证外部清理效果；补偿必须幂等，并由应用核对不确定的效果。
 
 本增量仅支持嵌入式队列 worker。poll 和 service 启动会拒绝此选项；bridge worker 无法 claim 已启用的嵌入式运行。原生接纳及 SDK runtime 交付仍由 [Server #1201](https://github.com/durable-workflow/server/issues/1201) 跟踪；仅有 parser 支持不代表实现超时清理。
 
