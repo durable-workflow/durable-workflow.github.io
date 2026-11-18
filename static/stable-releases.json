@@ -6,7 +6,7 @@
     "cli": "2.10.0",
     "helm-chart": "3.0.0",
     "sdk-php": "3.19.0",
-    "sdk-python": "2.17.2",
+    "sdk-python": "2.18.0",
     "sdk-rust": "4.18.0",
     "server": "3.12.0",
     "waterline": "2.18.1",
