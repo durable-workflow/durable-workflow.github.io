@@ -396,6 +396,10 @@ SDK. Сумісність визначає оголошений контракт
 - [Виконуваний PHP quickstart-контракт](https://php.durable-workflow.com/quickstart-contract.json)
 - [Вихідний код PHP SDK](https://github.com/durable-workflow/sdk-php)
 
+## Відкриті запуски на гілці версії {#workflow-version-usage}
+
+PHP SDK 3.19.0 і новіші версії надають `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`. Метод повертає типізовану сторінку відкритих запусків: лічильники запусків legacy, current і unknown, стан кожного запуску, записану версію та причину unknown, а також непрозорий `nextCursor`. Він потребує Server, який оголошує `capabilities.workflow_version_usage` (Server 3.12.0 або новіша версія). Старіші Server викидають `ServerCapabilityUnavailable` ще до надсилання будь-якого запиту використання. Використовуйте його для [перевірки використання версій](/docs/features/versioning/#check-version-usage) перед виведенням гілки версії з ужитку.
+
 ## Сторінки списку workflow та історії {#workflow-list-and-history-pages}
 
 Ці опубліковані виклики повертають **одну сторінку**, а не автоматично повний результат: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Продовжуйте з повернутим непрозорим token, зберігаючи namespace, фільтри та вибрані workflow/run; зупиняйтеся на null/порожньому token й явно обробляйте помилки сторінок. Часткова сторінка не є replay-bundle. Для офлайн-replay використовуйте API експорту історії SDK. [Опублікований клієнт PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) визначає параметри сторінок.

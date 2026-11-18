@@ -252,9 +252,35 @@ $result = match($version) {
 };
 ```
 
+## 分岐廃止前の未完了実行の確認 {#check-version-usage}
+
+`minSupported` を上げる前、または `patched()` の旧分岐を削除する前に、まだそれに依存している未完了実行を見つけます。1つのワークフロー型、1つの変更 ID、今後もサポートしたい最小バージョンを指定して問い合わせます。`patched()` の変更点では最小値に `1` を使います。新規実行は新分岐に対してバージョン `1` を記録するためです。
+
+各未完了実行は次の3つの状態のいずれかになります。
+
+- **legacy**（旧）: 提案した最小値より低いバージョンを記録しているため、削除したい分岐をリプレイで通ります。
+- **current**（現行）: 最小値以上のバージョンを記録しています。
+- **unknown**（不明）: この変更 ID のマーカーを記録していない（`marker_absent`）か、履歴が利用できない（`history_unavailable`）または無効（`history_invalid`）です。まだ変更点に到達していない実行は、現行コードで動いていても unknown です。この実行はまだ旧バージョンを記録する可能性があります。
+
+変更点をデプロイする前に開始した実行は、マーカーを記録せずにリプレイで旧分岐（`DEFAULT_VERSION`）を通ります。そのため legacy ではなく **unknown**（`marker_absent`）として表示されます。これは `patched()` 導入前の実行の通常の状態であり、旧分岐を削除する前に unknown も 0 にする必要があるのはこのためです。legacy は、古い `maxSupported` に固定された `getVersion()` の実行のように、最小値より低いバージョンを明示的に記録した実行を数えます。
+
+件数は、状態フィルターやページ上限を適用する前のすべての未完了実行を常に対象とします。完了した実行は含まれません。どの SDK がマーカーを記録したかに関係なく、結果は同じです。
+
+| 場所 | 方法 |
+| --- | --- |
+| Waterline | **Version usage** ページ（Waterline main。埋め込みモードには Workflow 2.29.0 以降、サービスモードには PHP SDK 3.19.0 以降と Server 3.12.0 以降が必要）。 |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`。`--state`、`--limit`、`--namespace`、`--json` を指定できます（CLI 2.10.0 以降）。 |
+| サーバー API | Server 3.12.0 以降の `GET /api/workflow-version-usage`。このサーバーは `capabilities.workflow_version_usage` を通知します。 |
+| PHP SDK | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)`（3.19.0 以降）。 |
+| 埋め込み Laravel | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)`（Workflow 2.29.0 以降）。 |
+
+古い Server やパッケージはチェックを利用不可として報告し、空の結果を返すことはありません。結果は不透明なカーソルを使って実行 ID ごとにページ分割されます。件数や対象の実行はページ間で変わり得るため、何かを変更した後はクエリを最初からやり直してください。
+
+このチェックはライブの観測結果であり、デプロイを止める仕組みではありません。旧経路を通り得る新規開始を停止または遮断した後、**legacy と unknown がどちらも 0** になったときにだけ分岐を廃止してください。まずすべての unknown 実行を調査してください。
+
 ## 古いバージョンの廃止 {#deprecating-old-versions}
 
-旧バージョンを使う全ワークフローの完了後、`minSupported` を上げてサポートを削除し、古い経路の保守を終えられます。
+[バージョン使用状況チェック](#check-version-usage)で新しい最小値に対する legacy と unknown の未完了実行がないと報告された後、`minSupported` を上げてサポートを削除し、古い経路の保守を終えられます。
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
@@ -356,7 +382,7 @@ final class MyWorkflow extends Workflow
 2段階のパッチライフサイクルと配置ルール:
 
 1. 変更点に **`patched()` を導入**し、両分岐を残します。新規実行は新分岐、旧実行は旧分岐を通ります。
-2. **すべての旧実行の完了を待ちます。** Waterline の実行検索や `dw workflow:list` で旧分岐をリプレイし得る未完了実行がないことを確認します。
+2. **すべての旧実行の完了を待ちます。** 最小バージョン `1` で[バージョン使用状況チェック](#check-version-usage)を実行し、legacy と unknown がどちらも 0 になってから次に進みます。
 3. **同じ位置、同じ `changeId` で `deprecatePatch()` に置換**し、本体の旧分岐を削除します。永続履歴が既知の変更点と一致するよう呼び出しは残します。
 4. **任意で `deprecatePatch()` 自体を削除**できますが、クエリ、エクスポート、監査を含む過去のリプレイも今後このマーカーを読まないと確信できる場合に限ります。取り消せない段階です。通常は実行時コストなしで無期限に残せます。
 

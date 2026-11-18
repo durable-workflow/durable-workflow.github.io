@@ -748,6 +748,10 @@ Les anciennes réutilisent le marqueur durable. `patched(change_id)` fournit
 la forme booléenne de déploiement et `deprecate_patch(change_id)` préserve
 le marqueur après la fin des anciennes branches. Les [effets de bord](/docs/features/side-effects/)
 et la [gestion des versions](/docs/features/versioning/) décrivent ces règles communes.
+Avant d’augmenter `min_supported` ou de supprimer une branche `patched()`,
+utilisez la [vérification de l’utilisation des versions](/docs/features/versioning/#check-version-usage)
+pour identifier les exécutions ouvertes qui en dépendent encore. Les marqueurs
+enregistrés par le SDK Rust sont classés de la même façon que ceux des autres SDK.
 
 ## Journalisation de workflow consciente du replay {#workflow-logging}
 

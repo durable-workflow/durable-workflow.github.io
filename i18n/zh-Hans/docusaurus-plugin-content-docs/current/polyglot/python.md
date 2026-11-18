@@ -620,6 +620,8 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 | `ctx.uuid4()` | 确定性 UUID |
 | `ctx.logger` | 重放期间保持静默的日志器 |
 
+提高 `ctx.get_version(...)` 中的 `min` 或删除旧分支之前，使用[版本使用检查](/docs/features/versioning/#check-version-usage)找出仍依赖它的未关闭运行。
+
 ### 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
 **已发布支持。** Python SDK 2.6.2 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。

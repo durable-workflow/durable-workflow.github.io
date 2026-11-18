@@ -272,10 +272,37 @@ $result = match($version) {
 };
 ```
 
+## Offene Läufe prüfen, bevor Sie einen Zweig ausmustern {#check-version-usage}
+
+Bevor Sie `minSupported` erhöhen oder einen alten `patched()`-Zweig löschen, ermitteln Sie die offenen Läufe, die noch davon abhängen. Fragen Sie dazu einen Workflow-Typ, eine Änderungs-ID und die Mindestversion ab, die Sie weiterhin unterstützen möchten. Verwenden Sie für einen `patched()`-Änderungspunkt das Minimum `1`: Neue Läufe zeichnen für den neuen Zweig Version `1` auf.
+
+Jeder offene Lauf fällt in einen von drei Zuständen:
+
+- **legacy** (alt): Er hat eine Version unterhalb des vorgeschlagenen Minimums aufgezeichnet und würde daher beim Replay den Zweig durchlaufen, den Sie entfernen möchten.
+- **current** (aktuell): Er hat eine Version auf oder über dem Minimum aufgezeichnet.
+- **unknown** (unbekannt): Er hat für diese Änderungs-ID keinen Marker aufgezeichnet (`marker_absent`), oder seine Historie ist nicht verfügbar (`history_unavailable`) oder ungültig (`history_invalid`). Ein Lauf, der den Änderungspunkt noch nicht erreicht hat, gilt als unknown, auch wenn er aktuellen Code ausführt. Er kann weiterhin die alte Version aufzeichnen.
+
+Ein Lauf, der vor der Bereitstellung des Änderungspunkts gestartet wurde, nimmt beim Replay den alten Zweig (`DEFAULT_VERSION`), ohne einen Marker aufzuzeichnen. Er erscheint daher als **unknown** (`marker_absent`), nicht als legacy. Das ist der übliche Zustand von Läufen aus der Zeit vor `patched()`, und deshalb muss auch unknown auf null fallen, bevor Sie den alten Zweig entfernen. Legacy zählt Läufe, die ausdrücklich eine Version unterhalb des Minimums aufgezeichnet haben, etwa `getVersion()`-Läufe, die auf ein älteres `maxSupported` festgelegt sind.
+
+Die Zählungen umfassen immer alle offenen Läufe, vor jedem Zustandsfilter und jeder Seitenbegrenzung. Abgeschlossene Läufe sind nicht enthalten. Das Ergebnis ist dasselbe, gleich welches SDK die Marker aufgezeichnet hat.
+
+| Wo | Wie |
+| --- | --- |
+| Waterline | Die Seite **Version usage** (Waterline main; der eingebettete Modus erfordert Workflow 2.29.0 oder neuer, der Service-Modus PHP-SDK 3.19.0 oder neuer und Server 3.12.0 oder neuer). |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`, mit `--state`, `--limit`, `--namespace` und `--json` (CLI 2.10.0 oder neuer). |
+| Server-API | `GET /api/workflow-version-usage` auf Server 3.12.0 oder neuer, der `capabilities.workflow_version_usage` ankündigt. |
+| PHP-SDK | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)` (3.19.0 oder neuer). |
+| Eingebettetes Laravel | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)` (Workflow 2.29.0 oder neuer). |
+
+Ältere Server und Pakete melden die Prüfung als nicht verfügbar; sie geben nie ein leeres Ergebnis zurück. Die Ergebnisse werden nach Lauf-ID mit einem opaken Cursor seitenweise geliefert. Zählungen und Zugehörigkeit können sich zwischen den Seiten ändern; starten Sie die Abfrage daher neu, nachdem Sie etwas geändert haben.
+
+Die Prüfung ist eine Live-Beobachtung, keine Bereitstellungssperre. Mustern Sie einen Zweig erst aus, wenn **legacy und unknown beide null** sind, nachdem Sie neue Starts gestoppt oder abgeschirmt haben, die noch den alten Pfad nehmen könnten. Untersuchen Sie vorher jeden unknown-Lauf.
+
 ## Alte Versionen ausmustern {#deprecating-old-versions}
 
-Nachdem alle Workflows mit einer alten Version abgeschlossen sind, können Sie
-die Unterstützung durch Erhöhen von `minSupported` entfernen. Alte Codepfade
+Sobald die [Versionsnutzungsprüfung](#check-version-usage) für das neue
+Minimum keine offenen legacy- oder unknown-Läufe mehr meldet, können Sie die
+Unterstützung durch Erhöhen von `minSupported` entfernen. Alte Codepfade
 müssen dann nicht weiter gepflegt werden.
 
 ```php
@@ -410,7 +437,7 @@ neuen Pfad. Nach Veröffentlichung dieser Version:
 Zweiphasiger Patch-Lebenszyklus und Platzierungsregeln:
 
 1. **`patched()` am Änderungspunkt einführen.** Beide Zweige bleiben im Workflow-Code. Neue Läufe nehmen den neuen, ältere weiterhin den alten Zweig.
-2. **Auf Abschluss aller alten Läufe warten.** Bestätigen Sie mit Waterlines Laufsuche oder `dw workflow:list`, dass keine offenen Läufe mehr den alten Zweig erneut abspielen können.
+2. **Auf Abschluss aller alten Läufe warten.** Führen Sie die [Versionsnutzungsprüfung](#check-version-usage) mit der Mindestversion `1` aus und fahren Sie erst fort, wenn legacy und unknown beide null sind.
 3. **`patched()` am selben Ort durch `deprecatePatch()` ersetzen**, mit derselben `changeId`, und den alten Zweig aus dem Funktionsrumpf löschen. Behalten Sie den Aufruf bei, damit dauerhafte Historie weiter einem bekannten Änderungspunkt entspricht.
 4. **Optional `deprecatePatch()` vollständig entfernen**, sobald sicher auch kein historisches Replay (Abfragen, Exporte, Audits) jemals Historie mit diesem Marker lesen wird. Dieser Schritt ist unumkehrbar. Die meisten Workflows können `deprecatePatch()` ohne Laufzeitkosten unbegrenzt behalten.
 

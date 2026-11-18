@@ -782,6 +782,10 @@ Le `WorkflowContext` transmis à `run` fournit des opérations déterministes :
 | `ctx.uuid4()` | UUID déterministe |
 | `ctx.logger` | Logger silencieux pendant la relecture |
 
+Avant d’augmenter `min` dans `ctx.get_version(...)` ou de supprimer une ancienne branche,
+utilisez la [vérification de l’utilisation des versions](/docs/features/versioning/#check-version-usage)
+pour identifier les exécutions ouvertes qui en dépendent encore.
+
 ### Compatibilité à l’entrée et récupération {#entry-compatibility-and-recovery}
 
 **Prise en charge publiée.** Le SDK Python 2.6.2 a introduit la protection d’entrée ci-dessous, avec le routage et la récupération dans Server 2.9.9. Ce sont les versions minimales pour ces fonctions. Installez les versions stables actuelles pour bénéficier des correctifs de sécurité.

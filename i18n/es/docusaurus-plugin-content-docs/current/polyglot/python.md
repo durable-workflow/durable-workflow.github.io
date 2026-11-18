@@ -765,6 +765,8 @@ Los helpers locales síncronos no pueden esperar. `workflow.query_state()` recha
 | `ctx.uuid4()` | UUID determinista |
 | `ctx.logger` | Logger silencioso durante la reproducción |
 
+Antes de aumentar `min` en `ctx.get_version(...)` o eliminar una rama heredada, usa la [comprobación de uso de versiones](/docs/features/versioning/#check-version-usage) para localizar las ejecuciones abiertas que aún dependen de ella.
+
 ### Compatibilidad de entrada y recuperación {#entry-compatibility-and-recovery}
 
 **Soporte publicado.** El SDK Python 2.6.2 incorporó la protección de entrada descrita a continuación, con enrutamiento y recuperación en Server 2.9.9. Son las versiones mínimas para estas funciones; instale las versiones estables actuales para recibir correcciones de seguridad.

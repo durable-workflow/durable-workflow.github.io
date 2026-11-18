@@ -252,9 +252,35 @@ $result = match($version) {
 };
 ```
 
+## Vérifier les exécutions ouvertes avant d’abandonner une branche {#check-version-usage}
+
+Avant d’augmenter `minSupported` ou de supprimer une ancienne branche `patched()`, identifiez les exécutions ouvertes qui en dépendent encore. Interrogez un type de workflow, un identifiant de changement et la version minimale que vous voulez continuer à prendre en charge. Pour un point de changement `patched()`, utilisez un minimum de `1` : les nouvelles exécutions enregistrent la version `1` pour la nouvelle branche.
+
+Chaque exécution ouverte se trouve dans l’un de ces trois états :
+
+- **legacy** (ancienne) : elle a enregistré une version inférieure au minimum proposé ; elle relirait donc la branche que vous voulez supprimer.
+- **current** (actuelle) : elle a enregistré une version égale ou supérieure au minimum.
+- **unknown** (inconnue) : elle n’a enregistré aucun marqueur pour cet identifiant de changement (`marker_absent`), ou son historique est indisponible (`history_unavailable`) ou invalide (`history_invalid`). Une exécution qui n’a pas encore atteint le point de changement est unknown, même si elle exécute le code actuel. Elle peut encore enregistrer l’ancienne version.
+
+Une exécution démarrée avant le déploiement du point de changement prend l’ancienne branche (`DEFAULT_VERSION`) lors de la relecture, sans enregistrer de marqueur. Elle apparaît donc comme **unknown** (`marker_absent`), et non comme legacy. C’est l’état habituel des exécutions antérieures à `patched()`, et c’est pourquoi unknown doit aussi atteindre zéro avant que vous supprimiez l’ancienne branche. Legacy compte les exécutions qui ont enregistré une version explicite inférieure au minimum, comme les exécutions `getVersion()` figées sur un `maxSupported` plus ancien.
+
+Les décomptes couvrent toujours toutes les exécutions ouvertes, avant tout filtre d’état ou limite de page. Les exécutions fermées ne sont pas incluses. La réponse est la même quel que soit le SDK qui a enregistré les marqueurs.
+
+| Où | Comment |
+| --- | --- |
+| Waterline | La page **Version usage** (Waterline main ; le mode intégré nécessite Workflow 2.29.0 ou ultérieur, le mode service nécessite PHP SDK 3.19.0 ou ultérieur et Server 3.12.0 ou ultérieur). |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`, avec `--state`, `--limit`, `--namespace` et `--json` (CLI 2.10.0 ou ultérieur). |
+| API du serveur | `GET /api/workflow-version-usage` sur Server 3.12.0 ou ultérieur, qui annonce `capabilities.workflow_version_usage`. |
+| SDK PHP | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)` (3.19.0 ou ultérieur). |
+| Laravel intégré | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)` (Workflow 2.29.0 ou ultérieur). |
+
+Les serveurs et paquets plus anciens signalent la vérification comme indisponible ; ils ne renvoient jamais de résultat vide. Les résultats sont paginés par identifiant d’exécution avec un curseur opaque. Les décomptes et l’appartenance peuvent changer d’une page à l’autre ; relancez donc la requête après toute modification.
+
+La vérification est une observation en direct, pas une barrière de déploiement. N’abandonnez une branche que lorsque **legacy et unknown sont tous deux à zéro**, après avoir arrêté ou bloqué les nouveaux démarrages qui pourraient encore prendre l’ancien chemin. Examinez d’abord chaque exécution unknown.
+
 ## Abandonner les anciennes versions {#deprecating-old-versions}
 
-Une fois tous les workflows d’une ancienne version terminés, vous pouvez cesser de la prendre en charge en augmentant `minSupported`. Vous n’avez alors plus à maintenir les anciens chemins de code.
+Une fois que la [vérification de l’utilisation des versions](#check-version-usage) ne signale plus aucune exécution ouverte legacy ou unknown pour le nouveau minimum, vous pouvez cesser de prendre en charge l’ancienne version en augmentant `minSupported`. Vous n’avez alors plus à maintenir les anciens chemins de code.
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
@@ -356,7 +382,7 @@ final class MyWorkflow extends Workflow
 Cycle de vie du correctif en deux phases et règles de placement :
 
 1. **Introduisez `patched()`** au point de changement. Conservez les deux branches dans le workflow. Les nouvelles exécutions prennent la nouvelle branche, les anciennes gardent l’ancienne.
-2. **Attendez la fin de toutes les anciennes exécutions.** Utilisez la recherche Waterline ou `dw workflow:list` pour vérifier qu’aucune exécution ouverte ne peut relire l’ancienne branche.
+2. **Attendez la fin de toutes les anciennes exécutions.** Lancez la [vérification de l’utilisation des versions](#check-version-usage) avec une version minimale de `1` et ne continuez que lorsque legacy et unknown sont tous deux à zéro.
 3. **Remplacez `patched()` par `deprecatePatch()`** au même point d’appel avec le même `changeId`, puis supprimez l’ancienne branche du corps de la fonction. Conservez l’appel pour que l’historique durable corresponde toujours à un point connu.
 4. **Facultatif : supprimez entièrement `deprecatePatch()`** seulement si vous êtes aussi certain qu’aucune relecture historique (requêtes de lecture, exports, audits) ne lira jamais un historique contenant ce marqueur. Cette étape est irréversible. La plupart des workflows peuvent conserver `deprecatePatch()` indéfiniment sans coût d’exécution.
 

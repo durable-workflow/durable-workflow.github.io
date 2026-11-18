@@ -252,9 +252,35 @@ $result = match($version) {
 };
 ```
 
+## Comprobar las ejecuciones abiertas antes de retirar una rama {#check-version-usage}
+
+Antes de aumentar `minSupported` o eliminar una rama heredada de `patched()`, localiza las ejecuciones abiertas que aún dependen de ella. Consulta un tipo de workflow, un ID de cambio y la versión mínima que quieres seguir admitiendo. Para un punto de cambio de `patched()`, usa un mínimo de `1`: las ejecuciones nuevas registran la versión `1` para la rama nueva.
+
+Cada ejecución abierta queda en uno de tres estados:
+
+- **legacy** (heredada): registró una versión inferior al mínimo propuesto, por lo que se reproduciría por la rama que quieres eliminar.
+- **current** (actual): registró una versión igual o superior al mínimo.
+- **unknown** (desconocida): no registró ningún marcador para este ID de cambio (`marker_absent`), o su historial no está disponible (`history_unavailable`) o no es válido (`history_invalid`). Una ejecución que aún no ha llegado al punto de cambio es unknown, aunque ejecute código actual. Todavía puede registrar la versión heredada.
+
+Una ejecución que comenzó antes de desplegar el punto de cambio toma la rama heredada (`DEFAULT_VERSION`) durante la reproducción sin registrar ningún marcador. Por eso aparece como **unknown** (`marker_absent`), no como legacy. Es el estado habitual de las ejecuciones anteriores a `patched()`, y por eso unknown también debe llegar a cero antes de eliminar la rama antigua. Legacy cuenta las ejecuciones que registraron una versión explícita inferior al mínimo, como las ejecuciones de `getVersion()` fijadas a un `maxSupported` anterior.
+
+Los recuentos siempre abarcan todas las ejecuciones abiertas, antes de cualquier filtro de estado o límite de página. Las ejecuciones cerradas no se incluyen. La respuesta es la misma sea cual sea el SDK que registró los marcadores.
+
+| Dónde | Cómo |
+| --- | --- |
+| Waterline | La página **Version usage** (Waterline main; el modo embebido requiere Workflow 2.29.0 o posterior, y el modo servicio, PHP SDK 3.19.0 o posterior y Server 3.12.0 o posterior). |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`, con `--state`, `--limit`, `--namespace` y `--json` (CLI 2.10.0 o posterior). |
+| API del servidor | `GET /api/workflow-version-usage` en Server 3.12.0 o posterior, que anuncia `capabilities.workflow_version_usage`. |
+| SDK de PHP | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)` (3.19.0 o posterior). |
+| Laravel embebido | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)` (Workflow 2.29.0 o posterior). |
+
+Los servidores y paquetes antiguos indican que la comprobación no está disponible; nunca devuelven un resultado vacío. Los resultados se paginan por ID de ejecución con un cursor opaco. Los recuentos y la pertenencia pueden cambiar entre páginas, así que reinicia la consulta después de cambiar cualquier cosa.
+
+La comprobación es una observación en vivo, no una barrera de despliegue. Retira una rama solo cuando **legacy y unknown sean ambos cero**, después de haber detenido o bloqueado los inicios nuevos que aún podrían tomar la ruta antigua. Investiga antes cada ejecución unknown.
+
 ## Retirar versiones antiguas {#deprecating-old-versions}
 
-Cuando terminen todos los workflows de una versión antigua, aumenta `minSupported` para dejar de admitirla y eliminar las rutas antiguas.
+Cuando la [comprobación de uso de versiones](#check-version-usage) no informe de ejecuciones abiertas legacy ni unknown para el nuevo mínimo, aumenta `minSupported` para dejar de admitir la versión antigua y eliminar las rutas antiguas.
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
@@ -356,7 +382,7 @@ final class MyWorkflow extends Workflow
 Ciclo de parche en dos fases y reglas de ubicación:
 
 1. **Introduce `patched()`** en el punto de cambio conservando ambas ramas. Las ejecuciones nuevas toman la nueva; las antiguas conservan la heredada.
-2. **Espera a que terminen todas las heredadas.** Usa la búsqueda de Waterline o `dw workflow:list` para comprobar que no queda ninguna abierta que pueda reproducir la rama antigua.
+2. **Espera a que terminen todas las heredadas.** Ejecuta la [comprobación de uso de versiones](#check-version-usage) con una versión mínima de `1` y continúa solo cuando legacy y unknown sean ambos cero.
 3. **Sustituye `patched()` por `deprecatePatch()`** en el mismo sitio, con el mismo `changeId`, y elimina la rama heredada. Conserva la llamada para que el historial siga correspondiendo a un cambio conocido.
 4. **Opcionalmente, elimina `deprecatePatch()`** cuando también sepas que ninguna reproducción histórica (consultas, exportaciones o auditorías) leerá jamás historial con ese marcador. Es irreversible; la mayoría de workflows puede dejarlo indefinidamente sin coste de runtime.
 

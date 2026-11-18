@@ -252,9 +252,35 @@ $result = match($version) {
 };
 ```
 
+## Verificação de execuções abertas antes de aposentar uma ramificação {#check-version-usage}
+
+Antes de aumentar `minSupported` ou excluir uma ramificação legada de `patched()`, encontre as execuções abertas que ainda dependem dela. Consulte um tipo de workflow, um ID de mudança e a versão mínima que você quer continuar suportando. Para um ponto de mudança de `patched()`, use o mínimo `1`: novas execuções registram a versão `1` para a nova ramificação.
+
+Cada execução aberta fica em um de três estados:
+
+- **legacy** (legada): registrou uma versão abaixo do mínimo proposto, então faria replay pela ramificação que você quer remover.
+- **current** (atual): registrou uma versão igual ou superior ao mínimo.
+- **unknown** (desconhecida): não registrou marcador para este ID de mudança (`marker_absent`), ou seu histórico está indisponível (`history_unavailable`) ou é inválido (`history_invalid`). Uma execução que ainda não chegou ao ponto de mudança é unknown, mesmo quando executa o código atual. Ela ainda pode registrar a versão legada.
+
+Uma execução que começou antes de você implantar o ponto de mudança segue a ramificação legada (`DEFAULT_VERSION`) no replay sem registrar marcador. Por isso ela aparece como **unknown** (`marker_absent`), e não como legacy. Esse é o estado comum das execuções anteriores a `patched()`, e é por isso que unknown também precisa chegar a zero antes de você remover a ramificação antiga. Legacy conta as execuções que registraram uma versão explícita abaixo do mínimo, como execuções de `getVersion()` fixadas em um `maxSupported` mais antigo.
+
+As contagens sempre cobrem todas as execuções abertas, antes de qualquer filtro de estado ou limite de página. Execuções fechadas não são incluídas. A resposta é a mesma, seja qual for o SDK que registrou os marcadores.
+
+| Onde | Como |
+| --- | --- |
+| Waterline | A página **Version usage** (Waterline main; o modo embutido exige Workflow 2.29.0 ou posterior, e o modo de serviço exige PHP SDK 3.19.0 ou posterior e Server 3.12.0 ou posterior). |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`, com `--state`, `--limit`, `--namespace` e `--json` (CLI 2.10.0 ou posterior). |
+| API do servidor | `GET /api/workflow-version-usage` no Server 3.12.0 ou posterior, que anuncia `capabilities.workflow_version_usage`. |
+| SDK PHP | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)` (3.19.0 ou posterior). |
+| Laravel embutido | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)` (Workflow 2.29.0 ou posterior). |
+
+Servidores e pacotes mais antigos informam que a verificação está indisponível; eles nunca retornam um resultado vazio. Os resultados são paginados por ID de execução com um cursor opaco. As contagens e a composição podem mudar entre páginas, então reinicie a consulta depois de alterar qualquer coisa.
+
+A verificação é uma observação ao vivo, não uma barreira de implantação. Aposente uma ramificação somente quando **legacy e unknown estiverem ambos em zero**, depois de interromper ou bloquear novos inícios que ainda possam seguir o caminho antigo. Investigue antes cada execução unknown.
+
 ## Descontinuação de versões antigas {#deprecating-old-versions}
 
-Depois que todos os workflows usando uma versão antiga concluírem, você pode remover o suporte aumentando `minSupported`. Isso elimina a necessidade de manter caminhos antigos de código.
+Depois que a [verificação de uso de versões](#check-version-usage) não informar nenhuma execução aberta legacy ou unknown para o novo mínimo, você pode remover o suporte aumentando `minSupported`. Isso elimina a necessidade de manter caminhos antigos de código.
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
@@ -356,7 +382,7 @@ final class MyWorkflow extends Workflow
 Ciclo de vida do patch em duas fases e regras de posicionamento:
 
 1. **Introduza `patched()`** no ponto de mudança. Ambas as ramificações permanecem no código do workflow. Novas execuções seguem a nova ramificação; as antigas continuam seguindo a legada.
-2. **Espere todas as execuções legadas terminarem.** Use a busca de execuções do Waterline ou `dw workflow:list` para confirmar que não há execuções abertas que possam fazer replay pela ramificação legada.
+2. **Espere todas as execuções legadas terminarem.** Execute a [verificação de uso de versões](#check-version-usage) com versão mínima `1` e só continue quando legacy e unknown estiverem ambos em zero.
 3. **Substitua `patched()` por `deprecatePatch()`** no mesmo local de chamada, com o mesmo `changeId`, e exclua a ramificação legada do corpo da função. Mantenha a chamada ali, sem removê-la, para que o histórico durável ainda corresponda a um ponto de mudança conhecido.
 4. **Opcional: remova `deprecatePatch()` por completo** quando também tiver certeza de que nenhum replay histórico, incluindo consultas, exportações e auditorias, lerá histórico que confirmou esse marcador. Essa etapa é irreversível. A maioria dos workflows pode manter `deprecatePatch()` indefinidamente sem custo de runtime.
 

@@ -406,6 +406,10 @@ deklarierten SDK-Vertrag, nicht übereinstimmenden Paketversionsnummern.
 - [Ausführbarer PHP-Schnellstartvertrag](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP-SDK-Quellcode](https://github.com/durable-workflow/sdk-php)
 
+## Offene Läufe auf einem Versionszweig {#workflow-version-usage}
+
+PHP-SDK 3.19.0 und neuer bieten `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`. Die Methode liefert eine typisierte Seite offener Läufe: Zählungen für legacy-, current- und unknown-Läufe, Zustand, aufgezeichnete Version und unknown-Grund jedes Laufs sowie einen opaken `nextCursor`. Sie erfordert einen Server, der `capabilities.workflow_version_usage` ankündigt (Server 3.12.0 oder neuer). Ältere Server lösen `ServerCapabilityUnavailable` aus, bevor eine Nutzungsanfrage gesendet wird. Verwenden Sie sie für die [Versionsnutzungsprüfung](/docs/features/versioning/#check-version-usage), bevor Sie einen Versionszweig ausmustern.
+
 ## Seiten für Workflow-Listen und Verlauf {#workflow-list-and-history-pages}
 
 Diese veröffentlichten Aufrufe liefern **eine Seite**, keinen automatischen vollständigen Abruf: `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Setzen Sie mit dem zurückgegebenen undurchsichtigen Token fort und behalten Sie Namespace, Filter und Workflow/Lauf bei. Enden Sie beim letzten null/leeren Token und behandeln Sie Seitenfehler ausdrücklich. Eine Teilseite ist kein Replay-Bundle. Nutzen Sie für Offline-Replay die Verlaufsexport-API des SDK. Der [veröffentlichte Client PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) definiert die Seitenparameter.

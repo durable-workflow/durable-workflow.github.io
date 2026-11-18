@@ -743,6 +743,10 @@ Marker erneut. `patched(change_id)` bietet die boolesche Rollout-Form.
 `deprecate_patch(change_id)` erhält den Marker nach Auslaufen des alten Zweigs.
 Die gemeinsame dauerhafte Semantik beschreiben [Seiteneffekte](/docs/features/side-effects/)
 und [Versionierung](/docs/features/versioning/).
+Bevor Sie `min_supported` erhöhen oder einen `patched()`-Zweig entfernen,
+ermitteln Sie mit der [Versionsnutzungsprüfung](/docs/features/versioning/#check-version-usage)
+die offenen Läufe, die noch davon abhängen. Vom Rust-SDK aufgezeichnete Marker
+werden genauso klassifiziert wie Marker anderer SDKs.
 
 ## Replay-bewusstes Workflow-Logging {#workflow-logging}
 

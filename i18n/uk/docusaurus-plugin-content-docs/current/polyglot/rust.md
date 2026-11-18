@@ -739,6 +739,10 @@ Rust SDK записує невеликі недетерміновані знач
 а `deprecate_patch(change_id)` зберігає маркер після завершення старої гілки.
 Спільну durable-семантику описано в
 [side effects](/docs/features/side-effects/) та [версіюванні](/docs/features/versioning/).
+Перш ніж підвищити `min_supported` або видалити гілку `patched()`,
+скористайтеся [перевіркою використання версій](/docs/features/versioning/#check-version-usage),
+щоб знайти відкриті запуски, які досі від неї залежать. Маркери, записані
+Rust SDK, класифікуються так само, як маркери з інших SDK.
 
 ## Журналювання workflow з урахуванням replay {#workflow-logging}
 

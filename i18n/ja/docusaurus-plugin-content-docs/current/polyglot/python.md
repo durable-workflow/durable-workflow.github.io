@@ -626,6 +626,8 @@ Server がルーティングするクエリでは、Worker は元のクエリ期
 | `ctx.uuid4()` | 決定的な UUID |
 | `ctx.logger` | リプレイ中は出力しないロガー |
 
+`ctx.get_version(...)` の `min` を上げる前、または旧分岐を削除する前に、[バージョン使用状況チェック](/docs/features/versioning/#check-version-usage)でまだそれに依存している未完了実行を見つけてください。
+
 ### エントリの互換性と復旧 {#entry-compatibility-and-recovery}
 
 **公開済みのサポートです。** Python SDK 2.6.2 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。

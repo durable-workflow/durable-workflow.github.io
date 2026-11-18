@@ -407,6 +407,10 @@ déclaré, sans dépendre de l’égalité des numéros de version des paquets.
 - [Contrat de démarrage rapide PHP exécutable](https://php.durable-workflow.com/quickstart-contract.json)
 - [Code source du SDK PHP](https://github.com/durable-workflow/sdk-php)
 
+## Exécutions ouvertes sur une branche de version {#workflow-version-usage}
+
+Le SDK PHP 3.19.0 et les versions ultérieures fournissent `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`. Cette méthode renvoie une page typée d’exécutions ouvertes : les décomptes des exécutions legacy, current et unknown, l’état, la version enregistrée et la raison unknown de chaque exécution, ainsi qu’un `nextCursor` opaque. Elle nécessite un serveur qui annonce `capabilities.workflow_version_usage` (Server 3.12.0 ou ultérieur). Les serveurs plus anciens lèvent `ServerCapabilityUnavailable` avant l’envoi de toute requête d’utilisation. Utilisez-la pour la [vérification de l’utilisation des versions](/docs/features/versioning/#check-version-usage) avant d’abandonner une branche de version.
+
 ## Pages de liste et d’historique des workflows {#workflow-list-and-history-pages}
 
 Ces appels publiés renvoient **une page**, pas une lecture complète automatique : `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continuez avec le token opaque retourné en conservant namespace, filtres et workflow/exécution sélectionnés ; terminez au token nul/vide et traitez explicitement les erreurs de page. Une page partielle n’est pas un bundle de replay. Utilisez l’API d’export d’historique du SDK pour le replay hors ligne. Le [client publié PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) définit les paramètres de page.
