@@ -485,6 +485,50 @@ Onde o formato se aplica:
 - **Workflow embutido 2.15.15 e posteriores.** Um `trigger()` manual não tem ocorrência, então seu ID termina com o horário do disparo em milissegundos Unix em vez de `backfill:{occurrence}`. Execuções iniciadas por versões anteriores mantêm seus IDs `schedule:{scheduleId}:{suffix}`.
 - **Server nativo 3.13.0 e posteriores.** Disparos manuais não têm ocorrência e mantêm IDs gerados pelo servidor. Execuções iniciadas por versões anteriores do Server mantêm seus IDs gerados.
 
+## Leitura da ocorrência no código do workflow {#reading-the-occurrence-in-workflow-code}
+
+Um agendamento passa os mesmos argumentos a todas as execuções, inclusive as de preenchimento retroativo. Para saber qual ocorrência uma execução representa, chame `$this->scheduleOrigin()` no workflow. O método retorna um `Workflow\V2\Support\ScheduleOrigin`, ou `null` para uma execução que nenhum agendamento iniciou. Ele está disponível nas versões do Workflow embutido posteriores a 2.29.1.
+
+- `scheduleId` é o identificador do agendamento.
+- `occurrenceTime` é o horário avaliado pelo agendador, como `DateTimeImmutable`. Em um tick, é o horário de disparo com jitter. Em um preenchimento retroativo, é a ocorrência passada enumerada. É `null` em um `trigger()` manual, que não tem ocorrência.
+- `triggerNumber` indica qual disparo do agendamento foi este, começando em 1.
+
+O valor vem do próprio evento de histórico `ScheduleTriggered` da execução, gravado junto com o início da execução. Ele está disponível na primeira tarefa de workflow e é o mesmo em todo replay. Não é o horário de início da execução nem `Workflow::now()`, então não se desloca com o jitter, atrasos do agendador ou inícios em buffer.
+
+Um relatório diário que processa o dia anterior à sua ocorrência:
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+Com o cron `0 0 * * *` e jitter, um tick que dispara às 00:00:12 UTC de 2026-11-18 cobre de 2026-11-17T00:00:12 a 2026-11-18T00:00:12. Um preenchimento retroativo que abrange as ocorrências da meia-noite de 1º, 2 e 3 de novembro inicia três execuções cujas janelas terminam nessas meias-noites, embora as três comecem agora.
+
+Quais execuções mantêm a origem:
+
+- **Continue-as-new.** A sucessora pertence à mesma execução agendada. Ela registra o `ScheduleTriggered` da antecessora logo após o próprio início e lê a mesma origem. O Server nativo faz isso desde a 3.5.0.
+- **Repetições e redrive.** As repetições de atividade acontecem dentro da execução, então veem a mesma origem. Uma execução iniciada por agendamento nunca é repetida como uma nova execução, e o redrive de uma execução com falha iniciada por agendamento é recusado com `unsupported_history`. Nenhuma execução repetida pode perder a origem.
+- **Disparos posteriores.** Cada disparo, seja tick ou preenchimento retroativo, inicia sua própria execução com sua própria origem.
+
+Execuções iniciadas antes de esta API existir já têm o evento, então também leem sua origem. Históricos sem o evento leem `null`.
+
+Os SDKs de PHP, Python e Rust expõem o mesmo valor em seus contextos de workflow para workers em modo de serviço.
+
 ## Roteamento por fila {#queue-routing}
 
 Quando `connection` ou `queue` é definido em um agendamento, os workflows disparados são encaminhados a essa conexão e fila, em vez do padrão da classe de workflow:

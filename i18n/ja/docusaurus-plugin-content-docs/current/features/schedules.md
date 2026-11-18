@@ -436,6 +436,50 @@ schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurr
 - **埋め込み Workflow 2.15.15 以降。** 手動の `trigger()` には発生回がないため、ID は `backfill:{occurrence}` の代わりに起動時刻の Unix ミリ秒で終わります。以前のリリースが開始した実行は `schedule:{scheduleId}:{suffix}` 形式の ID を保持します。
 - **ネイティブ Server 3.13.0 以降。** 手動起動には発生回がなく、サーバーが生成する ID のままです。以前の Server リリースが開始した実行は生成済みの ID を保持します。
 
+## ワークフローコードで発生回を読み取る {#reading-the-occurrence-in-workflow-code}
+
+スケジュールは、バックフィルによる実行も含め、すべての実行に同じ引数を渡します。実行がどの発生回に対応するかを知るには、ワークフロー内で `$this->scheduleOrigin()` を呼び出します。これは `Workflow\V2\Support\ScheduleOrigin` を返し、スケジュールが開始していない実行では `null` を返します。2.29.1 より後の埋め込み Workflow リリースで利用できます。
+
+- `scheduleId` はスケジュールの識別子です。
+- `occurrenceTime` はスケジューラーが評価した時刻で、`DateTimeImmutable` として返ります。tick ではジッター適用後の起動時刻です。バックフィルでは列挙された過去の発生回です。発生回を持たない手動の `trigger()` では `null` です。
+- `triggerNumber` はスケジュールの何回目の起動かを示し、1 から始まります。
+
+この値は、実行の開始とともにコミットされる、その実行自身の `ScheduleTriggered` 履歴イベントから得られます。最初のワークフロータスクから利用でき、どのリプレイでも同じです。実行の開始時刻や `Workflow::now()` ではないため、ジッター、スケジューラーの遅延、バッファーからの起動によってずれることはありません。
+
+発生回の前日を処理する日次レポート:
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+`0 0 * * *` の cron とジッターを使う場合、2026-11-18 の 00:00:12 UTC に起動した tick は 2026-11-17T00:00:12 から 2026-11-18T00:00:12 までを対象にします。11 月 1 日、2 日、3 日の午前 0 時の発生回を対象とするバックフィルは、3 つとも今開始されるにもかかわらず、それぞれの午前 0 時で終わる時間窓を持つ 3 つの実行を開始します。
+
+起点を保持する実行:
+
+- **continue-as-new。** 後継は同じスケジュール済みの論理実行に属します。開始直後に前任の `ScheduleTriggered` を記録し、同じ起点を読み取ります。ネイティブ Server は 3.5.0 以降この動作をします。
+- **リトライと redrive。** アクティビティのリトライは実行内で行われるため、同じ起点を参照します。スケジュールが開始した実行が新しい実行としてリトライされることはなく、スケジュールが開始して失敗した実行の redrive は `unsupported_history` で拒否されます。リトライされた実行が起点を失うことはありません。
+- **以降の起動。** tick でもバックフィルでも、各起動はそれぞれ独自の起点を持つ独自の実行を開始します。
+
+この API より前に開始された実行もすでにイベントを持っているため、起点を読み取れます。イベントのない履歴では `null` になります。
+
+PHP、Python、Rust の SDK は、サービスモードのワーカー向けに、ワークフローコンテキストで同じ値を公開します。
+
 ## キュールーティング {#queue-routing}
 
 スケジュールに `connection`、`queue` があればクラスの既定値を上書きします。

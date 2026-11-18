@@ -448,6 +448,50 @@ Où le format s’applique :
 - **Workflow intégré 2.15.15 et versions ultérieures.** Un `trigger()` manuel n’a pas d’occurrence : son identifiant se termine par l’heure du déclenchement en millisecondes Unix au lieu de `backfill:{occurrence}`. Les exécutions lancées par des versions antérieures conservent leurs identifiants `schedule:{scheduleId}:{suffix}`.
 - **Server natif 3.13.0 et versions ultérieures.** Les déclenchements manuels n’ont pas d’occurrence et conservent des identifiants générés par le serveur. Les exécutions lancées par des versions antérieures du Server conservent leurs identifiants générés.
 
+## Lire l’occurrence dans le code du workflow {#reading-the-occurrence-in-workflow-code}
+
+Une planification transmet les mêmes arguments à chaque exécution, y compris celles issues d’un rattrapage. Pour savoir quelle occurrence une exécution représente, appelez `$this->scheduleOrigin()` dans le workflow. Cette méthode renvoie un `Workflow\V2\Support\ScheduleOrigin`, ou `null` pour une exécution qu’aucune planification n’a lancée. Elle est disponible dans les versions de Workflow intégré postérieures à 2.29.1.
+
+- `scheduleId` est l’identifiant de la planification.
+- `occurrenceTime` est l’heure évaluée par le planificateur, sous forme de `DateTimeImmutable`. Pour un passage, c’est l’échéance avec jitter. Pour un rattrapage, c’est l’occurrence passée énumérée. Elle vaut `null` pour un `trigger()` manuel, qui n’a pas d’occurrence.
+- `triggerNumber` indique le rang de ce déclenchement de la planification, à partir de 1.
+
+La valeur provient de l’événement d’historique `ScheduleTriggered` propre à l’exécution, validé avec le démarrage de l’exécution. Elle est disponible dès la première tâche de workflow et reste identique à chaque rejeu. Ce n’est ni l’heure de démarrage de l’exécution ni `Workflow::now()` : elle ne dérive donc pas avec le jitter, les retards du planificateur ou les démarrages en tampon.
+
+Un rapport quotidien qui traite la journée précédant son occurrence :
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+Avec un cron `0 0 * * *` et du jitter, un passage déclenché à 00:00:12 UTC le 2026-11-18 couvre la période du 2026-11-17T00:00:12 au 2026-11-18T00:00:12. Un rattrapage couvrant les occurrences de minuit des 1er, 2 et 3 novembre lance trois exécutions dont les fenêtres se terminent à ces minuits, même si toutes trois démarrent maintenant.
+
+Exécutions qui conservent l’origine :
+
+- **Continuation.** Le successeur appartient à la même exécution planifiée. Il enregistre le `ScheduleTriggered` de son prédécesseur juste après son démarrage et lit la même origine. Le Server natif procède ainsi depuis 3.5.0.
+- **Nouvelles tentatives et redrive.** Les nouvelles tentatives d’activité ont lieu dans l’exécution et voient donc la même origine. Une exécution lancée par une planification n’est jamais retentée comme nouvelle exécution, et le redrive d’une exécution échouée lancée par une planification est refusé avec `unsupported_history`. Aucune exécution retentée ne peut perdre l’origine.
+- **Déclenchements ultérieurs.** Chaque déclenchement, passage ou rattrapage, lance sa propre exécution avec sa propre origine.
+
+Les exécutions lancées avant l’existence de cette API possèdent déjà l’événement et lisent donc aussi leur origine. Les historiques sans cet événement renvoient `null`.
+
+Les SDK PHP, Python et Rust exposent la même valeur dans leurs contextes de workflow pour les workers en mode service.
+
 ## Routage par file {#queue-routing}
 
 Si `connection` ou `queue` est défini, les workflows déclenchés utilisent ce routage plutôt que la valeur par défaut de leur classe :
