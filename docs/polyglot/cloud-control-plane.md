@@ -334,14 +334,14 @@ defines a small, repeatable workload: one workflow start, one external activity,
 and one workflow completion, with defined 1 KiB Avro inputs and results.
 The customer worker runs outside the managed runtime allocation.
 
-Cloud Dev was measured on September 21, 2026 using the same plan customers
-provision. The other four baselines are historical: they include their replicated
+Cloud Dev was measured on November 18, 2026 using the same plan and runtime
+release customers provision. The other four baselines are historical: they include their replicated
 HA topology, but predate the current runtime release. They are not extrapolated
 from Dev and do not qualify the current SLA plans' capacity.
 
 | Plan | Standard workflows/second | 30-day workflow actions | Measurement |
 | --- | ---: | ---: | --- |
-| Cloud Dev | 0.25 | 1,296,000 | September 21, 2026; details below |
+| Cloud Dev | 0.25 | 1,296,000 | November 18, 2026; details below |
 | Cloud Standard | 0.25 | 1,296,000 | Historical; remeasurement pending |
 | Cloud Multi-Region | 0.10 | 518,400 | Historical; remeasurement pending |
 | Cloud Business | 0.50 | 2,592,000 | Historical; remeasurement pending |
@@ -369,7 +369,7 @@ changing its CPU, memory, storage, ingress or backup settings:
 | --- | --- |
 | Runtime compute | 1 shared vCPU, 1 GB RAM |
 | Durable storage included | 5 GB |
-| Runtime services | Server, queue worker, scheduler, MySQL, and Redis |
+| Runtime services | Server, queue worker, scheduler, MySQL, Redis, and the ingress connector |
 | Managed Waterline | Included through the authenticated Cloud application; not a process on the Dev host |
 | Network path | Direct, space-specific HTTPS ingress |
 | Customer workers | Run in the customer's environment |
@@ -378,43 +378,64 @@ changing its CPU, memory, storage, ingress or backup settings:
 | More storage | Request a larger runtime plan; no storage add-ons |
 
 The run used the public [DW Standard Workflow v1 PHP
-definition](https://github.com/durable-workflow/server/blob/68168f34b637a19c054211f4db2df9c616799a86/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
+definition](https://github.com/durable-workflow/server/blob/adc8e352c94528cbf59adf1b7af5a5238834c9a8/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
 one workflow start, one external echo activity, and one completion, carrying a
 1,024-byte string in Avro at each workflow/activity input and result boundary.
-Server 2.3.12 contained Workflow 2.0.14; the external worker and clients used
-PHP SDK 2.0.11 on PHP 8.4.25. The runtime used PHP 8.3.33 and MySQL 8.0.46.
+The runtime was the Server release Cloud provisions for new Dev runtimes:
+Server 2.9.12, containing Workflow 2.8.0, on PHP 8.3.36 with MySQL 8.0.46 and
+Redis 7.4.11. The external worker and clients used the published PHP SDK 3.20.0
+on PHP 8.4.27, installed into that binding in place of its pinned 2.0.10 SDK.
+They ran outside the runtime host, connected through its normal HTTPS ingress.
 
 One PHP worker used a one-second task-poll timeout. Two independent client slots
 offered one workflow every four seconds after a separate 30-second warmup.
-The fixed measurement window was **18:50:30-18:55:30 UTC on September 21, 2026**.
+The fixed measurement window was **15:41:04-15:46:04 UTC on November 18, 2026**.
 Only completions observed within those five minutes count toward throughput;
 draining afterward cannot increase the reported rate. Every result, completed
 status and ordered workflow/activity history was checked.
 
 | Measured result | Value |
 | --- | ---: |
-| Offered and completed rate | 0.25 standard workflows/second |
-| Completed workflows | 75 of 75 |
+| Offered rate | 0.25 standard workflows/second |
+| Completed within the window | 74 of 75 started (0.247/second) |
+| Completed after draining | 75 of 75 |
 | Errors / missed start slots | 0 / 0 |
-| Start-to-result latency, p50 | 2.76 seconds |
-| Start-to-result latency, p95 | 4.18 seconds |
-| Start-to-result latency, p99 | 4.33 seconds |
-| Unfinished workflows in the measured cohort | 0 |
+| Start-to-result latency, p50 | 2.33 seconds |
+| Start-to-result latency, p95 | 3.49 seconds |
+| Start-to-result latency, p99 | 4.31 seconds |
+| Unfinished workflows in the measured cohort at window end | 1 |
 | 30-day workflow actions | 1,296,000 |
+
+The one unfinished workflow was started two seconds before the window closed
+and completed 0.39 seconds after it, inside the normal latency range. It is not
+counted in the window. At most two workflows were open at any moment during
+the window, so there was no backlog growth.
 
 Latency includes client networking and result polling every 100 ms. It is not
 internal task scheduling latency, and should not be compared with an engine's
 internal scheduling metric.
 
-Host CPU averaged **63.5% busy**, peaking at **89%** across five-second samples.
+Host CPU averaged **60.5% busy**, peaking at **83.2%** across five-second samples.
 There were **no container OOM kills or restarts**. Peak observed container memory
-was 95.21 MiB for Server, 197.1 MiB for MySQL, 45.84 MiB for the queue worker,
-43.75 MiB for the scheduler, 9.49 MiB for Redis and 34.59 MiB for the ingress
-connector. These individual peaks are not simultaneous whole-host RSS; the OS
-and other host processes also consume memory. The host had its normal 1 GiB
-swap configuration, with up to about 90 MiB occupied during measurement.
-An initial encrypted backup had been verified before the window; no backup
-capture overlapped it.
+(working set) was 75.68 MiB for Server, 205.95 MiB for MySQL, 41.88 MiB for the
+queue worker, 45.5 MiB for the scheduler, 12.39 MiB for Redis and 30.62 MiB for
+the ingress connector. These individual peaks are not simultaneous whole-host
+RSS; the OS and other host processes also consume memory. The host had its
+normal 1 GiB swap configuration, with up to about 65 MiB occupied during
+measurement. The initial encrypted backup was captured and verified about nine
+minutes before the window; the next scheduled backup was hours later, so no
+backup capture overlapped it.
+
+The same run then offered 0.5 workflows/second for one five-minute window. That
+step did not pass. With one worker, 39 of 150 start slots were missed, p99
+latency reached 32.8 seconds and host CPU averaged 86.7%. Repeating the step with
+two workers still missed 6 start slots, with p95 and p99 latency of 8.5 and 11.8
+seconds. Host CPU then averaged 95% and reached 100%, while the external client
+and worker processes used less than 15% of one core. The single-vCPU runtime host, which also serves the
+100 ms result polling, is the limit for this workload. There were no errors,
+OOM kills or restarts in either attempt, and every workflow eventually completed
+with the expected history. The measured Dev baseline is therefore 0.25
+standard workflows/second; higher rates are not claimed.
 
 This is a measured development baseline, not a universal conversion for every
 workflow, a maximum-throughput test, a long-duration soak or an SLA. Larger payloads, additional activities, timers,

@@ -342,15 +342,15 @@ Cloud namespace. Embedded Laravel, власний Server та Cloud
 Avro inputs і results по 1 KiB. Worker клієнта працює поза
 виділеною місткістю managed runtime.
 
-Cloud Dev виміряно 21 вересня 2026 року на тому самому плані,
-який готують клієнти. Інші чотири baselines є історичними:
+Cloud Dev виміряно 18 листопада 2026 року на тому самому плані
+та runtime release, які готують клієнти. Інші чотири baselines є історичними:
 вони включають replicated HA topology, але передують поточному runtime release.
 Їх не екстрапольовано з Dev, і вони не підтверджують
 місткість поточних SLA-планів.
 
 | План | Стандартних workflows/секунду | Workflow actions за 30 днів | Вимірювання |
 | --- | ---: | ---: | --- |
-| Cloud Dev | 0.25 | 1,296,000 | 21 вересня 2026 року, деталі нижче |
+| Cloud Dev | 0.25 | 1,296,000 | 18 листопада 2026 року, деталі нижче |
 | Cloud Standard | 0.25 | 1,296,000 | Історичне, очікується повторне вимірювання |
 | Cloud Multi-Region | 0.10 | 518,400 | Історичне, очікується повторне вимірювання |
 | Cloud Business | 0.50 | 2,592,000 | Історичне, очікується повторне вимірювання |
@@ -381,7 +381,7 @@ Dev runtime без змін CPU, memory, storage, ingress чи backup:
 | --- | --- |
 | Обчислення runtime | 1 shared vCPU, 1 GB RAM |
 | Включене durable-сховище | 5 GB |
-| Сервіси runtime | Server, queue worker, scheduler, MySQL і Redis |
+| Сервіси runtime | Server, queue worker, scheduler, MySQL, Redis та ingress connector |
 | Managed Waterline | Включений через автентифікований Cloud-застосунок, не є процесом на Dev host |
 | Мережевий шлях | Прямий HTTPS ingress конкретного space |
 | Workers клієнта | Працюють у середовищі клієнта |
@@ -390,45 +390,68 @@ Dev runtime без змін CPU, memory, storage, ingress чи backup:
 | Більше storage | Запросіть більший runtime plan, storage add-ons немає |
 
 Запуск використав публічне
-[PHP-визначення DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/68168f34b637a19c054211f4db2df9c616799a86/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
+[PHP-визначення DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/adc8e352c94528cbf59adf1b7af5a5238834c9a8/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
 один workflow start, одну зовнішню echo activity та один completion
 із рядком 1,024 bytes в Avro на кожній межі workflow/activity input і result.
-Server 2.3.12 містив Workflow 2.0.14. Зовнішній worker та clients
-використовували PHP SDK 2.0.11 на PHP 8.4.25.
-Runtime використовував PHP 8.3.33 і MySQL 8.0.46.
+Runtime був тим Server release, який Cloud готує для нових Dev runtimes:
+Server 2.9.12 із Workflow 2.8.0 на PHP 8.3.36 з MySQL 8.0.46 і Redis 7.4.11.
+Зовнішній worker та clients використовували опублікований PHP SDK 3.20.0
+на PHP 8.4.27, встановлений у цей binding замість закріпленого в ньому SDK 2.0.10.
+Вони працювали поза runtime host і підключалися через його звичайний HTTPS ingress.
 
 Один PHP worker використовував task-poll timeout в одну секунду.
 Два незалежні client slots подавали один workflow кожні чотири секунди
 після окремого 30-секундного warmup. Фіксоване вікно вимірювання —
-**18:50:30–18:55:30 UTC 21 вересня 2026 року**.
+**15:41:04–15:46:04 UTC 18 листопада 2026 року**.
 Throughput рахує лише completions, спостережені в ці п'ять хвилин.
 Пізніший drain не збільшує повідомлену швидкість.
 Кожен result, completed status та впорядкована історія workflow/activity перевірені.
 
 | Виміряний результат | Значення |
 | --- | ---: |
-| Подана та завершена швидкість | 0.25 стандартних workflows/секунду |
-| Завершені workflows | 75 із 75 |
+| Подана швидкість | 0.25 стандартних workflows/секунду |
+| Завершені в межах вікна | 74 із 75 запущених (0.247/секунду) |
+| Завершені після drain | 75 із 75 |
 | Помилки / пропущені start slots | 0 / 0 |
-| Start-to-result latency, p50 | 2.76 секунди |
-| Start-to-result latency, p95 | 4.18 секунди |
-| Start-to-result latency, p99 | 4.33 секунди |
-| Незавершені workflows виміряної групи | 0 |
+| Start-to-result latency, p50 | 2.33 секунди |
+| Start-to-result latency, p95 | 3.49 секунди |
+| Start-to-result latency, p99 | 4.31 секунди |
+| Незавершені workflows виміряної групи на кінець вікна | 1 |
 | Workflow actions за 30 днів | 1,296,000 |
+
+Єдиний незавершений workflow було запущено за дві секунди до закриття вікна,
+і він завершився через 0.39 секунди після нього, у межах звичайного діапазону
+latency. Його не враховано у вікні. Протягом вікна одночасно було відкрито
+не більше двох workflows, тож backlog не зростав.
 
 Latency включає мережу клієнта та polling результату кожні 100 ms.
 Це не внутрішня latency планування task, і її не слід порівнювати
 з внутрішньою scheduling-метрикою рушія.
 
-Host CPU у середньому був **63.5% busy**, із піком **89%** у п'ятисекундних
+Host CPU у середньому був **60.5% busy**, із піком **83.2%** у п'ятисекундних
 samples. **OOM kills чи restarts контейнерів не було**.
-Спостережені піки memory containers: 95.21 MiB Server, 197.1 MiB MySQL,
-45.84 MiB queue worker, 43.75 MiB scheduler, 9.49 MiB Redis
-та 34.59 MiB ingress connector. Ці окремі піки не є одночасним RSS
+Спостережені піки memory containers (working set): 75.68 MiB Server,
+205.95 MiB MySQL, 41.88 MiB queue worker, 45.5 MiB scheduler, 12.39 MiB Redis
+та 30.62 MiB ingress connector. Ці окремі піки не є одночасним RSS
 усього host. OS та інші host processes також споживають memory.
 Host мав звичайну конфігурацію swap 1 GiB, із зайнятими приблизно
-до 90 MiB під час вимірювання. Початковий зашифрований backup
-було перевірено до вікна. Жоден backup capture з ним не перетинався.
+до 65 MiB під час вимірювання. Початковий зашифрований backup
+було створено й перевірено приблизно за дев'ять хвилин до вікна.
+Наступний запланований backup відбувся лише через кілька годин,
+тож жоден backup capture з вікном не перетинався.
+
+Потім той самий запуск подавав 0.5 workflows/секунду протягом одного
+п'ятихвилинного вікна. Цей крок не пройшов. З одним worker було пропущено
+39 із 150 start slots, p99 latency досягла 32.8 секунди, а host CPU
+у середньому становив 86.7%. Повтор кроку з двома workers усе одно пропустив
+6 start slots, із p95 і p99 latency 8.5 та 11.8 секунди. Host CPU тоді
+в середньому становив 95% і досягав 100%, тоді як зовнішні client і worker
+processes використовували менше ніж 15% одного ядра. Обмеженням для цього
+навантаження є single-vCPU runtime host, який також обслуговує polling
+результатів кожні 100 ms. У жодній зі спроб не було помилок, OOM kills
+чи restarts, і кожен workflow зрештою завершився з очікуваною історією.
+Тому виміряна Dev baseline становить 0.25 стандартних workflows/секунду;
+вищі швидкості не заявляються.
 
 Це виміряна development baseline, а не універсальний перерахунок
 кожного workflow, maximum-throughput тест, довготривалий soak чи SLA.

@@ -341,14 +341,14 @@ define uma carga pequena e reproduzível: um início de workflow, uma atividade
 externa e uma conclusão, com entradas e resultados Avro definidos de 1 KiB.
 O worker do cliente executa fora da alocação do runtime gerenciado.
 
-Cloud Dev foi medido em 21 de setembro de 2026 com o mesmo plano provisionado
-pelos clientes. Os outros quatro baselines são históricos: incluem a topologia
+Cloud Dev foi medido em 18 de novembro de 2026 com o mesmo plano e o mesmo
+release do runtime provisionados pelos clientes. Os outros quatro baselines são históricos: incluem a topologia
 HA replicada, mas antecedem o release atual do runtime. Não são extrapolados
 de Dev e não qualificam a capacidade dos planos atuais com SLA.
 
 | Plano | Workflows padrão/segundo | Ações de workflow em 30 dias | Medição |
 | --- | ---: | ---: | --- |
-| Cloud Dev | 0.25 | 1,296,000 | 21 de setembro de 2026; detalhes abaixo |
+| Cloud Dev | 0.25 | 1,296,000 | 18 de novembro de 2026; detalhes abaixo |
 | Cloud Standard | 0.25 | 1,296,000 | Histórico; nova medição pendente |
 | Cloud Multi-Region | 0.10 | 518,400 | Histórico; nova medição pendente |
 | Cloud Business | 0.50 | 2,592,000 | Histórico; nova medição pendente |
@@ -376,7 +376,7 @@ alterar CPU, memória, armazenamento, entrada ou configurações de backup:
 | --- | --- |
 | Computação do runtime | 1 vCPU compartilhada, 1 GB RAM |
 | Armazenamento durável incluído | 5 GB |
-| Serviços do runtime | Server, worker de fila, agendador, MySQL e Redis |
+| Serviços do runtime | Server, worker de fila, agendador, MySQL, Redis e o conector de entrada |
 | Managed Waterline | Incluído pela aplicação Cloud autenticada; não é um processo no host Dev |
 | Caminho de rede | Entrada HTTPS direta e específica do espaço |
 | Workers do cliente | Executam no ambiente do cliente |
@@ -384,44 +384,69 @@ alterar CPU, memória, armazenamento, entrada ou configurações de backup:
 | Preço atual do runtime | Veja [Planos e preços](#plans-and-pricing) |
 | Mais armazenamento | Solicite um plano maior de runtime; sem adicionais de armazenamento |
 
-A execução usou a [definição pública PHP de DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/68168f34b637a19c054211f4db2df9c616799a86/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
+A execução usou a [definição pública PHP de DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/adc8e352c94528cbf59adf1b7af5a5238834c9a8/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
 um início de workflow, uma atividade echo externa e uma conclusão, carregando
 uma string de 1,024 bytes em Avro em cada limite de entrada e resultado de
-workflow/atividade. Server 2.3.12 continha Workflow 2.0.14; worker externo e
-clientes usaram SDK PHP 2.0.11 em PHP 8.4.25. O runtime usou PHP 8.3.33 e MySQL 8.0.46.
+workflow/atividade. O runtime era o release do Server que o Cloud provisiona
+para novos runtimes Dev: Server 2.9.12, contendo Workflow 2.8.0, em PHP 8.3.36
+com MySQL 8.0.46 e Redis 7.4.11. O worker externo e os clientes usaram o SDK
+PHP 3.20.0 publicado em PHP 8.4.27, instalado nesse binding no lugar do SDK
+2.0.10 fixado nele. Eles executaram fora do host do runtime, conectados pela
+entrada HTTPS normal dele.
 
 Um worker PHP usou timeout de poll de tarefa de um segundo. Dois slots
 independentes de cliente ofereceram um workflow a cada quatro segundos após
 um aquecimento separado de 30 segundos. A janela fixa de medição foi
-**18:50:30-18:55:30 UTC em 21 de setembro de 2026**. Apenas conclusões
+**15:41:04-15:46:04 UTC em 18 de novembro de 2026**. Apenas conclusões
 observadas nesses cinco minutos contam na vazão; drenar depois não aumenta a
 taxa relatada. Cada resultado, status concluído e histórico ordenado de
 workflow/atividade foi verificado.
 
 | Resultado medido | Valor |
 | --- | ---: |
-| Taxa oferecida e concluída | 0.25 workflows padrão/segundo |
-| Workflows concluídos | 75 de 75 |
+| Taxa oferecida | 0.25 workflows padrão/segundo |
+| Concluídos dentro da janela | 74 de 75 iniciados (0.247/segundo) |
+| Concluídos após a drenagem | 75 de 75 |
 | Erros / slots de início perdidos | 0 / 0 |
-| Latência do início ao resultado, p50 | 2.76 segundos |
-| Latência do início ao resultado, p95 | 4.18 segundos |
-| Latência do início ao resultado, p99 | 4.33 segundos |
-| Workflows não concluídos na coorte medida | 0 |
+| Latência do início ao resultado, p50 | 2.33 segundos |
+| Latência do início ao resultado, p95 | 3.49 segundos |
+| Latência do início ao resultado, p99 | 4.31 segundos |
+| Workflows não concluídos na coorte medida ao fim da janela | 1 |
 | Ações de workflow em 30 dias | 1,296,000 |
+
+O único workflow não concluído foi iniciado dois segundos antes do fechamento
+da janela e concluído 0.39 segundo depois dele, dentro da faixa normal de
+latência. Ele não é contado na janela. No máximo dois workflows estavam abertos
+em qualquer momento durante a janela, portanto não houve crescimento de backlog.
 
 A latência inclui rede do cliente e polling de resultado a cada 100 ms. Não
 é latência interna de agendamento de tarefas e não deve ser comparada à
 métrica interna de agendamento de outro motor.
 
-A CPU do host teve média de **63.5% ocupada**, com pico de **89%** em amostras
+A CPU do host teve média de **60.5% ocupada**, com pico de **83.2%** em amostras
 de cinco segundos. Não houve **encerramentos por OOM nem reinícios de
-containers**. Os picos de memória observados foram 95.21 MiB no Server,
-197.1 MiB no MySQL, 45.84 MiB no worker de fila, 43.75 MiB no agendador,
-9.49 MiB no Redis e 34.59 MiB no conector de entrada. Esses picos individuais
-não representam RSS simultâneo do host inteiro; o SO e outros processos
-também consomem memória. O host tinha sua configuração normal de 1 GiB de
-swap, com até cerca de 90 MiB ocupados na medição. Um backup inicial
-criptografado havia sido verificado antes da janela; nenhuma captura de backup a sobrepôs.
+containers**. Os picos de memória observados dos containers (working set) foram
+75.68 MiB no Server, 205.95 MiB no MySQL, 41.88 MiB no worker de fila,
+45.5 MiB no agendador, 12.39 MiB no Redis e 30.62 MiB no conector de entrada.
+Esses picos individuais não representam RSS simultâneo do host inteiro; o SO e
+outros processos também consomem memória. O host tinha sua configuração normal
+de 1 GiB de swap, com até cerca de 65 MiB ocupados na medição. O backup inicial
+criptografado foi capturado e verificado cerca de nove minutos antes da janela;
+o próximo backup agendado só ocorreria horas depois, portanto nenhuma captura
+de backup a sobrepôs.
+
+A mesma execução então ofereceu 0.5 workflows/segundo durante uma janela de
+cinco minutos. Essa etapa não passou. Com um worker, 39 de 150 slots de início
+foram perdidos, a latência p99 chegou a 32.8 segundos e a CPU do host teve
+média de 86.7%. Repetindo a etapa com dois workers, ainda foram perdidos 6 slots
+de início, com latências p95 e p99 de 8.5 e 11.8 segundos. A CPU do host então
+teve média de 95% e chegou a 100%, enquanto os processos externos de cliente e
+worker usaram menos de 15% de um núcleo. O host do runtime com uma única vCPU,
+que também atende o polling de resultado a cada 100 ms, é o limite para essa
+carga. Não houve erros, encerramentos por OOM nem reinícios em nenhuma das
+tentativas, e todos os workflows acabaram concluídos com o histórico esperado.
+Portanto, o baseline medido de Dev é de 0.25 workflows padrão/segundo; taxas
+maiores não são declaradas.
 
 Este é um baseline medido de desenvolvimento, não uma conversão universal
 para todo workflow, teste de vazão máxima, teste prolongado ou SLA. Payloads
