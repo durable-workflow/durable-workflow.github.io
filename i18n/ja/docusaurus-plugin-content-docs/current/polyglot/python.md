@@ -92,6 +92,11 @@ Python SDK 2.15 と 2.16 では次が追加されています。
 
 Python SDK 2.17 では、受け付け済みの更新を再送信せずに後から読み取る `Client.update_outcome` と `Client.update_outcome_receipt` が追加されました。これらには `capabilities.update_outcome_reads`（native Server 3.6.0 以降）が必要です。`update_outcome` は既定で完了を待ち、未完了なら `UpdateStillPending` を送出します。返された `None` は、完了した null の結果です。`update_outcome_receipt` は既定で受け付け段階を使い、明示的な `update_status` を保持します。言語固有の例は [Python SDK のガイド](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)を参照してください。
 
+Python SDK 2.18 では次の点が追加されました。
+
+- **上限付きの生成リトライ。** `ActivityRetryPolicy.exponential(...)` は、既定の最大間隔 60 秒でアクティビティのリトライ待機時間を生成します。[アクティビティの再試行とタイムアウト](#activity-retries-and-timeouts)を参照してください。
+- **履歴予算による拒否で実行が失敗します。** Server が履歴トランザクション予算を超えるワークフロータスクの完了を拒否すると、ワーカーは実行をリプレイでブロックされたままにせず、`structural_limit` の失敗（`WorkflowTaskHistoryLimitExceeded`）で実行を一度だけ失敗させます。
+
 ## クイックスタート {#quickstart}
 
 次は、アクティビティを1つ持つワークフローを定義し、ローカルの Durable Workflow Server に対して開始して結果を待つ完全な Python プログラムです。
@@ -730,7 +735,7 @@ from durable_workflow import ActivityRetryPolicy
 receipt = yield ctx.schedule_activity(
     "process_payment",
     [validated],
-    retry_policy=ActivityRetryPolicy(
+    retry_policy=ActivityRetryPolicy.exponential(
         max_attempts=4,
         initial_interval_seconds=1,
         backoff_coefficient=2,
@@ -742,6 +747,8 @@ receipt = yield ctx.schedule_activity(
     heartbeat_timeout=15,
 )
 ```
+
+`ActivityRetryPolicy.exponential(...)`（Python SDK 2.18.0 以降）は、既定の最大間隔 60 秒で待機時間を生成します。合計 9 回の試行では、リトライ前に `1, 2, 4, 8, 16, 32, 60, 60` 秒待機します。別の上限を選ぶには有限の `maximum_interval_seconds` を渡します。`None`、無限大、NaN は拒否されます。`ActivityRetryPolicy(...)` コンストラクターは従来の動作を維持します。`maximum_interval_seconds` を省略するか `None` を渡すと、上限は適用されません。生成された待機時間はスケジュールされたアクティビティとともに記録されるため、以前の SDK バージョンで記録された履歴は元の待機時間のままリプレイされます。ローカルアクティビティでは、`ActivityRetryPolicy.exponential(...).to_dict()` を `retry_policy` として渡します。
 
 `start_to_close_timeout` は Worker 開始後の1試行を制限します。`schedule_to_close_timeout` は全試行を通じたアクティビティ実行全体を制限します。`heartbeat_timeout` では、長時間のアクティビティが間隔の経過前に `activity.context().heartbeat(...)` を呼ぶ必要があります。再試行ポリシーはスケジュール時に永続アクティビティ実行へ固定されるため、後のデプロイで進行中の試行は変わりません。
 

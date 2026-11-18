@@ -167,6 +167,8 @@ Die Methode `backoff()` liefert Wiederholungsverzögerungen in Sekunden als Ganz
 
 Gibt es mehr Wiederholungen als Listeneinträge, wird die letzte Verzögerung wiederholt. Bei `maxAttempts: 5` und `backoff: [1, 2]` lauten die vier Wiederholungsverzögerungen `[1, 2, 2, 2]` Sekunden. Eine leere Liste, `backoff: []`, fordert sofortige Wiederholungen ohne Backoff an, unter Einhaltung der Versuchs- und Zeitlimits.
 
+Python-Workflows senden diese Liste als `backoff_seconds` in einer Wiederholungsrichtlinie für Aktivitäten. Ab Python SDK 2.18.0 erzeugt `ActivityRetryPolicy.exponential(...)` sie mit einem standardmäßigen Höchstintervall von 60 Sekunden; der Konstruktor `ActivityRetryPolicy(...)` bleibt ohne Obergrenze, solange `maximum_interval_seconds` nicht gesetzt ist. Siehe [Aktivitätswiederholungen in Python](/docs/polyglot/python#activity-retries-and-timeouts).
+
 Die Wiederholungsrichtlinie wird beim Planen der Aktivität aufgezeichnet. Bereits aufgezeichnete Richtlinien behalten ihre Verzögerungen, wenn späterer Code die Klassenstandards oder Optionen ändert.
 
 ## Namespace {#namespace}

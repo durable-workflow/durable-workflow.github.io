@@ -126,6 +126,8 @@ The `backoff()` method returns retry delays in seconds as an integer or a list. 
 
 When retries outnumber the list entries, the final delay repeats. For `maxAttempts: 5` and `backoff: [1, 2]`, the four retry delays are `[1, 2, 2, 2]` seconds. An empty list, `backoff: []`, requests immediate retries (zero backoff), subject to the attempt and timeout limits.
 
+Python workflows send this list as `backoff_seconds` in an activity retry policy. In Python SDK 2.18.0 and later, `ActivityRetryPolicy.exponential(...)` generates it with a 60-second default maximum interval; the `ActivityRetryPolicy(...)` constructor stays uncapped unless `maximum_interval_seconds` is set. See [Python activity retries](/docs/polyglot/python#activity-retries-and-timeouts).
+
 The retry policy is recorded when the activity is scheduled. Already recorded policies keep their recorded delays when later code changes the class defaults or options.
 
 ## Namespace

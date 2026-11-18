@@ -126,6 +126,8 @@ v2 の基底 `Activity` クラスに `$timeout` プロパティはありませ�
 
 リトライ回数がリストの要素数を超えると、最後の待機時間を繰り返します。`maxAttempts: 5` と `backoff: [1, 2]` の場合、4 回のリトライ前の待機時間は `[1, 2, 2, 2]` 秒です。空のリスト `backoff: []` は、試行回数とタイムアウトの制限内で、バックオフなしの即時リトライを要求します。
 
+Python のワークフローは、このリストをアクティビティのリトライポリシーの `backoff_seconds` として送信します。Python SDK 2.18.0 以降では、`ActivityRetryPolicy.exponential(...)` が既定の最大間隔 60 秒でこのリストを生成します。`ActivityRetryPolicy(...)` コンストラクターは、`maximum_interval_seconds` を設定しない限り上限なしのままです。[Python のアクティビティリトライ](/docs/polyglot/python#activity-retries-and-timeouts)を参照してください。
+
 リトライポリシーはアクティビティのスケジュール時に記録されます。後のコードがクラスの既定値やオプションを変更しても、記録済みのポリシーは記録された待機時間を維持します。
 
 ## 名前空間 {#namespace}

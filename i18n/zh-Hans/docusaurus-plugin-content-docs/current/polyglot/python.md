@@ -89,6 +89,11 @@ Python SDK 2.15 和 2.16 新增：
 
 Python SDK 2.17 新增 `Client.update_outcome` 和 `Client.update_outcome_receipt`，用于稍后读取已接受的更新，不重新提交。这些方法要求 `capabilities.update_outcome_reads`（native Server 3.6.0 及更高版本）。`update_outcome` 默认等待完成，如果更新尚未完成则抛出 `UpdateStillPending`。返回的 `None` 表示已完成的 null 结果。`update_outcome_receipt` 默认使用接受阶段，并保留明确的 `update_status`。语言专用示例见 [Python SDK 指南](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)。
 
+Python SDK 2.18 新增：
+
+- **有上限的生成重试。** `ActivityRetryPolicy.exponential(...)` 生成活动重试延迟，默认最大间隔为 60 秒。参见[活动重试与超时](#activity-retries-and-timeouts)。
+- **历史预算拒绝会使运行失败。** 当 Server 因超出历史事务预算而拒绝工作流任务完成时，worker 会以 `structural_limit` 失败（`WorkflowTaskHistoryLimitExceeded`）使运行失败一次，而不是让运行停留在重放阻塞状态。
+
 ## 快速入门 {#quickstart}
 
 下面的完整 Python 程序定义带一个活动的工作流，在本地 Durable Workflow Server 上启动并等待结果：
@@ -713,7 +718,7 @@ from durable_workflow import ActivityRetryPolicy
 receipt = yield ctx.schedule_activity(
     "process_payment",
     [validated],
-    retry_policy=ActivityRetryPolicy(
+    retry_policy=ActivityRetryPolicy.exponential(
         max_attempts=4,
         initial_interval_seconds=1,
         backoff_coefficient=2,
@@ -725,6 +730,8 @@ receipt = yield ctx.schedule_activity(
     heartbeat_timeout=15,
 )
 ```
+
+`ActivityRetryPolicy.exponential(...)`（Python SDK 2.18.0 及更高版本）以默认 60 秒的最大间隔生成延迟。总共九次尝试时，各次重试前分别等待 `1, 2, 4, 8, 16, 32, 60, 60` 秒。传入有限的 `maximum_interval_seconds` 可选择其他上限；`None`、无穷大和 NaN 会被拒绝。`ActivityRetryPolicy(...)` 构造函数保持原有行为：省略 `maximum_interval_seconds` 或传入 `None` 时不设上限。生成的延迟会随已调度的活动一起记录，因此由早期 SDK 版本记录的历史会按原始延迟重放。对于本地活动，将 `ActivityRetryPolicy.exponential(...).to_dict()` 作为 `retry_policy` 传入。
 
 `start_to_close_timeout` 限制 Worker 启动后的单次尝试。`schedule_to_close_timeout` 限制跨所有尝试的整个活动执行。`heartbeat_timeout` 要求长时间运行活动在间隔到期前调用 `activity.context().heartbeat(...)`。活动被调度时，重试策略作为快照写入持久活动执行，因此后续部署不会改变已经运行的尝试。
 
