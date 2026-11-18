@@ -135,6 +135,11 @@ le `update_status` explicite. Consultez le
 [guide du SDK Python](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)
 pour les exemples propres au langage.
 
+Python SDK 2.18 ajoute :
+
+- **Tentatives générées plafonnées.** `ActivityRetryPolicy.exponential(...)` génère les délais entre les tentatives d'activité avec un intervalle maximal de 60 secondes par défaut. Voir [tentatives et délais d'activité](#activity-retries-and-timeouts).
+- **Les refus de budget d'historique font échouer l'exécution.** Lorsque le Server refuse l'achèvement d'une tâche de workflow qui dépasse son budget de transaction d'historique, le worker fait échouer l'exécution une seule fois avec un échec `structural_limit` (`WorkflowTaskHistoryLimitExceeded`) au lieu de la laisser bloquée au rejeu.
+
 ## Démarrage rapide {#quickstart}
 
 Ce programme Python complet définit un workflow avec une activité, le démarre
@@ -895,7 +900,7 @@ from durable_workflow import ActivityRetryPolicy
 receipt = yield ctx.schedule_activity(
     "process_payment",
     [validated],
-    retry_policy=ActivityRetryPolicy(
+    retry_policy=ActivityRetryPolicy.exponential(
         max_attempts=4,
         initial_interval_seconds=1,
         backoff_coefficient=2,
@@ -907,6 +912,8 @@ receipt = yield ctx.schedule_activity(
     heartbeat_timeout=15,
 )
 ```
+
+`ActivityRetryPolicy.exponential(...)` (Python SDK 2.18.0 et versions ultérieures) génère les délais avec un intervalle maximal de 60 secondes par défaut. Pour neuf tentatives au total, les nouvelles tentatives attendent `1, 2, 4, 8, 16, 32, 60, 60` secondes. Passez une valeur finie de `maximum_interval_seconds` pour choisir un autre plafond ; `None`, les infinis et NaN sont refusés. Le constructeur `ActivityRetryPolicy(...)` conserve son comportement antérieur : sans `maximum_interval_seconds`, ou avec `None`, aucun plafond ne s'applique. Les délais générés sont enregistrés avec l'activité planifiée ; les historiques enregistrés par des versions antérieures du SDK sont donc rejoués avec leurs délais d'origine. Pour une activité locale, passez `ActivityRetryPolicy.exponential(...).to_dict()` comme `retry_policy`.
 
 `start_to_close_timeout` borne une tentative après démarrage par le worker.
 `schedule_to_close_timeout` borne toute l'exécution d'activité à travers les

@@ -126,6 +126,8 @@ El método `backoff()` devuelve las demoras de reintento en segundos como entero
 
 Cuando hay más reintentos que entradas, se repite la última demora. Con `maxAttempts: 5` y `backoff: [1, 2]`, las cuatro demoras de reintento son `[1, 2, 2, 2]` segundos. Una lista vacía, `backoff: []`, solicita reintentos inmediatos sin espera, sujetos a los límites de intentos y tiempo.
 
+Los workflows de Python envían esta lista como `backoff_seconds` en una política de reintentos de actividad. En Python SDK 2.18.0 y posteriores, `ActivityRetryPolicy.exponential(...)` la genera con un intervalo máximo predeterminado de 60 segundos; el constructor `ActivityRetryPolicy(...)` sigue sin límite salvo que se defina `maximum_interval_seconds`. Consulta [reintentos de actividades en Python](/docs/polyglot/python#activity-retries-and-timeouts).
+
 La política de reintentos se registra al programar la actividad. Las políticas ya registradas conservan sus demoras cuando código posterior cambia los valores predeterminados de la clase o las opciones.
 
 ## Espacio de nombres {#namespace}

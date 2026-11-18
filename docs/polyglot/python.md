@@ -144,6 +144,16 @@ explicit `update_status`. See the
 [Python SDK update-outcome guide](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)
 for language-specific examples.
 
+Python SDK 2.18 adds:
+
+- **Capped generated retries.** `ActivityRetryPolicy.exponential(...)` generates
+  activity retry delays with a 60-second default maximum interval. See
+  [activity retries and timeouts](#activity-retries-and-timeouts).
+- **History-budget refusals fail the run.** When the Server refuses a
+  workflow-task completion over its history-transaction budget, the worker
+  fails the run once with a `structural_limit` failure
+  (`WorkflowTaskHistoryLimitExceeded`) instead of leaving the run replay-blocked.
+
 ## Quickstart
 
 Here is a complete Python program that defines a workflow with one activity, starts it against a local Durable Workflow server, and waits for the result:
@@ -951,7 +961,7 @@ from durable_workflow import ActivityRetryPolicy
 receipt = yield ctx.schedule_activity(
     "process_payment",
     [validated],
-    retry_policy=ActivityRetryPolicy(
+    retry_policy=ActivityRetryPolicy.exponential(
         max_attempts=4,
         initial_interval_seconds=1,
         backoff_coefficient=2,
@@ -963,6 +973,17 @@ receipt = yield ctx.schedule_activity(
     heartbeat_timeout=15,
 )
 ```
+
+`ActivityRetryPolicy.exponential(...)` (Python SDK 2.18.0 and later) generates
+the delays with a 60-second default maximum interval. For nine total attempts,
+the retries wait `1, 2, 4, 8, 16, 32, 60, 60` seconds. Pass a finite
+`maximum_interval_seconds` to choose another cap; `None`, infinities and NaN
+are refused. The `ActivityRetryPolicy(...)` constructor keeps its earlier
+behavior: omitting `maximum_interval_seconds`, or passing `None`, applies no
+cap. Generated delays are recorded with the scheduled activity, so histories
+recorded by earlier SDK versions replay with their original delays. For a local
+activity, pass `ActivityRetryPolicy.exponential(...).to_dict()` as
+`retry_policy`.
 
 `start_to_close_timeout` caps one attempt after a worker starts it.
 `schedule_to_close_timeout` caps the whole activity execution across all

@@ -126,6 +126,8 @@ v2 `Activity` 基类没有 `$timeout` 类属性。请通过 [`ActivityOptions`](
 
 当重试次数超过列表项数时，会重复最后一个延迟。对于 `maxAttempts: 5` 和 `backoff: [1, 2]`，四次重试前的延迟为 `[1, 2, 2, 2]` 秒。空列表 `backoff: []` 请求在尝试次数和超时限制内立即重试，不增加退避时间。
 
+Python 工作流会在活动重试策略中以 `backoff_seconds` 发送此列表。在 Python SDK 2.18.0 及更高版本中，`ActivityRetryPolicy.exponential(...)` 以默认 60 秒的最大间隔生成该列表；除非设置 `maximum_interval_seconds`，`ActivityRetryPolicy(...)` 构造函数仍不设上限。参见 [Python 活动重试](/docs/polyglot/python#activity-retries-and-timeouts)。
+
 重试策略在调度活动时记录。之后的代码即使更改类默认值或选项，已记录策略仍保留原有延迟。
 
 ## 命名空间 {#namespace}

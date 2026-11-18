@@ -132,6 +132,11 @@ de aceptación de forma predeterminada y conserva el `update_status` explícito.
 Consulte la [guía del SDK de Python](https://python.durable-workflow.com/reference/client/#read-an-update-outcome)
 para ver ejemplos específicos del lenguaje.
 
+Python SDK 2.18 añade:
+
+- **Reintentos generados con límite.** `ActivityRetryPolicy.exponential(...)` genera las esperas entre reintentos de actividades con un intervalo máximo predeterminado de 60 segundos. Consulta [reintentos y plazos de actividades](#activity-retries-and-timeouts).
+- **Los rechazos por presupuesto de historial hacen fallar la ejecución.** Cuando el Server rechaza la finalización de una tarea de workflow por superar su presupuesto de transacción de historial, el worker hace fallar la ejecución una sola vez con un fallo `structural_limit` (`WorkflowTaskHistoryLimitExceeded`) en lugar de dejarla bloqueada en la reproducción.
+
 ## Inicio rápido {#quickstart}
 
 Este programa completo define un workflow con una actividad, lo inicia contra
@@ -873,7 +878,7 @@ from durable_workflow import ActivityRetryPolicy
 receipt = yield ctx.schedule_activity(
     "process_payment",
     [validated],
-    retry_policy=ActivityRetryPolicy(
+    retry_policy=ActivityRetryPolicy.exponential(
         max_attempts=4,
         initial_interval_seconds=1,
         backoff_coefficient=2,
@@ -885,6 +890,8 @@ receipt = yield ctx.schedule_activity(
     heartbeat_timeout=15,
 )
 ```
+
+`ActivityRetryPolicy.exponential(...)` (Python SDK 2.18.0 y posteriores) genera las esperas con un intervalo máximo predeterminado de 60 segundos. Con nueve intentos en total, los reintentos esperan `1, 2, 4, 8, 16, 32, 60, 60` segundos. Pasa un `maximum_interval_seconds` finito para elegir otro límite; se rechazan `None`, los infinitos y NaN. El constructor `ActivityRetryPolicy(...)` mantiene su comportamiento anterior: si se omite `maximum_interval_seconds` o se pasa `None`, no se aplica ningún límite. Las esperas generadas se registran con la actividad programada, por lo que los historiales registrados con versiones anteriores del SDK se reproducen con sus esperas originales. Para una actividad local, pasa `ActivityRetryPolicy.exponential(...).to_dict()` como `retry_policy`.
 
 `start_to_close_timeout` limita un intento desde que el worker lo inicia.
 `schedule_to_close_timeout` limita la actividad completa entre todos sus intentos.

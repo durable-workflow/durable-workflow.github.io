@@ -126,6 +126,8 @@ O método `backoff()` retorna os atrasos de nova tentativa em segundos como inte
 
 Quando há mais novas tentativas que entradas na lista, o último atraso é repetido. Com `maxAttempts: 5` e `backoff: [1, 2]`, os quatro atrasos de nova tentativa são `[1, 2, 2, 2]` segundos. Uma lista vazia, `backoff: []`, solicita novas tentativas imediatas sem backoff, sujeitas aos limites de tentativas e tempo.
 
+Workflows Python enviam essa lista como `backoff_seconds` em uma política de novas tentativas de atividade. No Python SDK 2.18.0 e posteriores, `ActivityRetryPolicy.exponential(...)` a gera com um intervalo máximo padrão de 60 segundos; o construtor `ActivityRetryPolicy(...)` continua sem limite, a menos que `maximum_interval_seconds` seja definido. Veja [novas tentativas de atividades em Python](/docs/polyglot/python#activity-retries-and-timeouts).
+
 A política de novas tentativas é registrada quando a atividade é agendada. Políticas já registradas mantêm seus atrasos quando código posterior muda os padrões da classe ou as opções.
 
 ## Namespace {#namespace}

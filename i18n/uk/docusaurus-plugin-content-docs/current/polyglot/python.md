@@ -130,6 +130,11 @@ Python SDK 2.17 додає `Client.update_outcome` і
 замовчуванням використовує етап прийняття й зберігає явний `update_status`.
 Приклади для цієї мови наведено в [посібнику Python SDK](https://python.durable-workflow.com/reference/client/#read-an-update-outcome).
 
+Python SDK 2.18 додає:
+
+- **Згенеровані повторні спроби з обмеженням.** `ActivityRetryPolicy.exponential(...)` генерує затримки між повторними спробами activity зі стандартним максимальним інтервалом 60 секунд. Див. [повторні спроби й тайм-аути activity](#activity-retries-and-timeouts).
+- **Відмова через бюджет історії завершує запуск помилкою.** Коли Server відхиляє завершення workflow task через перевищення бюджету транзакції історії, worker один раз завершує запуск помилкою `structural_limit` (`WorkflowTaskHistoryLimitExceeded`), а не залишає його заблокованим для replay.
+
 ## Швидкий початок {#quickstart}
 
 Ця повна програма Python визначає workflow з однією activity,
@@ -881,7 +886,7 @@ from durable_workflow import ActivityRetryPolicy
 receipt = yield ctx.schedule_activity(
     "process_payment",
     [validated],
-    retry_policy=ActivityRetryPolicy(
+    retry_policy=ActivityRetryPolicy.exponential(
         max_attempts=4,
         initial_interval_seconds=1,
         backoff_coefficient=2,
@@ -893,6 +898,8 @@ receipt = yield ctx.schedule_activity(
     heartbeat_timeout=15,
 )
 ```
+
+`ActivityRetryPolicy.exponential(...)` (Python SDK 2.18.0 і новіші) генерує затримки зі стандартним максимальним інтервалом 60 секунд. Для дев'яти спроб загалом повторні спроби чекають `1, 2, 4, 8, 16, 32, 60, 60` секунд. Передайте скінченне `maximum_interval_seconds`, щоб вибрати інше обмеження; `None`, нескінченності й NaN відхиляються. Конструктор `ActivityRetryPolicy(...)` зберігає попередню поведінку: якщо пропустити `maximum_interval_seconds` або передати `None`, обмеження не застосовується. Згенеровані затримки записуються разом із запланованою activity, тому історії, записані попередніми версіями SDK, відтворюються з початковими затримками. Для локальної activity передайте `ActivityRetryPolicy.exponential(...).to_dict()` як `retry_policy`.
 
 `start_to_close_timeout` обмежує одну спробу після початку worker.
 `schedule_to_close_timeout` обмежує все виконання activity між спробами.
