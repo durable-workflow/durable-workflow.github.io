@@ -30,7 +30,7 @@ $schedule = ScheduleManager::create(
 );
 ```
 
-`scheduleId` 是用户选择的唯一调度标识。每次触发运行都会获得由调度 ID 和触发时间戳推导出的确定性工作流实例 ID。
+`scheduleId` 是用户选择的唯一调度标识。为调度某次发生而启动的运行会获得由命名空间、调度 ID 和发生时间推导出的确定性工作流实例 ID。参见[运行 ID](#run-ids)。
 
 ### 参数 {#parameters}
 
@@ -411,7 +411,27 @@ $results = ScheduleManager::backfill(
 
 回填遵守 `maxRuns`。剩余动作在回填中途用尽时，操作停止，调度自动删除。
 
-回填实例 ID 是确定性的：`schedule:{scheduleId}:backfill:{timestamp}`。
+## 运行 ID {#run-ids}
+
+为调度某次发生而启动的运行，无论来自计划触发、回填还是缓冲动作，都会获得确定性的工作流实例 ID：
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` 是调度所在命名空间的 SHA-256 的前 32 个十六进制字符。
+- `{schedule ID length}` 是调度 ID 的字节长度。
+- `{occurrence}` 是发生时间的 Unix 秒数。每次发生的后缀都是 `backfill`，不只是回填。
+- 如果完整 ID 会超过 191 个字符，或调度 ID 含有 `[A-Za-z0-9._:-]` 之外的字符，`{schedule ID length}:{schedule ID}` 部分会替换为 `h:{调度 ID 的 SHA-256}`（64 个十六进制字符）。
+
+例如，命名空间 `default` 中的调度 `nightly` 在 2026-11-18 09:00 UTC 触发时启动 `schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400`。
+
+命名空间是 ID 的一部分，因此不同命名空间中同 ID 的调度会启动各自独立的实例。运行已经启动的发生不会再次启动；重复触发会被跳过，并记录为 `already_fired_occurrence`。
+
+适用范围：
+
+- **嵌入式 Workflow 2.15.15 及更高版本。** 手动 `trigger()` 没有对应的发生，因此其 ID 以触发时间的 Unix 毫秒数结尾，而不是 `backfill:{occurrence}`。早期版本启动的运行保留其 `schedule:{scheduleId}:{suffix}` 形式的 ID。
+- **原生 Server 3.13.0 及更高版本。** 手动触发没有对应的发生，保留服务器生成的 ID。早期 Server 版本启动的运行保留其已生成的 ID。
 
 ## 队列路由 {#queue-routing}
 

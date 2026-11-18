@@ -30,7 +30,7 @@ $schedule = ScheduleManager::create(
 );
 ```
 
-The `scheduleId` is a unique, user-chosen identifier for the schedule. Each triggered run gets a deterministic workflow instance ID derived from the schedule ID and trigger timestamp.
+The `scheduleId` is a unique, user-chosen identifier for the schedule. A run started for a schedule occurrence gets a deterministic workflow instance ID derived from the namespace, the schedule ID and the occurrence time. See [Run IDs](#run-ids).
 
 ### Parameters
 
@@ -455,7 +455,43 @@ $results = ScheduleManager::backfill(
 
 Backfill respects `maxRuns` — if the schedule's remaining actions are exhausted mid-backfill, the operation stops and the schedule is auto-deleted.
 
-Backfill instance IDs are deterministic: `schedule:{scheduleId}:backfill:{timestamp}`.
+## Run IDs
+
+A run started for a schedule occurrence, whether a scheduled fire, a backfill
+or a buffered action, gets a deterministic workflow instance ID:
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` is the first 32 hex characters of the SHA-256 of the
+  schedule's namespace.
+- `{schedule ID length}` is the length of the schedule ID in bytes.
+- `{occurrence}` is the occurrence time in Unix seconds. The suffix reads
+  `backfill` for every occurrence, not only for backfills.
+- If the whole ID would be longer than 191 characters, or the schedule ID
+  contains a character outside `[A-Za-z0-9._:-]`, the
+  `{schedule ID length}:{schedule ID}` part is replaced by
+  `h:{SHA-256 of the schedule ID}` (64 hex characters).
+
+For example, schedule `nightly` in namespace `default` firing at
+2026-11-18 09:00 UTC starts
+`schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400`.
+
+The namespace is part of the ID, so schedules with the same ID in different
+namespaces start separate instances. An occurrence whose run has already
+started is not started again; the repeated fire is skipped and recorded as
+`already_fired_occurrence`.
+
+Where the format applies:
+
+- **Embedded Workflow 2.15.15 and later.** A manual `trigger()` has no
+  occurrence, so its ID ends with the trigger time in Unix milliseconds instead
+  of `backfill:{occurrence}`. Runs started by earlier releases keep their
+  `schedule:{scheduleId}:{suffix}` IDs.
+- **Native Server 3.13.0 and later.** Manual triggers have no occurrence and
+  keep server-generated IDs. Runs started by earlier Server releases keep their
+  generated IDs.
 
 ## Queue routing
 

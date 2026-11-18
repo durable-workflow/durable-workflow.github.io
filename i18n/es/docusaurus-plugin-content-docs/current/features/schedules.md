@@ -30,7 +30,7 @@ $schedule = ScheduleManager::create(
 );
 ```
 
-`scheduleId` es un identificador único elegido por el usuario. Cada activación recibe un ID determinista de instancia derivado de ese ID y de la marca de tiempo de activación.
+`scheduleId` es un identificador único elegido por el usuario. Una ejecución iniciada para una ocurrencia de la programación recibe un ID determinista de instancia derivado del namespace, del ID de la programación y del momento de la ocurrencia. Consulta [IDs de ejecución](#run-ids).
 
 ### Parámetros {#parameters}
 
@@ -452,7 +452,27 @@ $results = ScheduleManager::backfill(
 
 Se respeta `maxRuns`: si se agotan las acciones a mitad de recuperación, se detiene y se elimina la programación automáticamente.
 
-Los IDs de instancia son deterministas: `schedule:{scheduleId}:backfill:{timestamp}`.
+## IDs de ejecución {#run-ids}
+
+Una ejecución iniciada para una ocurrencia de la programación, ya sea una activación programada, una recuperación o una acción en búfer, recibe un ID determinista de instancia de workflow:
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` son los primeros 32 caracteres hexadecimales del SHA-256 del namespace de la programación.
+- `{schedule ID length}` es la longitud del ID de la programación en bytes.
+- `{occurrence}` es el momento de la ocurrencia en segundos Unix. El sufijo dice `backfill` en todas las ocurrencias, no solo en las recuperaciones.
+- Si el ID completo superara los 191 caracteres, o si el ID de la programación contiene un carácter fuera de `[A-Za-z0-9._:-]`, la parte `{schedule ID length}:{schedule ID}` se sustituye por `h:{SHA-256 del ID de la programación}` (64 caracteres hexadecimales).
+
+Por ejemplo, la programación `nightly` del namespace `default` que se activa el 2026-11-18 a las 09:00 UTC inicia `schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400`.
+
+El namespace forma parte del ID, así que programaciones con el mismo ID en namespaces distintos inician instancias separadas. Una ocurrencia cuya ejecución ya se inició no se vuelve a iniciar: la activación repetida se omite y se registra como `already_fired_occurrence`.
+
+Dónde se aplica el formato:
+
+- **Workflow embebido 2.15.15 y posteriores.** Un `trigger()` manual no tiene ocurrencia, así que su ID termina con el momento de la activación en milisegundos Unix en lugar de `backfill:{occurrence}`. Las ejecuciones iniciadas por versiones anteriores conservan sus IDs `schedule:{scheduleId}:{suffix}`.
+- **Server nativo 3.13.0 y posteriores.** Las activaciones manuales no tienen ocurrencia y conservan los IDs generados por el servidor. Las ejecuciones iniciadas por versiones anteriores del Server conservan sus IDs generados.
 
 ## Enrutamiento por colas {#queue-routing}
 

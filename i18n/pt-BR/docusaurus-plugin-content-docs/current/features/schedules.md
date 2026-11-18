@@ -30,7 +30,7 @@ $schedule = ScheduleManager::create(
 );
 ```
 
-O `scheduleId` é um identificador único escolhido pelo usuário para o agendamento. Cada execução disparada recebe um ID determinístico de instância de workflow derivado do ID do agendamento e do horário do disparo.
+O `scheduleId` é um identificador único escolhido pelo usuário para o agendamento. Uma execução iniciada para uma ocorrência do agendamento recebe um ID determinístico de instância de workflow derivado do namespace, do ID do agendamento e do horário da ocorrência. Veja [IDs de execução](#run-ids).
 
 ### Parâmetros {#parameters}
 
@@ -463,7 +463,27 @@ $results = ScheduleManager::backfill(
 
 O preenchimento retroativo respeita `maxRuns`. Se as ações restantes do agendamento se esgotarem durante a operação, ela para e o agendamento é excluído automaticamente.
 
-IDs de instância do preenchimento retroativo são determinísticos: `schedule:{scheduleId}:backfill:{timestamp}`.
+## IDs de execução {#run-ids}
+
+Uma execução iniciada para uma ocorrência do agendamento, seja um disparo agendado, um preenchimento retroativo ou uma ação em buffer, recebe um ID determinístico de instância de workflow:
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` são os primeiros 32 caracteres hexadecimais do SHA-256 do namespace do agendamento.
+- `{schedule ID length}` é o comprimento do ID do agendamento em bytes.
+- `{occurrence}` é o horário da ocorrência em segundos Unix. O sufixo é `backfill` em todas as ocorrências, não só nos preenchimentos retroativos.
+- Se o ID completo passar de 191 caracteres, ou se o ID do agendamento contiver um caractere fora de `[A-Za-z0-9._:-]`, a parte `{schedule ID length}:{schedule ID}` é substituída por `h:{SHA-256 do ID do agendamento}` (64 caracteres hexadecimais).
+
+Por exemplo, o agendamento `nightly` no namespace `default` disparado em 2026-11-18 às 09:00 UTC inicia `schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400`.
+
+O namespace faz parte do ID, então agendamentos com o mesmo ID em namespaces diferentes iniciam instâncias separadas. Uma ocorrência cuja execução já foi iniciada não é iniciada de novo: o disparo repetido é ignorado e registrado como `already_fired_occurrence`.
+
+Onde o formato se aplica:
+
+- **Workflow embutido 2.15.15 e posteriores.** Um `trigger()` manual não tem ocorrência, então seu ID termina com o horário do disparo em milissegundos Unix em vez de `backfill:{occurrence}`. Execuções iniciadas por versões anteriores mantêm seus IDs `schedule:{scheduleId}:{suffix}`.
+- **Server nativo 3.13.0 e posteriores.** Disparos manuais não têm ocorrência e mantêm IDs gerados pelo servidor. Execuções iniciadas por versões anteriores do Server mantêm seus IDs gerados.
 
 ## Roteamento por fila {#queue-routing}
 
