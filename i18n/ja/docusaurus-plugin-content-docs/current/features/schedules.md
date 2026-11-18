@@ -30,7 +30,7 @@ $schedule = ScheduleManager::create(
 );
 ```
 
-`scheduleId` はユーザーが選ぶ一意な識別子です。各起動実行はスケジュール ID と起動時刻から導く決定的なインスタンス ID を持ちます。
+`scheduleId` はユーザーが選ぶ一意な識別子です。スケジュールの発生回に対して開始された実行は、ネームスペース、スケジュール ID、発生時刻から導く決定的なインスタンス ID を持ちます。[実行 ID](#run-ids) を参照してください。
 
 ### パラメーター {#parameters}
 
@@ -414,7 +414,27 @@ $results = ScheduleManager::backfill(
 
 `maxRuns` を守り、途中で残回数を使い切れば停止して自動削除します。
 
-ID は決定的な `schedule:{scheduleId}:backfill:{timestamp}` です。
+## 実行 ID {#run-ids}
+
+スケジュールの発生回に対して開始された実行は、予定どおりの起動、バックフィル、バッファされたアクションのいずれであっても、決定的なワークフローインスタンス ID を持ちます。
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` はスケジュールのネームスペースの SHA-256 の先頭 32 桁の 16 進文字です。
+- `{schedule ID length}` はスケジュール ID のバイト長です。
+- `{occurrence}` は発生時刻の Unix 秒です。サフィックスはバックフィルに限らず、すべての発生回で `backfill` になります。
+- ID 全体が 191 文字を超える場合、またはスケジュール ID に `[A-Za-z0-9._:-]` 以外の文字が含まれる場合は、`{schedule ID length}:{schedule ID}` の部分が `h:{スケジュール ID の SHA-256}`（16 進 64 文字）に置き換わります。
+
+たとえば、ネームスペース `default` のスケジュール `nightly` が 2026-11-18 09:00 UTC に起動すると `schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400` を開始します。
+
+ネームスペースが ID に含まれるため、異なるネームスペースにある同じ ID のスケジュールは別々のインスタンスを開始します。実行をすでに開始した発生回は再び開始されません。繰り返された起動はスキップされ、`already_fired_occurrence` として記録されます。
+
+この形式が適用される範囲:
+
+- **埋め込み Workflow 2.15.15 以降。** 手動の `trigger()` には発生回がないため、ID は `backfill:{occurrence}` の代わりに起動時刻の Unix ミリ秒で終わります。以前のリリースが開始した実行は `schedule:{scheduleId}:{suffix}` 形式の ID を保持します。
+- **ネイティブ Server 3.13.0 以降。** 手動起動には発生回がなく、サーバーが生成する ID のままです。以前の Server リリースが開始した実行は生成済みの ID を保持します。
 
 ## キュールーティング {#queue-routing}
 

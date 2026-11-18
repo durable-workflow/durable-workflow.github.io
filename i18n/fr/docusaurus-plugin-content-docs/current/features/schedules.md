@@ -30,7 +30,7 @@ $schedule = ScheduleManager::create(
 );
 ```
 
-Le `scheduleId` est un identifiant unique choisi par l’utilisateur. Chaque exécution déclenchée reçoit un identifiant d’instance déterministe dérivé de cet identifiant et de l’horodatage du déclenchement.
+Le `scheduleId` est un identifiant unique choisi par l’utilisateur. Une exécution lancée pour une occurrence de la planification reçoit un identifiant d’instance déterministe dérivé du namespace, de l’identifiant de la planification et de l’heure de l’occurrence. Voir [Identifiants d’exécution](#run-ids).
 
 ### Paramètres {#parameters}
 
@@ -426,7 +426,27 @@ $results = ScheduleManager::backfill(
 
 Le rattrapage respecte `maxRuns`. Si les actions restantes s’épuisent pendant l’opération, elle s’arrête et la planification est supprimée automatiquement.
 
-Les identifiants d’instance du rattrapage sont déterministes : `schedule:{scheduleId}:backfill:{timestamp}`.
+## Identifiants d’exécution {#run-ids}
+
+Une exécution lancée pour une occurrence de la planification, qu’il s’agisse d’un déclenchement planifié, d’un rattrapage ou d’une action mise en tampon, reçoit un identifiant d’instance de workflow déterministe :
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` correspond aux 32 premiers caractères hexadécimaux du SHA-256 du namespace de la planification.
+- `{schedule ID length}` est la longueur de l’identifiant de la planification en octets.
+- `{occurrence}` est l’heure de l’occurrence en secondes Unix. Le suffixe indique `backfill` pour chaque occurrence, pas seulement pour les rattrapages.
+- Si l’identifiant complet dépassait 191 caractères, ou si l’identifiant de la planification contient un caractère hors de `[A-Za-z0-9._:-]`, la partie `{schedule ID length}:{schedule ID}` est remplacée par `h:{SHA-256 de l’identifiant de la planification}` (64 caractères hexadécimaux).
+
+Par exemple, la planification `nightly` du namespace `default` déclenchée le 2026-11-18 à 09:00 UTC lance `schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400`.
+
+Le namespace fait partie de l’identifiant : des planifications de même identifiant dans des namespaces différents lancent des instances distinctes. Une occurrence dont l’exécution a déjà été lancée ne l’est pas une seconde fois ; le déclenchement répété est ignoré et enregistré comme `already_fired_occurrence`.
+
+Où le format s’applique :
+
+- **Workflow intégré 2.15.15 et versions ultérieures.** Un `trigger()` manuel n’a pas d’occurrence : son identifiant se termine par l’heure du déclenchement en millisecondes Unix au lieu de `backfill:{occurrence}`. Les exécutions lancées par des versions antérieures conservent leurs identifiants `schedule:{scheduleId}:{suffix}`.
+- **Server natif 3.13.0 et versions ultérieures.** Les déclenchements manuels n’ont pas d’occurrence et conservent des identifiants générés par le serveur. Les exécutions lancées par des versions antérieures du Server conservent leurs identifiants générés.
 
 ## Routage par file {#queue-routing}
 

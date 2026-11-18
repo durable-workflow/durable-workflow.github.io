@@ -33,8 +33,9 @@ $schedule = ScheduleManager::create(
 ```
 
 `scheduleId` ist eine eindeutige, vom Benutzer gewählte Zeitplankennung.
-Jeder ausgelöste Lauf erhält eine deterministische Workflow-Instanz-ID aus
-Zeitplan-ID und Auslösezeitstempel.
+Ein Lauf, der für ein Zeitplanvorkommen gestartet wird, erhält eine
+deterministische Workflow-Instanz-ID aus Namespace, Zeitplan-ID und
+Vorkommenszeit. Siehe [Lauf-IDs](#run-ids).
 
 ### Parameter {#parameters}
 
@@ -514,8 +515,44 @@ $results = ScheduleManager::backfill(
 Nachholen berücksichtigt `maxRuns`. Sind die verbleibenden Aktionen während
 des Vorgangs ausgeschöpft, stoppt er und der Zeitplan wird automatisch gelöscht.
 
-Nachhol-Instanz-IDs sind deterministisch:
-`schedule:{scheduleId}:backfill:{timestamp}`.
+## Lauf-IDs {#run-ids}
+
+Ein Lauf, der für ein Zeitplanvorkommen gestartet wird, ob durch eine geplante
+Auslösung, durch Nachholen oder aus einer gepufferten Aktion, erhält eine
+deterministische Workflow-Instanz-ID:
+
+```text
+schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurrence}
+```
+
+- `{namespace hash}` sind die ersten 32 Hex-Zeichen des SHA-256 des
+  Namespace des Zeitplans.
+- `{schedule ID length}` ist die Länge der Zeitplan-ID in Bytes.
+- `{occurrence}` ist die Vorkommenszeit in Unix-Sekunden. Das Suffix lautet bei
+  jedem Vorkommen `backfill`, nicht nur beim Nachholen.
+- Wäre die gesamte ID länger als 191 Zeichen oder enthält die Zeitplan-ID ein
+  Zeichen außerhalb von `[A-Za-z0-9._:-]`, wird der Teil
+  `{schedule ID length}:{schedule ID}` durch
+  `h:{SHA-256 der Zeitplan-ID}` (64 Hex-Zeichen) ersetzt.
+
+Beispiel: Der Zeitplan `nightly` im Namespace `default` startet für die
+Auslösung am 18.11.2026 um 09:00 UTC
+`schedule.ns:37a8eec1ce19687d132fe29051dca629:7:nightly:backfill:1794992400`.
+
+Der Namespace ist Teil der ID, daher starten Zeitpläne mit derselben ID in
+verschiedenen Namespaces getrennte Instanzen. Ein Vorkommen, dessen Lauf bereits
+gestartet wurde, wird nicht erneut gestartet; die wiederholte Auslösung wird
+übersprungen und als `already_fired_occurrence` erfasst.
+
+Wo das Format gilt:
+
+- **Eingebettetes Workflow 2.15.15 und neuer.** Ein manuelles `trigger()` hat
+  kein Vorkommen, daher endet seine ID statt mit `backfill:{occurrence}` mit der
+  Auslösezeit in Unix-Millisekunden. Läufe, die frühere Releases gestartet haben,
+  behalten ihre IDs der Form `schedule:{scheduleId}:{suffix}`.
+- **Nativer Server 3.13.0 und neuer.** Manuelle Auslösungen haben kein Vorkommen
+  und behalten vom Server erzeugte IDs. Läufe, die frühere Server-Releases
+  gestartet haben, behalten ihre erzeugten IDs.
 
 ## Queue-Routing {#queue-routing}
 
