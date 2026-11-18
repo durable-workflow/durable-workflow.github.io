@@ -249,6 +249,10 @@ Worker 应先按 `poll_status` 分支处理，再对 `task` 做路由专用假�
 
 `schedule_activity` 接受可选的 `retry_policy`、`start_to_close_timeout`、`schedule_to_start_timeout`、`schedule_to_close_timeout` 和 `heartbeat_timeout` 字段。`retry_policy` 使用 `max_attempts`、`backoff_seconds` 和 `non_retryable_error_types`。
 
+`max_attempts` 表示包含首次尝试在内的总尝试次数。`backoff_seconds` 用尽后会重复最后一项。对于 `max_attempts: 5` 和 `backoff_seconds: [1, 2]`，四次重试前的延迟为 `[1, 2, 2, 2]` 秒。空列表 `backoff_seconds: []` 请求在尝试次数和超时限制内立即重试，不增加退避时间。
+
+策略在调度活动时记录。请保留该活动已记录的延迟，包括使用较新 SDK 进行重放时。不要根据新的默认值重新计算。
+
 `start_child_workflow` 接受可选的 `parent_close_policy`、`retry_policy`、`execution_timeout_seconds` 和 `run_timeout_seconds` 字段。`parent_close_policy` 为 `abandon`、`request_cancel`、`request_cancellation` 或 `terminate` 之一。`request_cancel` 立即关闭子工作流；`request_cancellation` 携带原始取消标识和截止时间请求协作式清理，参见[协作式取消](/docs/polyglot/cancellation)。子工作流重试策略使用与活动相同的 `max_attempts`、`backoff_seconds` 和 `non_retryable_error_types` 对象结构。重试退避在子运行失败后应用；无效子工作流启动命令属于协议错误，不消耗子工作流重试次数。
 
 `complete_update` 在 Worker 应用更新处理器后，关闭 `update_id` 指定的已接受更新。它接受可选的 `result` 负载，使用与工作流完成结果相同的 `{codec, blob}` 封装。`fail_update` 将已接受更新关闭为失败，除必填 `message` 外，还接受可选的 `exception_class`、`exception_type` 和 `non_retryable` 字段。

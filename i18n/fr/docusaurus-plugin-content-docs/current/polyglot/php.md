@@ -79,7 +79,7 @@ et exécute le travail via ses files Laravel. Les
 
 - PHP 8.1 ou ultérieur pour le SDK indépendant du framework
 - Pour le pont Laravel en mode service à partir du SDK PHP 3.10 : PHP 8.2 ou
-  ultérieur et Laravel 12.69 ou ultérieur en 12.x, ou Laravel 13.30 ou ultérieur
+  ultérieur et Laravel 12.72 ou ultérieur en 12.x, ou Laravel 13.41 ou ultérieur
   en 13.x avec PHP 8.3 ou ultérieur
 - Un [Server auto-hébergé](/docs/polyglot/server/) accessible ou un
   [runtime d’espace de noms Cloud](/docs/polyglot/cloud-control-plane) provisionné
@@ -168,6 +168,14 @@ Les identifiants du workflow et de l’exécution désignent l’exécution prop
 Traitez les signaux de manière idempotente pour l’événement métier. Un identifiant de requête stable ne garantit pas à lui seul une admission unique du signal.
 
 Consultez les [exemples complets de dernière tentative et de signal à sa propre exécution](https://php.durable-workflow.com/build/workflows-activities/) dans le guide du SDK PHP.
+
+## Identité logique d’exécution d’activité {#activity-identity}
+
+PHP SDK **3.10.0 ou ultérieur** expose `ActivityContext::activityExecutionId`, nullable et en lecture seule, reçu avec le claim d’activité. Il identifie l’activité logique entre tentatives. `workflowId` et `runId` identifient l’instance et l’exécution du workflow propriétaire ; `activityAttemptId` identifie une tentative. Ne remplacez pas une identité logique absente par un ID de tâche, tentative ou session.
+
+Le SDK conserve exactement la chaîne non vide reçue. Une identité omise, null, vide ou qui n’est pas une chaîne produit `null`. Utilisez alors une clé métier appartenant à l’application. L’[exemple de clé de service du SDK](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow) montre ce repli ; la [référence de la propriété](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId) définit l’API publique. Délimitez les clés par application et effet, utilisez des clés distinctes pour des effets distincts et réconciliez les résultats incertains avec la destination. L’identité est une métadonnée publique, pas une autorité de claim ni une garantie d’effets externes exactement une fois.
+
+Les callbacks distants ordinaires et supervisés coopérativement lisent le champ réel du claim. Les callbacks de session ne l’exposent que si leur claim le contient. Les callbacks locaux inline et sans Server dépourvus d’admission Server ont une identité d’exécution `null`, même lorsque les IDs du workflow/run parent sont connus. Le code historique prepared-local transmet son ID d’admission validé ; ce comportement source n’établit pas un support prepared-local natif. Ce sont des limites de code/flux de données, pas des observations installées de nouvelles tentatives dans chaque mode.
 
 ## Heartbeats d’activité {#activity-heartbeats}
 
@@ -399,11 +407,17 @@ déclaré, sans dépendre de l’égalité des numéros de version des paquets.
 - [Contrat de démarrage rapide PHP exécutable](https://php.durable-workflow.com/quickstart-contract.json)
 - [Code source du SDK PHP](https://github.com/durable-workflow/sdk-php)
 
+## Exécutions ouvertes sur une branche de version {#workflow-version-usage}
+
+Le SDK PHP 3.19.0 et les versions ultérieures fournissent `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`. Cette méthode renvoie une page typée d’exécutions ouvertes : les décomptes des exécutions legacy, current et unknown, l’état, la version enregistrée et la raison unknown de chaque exécution, ainsi qu’un `nextCursor` opaque. Elle nécessite un serveur qui annonce `capabilities.workflow_version_usage` (Server 3.12.0 ou ultérieur). Les serveurs plus anciens lèvent `ServerCapabilityUnavailable` avant l’envoi de toute requête d’utilisation. Utilisez-la pour la [vérification de l’utilisation des versions](/docs/features/versioning/#check-version-usage) avant d’abandonner une branche de version.
+
 ## Pages de liste et d’historique des workflows {#workflow-list-and-history-pages}
 
 Ces appels publiés renvoient **une page**, pas une lecture complète automatique : `Client::listWorkflows(...)` / `Client::workflowHistory(...)`. Continuez avec le token opaque retourné en conservant namespace, filtres et workflow/exécution sélectionnés ; terminez au token nul/vide et traitez explicitement les erreurs de page. Une page partielle n’est pas un bundle de replay. Utilisez l’API d’export d’historique du SDK pour le replay hors ligne. Le [client publié PHP 3.2.0](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php) définit les paramètres de page.
 
 Le SDK PHP 3.10.0 et ultérieur fournit aussi `Client::iterateWorkflows()` et `Client::iterateWorkflowHistory()`. Ils lisent de façon paresseuse, une page à la fois, une liste complète de workflows ou l’historique d’une exécution précise, en conservant le curseur opaque, le namespace et les filtres. Les erreurs sur les pages suivantes sont propagées, et les continuations mal formées ou les cycles de tokens sont refusés au lieu de tronquer le résultat ou de boucler. Consultez le [client publié PHP 3.11.0](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php).
+
+Une observation installée normalement depuis le registre avec PHP SDK **3.18.2** et Server natif **3.8.0** a renvoyé 5 workflows filtrés sur 3 pages de liste de deux éléments et les 3 événements de l’exécution initiale sur 2 pages de deux éléments. Elle vérifie la création paresseuse et le premier élément, l’exclusion d’un type étranger et le désenregistrement du Worker. Consultez la [preuve installée](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985) et le [guide du client PHP](https://php.durable-workflow.com/getting-started/client-setup/). Cette preuve reste liée au tuple indiqué ; elle ne qualifie ni une autre implémentation ni un autre runtime.
 
 ## Rapports d’échec bornés {#bounded-failure-reports}
 

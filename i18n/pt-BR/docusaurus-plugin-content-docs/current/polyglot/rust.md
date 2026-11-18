@@ -730,6 +730,10 @@ durável. `patched(change_id)` fornece a forma booleana de rollout, e
 `deprecate_patch(change_id)` preserva o marcador depois que o ramo legado foi
 drenado. Veja [Efeitos colaterais](/docs/features/side-effects/) e
 [Versionamento](/docs/features/versioning/) para a semântica durável compartilhada.
+Antes de aumentar `min_supported` ou remover um ramo `patched()`, use a
+[verificação de uso de versões](/docs/features/versioning/#check-version-usage) para encontrar
+as execuções abertas que ainda dependem dele. Marcadores registrados pelo SDK Rust
+são classificados da mesma forma que marcadores de outros SDKs.
 
 ## Logging de workflow consciente de replay {#workflow-logging}
 

@@ -302,6 +302,10 @@ Beim Workflow-Task-Abschluss übermittelt der externe Worker eine Liste typisier
 `schedule_to_start_timeout`, `schedule_to_close_timeout` und `heartbeat_timeout`.
 `retry_policy` verwendet `max_attempts`, `backoff_seconds` und `non_retryable_error_types`.
 
+`max_attempts` zählt alle Versuche einschließlich des ersten. Ist `backoff_seconds` ausgeschöpft, wird sein letzter Eintrag wiederholt. Bei `max_attempts: 5` und `backoff_seconds: [1, 2]` lauten die vier Wiederholungsverzögerungen `[1, 2, 2, 2]` Sekunden. Eine leere Liste, `backoff_seconds: []`, fordert sofortige Wiederholungen ohne Backoff an, unter Einhaltung der Versuchs- und Zeitlimits.
+
+Die Richtlinie wird beim Planen der Aktivität aufgezeichnet. Behalten Sie deren aufgezeichnete Verzögerungen für diese Aktivität bei, auch beim Replay mit einem späteren SDK. Berechnen Sie sie nicht anhand neuer Standardwerte neu.
+
 `start_child_workflow` akzeptiert optional `parent_close_policy`, `retry_policy`,
 `execution_timeout_seconds` und `run_timeout_seconds`. `parent_close_policy`
 ist `abandon`, `request_cancel`, `request_cancellation` oder `terminate`.

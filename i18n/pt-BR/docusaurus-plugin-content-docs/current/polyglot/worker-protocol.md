@@ -322,6 +322,10 @@ No máximo um comando terminal é permitido por conclusão.
 `schedule_to_close_timeout` e `heartbeat_timeout`. `retry_policy` usa
 `max_attempts`, `backoff_seconds` e `non_retryable_error_types`.
 
+`max_attempts` conta o total de tentativas, incluindo a primeira. Quando `backoff_seconds` termina, sua última entrada é repetida. Com `max_attempts: 5` e `backoff_seconds: [1, 2]`, os quatro atrasos de nova tentativa são `[1, 2, 2, 2]` segundos. Uma lista vazia, `backoff_seconds: []`, solicita novas tentativas imediatas sem backoff, sujeitas aos limites de tentativas e tempo.
+
+A política é registrada quando a atividade é agendada. Preserve seus atrasos registrados para essa atividade, inclusive no replay com um SDK posterior. Não os recalcule a partir de novos padrões.
+
 `start_child_workflow` aceita `parent_close_policy`, `retry_policy`,
 `execution_timeout_seconds` e `run_timeout_seconds` opcionais.
 `parent_close_policy` é `abandon`, `request_cancel`, `request_cancellation`

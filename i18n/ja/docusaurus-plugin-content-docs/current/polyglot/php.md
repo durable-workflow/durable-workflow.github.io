@@ -46,7 +46,7 @@ Cloud の利用者は、プロビジョニングで返されたランタイム U
 ## 要件 {#requirements}
 
 - フレームワーク非依存の SDK は PHP 8.1 以降
-- PHP SDK 3.10 以降の Laravel サービスモードブリッジは、PHP 8.2 以降と 12.x の Laravel 12.69 以降、または PHP 8.3 以降と 13.x の Laravel 13.30 以降
+- PHP SDK 3.10 以降の Laravel サービスモードブリッジは、PHP 8.2 以降と 12.x の Laravel 12.72 以降、または PHP 8.3 以降と 13.x の Laravel 13.41 以降
 - 到達可能な[セルフホスト Server](/docs/polyglot/server/)、またはプロビジョニング済みの [Cloud 名前空間ランタイム](/docs/polyglot/cloud-control-plane)
 
 ## インストール {#install}
@@ -100,6 +100,14 @@ PHP SDK **3.6.1 以降**では、サービスモードのアクティビティ�
 業務イベントに対するシグナル処理は冪等にしてください。安定したリクエスト ID だけでは、シグナルが一度だけ受け付けられる保証にはなりません。
 
 PHP SDK ガイドの[最終試行の判定と自身の実行へのシグナル送信の完全な例](https://php.durable-workflow.com/build/workflows-activities/)を参照してください。
+
+## アクティビティの論理実行 ID {#activity-identity}
+
+PHP SDK **3.10.0 以降**は、アクティビティ claim で受け取った読み取り専用の nullable な `ActivityContext::activityExecutionId` を公開します。リトライを通じた論理アクティビティを識別します。`workflowId` と `runId` は所有ワークフローのインスタンスと実行を、`activityAttemptId` は試行を識別します。論理実行 ID がない場合、タスク、試行、セッションの ID で代用しないでください。
+
+SDK は受信した空でない文字列をそのまま保持します。省略、null、空文字列、文字列以外の値は `null` になります。使えない場合はアプリケーションが管理するビジネスキーを使います。[SDK のサービスキー例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)にフォールバックを、[プロパティリファレンス](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId)に公開 API を示しています。キーをアプリケーションと効果の範囲に限定し、異なる効果には異なるキーを使い、不確かな結果を宛先と照合してください。ID は公開メタデータであり、claim の権限や外部効果の厳密な一度限りの保証ではありません。
+
+通常のリモート callback と協調監視されるリモート callback は実際の claim フィールドを読みます。セッション callback は claim に含まれる場合だけ公開します。Server の admission がない inline-local と Server-free callback の実行 ID は、親 workflow/run ID が既知でも `null` です。過去の prepared-local ソースは検証済み admission ID を渡しますが、そのソース動作は native prepared-local 対応を示しません。これらはソースとデータフローの境界であり、全モードでインストール済み環境のリトライを観測した結果ではありません。
 
 ## アクティビティのハートビート {#activity-heartbeats}
 
@@ -246,11 +254,17 @@ PHP SDK は Laravel パッケージとは独立にバージョン管理します
 - [PHP 実行可能クイックスタート契約](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK ソース](https://github.com/durable-workflow/sdk-php)
 
+## バージョン分岐上の未完了実行 {#workflow-version-usage}
+
+PHP SDK 3.19.0 以降は `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)` を提供します。未完了実行の型付きページを返し、legacy、current、unknown の各実行件数、各実行の状態、記録済みバージョン、unknown の理由、不透明な `nextCursor` を含みます。`capabilities.workflow_version_usage` を通知する Server（Server 3.12.0 以降）が必要です。古い Server では、使用状況リクエストを送信する前に `ServerCapabilityUnavailable` が送出されます。バージョン分岐を廃止する前の[バージョン使用状況チェック](/docs/features/versioning/#check-version-usage)に使ってください。
+
 ## ワークフロー一覧と履歴のページ {#workflow-list-and-history-pages}
 
 公開されている次の呼び出しは、自動的な全件取得ではなく**1ページ**を返します：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。返された不透明な token で続け、namespace、フィルター、選択した workflow/run を維持してください。最後の null/空 token で終了し、ページのエラーを明示的に処理します。部分的なページは replay bundle ではありません。オフライン replay には SDK の履歴エクスポート API を使います。[公開 PHP 3.2.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)がページの引数を定義しています。
 
 PHP SDK 3.10.0 以降では `Client::iterateWorkflows()` と `Client::iterateWorkflowHistory()` も提供されます。これらは、不透明なカーソル、namespace、フィルターを維持しながら、ワークフロー一覧全体または特定の実行の履歴全体を 1 ページずつ遅延して読み取ります。後続ページのエラーは呼び出し元へ伝播し、不正な継続 token や token の循環は、途中で切り詰めたりループしたりせずに拒否されます。[公開 PHP 3.11.0 クライアントのソース](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php)を参照してください。
+
+レジストリから通常インストールしたPHP SDK **3.18.2** とネイティブServer **3.8.0** の観測では、フィルタに一致する5件のworkflowを2件ずつの一覧3ページで取得し、元のrunの全3イベントを2件ずつの履歴2ページで取得しました。遅延作成と最初の要素の取得、別の型の除外、Workerの登録解除も確認しています。[インストール済みパッケージの検証結果](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985)と[PHPクライアントガイド](https://php.durable-workflow.com/getting-started/client-setup/)を参照してください。この証拠は指定された組み合わせだけに適用され、別の言語実装やruntimeを認定するものではありません。
 
 ## 障害レポートのサイズ制限 {#bounded-failure-reports}
 

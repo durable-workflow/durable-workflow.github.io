@@ -252,9 +252,35 @@ $result = match($version) {
 };
 ```
 
+## 弃用分支前检查未关闭运行 {#check-version-usage}
+
+在提高 `minSupported` 或删除 `patched()` 旧分支之前，先找出仍依赖它的未关闭运行。查询时指定一个工作流类型、一个变更 ID，以及希望继续支持的最低版本。对于 `patched()` 变更点，最低版本使用 `1`：新运行会为新分支记录版本 `1`。
+
+每个未关闭运行都属于以下三种状态之一：
+
+- **legacy**（旧）：它记录的版本低于拟定的最低版本，因此重放时会经过你想删除的分支。
+- **current**（当前）：它记录的版本等于或高于最低版本。
+- **unknown**（未知）：它没有为该变更 ID 记录标记（`marker_absent`），或其历史不可用（`history_unavailable`）或无效（`history_invalid`）。尚未到达变更点的运行即使运行的是当前代码，也属于 unknown。它仍可能记录旧版本。
+
+在部署变更点之前启动的运行，重放时会采用旧分支（`DEFAULT_VERSION`），且不记录标记。因此它显示为 **unknown**（`marker_absent`），而不是 legacy。这是 `patched()` 引入之前的运行的常见状态，也是删除旧分支前 unknown 也必须降为零的原因。legacy 统计显式记录了低于最低版本的运行，例如固定在较旧 `maxSupported` 上的 `getVersion()` 运行。
+
+计数始终覆盖所有未关闭运行，在应用任何状态筛选或分页限制之前计算。已关闭的运行不计入。无论标记由哪个 SDK 记录，结果都相同。
+
+| 位置 | 方式 |
+| --- | --- |
+| Waterline | **Version usage** 页面（Waterline main；嵌入模式需要 Workflow 2.29.0 或更高版本，服务模式需要 PHP SDK 3.19.0 或更高版本以及 Server 3.12.0 或更高版本）。 |
+| CLI | `dw workflow:version-usage <workflow-type> <change-id> --min-version=N`，可配合 `--state`、`--limit`、`--namespace` 和 `--json` 使用（CLI 2.10.0 或更高版本）。 |
+| 服务器 API | Server 3.12.0 或更高版本上的 `GET /api/workflow-version-usage`，该版本会声明 `capabilities.workflow_version_usage`。 |
+| PHP SDK | `$client->workflowVersionUsage($type, $changeId, $minVersion, state: null, limit: 50, cursor: null)`（3.19.0 或更高版本）。 |
+| 嵌入式 Laravel | `Workflow\V2\Support\VersionUsageQuery::page($namespace, $type, $changeId, $minVersion)`（Workflow 2.29.0 或更高版本）。 |
+
+较旧的 Server 和包会报告该检查不可用，绝不会返回空结果。结果按运行 ID 分页，并使用不透明游标。计数和所含运行可能在分页之间变化，因此做出任何更改后都要重新开始查询。
+
+该检查是实时观察，而不是部署屏障。只有在停止或隔离了仍可能走旧路径的新启动之后，且 **legacy 和 unknown 都为零** 时，才弃用分支。先调查每个 unknown 运行。
+
 ## 弃用旧版本 {#deprecating-old-versions}
 
-所有使用旧版本的工作流完成后，可提高 `minSupported`，停止支持旧版本，从而无需继续维护旧代码路径。
+[版本使用检查](#check-version-usage)报告在新的最低版本下没有 legacy 或 unknown 未关闭运行后，可提高 `minSupported`，停止支持旧版本，从而无需继续维护旧代码路径。
 
 ```php
 // After all DEFAULT_VERSION workflows have completed:
@@ -356,7 +382,7 @@ final class MyWorkflow extends Workflow
 两阶段补丁生命周期和放置规则：
 
 1. 在变更点**引入 `patched()`**。工作流代码保留两个分支。新运行采用新分支，旧运行继续采用旧分支。
-2. **等待所有旧运行结束。** 使用 Waterline 运行搜索或 `dw workflow:list`，确认没有可能通过旧分支重放的未关闭运行。
+2. **等待所有旧运行结束。** 以最低版本 `1` 运行[版本使用检查](#check-version-usage)，仅当 legacy 和 unknown 都为零时才继续。
 3. 在相同调用位置、使用相同 `changeId`，**用 `deprecatePatch()` 替换 `patched()`**，并从函数主体删除旧分支。保留该调用，不要移除，使持久历史仍匹配已知变更点。
 4. **可选：彻底移除 `deprecatePatch()`。** 只有确信查询、导出、审计等历史重放永远不会再读取提交过该标记的历史时才可执行。这是不可逆步骤；多数工作流可无限期保留 `deprecatePatch()`，不付出运行时成本。
 

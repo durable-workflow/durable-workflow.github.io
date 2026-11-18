@@ -113,7 +113,7 @@ Routing-Überschreibungen in `ActivityOptions` gelten beim Planen einer neuen Ak
 Wiederholungs- und Timeout-Felder überschreiben die Aktivitätsklasse nur für diesen Aufruf:
 
 - `maxAttempts`: Gesamtzahl der Versuche, einschließlich des ersten. Der Wert muss mindestens 1 sein. Eine neue Aktivität, die mit 0 oder weniger geplant wird, lässt den Lauf fehlschlagen. Lassen Sie das Feld weg, um `$tries` der Klasse zu verwenden, wobei `0` unbegrenzt wiederholt.
-- `backoff`: Sekunden Wartezeit vor jeder Wiederholung, als Liste oder Einzelwert. Überschreibt `backoff()` der Klasse.
+- `backoff`: Sekunden Wartezeit vor jeder Wiederholung, als Liste oder Einzelwert. Überschreibt `backoff()` der Klasse. Ist die Liste ausgeschöpft, wird ihr letzter Eintrag wiederholt. Eine leere Liste fügt keine Verzögerung hinzu. Siehe [Wartezeiten zwischen Versuchen](#backoff).
 - `nonRetryableErrorTypes`: Fehlertyp- oder Klassennamen, die die Aktivität ohne weiteren Versuch fehlschlagen lassen.
 - `startToCloseTimeout`: maximale Sekunden für einen Versuch.
 - `scheduleToStartTimeout`: maximale Sekunden, die eine Aktivität vor dem Start auf einen Worker warten darf.
@@ -163,10 +163,11 @@ gesteuert.
 
 ## Wartezeiten zwischen Versuchen {#backoff}
 
-Die Methode `backoff` gibt ein Array von Ganzzahlen für den jeweiligen Versuch
-zurück. Die Standardmethode `backoff` verwendet exponentiell anwachsende
-Wartezeiten bis zu 2 Minuten. Sie können dies durch Implementieren der Methode
-`backoff` in der Aktivitätsklasse überschreiben.
+Die Methode `backoff()` liefert Wiederholungsverzögerungen in Sekunden als Ganzzahl oder Liste. Die Standardliste erreicht 120 Sekunden (2 Minuten). Überschreiben Sie sie durch eine eigene `backoff()`-Methode in der Aktivitätsklasse.
+
+Gibt es mehr Wiederholungen als Listeneinträge, wird die letzte Verzögerung wiederholt. Bei `maxAttempts: 5` und `backoff: [1, 2]` lauten die vier Wiederholungsverzögerungen `[1, 2, 2, 2]` Sekunden. Eine leere Liste, `backoff: []`, fordert sofortige Wiederholungen ohne Backoff an, unter Einhaltung der Versuchs- und Zeitlimits.
+
+Die Wiederholungsrichtlinie wird beim Planen der Aktivität aufgezeichnet. Bereits aufgezeichnete Richtlinien behalten ihre Verzögerungen, wenn späterer Code die Klassenstandards oder Optionen ändert.
 
 ## Namespace {#namespace}
 

@@ -126,6 +126,8 @@ ID だけです。ID は公開メタデータであり claim の権限ではな�
 厳密に 1 回にするものでもありません。外部サービスの冪等性、異なる副作用ごとの
 別々のキー、結果の照合を維持してください。
 
+PHP サービスモードのアクティビティは、受信 claim の読み取り専用で nullable な `ActivityContext::activityExecutionId` と、所有ワークフローと実行の `workflowId`、`runId` を公開します。リトライを通じて論理実行 ID を保ってください。ID がなければ `null` のままで、タスク、試行、セッションの ID は代わりになりません。[PHP ID ガイド](../polyglot/php.md#activity-identity)は SDK のサービスキー例にリンクし、ID 不在、セッション、過去の prepared-local、inline-local、Server-free の場合を定義します。アクセサーは公開メタデータであり、claim の権限ではありません。外部効果には引き続き宛先での冪等性、効果ごとに異なるキー、結果の照合が必要です。
+
 ## 開発者が冪等にする処理 {#what-developers-must-make-idempotent}
 
 ワークフローのリプレイ自体を冪等にする必要はありません。フレームワークが確定済み履歴から状態を再構築して処理します。

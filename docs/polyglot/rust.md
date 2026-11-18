@@ -742,6 +742,10 @@ runs record `max_supported`; existing runs reuse the durable marker.
 `deprecate_patch(change_id)` preserves the marker after the legacy branch has
 drained. See [Side Effects](/docs/features/side-effects/) and
 [Versioning](/docs/features/versioning/) for the shared durable semantics.
+Before raising `min_supported` or removing a `patched()` branch, use the
+[version-usage check](/docs/features/versioning/#check-version-usage) to find
+open runs that still depend on it. Markers recorded by the Rust SDK are
+classified the same way as markers from other SDKs.
 
 ## Replay-aware workflow logging {#workflow-logging}
 

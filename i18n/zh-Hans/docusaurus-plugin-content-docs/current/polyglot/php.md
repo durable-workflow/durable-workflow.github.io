@@ -46,7 +46,7 @@ Cloud 客户使用配置时返回的运行时 URL 和命名空间，并使用独
 ## 要求 {#requirements}
 
 - 框架无关的 SDK 需要 PHP 8.1 或更高版本
-- PHP SDK 3.10 及更高版本中的 Laravel 服务模式桥接：需要 PHP 8.2 或更高版本，以及 12.x 中的 Laravel 12.69 或更高版本，或 13.x 中的 Laravel 13.30 或更高版本（需 PHP 8.3 或更高版本）
+- PHP SDK 3.10 及更高版本中的 Laravel 服务模式桥接：需要 PHP 8.2 或更高版本，以及 12.x 中的 Laravel 12.72 或更高版本，或 13.x 中的 Laravel 13.41 或更高版本（需 PHP 8.3 或更高版本）
 - 可访问的[自托管 Server](/docs/polyglot/server/) 或已配置的 [Cloud 命名空间运行时](/docs/polyglot/cloud-control-plane)
 
 ## 安装 {#install}
@@ -100,6 +100,14 @@ PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retry
 业务事件的信号处理必须保持幂等。仅有稳定的请求 ID 并不能保证信号只被接收一次。
 
 请参阅 PHP SDK 指南中的[最后一次尝试检查与向自身运行发送信号的完整示例](https://php.durable-workflow.com/build/workflows-activities/)。
+
+## 活动的逻辑执行标识 {#activity-identity}
+
+PHP SDK **3.10.0 或更新版本**提供从活动领取中收到的只读可空 `ActivityContext::activityExecutionId`。它标识跨重试的逻辑活动。`workflowId` 和 `runId` 标识所属工作流实例和运行；`activityAttemptId` 标识一次尝试。不要用任务、尝试或会话 ID 替代缺失的逻辑执行 ID。
+
+SDK 原样保留收到的非空字符串。省略、null、空字符串或非字符串标识值会产生 `null`。不可用时请使用应用自有的业务键。[SDK 服务键示例](https://php.durable-workflow.com/build/workflows-activities/#inspect-retry-budget-and-the-owning-workflow)展示了回退方式；[属性参考](https://php.durable-workflow.com/api/classes/DurableWorkflow-Worker-ActivityContext.html#property_activityExecutionId)定义了公开 API。按应用和副作用限定键，为不同副作用使用不同键，并与目标系统核对不确定结果。标识是公开元数据，不是领取权限，也不保证外部副作用恰好执行一次。
+
+普通远程回调和协作式监督远程回调读取实际领取字段。会话回调仅在其领取包含该字段时提供它。没有 Server 准入的 inline-local 和 Server-free 回调具有 `null` 执行标识，即使已知父工作流/run ID。历史 prepared-local 源码传递经过验证的准入 ID；这种源码行为不代表支持原生 prepared-local。这些是源码和数据流边界，不是所有执行模式下已安装环境的重试观察结果。
 
 ## 活动心跳 {#activity-heartbeats}
 
@@ -243,11 +251,17 @@ PHP SDK 独立于 Laravel 包进行版本管理。可运行示例中保留精确
 - [PHP 可执行快速入门契约](https://php.durable-workflow.com/quickstart-contract.json)
 - [PHP SDK 源码](https://github.com/durable-workflow/sdk-php)
 
+## 版本分支上的未关闭运行 {#workflow-version-usage}
+
+PHP SDK 3.19.0 及更高版本提供 `Client::workflowVersionUsage($workflowType, $changeId, $minVersion, $state, $limit, $cursor)`。它返回未关闭运行的类型化分页结果：legacy、current 和 unknown 运行的计数，每个运行的状态、已记录版本和 unknown 原因，以及不透明的 `nextCursor`。它需要声明 `capabilities.workflow_version_usage` 的 Server（Server 3.12.0 或更高版本）。较旧的 Server 会在发送任何使用情况请求之前抛出 `ServerCapabilityUnavailable`。弃用版本分支前，用它执行[版本使用检查](/docs/features/versioning/#check-version-usage)。
+
 ## 工作流列表与历史页面 {#workflow-list-and-history-pages}
 
 这些已发布调用每次返回**一页**，不会自动完整读取：`Client::listWorkflows(...)` / `Client::workflowHistory(...)`。继续请求时使用返回的不透明 token，并保持 namespace、筛选条件和所选 workflow/run 不变；最终 null/空 token 表示结束，页面错误必须明确处理。部分页面不是 replay bundle。离线 replay 请使用 SDK 的历史导出 API。[已发布的 PHP 3.2.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.2.0/src/Client.php)定义分页参数。
 
 PHP SDK 3.10.0 及更高版本还提供 `Client::iterateWorkflows()` 和 `Client::iterateWorkflowHistory()`。它们以惰性方式逐页读取完整的工作流列表或精确运行的历史，并保持不透明游标、namespace 和筛选条件不变。后续页面的错误会向上传播；格式错误的续读或 token 循环会被拒绝，而不会截断结果或陷入循环。参见[已发布的 PHP 3.11.0 客户端源码](https://github.com/durable-workflow/sdk-php/blob/3.11.0/src/Client.php)。
+
+从注册表正常安装PHP SDK **3.18.2** 并连接原生Server **3.8.0** 的观测，通过3个每页两项的列表页返回5个筛选后的workflow，并通过2个每页两项的历史页读取原始run的全部3个事件。还验证了延迟创建和首项读取、排除其他类型以及Worker注销。请参阅[已安装包验证记录](https://github.com/durable-workflow/sdk-php/pull/425#issuecomment-6941089985)和[PHP客户端指南](https://php.durable-workflow.com/getting-started/client-setup/)。该证据仅适用于指定组合，不能据此认定其他语言实现或runtime。
 
 ## 有界失败报告 {#bounded-failure-reports}
 

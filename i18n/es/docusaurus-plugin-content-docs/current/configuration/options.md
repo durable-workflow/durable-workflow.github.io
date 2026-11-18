@@ -93,7 +93,7 @@ Las opciones de enrutamiento de `ActivityOptions` se aplican al programar una nu
 Los campos de reintento y tiempo límite sustituyen a la clase de la actividad solo en esta llamada:
 
 - `maxAttempts`: número total de intentos, incluido el primero. Debe ser al menos 1. Una actividad nueva programada con 0 o menos hace fallar la ejecución. Omítelo para usar `$tries` de la clase, donde `0` reintenta indefinidamente.
-- `backoff`: segundos de espera antes de cada reintento, como lista o como un único valor. Sustituye a `backoff()` de la clase.
+- `backoff`: segundos de espera antes de cada reintento, como lista o como un único valor. Sustituye a `backoff()` de la clase. Al agotarse la lista, se repite su última entrada. Una lista vacía no añade demora. Consulte [Espera entre reintentos](#backoff).
 - `nonRetryableErrorTypes`: nombres de tipos o clases de error que hacen fallar la actividad sin otro intento.
 - `startToCloseTimeout`: segundos máximos para un intento.
 - `scheduleToStartTimeout`: segundos máximos que una actividad puede esperar a un worker antes de empezar.
@@ -122,7 +122,11 @@ La clase base `Activity` v2 no tiene una propiedad `$timeout`. Configura los tie
 
 ## Espera entre reintentos {#backoff}
 
-El método `backoff` devuelve un array de enteros que corresponden al intento actual. La espera predeterminada crece exponencialmente hasta 2 minutos. Puedes cambiarla implementando `backoff` en la clase de actividad.
+El método `backoff()` devuelve las demoras de reintento en segundos como entero o lista. La lista predeterminada llega a 120 segundos (2 minutos). Sustitúyala implementando `backoff()` en la clase de actividad.
+
+Cuando hay más reintentos que entradas, se repite la última demora. Con `maxAttempts: 5` y `backoff: [1, 2]`, las cuatro demoras de reintento son `[1, 2, 2, 2]` segundos. Una lista vacía, `backoff: []`, solicita reintentos inmediatos sin espera, sujetos a los límites de intentos y tiempo.
+
+La política de reintentos se registra al programar la actividad. Las políticas ya registradas conservan sus demoras cuando código posterior cambia los valores predeterminados de la clase o las opciones.
 
 ## Espacio de nombres {#namespace}
 

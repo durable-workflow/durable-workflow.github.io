@@ -128,6 +128,8 @@ Server belegt nur die Identität bei gewöhnlichen Wiederholungen. Die ID ist
 nicht Exactly-once. Behalten Sie nachgelagerte Idempotenz, unterschiedliche
 Schlüssel für verschiedene Effekte und Ergebnisabgleich bei.
 
+PHP-Service-Activities liefern die schreibgeschützte nullable Eigenschaft `ActivityContext::activityExecutionId` aus dem empfangenen Claim sowie `workflowId` und `runId` des besitzenden Workflows und Laufs. Behalten Sie die logische Ausführungs-ID über Wiederholungen hinweg. Fehlende Identität bleibt `null`; eine Task-, Versuchs- oder Session-ID ist kein Fallback. Der [PHP-Identitätsleitfaden](../polyglot/php.md#activity-identity) verlinkt das Service-Key-Beispiel des SDKs und definiert fehlende, Session-, historische Prepared-local-, Inline-local- und Server-freie Fälle. Diese Zugriffswerte sind öffentliche Metadaten, keine Claim-Autorität. Externe Effekte benötigen weiterhin nachgelagerte Idempotenz, getrennte Schlüssel für verschiedene Effekte und Ergebnisabgleich.
+
 ## Was die Anwendung idempotent machen muss {#what-developers-must-make-idempotent}
 
 Workflow-Replay selbst müssen Sie nicht idempotent machen. Das Framework rekonstruiert den Zustand aus der festgeschriebenen Historie.
