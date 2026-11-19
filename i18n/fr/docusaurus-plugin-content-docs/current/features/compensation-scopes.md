@@ -14,13 +14,13 @@ Utilisez une portée lorsque l’annulation peut arriver tardivement, par exempl
 
 | Élément | Statut |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stabilité prévue (2.32.0 ou ultérieure) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Stabilité prévue (2.32.0 ou ultérieure) |
-| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stabilité prévue (2.32.0 ou ultérieure) |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stable depuis 2.33.0 |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Stable depuis 2.33.0 |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stable depuis 2.33.0 |
 | `DurableScope::reserveChild()` et admission racine (`RootReservationStore`) | Expérimental |
 | Classes marquées `@internal` (activités, persistance, moteur de récupération) | Pas une API publique |
 
-Les API de portée ont d’abord été livrées à titre expérimental dans 2.29.0. La récupération automatique après la clôture de l’exécution d’origine, le calendrier de nouvelles tentatives de récupération et `describe()` arrivent dans 2.31.0. Les résultats de gestionnaire revus (`failed()`, `rejected()` et `HandlerContractViolation`) arrivent dans 2.32.0. L’ensemble de l’API reste expérimental, et peut changer dans une version mineure, jusqu’à ce qu’une version ultérieure (2.32.0 ou ultérieure, selon ce qui sera décidé lors de cette version) promeuve les parties marquées comme à stabilité prévue. Après cette promotion, elles suivent la [politique de compatibilité 2.x](../compatibility.md). La prise en charge initiale se limite à Laravel intégré et à la compensation séquentielle.
+Les API de portée ont d’abord été livrées à titre expérimental dans 2.29.0. La récupération automatique après la clôture de l’exécution d’origine, le calendrier de nouvelles tentatives de récupération et `describe()` sont arrivés dans 2.31.0. Les résultats de gestionnaire revus (`failed()`, `rejected()` et `HandlerContractViolation`) sont arrivés dans 2.32.0. Depuis 2.33.0, les parties marquées comme stables suivent la [politique de compatibilité 2.x](../compatibility.md). Les parties expérimentales peuvent encore changer dans une version mineure. La prise en charge initiale se limite à Laravel intégré et à la compensation séquentielle.
 
 ## Fonctionnement {#how-it-works}
 
@@ -167,7 +167,7 @@ Le registre de la portée règle la compensation. Une décision métier, comme m
 
 ## Garanties et limites {#guarantees-and-limits}
 
-Après la promotion, les API stables ne changent pas de manière incompatible au sein de 2.x. Les historiques de compensation enregistrés sont rejoués sur chaque version 2.x ultérieure, et tout nouveau comportement n’arrive que derrière un marqueur de version enregistré. Les migrations du registre ne font qu’ajouter.
+Depuis 2.33.0, les API stables ne changent pas de manière incompatible au sein de 2.x. Les historiques de compensation enregistrés sont rejoués sur chaque version 2.x ultérieure, et tout nouveau comportement n’arrive que derrière un marqueur de version enregistré. Les migrations du registre ne font qu’ajouter.
 
 Ces limites sont des minimums qui peuvent augmenter mais ne diminueront pas :
 

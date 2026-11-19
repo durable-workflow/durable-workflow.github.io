@@ -14,13 +14,13 @@ Verwenden Sie einen Bereich, wenn ein Abbruch spät eintreffen kann, etwa wenn e
 
 | Teil | Status |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Geplant stabil (2.32.0 oder später) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Geplant stabil (2.32.0 oder später) |
-| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Geplant stabil (2.32.0 oder später) |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stabil seit 2.33.0 |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Stabil seit 2.33.0 |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stabil seit 2.33.0 |
 | `DurableScope::reserveChild()` und Root-Zulassung (`RootReservationStore`) | Experimentell |
 | Mit `@internal` markierte Klassen (Aktivitäten, Persistenz, Wiederherstellungs-Engine) | Keine öffentliche API |
 
-Die Bereichs-APIs wurden erstmals in 2.29.0 als experimentell ausgeliefert. Die automatische Wiederherstellung nach dem Schließen des ursprünglichen Laufs, der Wiederholungsplan der Wiederherstellung und `describe()` kommen mit 2.31.0. Die geprüften Handler-Ergebnisse (`failed()`, `rejected()` und `HandlerContractViolation`) kommen mit 2.32.0. Die gesamte API bleibt experimentell und kann sich in einem Minor-Release ändern, bis ein späteres Release (2.32.0 oder später, wie bei diesem Release entschieden) die als geplant stabil markierten Teile hochstuft. Nach dieser Hochstufung folgen sie der [2.x-Kompatibilitätsrichtlinie](../compatibility.md). Die anfängliche Unterstützung ist auf eingebettetes Laravel und sequenzielle Kompensation beschränkt.
+Die Bereichs-APIs wurden erstmals in 2.29.0 als experimentell ausgeliefert. Die automatische Wiederherstellung nach dem Schließen des ursprünglichen Laufs, der Wiederholungsplan der Wiederherstellung und `describe()` kamen mit 2.31.0. Die geprüften Handler-Ergebnisse (`failed()`, `rejected()` und `HandlerContractViolation`) kamen mit 2.32.0. Seit 2.33.0 folgen die als stabil markierten Teile der [2.x-Kompatibilitätsrichtlinie](../compatibility.md). Die experimentellen Teile können sich weiterhin in einem Minor-Release ändern. Die anfängliche Unterstützung ist auf eingebettetes Laravel und sequenzielle Kompensation beschränkt.
 
 ## Funktionsweise {#how-it-works}
 
@@ -167,7 +167,7 @@ Das Bereichs-Ledger erledigt die Kompensation. Eine fachliche Entscheidung, etwa
 
 ## Garantien und Grenzen {#guarantees-and-limits}
 
-Nach der Hochstufung ändern sich die stabilen APIs innerhalb von 2.x nicht inkompatibel. Aufgezeichnete Kompensationshistorien werden in jedem späteren 2.x-Release wiedergegeben, und neues Verhalten kommt nur hinter einer aufgezeichneten Versionsmarkierung. Ledger-Migrationen fügen nur hinzu.
+Seit 2.33.0 ändern sich die stabilen APIs innerhalb von 2.x nicht inkompatibel. Aufgezeichnete Kompensationshistorien werden in jedem späteren 2.x-Release wiedergegeben, und neues Verhalten kommt nur hinter einer aufgezeichneten Versionsmarkierung. Ledger-Migrationen fügen nur hinzu.
 
 Diese Grenzen sind Mindestwerte, die steigen, aber nicht sinken können:
 

@@ -20,20 +20,18 @@ description: Зберігайте зобов'язання компенсації
 
 | Частина | Статус |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Запланована як стабільна (2.32.0 або пізніше) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Запланована як стабільна (2.32.0 або пізніше) |
-| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Запланована як стабільна (2.32.0 або пізніше) |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Стабільна з 2.33.0 |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Стабільна з 2.33.0 |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Стабільна з 2.33.0 |
 | `DurableScope::reserveChild()` і допуск кореня (`RootReservationStore`) | Експериментальна |
 | Класи з позначкою `@internal` (activity, збереження даних, рушій відновлення) | Не є публічним API |
 
 API областей уперше з'явилися як експериментальні у 2.29.0. Автоматичне відновлення
 після закриття початкового запуску, розклад повторних спроб відновлення та `describe()`
-з'являються у 2.31.0. Перевірені результати обробників (`failed()`, `rejected()` і
-`HandlerContractViolation`) з'являються у 2.32.0. Увесь API залишається
-експериментальним і може змінитися в мінорному випуску, доки пізніший випуск
-(2.32.0 або пізніше, як буде вирішено під час цього випуску) не переведе до
-стабільних частини, позначені як заплановані стабільними. Після цього переведення
-вони дотримуються [політики сумісності 2.x](../compatibility.md). Початкова
+з'явилися у 2.31.0. Перевірені результати обробників (`failed()`, `rejected()` і
+`HandlerContractViolation`) з'явилися у 2.32.0. Починаючи з 2.33.0, частини,
+позначені як стабільні, дотримуються [політики сумісності 2.x](../compatibility.md).
+Експериментальні частини й надалі можуть змінитися в мінорному випуску. Початкова
 підтримка обмежена вбудованим Laravel і послідовною компенсацією.
 
 ## Як це працює {#how-it-works}
@@ -253,7 +251,7 @@ $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
 
 ## Гарантії та обмеження {#guarantees-and-limits}
 
-Після переведення стабільні API не змінюються несумісно в межах 2.x. Записані
+Починаючи з 2.33.0, стабільні API не змінюються несумісно в межах 2.x. Записані
 історії компенсації відтворюються через replay у кожному пізнішому випуску 2.x, а
 нова поведінка з'являється лише за записаним маркером версії. Міграції реєстру
 лише додають.

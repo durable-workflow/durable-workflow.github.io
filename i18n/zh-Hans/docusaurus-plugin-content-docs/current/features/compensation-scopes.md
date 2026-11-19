@@ -14,13 +14,13 @@ description: 在嵌入式 Laravel 工作流中，让补偿义务在创建它们�
 
 | 部分 | 状态 |
 | --- | --- |
-| `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 计划稳定（2.32.0 或更高版本） |
-| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry`、`HandlerContractViolation` | 计划稳定（2.32.0 或更高版本） |
-| `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 计划稳定（2.32.0 或更高版本） |
+| `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 自 2.33.0 起稳定 |
+| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry`、`HandlerContractViolation` | 自 2.33.0 起稳定 |
+| `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 自 2.33.0 起稳定 |
 | `DurableScope::reserveChild()` 和根准入（`RootReservationStore`） | 实验性 |
 | 标记为 `@internal` 的类（活动、持久化、恢复引擎） | 非公共 API |
 
-作用域 API 最初在 2.29.0 中以实验性功能发布。来源运行关闭后的自动恢复、恢复重试计划以及 `describe()` 在 2.31.0 中提供。经过评审的处理器结果（`failed()`、`rejected()` 和 `HandlerContractViolation`）在 2.32.0 中提供。在后续某个版本（2.32.0 或更高版本，具体在该版本发布时决定）将标记为计划稳定的部分提升为稳定之前，整个 API 仍是实验性的，可能在次要版本中发生变化。提升之后，这些部分遵循 [2.x 兼容性策略](../compatibility.md)。初始支持仅限于嵌入式 Laravel 和顺序补偿。
+作用域 API 最初在 2.29.0 中以实验性功能发布。来源运行关闭后的自动恢复、恢复重试计划以及 `describe()` 在 2.31.0 中提供。经过评审的处理器结果（`failed()`、`rejected()` 和 `HandlerContractViolation`）在 2.32.0 中提供。自 2.33.0 起，标记为稳定的部分遵循 [2.x 兼容性策略](../compatibility.md)。实验性部分仍可能在次要版本中发生变化。初始支持仅限于嵌入式 Laravel 和顺序补偿。
 
 ## 工作原理 {#how-it-works}
 
@@ -167,7 +167,7 @@ $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
 
 ## 保证与限制 {#guarantees-and-limits}
 
-提升之后，稳定 API 在 2.x 范围内不会发生不兼容的变更。已记录的补偿历史会在之后的每个 2.x 版本上重放，新行为只会在已记录的版本标记之后引入。账本迁移只做添加。
+自 2.33.0 起，稳定 API 在 2.x 范围内不会发生不兼容的变更。已记录的补偿历史会在之后的每个 2.x 版本上重放，新行为只会在已记录的版本标记之后引入。账本迁移只做添加。
 
 以下限制是最小值，可能提高但不会降低：
 

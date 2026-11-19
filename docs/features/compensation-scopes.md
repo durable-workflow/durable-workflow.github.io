@@ -20,19 +20,18 @@ operation can take effect without returning a recorded result.
 
 | Part | Status |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Planned stable (2.32.0 or later) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Planned stable (2.32.0 or later) |
-| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Planned stable (2.32.0 or later) |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stable since 2.33.0 |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Stable since 2.33.0 |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stable since 2.33.0 |
 | `DurableScope::reserveChild()` and root admission (`RootReservationStore`) | Experimental |
 | Classes marked `@internal` (activities, persistence, recovery engine) | Not public API |
 
 The scope APIs first shipped as experimental in 2.29.0. Automatic recovery after
-the originating run closes, the recovery retry schedule, and `describe()` arrive in
+the originating run closes, the recovery retry schedule, and `describe()` arrived in
 2.31.0. The reviewed handler outcomes (`failed()`, `rejected()` and
-`HandlerContractViolation`) arrive in 2.32.0. The whole API stays experimental, and
-may change in a minor release, until a later release (2.32.0 or later, as decided
-at that release) promotes the parts marked planned stable. After that promotion
-they follow the [2.x compatibility policy](../compatibility.md). Initial support is limited to
+`HandlerContractViolation`) arrived in 2.32.0. Since 2.33.0, the parts marked stable
+follow the [2.x compatibility policy](../compatibility.md). The experimental parts
+may still change in a minor release. Initial support is limited to
 embedded Laravel and sequential compensation.
 
 ## How it works
@@ -247,7 +246,7 @@ repository does.
 
 ## Guarantees and limits
 
-After promotion, the stable APIs do not change incompatibly within 2.x. Recorded
+Since 2.33.0, the stable APIs do not change incompatibly within 2.x. Recorded
 compensation histories replay on every later 2.x release, and new behavior arrives
 only behind a recorded version marker. Ledger migrations only add.
 

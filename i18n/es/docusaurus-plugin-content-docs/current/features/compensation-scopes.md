@@ -14,13 +14,13 @@ Use un ámbito cuando la cancelación pueda llegar tarde, por ejemplo cuando un 
 
 | Parte | Estado |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estabilidad prevista (2.32.0 o posterior) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Estabilidad prevista (2.32.0 o posterior) |
-| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estabilidad prevista (2.32.0 o posterior) |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estable desde 2.33.0 |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Estable desde 2.33.0 |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estable desde 2.33.0 |
 | `DurableScope::reserveChild()` y admisión raíz (`RootReservationStore`) | Experimental |
 | Clases marcadas con `@internal` (actividades, persistencia, motor de recuperación) | No es API pública |
 
-Las API de ámbitos se publicaron por primera vez como experimentales en 2.29.0. La recuperación automática después de que se cierre la ejecución de origen, el calendario de reintentos de recuperación y `describe()` llegan en 2.31.0. Los resultados de manejador revisados (`failed()`, `rejected()` y `HandlerContractViolation`) llegan en 2.32.0. Toda la API sigue siendo experimental, y puede cambiar en una versión menor, hasta que una versión posterior (2.32.0 o posterior, según se decida en esa versión) promueva las partes marcadas con estabilidad prevista. Tras esa promoción, siguen la [política de compatibilidad de 2.x](../compatibility.md). La compatibilidad inicial se limita a Laravel integrado y a la compensación secuencial.
+Las API de ámbitos se publicaron por primera vez como experimentales en 2.29.0. La recuperación automática después de que se cierre la ejecución de origen, el calendario de reintentos de recuperación y `describe()` llegaron en 2.31.0. Los resultados de manejador revisados (`failed()`, `rejected()` y `HandlerContractViolation`) llegaron en 2.32.0. Desde 2.33.0, las partes marcadas como estables siguen la [política de compatibilidad de 2.x](../compatibility.md). Las partes experimentales aún pueden cambiar en una versión menor. La compatibilidad inicial se limita a Laravel integrado y a la compensación secuencial.
 
 ## Cómo funciona {#how-it-works}
 
@@ -167,7 +167,7 @@ El registro del ámbito liquida la compensación. Una decisión de negocio, como
 
 ## Garantías y límites {#guarantees-and-limits}
 
-Tras la promoción, las API estables no cambian de forma incompatible dentro de 2.x. Los historiales de compensación registrados se reproducen en cada versión 2.x posterior, y el comportamiento nuevo solo llega tras un marcador de versión registrado. Las migraciones del registro solo añaden.
+Desde 2.33.0, las API estables no cambian de forma incompatible dentro de 2.x. Los historiales de compensación registrados se reproducen en cada versión 2.x posterior, y el comportamiento nuevo solo llega tras un marcador de versión registrado. Las migraciones del registro solo añaden.
 
 Estos límites son mínimos que pueden aumentar, pero no disminuirán:
 

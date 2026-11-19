@@ -14,13 +14,13 @@ description: Laravel 組み込みワークフローで、補償義務を作成�
 
 | 部分 | 状態 |
 | --- | --- |
-| `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 安定化予定（2.32.0 以降） |
-| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry`、`HandlerContractViolation` | 安定化予定（2.32.0 以降） |
-| `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 安定化予定（2.32.0 以降） |
+| `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 2.33.0 から安定 |
+| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry`、`HandlerContractViolation` | 2.33.0 から安定 |
+| `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 2.33.0 から安定 |
 | `DurableScope::reserveChild()` とルートの受け入れ（`RootReservationStore`） | 実験的 |
 | `@internal` が付いたクラス（アクティビティ、永続化、回復エンジン） | 公開 API ではない |
 
-スコープ API は 2.29.0 で実験的機能として初めて提供されました。作成元の実行が閉じた後の自動回復、回復の再試行スケジュール、`describe()` は 2.31.0 で追加されます。レビュー済みのハンドラーの結果（`failed()`、`rejected()`、`HandlerContractViolation`）は 2.32.0 で追加されます。後続のリリース（2.32.0 以降。どのリリースかはそのリリース時に決定されます）が安定化予定とされた部分を昇格させるまで、API 全体は実験的なままで、マイナーリリースで変更される可能性があります。昇格後は、それらの部分は [2.x 互換性ポリシー](../compatibility.md)に従います。初期サポートは Laravel 組み込みと逐次補償に限られます。
+スコープ API は 2.29.0 で実験的機能として初めて提供されました。作成元の実行が閉じた後の自動回復、回復の再試行スケジュール、`describe()` は 2.31.0 で追加されました。レビュー済みのハンドラーの結果（`failed()`、`rejected()`、`HandlerContractViolation`）は 2.32.0 で追加されました。2.33.0 以降、安定とされた部分は [2.x 互換性ポリシー](../compatibility.md)に従います。実験的な部分は、引き続きマイナーリリースで変更される可能性があります。初期サポートは Laravel 組み込みと逐次補償に限られます。
 
 ## 仕組み {#how-it-works}
 
@@ -167,7 +167,7 @@ $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
 
 ## 保証と制限 {#guarantees-and-limits}
 
-昇格後は、安定した API は 2.x の範囲内で互換性のない変更を受けません。記録された補償の履歴は、以降のすべての 2.x リリースでリプレイされ、新しい動作は記録されたバージョンマーカーの背後でのみ導入されます。台帳のマイグレーションは追加のみを行います。
+2.33.0 以降、安定した API は 2.x の範囲内で互換性のない変更を受けません。記録された補償の履歴は、以降のすべての 2.x リリースでリプレイされ、新しい動作は記録されたバージョンマーカーの背後でのみ導入されます。台帳のマイグレーションは追加のみを行います。
 
 次の制限は最小値であり、引き上げられることはあっても引き下げられることはありません。
 

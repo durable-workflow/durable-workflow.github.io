@@ -14,13 +14,13 @@ Use um escopo quando o cancelamento puder chegar tarde, por exemplo depois que u
 
 | Parte | Status |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estabilidade planejada (2.32.0 ou posterior) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Estabilidade planejada (2.32.0 ou posterior) |
-| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estabilidade planejada (2.32.0 ou posterior) |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estável desde a 2.33.0 |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Estável desde a 2.33.0 |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estável desde a 2.33.0 |
 | `DurableScope::reserveChild()` e admissão de raiz (`RootReservationStore`) | Experimental |
 | Classes marcadas como `@internal` (atividades, persistência, motor de recuperação) | Não fazem parte da API pública |
 
-As APIs de escopo foram lançadas inicialmente como experimentais na 2.29.0. A recuperação automática depois que a execução de origem é encerrada, o cronograma de novas tentativas da recuperação e `describe()` chegam na 2.31.0. Os resultados de handler revisados (`failed()`, `rejected()` e `HandlerContractViolation`) chegam na 2.32.0. Toda a API continua experimental, e pode mudar em uma versão secundária, até que uma versão posterior (2.32.0 ou posterior, conforme decidido nessa versão) promova as partes marcadas com estabilidade planejada. Depois dessa promoção, elas seguem a [política de compatibilidade 2.x](../compatibility.md). O suporte inicial se limita ao Laravel incorporado e à compensação sequencial.
+As APIs de escopo foram lançadas inicialmente como experimentais na 2.29.0. A recuperação automática depois que a execução de origem é encerrada, o cronograma de novas tentativas da recuperação e `describe()` chegaram na 2.31.0. Os resultados de handler revisados (`failed()`, `rejected()` e `HandlerContractViolation`) chegaram na 2.32.0. Desde a 2.33.0, as partes marcadas como estáveis seguem a [política de compatibilidade 2.x](../compatibility.md). As partes experimentais ainda podem mudar em uma versão secundária. O suporte inicial se limita ao Laravel incorporado e à compensação sequencial.
 
 ## Como funciona {#how-it-works}
 
@@ -167,7 +167,7 @@ O registro durável do escopo liquida a compensação. Uma decisão de negócio,
 
 ## Garantias e limites {#guarantees-and-limits}
 
-Depois da promoção, as APIs estáveis não mudam de forma incompatível dentro da 2.x. Históricos de compensação registrados fazem replay em todas as versões 2.x posteriores, e novos comportamentos chegam apenas por trás de um marcador de versão registrado. As migrations do registro durável apenas adicionam.
+Desde a 2.33.0, as APIs estáveis não mudam de forma incompatível dentro da 2.x. Históricos de compensação registrados fazem replay em todas as versões 2.x posteriores, e novos comportamentos chegam apenas por trás de um marcador de versão registrado. As migrations do registro durável apenas adicionam.
 
 Estes limites são mínimos que podem aumentar, mas não diminuirão:
 
