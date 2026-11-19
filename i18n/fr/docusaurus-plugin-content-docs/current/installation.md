@@ -57,10 +57,30 @@ Durable Workflow utilise des files pour exécuter les workflows et les activité
 
 ### Délai d’expiration du worker {#worker-timeout}
 
-```bash
-php artisan queue:work --timeout=0
+Lorsque PHP dispose de l’extension `pcntl`, un worker de file tue tout job qui s’exécute au-delà de son délai d’expiration : le `--timeout` du worker, 60 secondes par défaut, sauf si le job définit le sien. Une tâche de workflow tuée perd son bail et ses changements sont annulés. Elle n’est relancée qu’après l’expiration du bail (`workflows.v2.workflow_task_lease_seconds`, 300 secondes par défaut), et la nouvelle tentative refait le même travail. Une tâche de workflow qui a toujours besoin de plus de temps que ce délai, par exemple une tâche qui planifie ou termine un large `all()`, ne se termine jamais.
+
+Trois réglages doivent être cohérents :
+
+- Le **délai d’expiration de la tâche de workflow** doit être inférieur au **bail de la tâche de workflow**. Un travail qui dépasse le bail ne peut pas se terminer.
+- Le **`retry_after`** de la connexion de file doit dépasser le délai d’expiration de chaque job qu’elle transporte, comme l’exige Laravel. Sinon, la file confie un job encore en cours à un second worker.
+- Les **activités** doivent garder un délai d’expiration borné, afin qu’une activité bloquée ne puisse pas occuper un worker indéfiniment. N’utilisez pas `--timeout=0`.
+
+Exécutez les tâches de workflow sur leur propre connexion de file, dont le `retry_after` dépasse le bail, avec des workers dont le `--timeout` est inférieur au bail. Exécutez les activités sur une autre file avec un délai d’expiration qui leur convient. Les activités utilisent la file de leur workflow, sauf si la classe d’activité définit ses propres `$connection` ou `$queue`.
+
+```php
+// config/queue.php: a connection for workflow tasks
+'workflows' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'workflows',
+    'retry_after' => 330, // above the 300-second workflow task lease
+],
 ```
 
-Lorsque PHP dispose de l’extension `pcntl`, `queue:work` tue tout job qui s’exécute plus de `--timeout` secondes, 60 par défaut. Les changements d’une tâche de workflow tuée de cette façon sont annulés. Elle est relancée après l’expiration de son bail de tâche de workflow (300 secondes par défaut), et la nouvelle tentative refait le même travail. Une tâche de workflow qui a toujours besoin de plus de temps que ce délai, par exemple une tâche qui planifie ou termine un large `all()`, ne se termine jamais.
+```bash
+# DW_V2_CONNECTION=workflows DW_V2_QUEUE=workflows
+php artisan queue:work workflows --queue=workflows --timeout=270
+php artisan queue:work --queue=default --timeout=60
+```
 
-Exécutez les workers de workflow avec `--timeout=0`, ou avec une valeur supérieure à votre plus longue tâche de workflow. Gardez `workflows.v2.workflow_task_lease_seconds` au-dessus de cette valeur. Dans Horizon, l’option `timeout` du superviseur est le même réglage.
+Dans Horizon, l’option `timeout` de chaque superviseur est le délai d’expiration du worker. Les versions plus récentes de Workflow attribuent ce délai à chaque job de tâche de workflow (le bail moins 30 secondes, maintenu au moins 10 secondes sous `retry_after`), si bien qu’un délai court du worker ne tue plus les tâches de workflow. Un worker de la file des workflows journalise un avertissement au démarrage lorsque `retry_after` limite les tâches de workflow.

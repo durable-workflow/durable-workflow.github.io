@@ -71,18 +71,53 @@ procesan. Para ejecutarlos en paralelo, necesitas más de un worker.
 
 ### Tiempo límite del worker {#worker-timeout}
 
-```bash
-php artisan queue:work --timeout=0
+Cuando PHP tiene la extensión `pcntl`, un worker de colas termina cualquier job
+que se ejecute más allá de su tiempo límite: el `--timeout` del worker, 60
+segundos por defecto, salvo que el job defina el suyo. Una tarea de workflow
+terminada así pierde su lease y se revierte. Solo se reintenta cuando vence el
+lease (`workflows.v2.workflow_task_lease_seconds`, 300 segundos por defecto), y
+el reintento repite el mismo trabajo. Una tarea de workflow que siempre necesita
+más tiempo que el límite, como una que programa o termina un `all()` amplio,
+nunca se completa.
+
+Tres ajustes deben encajar:
+
+- El **tiempo límite de la tarea de workflow** debe ser inferior al
+  **lease de la tarea de workflow**. El trabajo que se prolonga más allá del
+  lease no puede completarse.
+- El **`retry_after`** de la conexión de cola debe superar el tiempo límite de
+  cada job que pase por ella, como exige Laravel. De lo contrario, la cola
+  entrega un job que sigue en ejecución a un segundo worker.
+- Las **actividades** deben mantener un tiempo límite acotado, para que una
+  actividad bloqueada no pueda retener un worker para siempre. No uses
+  `--timeout=0`.
+
+Ejecuta las tareas de workflow en su propia conexión de cola, con un
+`retry_after` superior al lease y con workers cuyo `--timeout` sea inferior al
+lease. Ejecuta las actividades en otra cola con un tiempo límite adecuado para
+ellas. Las actividades usan la cola de su workflow, salvo que la clase de la
+actividad defina su propio `$connection` o `$queue`.
+
+```php
+// config/queue.php: a connection for workflow tasks
+'workflows' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'workflows',
+    'retry_after' => 330, // above the 300-second workflow task lease
+],
 ```
 
-Cuando PHP tiene la extensión `pcntl`, `queue:work` termina cualquier job que se
-ejecute durante más de `--timeout` segundos, que por defecto son 60. Una tarea
-de workflow terminada así se revierte. Se reintenta cuando vence su lease de
-tarea de workflow (300 segundos por defecto), y el reintento repite el mismo
-trabajo. Una tarea de workflow que siempre necesita más tiempo que el límite,
-como una que programa o termina un `all()` amplio, nunca se completa.
+```bash
+# DW_V2_CONNECTION=workflows DW_V2_QUEUE=workflows
+php artisan queue:work workflows --queue=workflows --timeout=270
+php artisan queue:work --queue=default --timeout=60
+```
 
-Ejecuta los workers de workflows con `--timeout=0` o con un valor superior a tu
-tarea de workflow más larga. Mantén `workflows.v2.workflow_task_lease_seconds`
-por encima de ese valor. En Horizon, la opción `timeout` del supervisor es el
-mismo ajuste.
+En Horizon, la opción `timeout` de cada supervisor es el tiempo límite del
+worker. Las versiones más recientes de Workflow asignan este tiempo límite a
+cada job de tarea de workflow (el lease menos 30 segundos, mantenido al menos 10
+segundos por debajo de `retry_after`), de modo que un tiempo límite corto del
+worker ya no termina las tareas de workflow. Un worker de la cola de workflows
+registra una advertencia al iniciarse cuando `retry_after` limita las tareas de
+workflow.
