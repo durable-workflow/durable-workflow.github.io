@@ -55,30 +55,40 @@ Durable Workflow 使用队列在后台执行工作流和活动。运行 [`queue:
 
 ### Worker 超时 {#worker-timeout}
 
-当 PHP 启用了 `pcntl` 扩展时，队列 Worker 会终止运行时间超过其超时的任何作业。这个超时就是 Worker 的 `--timeout`，默认 60 秒，除非作业设置了自己的超时。被终止的工作流任务会失去租约并被回滚。只有在租约到期（`workflows.v2.workflow_task_lease_seconds`，默认 300 秒）后才会重试，而重试会重复同样的工作。始终需要比超时更长时间的工作流任务（例如调度或完成一个大规模 `all()` 的任务）永远无法完成。
+当 PHP 启用了 `pcntl` 扩展时，队列 Worker 会终止运行时间超过其超时的任何作业。这个超时就是 Worker 的 `--timeout`，默认 60 秒，除非作业设置了自己的超时。被终止的工作流任务会被回滚。只有在其租约到期（`workflows.v2.workflow_task_lease_seconds`，默认 300 秒）后才会重试，并计为一次租约丢失，而重试会重复同样的工作。始终需要比超时更长时间的工作流任务（例如调度或完成一个大规模 `all()` 的任务）永远无法完成。
 
 以下三项设置必须相互匹配：
 
-- **工作流任务超时**必须小于**工作流任务租约**。运行超过租约的工作无法完成。
+- **运行工作流任务的 Worker 的超时**必须覆盖你最长的工作流任务。被终止的工作流任务要等到其租约剩余时间耗尽后才会重试。
 - 队列连接的 **`retry_after`** 必须大于该连接上每个作业的超时，这是 Laravel 的要求。否则，队列会把仍在运行的作业交给第二个 Worker。
 - **活动**应保留有上限的超时，以免挂起的活动永远占用 Worker。不要使用 `--timeout=0`。
 
-在专用的队列连接上运行工作流任务，该连接的 `retry_after` 要大于租约，Worker 的 `--timeout` 要小于租约。在另一个队列上运行活动，并使用适合它们的超时。除非活动类设置了自己的 `$connection` 或 `$queue`，活动会使用其工作流的队列。
+若要让活动的超时短于工作流任务，请在专用的队列上用专用的 Worker 运行活动。除非活动类设置了 `$connection` 或 `$queue`，或者工作流传入了 `ActivityOptions`，活动会在其工作流的连接和队列上运行。
 
 ```php
-// config/queue.php: a connection for workflow tasks
-'workflows' => [
+// config/queue.php
+'redis' => [
     'driver' => 'redis',
     'connection' => 'default',
-    'queue' => 'workflows',
-    'retry_after' => 330, // above the 300-second workflow task lease
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
 ],
 ```
 
-```bash
-# DW_V2_CONNECTION=workflows DW_V2_QUEUE=workflows
-php artisan queue:work workflows --queue=workflows --timeout=270
-php artisan queue:work --queue=default --timeout=60
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
 ```
 
-在 Horizon 中，每个 supervisor 的 `timeout` 选项就是 Worker 超时。较新的 Workflow 版本会为每个工作流任务作业设置这一超时（租约减去 30 秒，并保持比 `retry_after` 至少小 10 秒），因此较短的 Worker 超时不再会终止工作流任务。当 `retry_after` 限制了工作流任务时，工作流队列上的 Worker 会在启动时记录一条警告。
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+在 Horizon 中，每个 supervisor 的 `timeout` 选项就是 Worker 超时。
+
+Workflow 2.34.0 新增了 `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS`，默认未设置。设置后，每个工作流任务作业都会带上这一超时，并保持比其连接的 `retry_after` 至少小 10 秒；Worker 会对这些作业使用该超时来代替自身的超时，因此工作流任务和活动可以共用 Worker。从该版本起，当工作流任务运行时所用的超时小于工作流任务租约时，服务工作流队列的 Worker 会在启动时记录一条警告。

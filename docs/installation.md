@@ -65,30 +65,40 @@ Durable Workflow uses queues to run workflows and activities in the background. 
 
 ### Worker timeout {#worker-timeout}
 
-When PHP has the `pcntl` extension, a queue worker kills any job that runs longer than its timeout: the worker's `--timeout`, 60 seconds by default, unless the job sets its own. A workflow task that is killed loses its lease and is rolled back. It is retried only after the lease expires (`workflows.v2.workflow_task_lease_seconds`, 300 seconds by default), and the retry repeats the same work. A workflow task that always needs longer than the timeout, such as one that schedules or finishes a wide `all()`, never completes.
+When PHP has the `pcntl` extension, a queue worker kills any job that runs longer than its timeout: the worker's `--timeout`, 60 seconds by default, unless the job sets its own. A workflow task that is killed is rolled back. It is retried only after its lease expires (`workflows.v2.workflow_task_lease_seconds`, 300 seconds by default) and is counted as a lost lease, and the retry repeats the same work. A workflow task that always needs longer than the timeout, such as one that schedules or finishes a wide `all()`, never completes.
 
 Three settings must line up:
 
-- The **workflow task timeout** must be below the **workflow task lease**. Work that runs past the lease cannot complete.
+- The **timeout of the workers that run workflow tasks** must cover your longest workflow task. A killed workflow task waits out the rest of its lease before it is retried.
 - The queue connection's **`retry_after`** must exceed the timeout of every job on it, as Laravel requires. Otherwise the queue hands a job that is still running to a second worker.
 - **Activities** should keep a bounded timeout, so that a hung activity cannot hold a worker forever. Do not use `--timeout=0`.
 
-Run workflow tasks on their own queue connection whose `retry_after` exceeds the lease, with workers whose `--timeout` is below the lease. Run activities on another queue with a timeout that suits them. Activities use their workflow's queue unless the activity class sets its own `$connection` or `$queue`.
+To give activities a shorter timeout than workflow tasks, run them on their own queue with their own workers. Activities run on their workflow's connection and queue unless the activity class sets `$connection` or `$queue`, or the workflow passes `ActivityOptions`.
 
 ```php
-// config/queue.php: a connection for workflow tasks
-'workflows' => [
+// config/queue.php
+'redis' => [
     'driver' => 'redis',
     'connection' => 'default',
-    'queue' => 'workflows',
-    'retry_after' => 330, // above the 300-second workflow task lease
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
 ],
 ```
 
-```bash
-# DW_V2_CONNECTION=workflows DW_V2_QUEUE=workflows
-php artisan queue:work workflows --queue=workflows --timeout=270
-php artisan queue:work --queue=default --timeout=60
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
 ```
 
-In Horizon, each supervisor's `timeout` option is the worker timeout. Newer Workflow releases give every workflow task job this timeout (the lease less 30 seconds, kept 10 seconds below `retry_after`), so a short worker timeout no longer kills workflow tasks. A worker on the workflow queue logs a warning at start when `retry_after` limits workflow tasks.
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+In Horizon, each supervisor's `timeout` option is the worker timeout.
+
+Workflow 2.34.0 adds `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS`, unset by default. When it is set, every workflow task job carries that timeout, kept 10 seconds below its connection's `retry_after`, and workers use it in place of their own timeout for those jobs, so workflow tasks and activities can share workers. From that release, a worker that serves the workflow queue logs a warning at start when the timeout its workflow tasks run under is below the workflow task lease.
