@@ -58,6 +58,6 @@ worker 在激活和冷替换后重建已提交的 workflow 历史，因此普通
 
 ### 注释和格式修改 {#comment-only-edits}
 
-从 2.34 起，只修改工作流类、其 trait 或父工作流类中的注释、docblock 或空白，或只修改 `await()` 条件 closure 中的这些内容，不会改变在 2.34 或之后启动的运行的重放。这些运行记录的定义指纹基于去掉注释和空白后的 PHP 代码 token（前缀 `sha256-tokens:`）。
+默认情况下，定义指纹覆盖原始源代码行。因此，只修改工作流类、其 trait 或父工作流类中的注释、docblock 或空白，或只修改 `await()` 条件 closure 中的这些内容，对进行中的运行来说都算作定义修改：历史中缺少的 `getVersion()` 或 `patched()` 标记会取 `WorkflowStub::DEFAULT_VERSION`，修改过的条件 closure 会导致重放失败。
 
-在更早版本中启动的运行记录的是原始源代码行的指纹（前缀 `sha256:`），并继续按该方式比较。对这些运行来说，修改注释就是修改定义：历史中缺少的 `getVersion()` 或 `patched()` 标记会取 `WorkflowStub::DEFAULT_VERSION`，修改过的条件 closure 会导致重放失败。请在这些运行结束后再做此类修改，或把它们当作其他任何修改来处理。
+从 2.34 起，worker 可以改为记录去掉注释和空白后的 PHP 代码 token 的指纹（前缀 `sha256-tokens:`），这类修改不会改变它。请在所有 worker 都升级到 2.34 或更高版本后，通过 `DW_DEFINITION_FINGERPRINT_VERSION=v2` 启用，因为较旧的 worker 会把这样的运行视为已修改。每个运行都保留它记录的指纹版本：启用前启动的运行仍对注释修改敏感，切换回 `v1` 是安全的。

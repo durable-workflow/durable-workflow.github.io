@@ -56,6 +56,6 @@ Pre-fingerprint runs also follow a conservative first-release policy. If a run r
 
 ### Comment and formatting edits {#comment-only-edits}
 
-From 2.34, editing only comments, docblocks or whitespace in a workflow class, its traits or parent workflow classes, or inside an `await()` condition closure doesn't change how runs started on 2.34 or later replay. Those runs record definition fingerprints of the PHP code tokens without comments and whitespace (prefix `sha256-tokens:`).
+By default, a definition fingerprint covers raw source lines. Editing only comments, docblocks or whitespace in a workflow class, its traits or parent workflow classes, or inside an `await()` condition closure therefore counts as a definition change for runs in flight: a missing `getVersion()` or `patched()` marker takes `WorkflowStub::DEFAULT_VERSION`, and an edited condition closure fails replay.
 
-Runs started on an earlier release recorded fingerprints of the raw source lines (prefix `sha256:`) and are still compared that way. For those runs a comment edit is a definition change: a missing `getVersion()` or `patched()` marker takes `WorkflowStub::DEFAULT_VERSION`, and an edited condition closure fails replay. Make such edits after those runs finish, or treat them like any other change.
+From 2.34, workers can instead record fingerprints of the PHP code tokens without comments and whitespace (prefix `sha256-tokens:`), which those edits don't change. Opt in with `DW_DEFINITION_FINGERPRINT_VERSION=v2` once all workers are upgraded to 2.34 or later, because an older worker treats such a run as changed. Each run keeps the fingerprint version it recorded: runs started before you opt in stay sensitive to comment edits, and switching back to `v1` is safe.
