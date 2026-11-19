@@ -186,6 +186,8 @@ Les niveaux sont explicites. Une interface non classée n'est pas publique.
 | `prerelease` | Interface publique fonctionnellement complète, mais encore modifiable avant la publication correspondante `1.0.0` / `2.0.0`. | Dans des préversions clairement identifiées et signalées dans les notes de publication. |
 | `experimental` | Interface publique instable. Peut changer à chaque publication, y compris corrective. Les appelants doivent l'activer en lisant son indicateur expérimental. | Toute publication, avec mention dans les notes. |
 
+Le paquet PHP Workflow est plus strict que ce minimum pour ses propres classes `@experimental`, comme l'API des machines à états métier et le démarrage d'enfant natif : elles peuvent changer dans une version mineure, mais jamais de manière incompatible dans une version corrective. Les [notes de stabilité de l'API](https://github.com/durable-workflow/workflow/blob/main/docs/api-stability.md#state-machines) du paquet les répertorient.
+
 ## Familles d'interfaces publiques {#public-surface-families}
 
 Voici la liste complète des familles publiques. Ajouter, supprimer ou reclasser
