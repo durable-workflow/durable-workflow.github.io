@@ -106,6 +106,7 @@ const sidebars = {
             'features/sagas',
             'features/compensation-scopes',
             'features/child-workflows',
+            'features/business-state-machines',
             'features/service-operations',
             'features/cancel-and-terminate',
             'features/heartbeats',

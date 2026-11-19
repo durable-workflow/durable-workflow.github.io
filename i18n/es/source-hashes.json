@@ -31,6 +31,7 @@
   "deployment.md": "1dd901213228a52e6222a15c6b85305098a4a4db06f198e319a7889c4562bddb",
   "failures-and-recovery.md": "f36882d22adf0b035216013696cc0af5a8ed4b125f9777d997ad1158faee188e",
   "features/activity-execution-model.md": "e8c37520ae46a7efb30438f4fc06bf893c1df430cb1f92c48963697adaf09082",
+  "features/business-state-machines.md": "9b00371131f46a08cef3202cf53023570e9beb91c6c5f7c4df27dbbc2cedca89",
   "features/cancel-and-terminate.md": "cedd1e6c51dfa551e00edc1d39739ff1f67d558d2a0be92143f478cb6111536b",
   "features/child-workflows.md": "30dd8e1a131654d6320641446b6bd661f27cd591353a60d007574955749cf8fb",
   "features/concurrency.md": "c6c10761dc0cd1bb167a385d4237412b8e81589e380a1b4f0d21ee4f03f74e76",
