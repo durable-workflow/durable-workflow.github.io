@@ -44,6 +44,7 @@
   "features/message-streams.md": "8a21b2e6dff51c69a3395d50ea6167e418ed793b4b7107b964f2a0f5f03a3801",
   "features/queries.md": "c66dd9542a062edd8158a46cebc9f1bf926aaf3599dca4a3122bd9860df6e2a2",
   "features/sagas.md": "522cd4a24a2c6f04c774d397b481ed4aa4faf356d97bff6ea0c36656db114df0",
+  "features/compensation-scopes.md": "339597d3f95067ea4c6ed4f9f606fa108374df12d5e1466b148087f9e1291cea",
   "features/schedules.md": "c96e0396eabe77f072d5d91b40ffe435073396137d3f24487994ee1d7510b4de",
   "features/search-attributes.md": "034ce80ef59a1ba460e41ebf7d7e2d72cfa272bdce609ef5a696c7c8877aeaa5",
   "features/service-operations.md": "912131c0a8ef393040a933fb4a66e68abcb9d475a3ebd47c85287d4032f45a0e",

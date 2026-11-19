@@ -104,6 +104,7 @@ const sidebars = {
             'features/side-effects',
             'features/concurrency',
             'features/sagas',
+            'features/compensation-scopes',
             'features/child-workflows',
             'features/service-operations',
             'features/cancel-and-terminate',
