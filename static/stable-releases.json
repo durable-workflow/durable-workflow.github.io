@@ -5,12 +5,12 @@
   "artifacts": {
     "cli": "2.10.0",
     "helm-chart": "3.1.0",
-    "sdk-php": "3.19.0",
-    "sdk-python": "2.18.0",
-    "sdk-rust": "4.18.0",
+    "sdk-php": "3.20.0",
+    "sdk-python": "2.19.1",
+    "sdk-rust": "4.19.0",
     "server": "3.13.0",
     "waterline": "2.18.1",
-    "workflow": "2.29.1"
+    "workflow": "2.30.0"
   },
   "helm_chart": {
     "app_version": "3.13.0",
