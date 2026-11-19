@@ -189,11 +189,71 @@ der der Workflow schließen oder sich als neuer Lauf fortsetzen kann.
 
 Bewahren Sie bei der Untersuchung ungewisser Zustellung ursprünglichen
 Namespace, Workflow-Identität, Signalnamen, Argumente und
-Anwendungs-Operationsschlüssel auf. Das Wiederholen eines Signals muss dem
-tatsächlichen Duplikatvertrag des Ziels folgen. Starten Sie keinen
-Ersatzworkflow, nur weil die Wiederholung abgelehnt wurde.
+Anwendungs-Operationsschlüssel auf. Starten Sie keinen Ersatzworkflow, nur weil
+die Wiederholung abgelehnt wurde.
 
-Die Untersuchung aufbewahrter Updates und anwendungseigenen Abgleich beschreibt
+### Mit demselben Befehlsschlüssel wiederholen {#retry-with-the-same-command-key}
+
+Ein Befehlsschlüssel macht die Wiederholung selbst sicher. Wählen Sie für jedes
+logische Signal einen Schlüssel, etwa `approve-order-123`, und speichern Sie ihn
+vor dem Senden in Ihrem Operationsdatensatz. Ab Workflow 2.18.0 hängen Sie ihn
+mit `withRequestId()` an. Senden Sie nach einer verlorenen Antwort dasselbe
+Signal mit demselben Schlüssel, Namen, denselben Argumenten und demselben Ziel
+erneut:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- Eine Wiederholung mit demselben Schlüssel, Signalnamen, denselben typisierten
+  Argumenten und demselben expliziten Laufziel gibt den ursprünglichen Beleg
+  zurück und zeichnet nichts auf. `retained()` ist true. Das
+  funktioniert auch, nachdem der Lauf geschlossen oder als neuer Lauf
+  fortgesetzt wurde, solange der ursprüngliche Befehl aufbewahrt wird.
+- Derselbe Schlüssel mit anderem Namen, anderen Argumenten oder anderem Laufziel
+  wird abgelehnt: `requestIdConflict()` ist true und `outcome()` ist
+  `rejected_request_id_conflict`. `conflict()` nennt den aufbewahrten Befehl und
+  die abweichenden Teile. Nichts wird aufgezeichnet, und der Schlüssel behält
+  seinen ursprünglichen Beleg. Senden Sie die ursprüngliche Eingabe, um diesen
+  Beleg zu lesen, oder verwenden Sie für neue Eingaben einen neuen Schlüssel.
+- Ein Beleg, der angenommen wurde, bevor Workflow die Befehlsabsicht
+  aufzeichnete, wird mit `retained()` true und
+  `intentVerified()` false zurückgelesen. Das ist die ursprüngliche Annahme,
+  kein Nachweis, dass die Argumente dieser Wiederholung mit ihr übereinstimmen.
+  Prüfen Sie ihre Identitäten, bevor Sie sie als Ihr Signal behandeln.
+- Schlüssel umfassen 1 bis 255 Unicode-Zeichen und werden exakt verglichen,
+  ohne Groß-/Kleinschreibungsangleichung oder Normalisierung. Ein leerer, zu
+  langer oder ungültiger UTF-8-Schlüssel löst vor der Annahme
+  `InvalidCommandRequestIdException` aus. Ein ohne Schlüssel gesendetes Signal
+  ist immer ein neues Signal.
+
+Wenden Sie vor dem Upgrade die `intent_digest`-Migration von Workflow an, lassen
+Sie dann alle schreibenden Prozesse der eingebetteten Datenbank auslaufen und
+aktualisieren Sie sie gemeinsam. Ältere Releases vergleichen die Absicht nicht: Ein wiederholter
+Signalschlüssel zeichnet dort ein zweites Signal auf.
+
+Clients im Service-Modus senden den Schlüssel als `request_id` im Body. Native
+Server 3.9.2 und neuer wenden dieselben Regeln an und ergänzen für einige
+Legacy-Schlüssel eine Ablehnung `request_id_ambiguous`. Den HTTP-Vertrag und die
+Aufrufe für PHP, Python, Rust und die CLI beschreibt
+[Befehlsschlüssel für Signale und Updates](/docs/polyglot/server-api-reference#command-keys).
+
+Ein Befehlsschlüssel nimmt das Signal einmal an. Er sorgt nicht dafür, dass die
+vom Signal ausgelösten Aktivitäten genau einmal ausgeführt werden. Die
+Untersuchung aufbewahrter Updates und anwendungseigenen Abgleich beschreibt
 [Wiederherstellung nach ungewissen Befehlen](./updates.md#recover-after-an-uncertain-response).
 
 ## Absenderidentität und Autorisierung {#sender-identity-and-authorization}

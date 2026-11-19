@@ -237,9 +237,9 @@ l'environnement du runtime plutôt que dans le fichier de profil.
 | `dw workflow:show-run <workflow-id> <run-id>` | Afficher une exécution. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Lire les événements de l'historique d'une exécution. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Exporter la charge utile d'archivage de l'historique d'exécution. | `--output-file`, options globales |
-| `dw workflow:signal <workflow-id> <signal-name>` | Envoyer un signal. | `--run-id`, options d'entrée, `--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | Envoyer un signal. | `--request-id`, `--run-id`, options d'entrée, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Exécuter une requête de lecture de workflow. | `--run-id`, options d'entrée, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Soumettre ou exécuter une mise à jour de workflow. | `--wait=accepted\|completed`, `--run-id`, options d'entrée, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Soumettre ou exécuter une mise à jour de workflow. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, options d'entrée, `--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | Lire le résultat conservé d'une mise à jour sans la soumettre de nouveau. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Fermer un workflow ou un lot sélectionné comme annulé ; aucun nettoyage du code de workflow n'est exécuté. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Forcer la terminaison d'un workflow. | `--reason`, `--run-id`, `--json` |
@@ -264,6 +264,39 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` et `workflow:update`
 valident les champs canoniques avec le contrat de requête publié par le
 serveur. Les anciens alias non canoniques sont rejetés avant l'envoi.
+
+### Réessayer un signal ou une mise à jour {#retry-a-signal-or-update}
+
+`workflow:signal` et `workflow:update` envoient une clé de commande dans la
+propriété `request_id` du corps : la valeur de `--request-id`, ou une clé
+`cli-signal-…` ou `cli-update-…` générée pour chaque invocation. La CLI envoie
+chaque commande une seule fois et ne la renvoie jamais. Après une perte de
+réponse, la clé utilisée est affichée et figure dans la propriété `request_id`
+de l'enveloppe d'erreur JSON. Répétez la même commande avec les mêmes
+`--request-id`, nom, entrée et `--run-id` :
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+Sur le Server natif 3.9.2 et les versions ultérieures, la nouvelle tentative
+renvoie le reçu initial (`Retained: yes`) et n'enregistre rien. Avec CLI 2.11.0
+et les versions ultérieures :
+
+- La même clé avec un autre nom, une autre entrée ou une autre exécution cible
+  se termine avec le code `9` (`request_id_conflict`).
+- Une clé qui correspond à une ancienne identité ambiguë se termine avec le code
+  `10` (`request_id_ambiguous`).
+- Un ancien reçu affiche `Intent Verified: no (legacy receipt; ...)`. Il s'agit
+  de l'admission initiale, et non de la preuve que l'entrée de la nouvelle
+  tentative lui correspond.
+
+Aucun des deux refus n'enregistre quoi que ce soit ; ne répétez pas la commande
+sans modification. CLI 2.10.0 et les versions antérieures se terminent avec le
+code `2` pour les deux refus. Les clés comportent de 1 à 255 caractères Unicode
+et sont comparées exactement. Consultez les
+[clés de commande des signaux et des mises à jour](./server-api-reference.md#command-keys)
+pour le contrat du Server.
 
 ### Lire le résultat d'une mise à jour {#read-update-outcome}
 
@@ -627,6 +660,8 @@ Toutes les commandes utilisent la politique stable de codes de sortie du
 | `6` | Échec `5xx` côté serveur. |
 | `7` | Délai dépassé. |
 | `8` | Échec de compatibilité : la commande a refusé avant d'envoyer la requête. |
+| `9` | Une clé de commande de signal ou de mise à jour désigne déjà une autre commande (`request_id_conflict`, CLI 2.11.0+). |
+| `10` | Une clé de commande de signal ou de mise à jour correspond à une ancienne identité ambiguë (`request_id_ambiguous`, CLI 2.11.0+). |
 
 Pour les dossiers de support, collectez `dw doctor --output=json`,
 `dw server:info --output=json` et `dw debug workflow <workflow-id> --output=json`.

@@ -1194,12 +1194,15 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-Зберігайте `business_event_id` незмінним між спробами та в межах ліміту довжини
-command key Server. Поточний опублікований Server зберігає ці ключі не для всіх
-шляхів signal. Обробляйте бізнес-події ідемпотентно й узгоджуйте невизначені
-результати доставки. Див.
+Зберігайте `business_event_id` незмінним між спробами, а весь ключ — у межах
+255 символів Unicode. У native Server 3.9.2 і новіших повтор із тим самим
+ключем і аргументами повертає початкову квитанцію замість запису ще одного
+signal. Той самий ключ з іншими аргументами спричиняє `SignalFailed` з
+`reason == "request_id_conflict"`, і нічого не записується. Старіші Server
+зберігають ці ключі не для всіх шляхів signal. Обробляйте бізнес-події
+ідемпотентно й узгоджуйте невизначені результати доставки. Див.
 [основний довідник activity](https://python.durable-workflow.com/reference/activity/)
-і [вимогу збереження квитанцій signal](https://github.com/durable-workflow/.github/issues/216).
+і [ключі команд signal і update](./server-api-reference.md#command-keys).
 
 ### Запити heartbeat {#activity-heartbeat-requests}
 

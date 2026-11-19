@@ -1189,12 +1189,16 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-Mantenga `business_event_id` estable entre reintentos y dentro del límite de
-longitud de claves de comando del Server. El Server publicado actualmente no
-conserva estas claves en todas las rutas de señales. Procese los eventos de
-negocio de forma idempotente y reconcilie las entregas inciertas. Consulte la
+Mantenga `business_event_id` estable entre reintentos y mantenga la clave
+completa dentro de 255 caracteres Unicode. En el Server nativo 3.9.2 y
+posteriores, un reintento con la misma clave y argumentos devuelve el recibo
+original en lugar de registrar otra señal. La misma clave con otros argumentos
+lanza `SignalFailed` con `reason == "request_id_conflict"`, y no se registra
+nada. Los Server anteriores no conservan estas claves en todas las rutas de
+señales. Procese los eventos de negocio de forma idempotente y reconcilie las
+entregas inciertas. Consulte la
 [referencia canónica de actividades](https://python.durable-workflow.com/reference/activity/)
-y el [requisito de conservación de recibos de señales](https://github.com/durable-workflow/.github/issues/216).
+y [claves de comando de señales y actualizaciones](./server-api-reference.md#command-keys).
 
 ### Peticiones de heartbeat {#activity-heartbeat-requests}
 

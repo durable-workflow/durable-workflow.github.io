@@ -179,10 +179,67 @@ um intervalo no qual o workflow pode encerrar ou continuar como novo.
 
 Preserve o namespace, a identidade do workflow, o nome do sinal, os argumentos
 e a chave de operação da aplicação originais ao investigar uma entrega incerta.
-Repetir um sinal exige seguir o contrato real do destino para tratamento de
-duplicatas. Não inicie um workflow substituto apenas porque a repetição foi recusada.
+Não inicie um workflow substituto apenas porque a repetição foi recusada.
 
-Consulte [recuperação de um comando incerto](./updates.md#recover-after-an-uncertain-response)
+### Repita com a mesma chave de comando {#retry-with-the-same-command-key}
+
+Uma chave de comando torna a própria repetição segura. Escolha uma chave para
+cada sinal lógico, como `approve-order-123`, e salve-a no registro da operação
+antes do envio. Com o Workflow 2.18.0 ou posterior, anexe-a com
+`withRequestId()`. Após uma resposta perdida, envie o mesmo sinal novamente com
+a mesma chave, o mesmo nome, os mesmos argumentos e o mesmo destino:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- Uma repetição com a mesma chave, o mesmo nome de sinal, os mesmos argumentos
+  tipados e o mesmo destino de execução explícito retorna o recibo original e
+  não registra nada. `retained()` é verdadeiro. Isso também funciona depois que
+  a execução foi encerrada ou continuou como nova, enquanto o comando original
+  estiver retido.
+- A mesma chave com nome, argumentos ou destino de execução diferentes é
+  recusada: `requestIdConflict()` é verdadeiro e `outcome()` é
+  `rejected_request_id_conflict`. `conflict()` identifica o comando retido e as
+  partes que diferem. Nada é registrado, e a chave mantém seu recibo original.
+  Envie a entrada original para ler esse recibo ou use uma nova chave para uma
+  nova entrada.
+- Um recibo admitido antes de o Workflow registrar a intenção do comando é lido
+  com `retained()` verdadeiro e `intentVerified()` falso. Essa é a admissão
+  original, não uma prova de que os argumentos desta repetição correspondem a
+  ela. Verifique suas identidades antes de tratá-lo como o seu sinal.
+- As chaves têm de 1 a 255 caracteres Unicode e são comparadas exatamente, sem
+  equivalência de maiúsculas e minúsculas nem normalização. Uma chave vazia,
+  longa demais ou com UTF-8 inválido lança `InvalidCommandRequestIdException`
+  antes da admissão. Um sinal enviado sem chave é sempre um novo sinal.
+
+Antes de atualizar, aplique a migração `intent_digest` do Workflow e, em
+seguida, esvazie e atualize juntos todos os gravadores do banco de dados
+embarcado. Versões anteriores não comparam a intenção: nelas, uma chave de sinal
+repetida registra um segundo sinal.
+
+Clientes no modo de serviço enviam a chave como `request_id` no corpo. O Server
+nativo 3.9.2 e posteriores aplicam as mesmas regras e acrescentam uma recusa
+`request_id_ambiguous` para algumas chaves legadas. Consulte
+[chaves de comando de sinais e atualizações](/docs/polyglot/server-api-reference#command-keys)
+para o contrato HTTP e as chamadas em PHP, Python, Rust e CLI.
+
+Uma chave de comando admite o sinal uma única vez. Ela não faz com que as
+atividades disparadas pelo sinal sejam executadas exatamente uma vez. Consulte
+[recuperação de um comando incerto](./updates.md#recover-after-an-uncertain-response)
 para inspecionar atualizações retidas e realizar a reconciliação sob responsabilidade da aplicação.
 
 ## Identidade do remetente e autorização {#sender-identity-and-authorization}

@@ -132,13 +132,33 @@ Los IDs guardados proceden de la operación original. La inspección lee el regi
 
 Guarda en la aplicación el espacio de nombres, ID de instancia, ID de ejecución original, ID de actualización, nombre de operación e intención. Un recibo aceptado prueba la admisión duradera. Un ciclo completado aporta el resultado registrado del manejador. Ninguno prueba que un pago, correo o escritura independiente haya ocurrido exactamente una vez.
 
-`request_id` no es un contrato portable de ID de actualización limitado a una ejecución. Las rutas PHP verificadas pueden devolver la primera actualización conservada si se envía la misma clave con otros argumentos. La búsqueda embebida también abarca distintos nombres de actualización de esa instancia. Reutilizar una clave tras continuar como nueva ejecución puede devolver el resultado predecesor sin admitir una actualización en la sucesora. También puede devolverse un recibo con clave después del cierre mientras se rechaza una actualización nueva.
-
 Los webhooks de actualización de Laravel embebido toman la clave del llamador de `X-Request-Id`. Conserva esa cabecera al pasar por proxies. Las actualizaciones HTTP del Server independiente toman la clave solo del campo `request_id` del cuerpo JSON; su cabecera `X-Request-Id` es contexto de correlación. Sin la clave del cuerpo, la actualización no tiene clave de deduplicación, aunque varias peticiones compartan la cabecera.
 
-Las rutas PHP cualificadas pueden buscar el mismo recibo conservado entre distintos nombres de actualización de la instancia. Usa una clave por operación lógica y conserva su intención original. No cambies argumentos, no la reutilices para otro nombre ni supongas que inicia una operación nueva en la siguiente ejecución. La [cualificación de los artefactos PHP publicados](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328) comprueba claves independientes de las cabeceras del proxy y recibos conservados tras el cierre. Este comportamiento no promete detección portátil de conflictos cuando una clave se reutiliza con otra intención; ese contrato más amplio se sigue en [el issue 216](https://github.com/durable-workflow/.github/issues/216). Server nativo y los demás SDK necesitan su propia cualificación.
+Una clave de comando identifica una actualización en una instancia de workflow, en todas sus ejecuciones. Con Workflow 2.18.0 o posterior, adjúntala con `withRequestId()`. Tras perder una respuesta, vuelve a enviar la misma actualización con la misma clave:
 
-La recuperación depende de conservar comandos, actualizaciones e historial. Aquí no se promete una duración de deduplicación independiente de la aplicación. Revisa la [retención del historial](../configuration/pruning-workflows.md) y conserva el registro de negocio durante el tiempo que exija tu aplicación. La falta de evidencia sigue siendo un resultado desconocido.
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- Un reintento con la misma clave, nombre de actualización, argumentos tipados y ejecución de destino explícita devuelve el recibo original, incluido su ID de actualización, y no registra nada. Después del cierre o de continuar como nueva ejecución, el reintento sigue devolviendo la actualización original. No admite una actualización nueva en una ejecución sucesora.
+- La misma clave con otro nombre de actualización, otros argumentos u otra ejecución de destino se rechaza como `rejected_request_id_conflict`. `conflict()` identifica el comando conservado y las partes que difieren. No se registra nada y la clave mantiene su recibo original.
+- Un recibo admitido antes de que Workflow registrara la intención del comando se lee con `retained()` verdadero e `intentVerified()` falso. Es la admisión original, no una prueba de que los argumentos de este reintento coincidan con ella.
+- Las claves tienen de 1 a 255 caracteres Unicode y se comparan exactamente. Una clave no válida lanza `InvalidCommandRequestIdException` antes de la admisión.
+
+Usa una clave por operación lógica y nunca cambies sus argumentos. Usa una clave nueva para una operación nueva, también después de confirmar que se rechazó una actualización con clave. Las versiones anteriores a Workflow 2.18.0 y al Server nativo 3.9.0 no comparan la intención: en ellas, una clave reutilizada con otros argumentos u otro nombre de actualización devuelve el recibo de la primera actualización.
+
+Los clientes en modo servicio envían la clave como `request_id` en el cuerpo. El Server nativo 3.9.2 y posteriores aplican las mismas reglas y añaden un rechazo `request_id_ambiguous` para algunas claves heredadas. Consulta [claves de comando de señales y actualizaciones](/docs/polyglot/server-api-reference#command-keys) para el contrato HTTP y las llamadas de PHP, Python, Rust y la CLI.
+
+La recuperación depende de conservar comandos, actualizaciones e historial. Cuando la retención depura los detalles de una ejecución, sus claves desaparecen con ellos, y una solicitud posterior con esa clave se admite como un comando nuevo. Aquí no se promete una duración de deduplicación independiente de la aplicación. Revisa la [retención del historial](../configuration/pruning-workflows.md) y conserva el registro de negocio durante el tiempo que exija tu aplicación. La falta de evidencia sigue siendo un resultado desconocido.
 
 ### Proteger el efecto de negocio {#protect-the-business-effect}
 

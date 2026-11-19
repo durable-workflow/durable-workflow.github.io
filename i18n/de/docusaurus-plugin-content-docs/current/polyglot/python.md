@@ -1219,12 +1219,16 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-Halten Sie `business_event_id` über Wiederholungen hinweg stabil und beachten
-Sie die Längengrenze für Command Keys des Servers. Der aktuell veröffentlichte
-Server bewahrt diese Schlüssel nicht für jeden Signalpfad auf.
-Verarbeiten Sie Geschäftsereignisse idempotent und gleichen Sie unklare
-Zustellungen ab. Siehe die [kanonische Aktivitätsreferenz](https://python.durable-workflow.com/reference/activity/)
-und die [Anforderung zur Aufbewahrung von Signalbelegen](https://github.com/durable-workflow/.github/issues/216).
+Halten Sie `business_event_id` über Wiederholungen hinweg stabil, und halten Sie
+den gesamten Schlüssel innerhalb von 255 Unicode-Zeichen. Auf nativem Server
+3.9.2 und neuer liefert eine Wiederholung mit demselben Schlüssel und denselben
+Argumenten den ursprünglichen Beleg, statt ein weiteres Signal aufzuzeichnen.
+Derselbe Schlüssel mit anderen Argumenten löst `SignalFailed` mit
+`reason == "request_id_conflict"` aus, und es wird nichts aufgezeichnet. Ältere
+Server bewahren diese Schlüssel nicht für jeden Signalpfad auf. Verarbeiten Sie
+Geschäftsereignisse idempotent und gleichen Sie unklare Zustellungen ab. Siehe
+die [kanonische Aktivitätsreferenz](https://python.durable-workflow.com/reference/activity/)
+und [Befehlsschlüssel für Signale und Updates](./server-api-reference.md#command-keys).
 
 ### Heartbeat-Anfragen {#activity-heartbeat-requests}
 

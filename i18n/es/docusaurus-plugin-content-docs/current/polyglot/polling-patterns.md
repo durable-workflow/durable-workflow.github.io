@@ -166,13 +166,33 @@ Esto llama a `POST /api/workflows/{workflowId}/signal/{signalName}` del Server c
 
 ### Entregas duplicadas y límites del streaming {#duplicate-delivery-and-streaming-limits}
 
-Los proveedores reintentan callbacks, y puede haber un error de red después de admitir la señal. Persista la clave de operación/evento y la intención exacta, deduplique tanto en la entrada del callback como en el procesamiento de negocio y conserve las entregas inciertas para reconciliarlas. El manejador Python conserva el primer resultado de cada operación en este run; no garantiza deduplicación entre runs ni admisión única. No marque un reenvío incierto como procesado solo porque envió la solicitud. [La incidencia compartida #216](https://github.com/durable-workflow/.github/issues/216) sigue cubriendo los reintentos seguros y la identidad retenida de admisión. Un encabezado de idempotencia o un único intento de actividad no garantiza por sí solo efectos externos únicos.
+Los proveedores reintentan callbacks, y puede haber un error de red después de admitir la señal. Persista la clave de operación/evento y la intención exacta, deduplique tanto en la entrada del callback como en el procesamiento de negocio y conserve las entregas inciertas para reconciliarlas. El manejador Python conserva el primer resultado de cada operación en este run; no garantiza deduplicación entre runs ni admisión única. No marque un reenvío incierto como procesado solo porque envió la solicitud. En el Server nativo 3.9.2 y posteriores, una clave de comando de señal hace que el propio reenvío sea seguro de reintentar; consulte [reintentar un callback reenviado](#retry-a-forwarded-callback). Un encabezado de idempotencia o un único intento de actividad no garantiza por sí solo efectos externos únicos.
 
 Inicie el workflow antes de que esta receta envíe el trabajo. En modo servicio, `start(use-existing)` seguido de `signal` son **dos operaciones**, con una carrera frente al cierre; la admisión atómica sigue en [la incidencia compartida #222](https://github.com/durable-workflow/.github/issues/222). El `signalWithStart` embebido es otra API atómica. La petición de debounce [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) fue sustituida por ese requisito de producto, no completada por esta receta.
 
 Un socket HTTP/SSE mantenido dentro de una actividad no es duradero: perder el worker o proceso lo cierra, ocupa un slot de actividad y al reconectar puede repetir o perder eventos externos. El envío y los callbacks siguen añadiendo historial de actividad, señales y esperas; la ejecución no es gratuita ni ilimitada. Para **salida duradera del workflow**, use [Workflow Streams](./workflow-streams.md) y su contrato persistido de secuencia/cursor, en vez de tratar una conexión de transporte como almacenamiento.
 
 El código PHP y Python se ejecutó con **Server 2.9.7 / Core 2.7.2** publicado y **SDK Python 2.6.1** instalado normalmente. Controles separados de PostgreSQL 17.11 cubrieron callbacks tempranos y durante la espera, rechazo tardío y continue-as-new con callback mientras el worker Python estaba ausente, seguido de lectura en frío. Los controles embebidos usaron la ruta real del webhook. Esta evidencia corresponde a la receta, no a todas las bases, autenticación del proveedor, apagado ordenado ni runtime nativo. El [registro de calificación](https://github.com/durable-workflow/durable-workflow.github.io/issues/321#issuecomment-6292485315) conserva por separado los originales fallidos.
+
+### Reintentar un callback reenviado {#retry-a-forwarded-callback}
+
+Derive una clave de comando del evento del proveedor, como `job-completed:op-42`, y guárdela en el registro de entrega antes de reenviar. Con SDK Python 2.19.1 o posterior en el Server nativo 3.9.2 o posterior, reenviar la misma señal con la misma clave, argumentos y destino devuelve el recibo original en lugar de registrar una segunda señal:
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "external-job-42", "job-completed", args=["op-42", {"value": 42}],
+        request_id="job-completed:op-42",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise
+    receipt = None  # Nothing was recorded; keep the delivery for reconciliation.
+```
+
+`receipt["retained"]` es `True` cuando un reenvío anterior con esta clave ya fue admitido. `request_id_conflict` significa que la clave ya identifica una señal con otros argumentos, por ejemplo cuando un proveedor envió un resultado distinto para la misma operación. `request_id_ambiguous` significa que la clave coincide con una identidad heredada que el Server no puede seleccionar. Ningún rechazo registra nada, así que no reenvíe ninguno de los dos sin cambios. Un recibo con `intent_verified` en `False` es una admisión heredada, no una prueba de que los argumentos de este reenvío coincidan con ella. La clave solo cubre la admisión; el manejador del workflow anterior sigue conservando el primer resultado de cada operación. Consulte [claves de comando de señales y actualizaciones](./server-api-reference.md#command-keys) para el contrato completo y las llamadas de PHP, Rust y la CLI.
 
 ## Acote los reintentos y el historial {#bound-retries-and-history}
 

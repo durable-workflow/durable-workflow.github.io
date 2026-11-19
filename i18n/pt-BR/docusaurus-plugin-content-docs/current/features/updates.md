@@ -147,14 +147,6 @@ a admissão durável. Um ciclo de vida concluído fornece o resultado registrado
 do handler. Nenhum deles comprova que um pagamento, e-mail ou gravação separada
 no banco aconteceu exatamente uma vez.
 
-`request_id` não é um contrato portátil de ID de atualização com escopo de
-execução. Os caminhos PHP verificados podem retornar a primeira atualização
-retida quando a mesma chave é enviada com argumentos diferentes. A busca
-embarcada também abrange nomes de atualizações dentro da instância. Reutilizar
-uma chave após continue-as-new pode retornar o resultado da antecessora sem
-admitir uma atualização na sucessora. Um recibo retido associado à chave também
-pode ser retornado após o encerramento, enquanto uma nova atualização é recusada.
-
 Os webhooks de atualização do Laravel embarcado usam `X-Request-Id` como chave
 do chamador. Preserve esse cabeçalho ao passar por proxies. Nas atualizações
 HTTP do Server independente, a chave vem somente de `request_id` no corpo JSON;
@@ -162,19 +154,57 @@ o cabeçalho `X-Request-Id` serve para correlação. Sem a chave no corpo, a
 atualização não recebe chave de deduplicação, mesmo quando requisições
 compartilham o cabeçalho.
 
-Os caminhos PHP qualificados podem encontrar o mesmo recibo retido entre nomes
-de atualização diferentes na instância. Use uma chave para uma operação lógica
-e preserve sua intenção original. Não altere os argumentos, não a reutilize
-para outro nome nem presuma que ela inicia uma nova operação na próxima execução.
-A [qualificação dos artefatos PHP publicados](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
-verifica chaves independentes dos cabeçalhos do proxy e recibos retidos após o
-encerramento. Esse comportamento não promete detecção portátil de conflito
-entre a mesma chave e uma intenção diferente. Esse contrato mais amplo está na
-[issue compartilhada 216](https://github.com/durable-workflow/.github/issues/216).
-O Server nativo e os demais SDKs exigem qualificação própria.
+Uma chave de comando identifica uma atualização em uma instância de workflow,
+em todas as suas execuções. Com o Workflow 2.18.0 ou posterior, anexe-a com
+`withRequestId()`. Após uma resposta perdida, envie a mesma atualização
+novamente com a mesma chave:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- Uma repetição com a mesma chave, o mesmo nome de atualização, os mesmos
+  argumentos tipados e o mesmo destino de execução explícito retorna o recibo
+  original, incluindo seu ID de atualização, e não registra nada. Após o
+  encerramento ou continue-as-new, a repetição ainda retorna a atualização
+  original. Ela não admite uma nova atualização em uma execução sucessora.
+- A mesma chave com nome de atualização, argumentos ou destino de execução
+  diferentes é recusada como `rejected_request_id_conflict`. `conflict()`
+  identifica o comando retido e as partes que diferem. Nada é registrado, e a
+  chave mantém seu recibo original.
+- Um recibo admitido antes de o Workflow registrar a intenção do comando é lido
+  com `retained()` verdadeiro e `intentVerified()` falso. Essa é a admissão
+  original, não uma prova de que os argumentos desta repetição correspondem a
+  ela.
+- As chaves têm de 1 a 255 caracteres Unicode e são comparadas exatamente. Uma
+  chave inválida lança `InvalidCommandRequestIdException` antes da admissão.
+
+Use uma chave para uma operação lógica e nunca altere seus argumentos. Use uma
+nova chave para uma nova operação, inclusive depois de confirmar que uma
+atualização com chave foi rejeitada. Versões anteriores ao Workflow 2.18.0 e ao
+Server nativo 3.9.0 não comparam a intenção: nelas, uma chave reutilizada com
+argumentos diferentes ou outro nome de atualização retorna o recibo da primeira
+atualização.
+
+Clientes no modo de serviço enviam a chave como `request_id` no corpo. O Server
+nativo 3.9.2 e posteriores aplicam as mesmas regras e acrescentam uma recusa
+`request_id_ambiguous` para algumas chaves legadas. Consulte
+[chaves de comando de sinais e atualizações](/docs/polyglot/server-api-reference#command-keys)
+para o contrato HTTP e as chamadas em PHP, Python, Rust e CLI.
 
 A recuperação de recibos depende dos registros retidos de comandos,
-atualizações e histórico. Não há aqui uma promessa de prazo de deduplicação
+atualizações e histórico. Quando a retenção remove os detalhes de uma execução,
+as chaves dela também são removidas, e uma requisição posterior com essa chave
+é admitida como um novo comando. Não há aqui uma promessa de prazo de deduplicação
 independente da aplicação. Revise a [retenção de histórico](../configuration/pruning-workflows.md)
 e mantenha seu livro de registros de negócio pelo período exigido pela aplicação.
 Evidência ausente continua representando um resultado desconhecido.

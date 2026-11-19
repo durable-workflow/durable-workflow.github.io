@@ -420,6 +420,8 @@ from there.
 | `6` | `SERVER` | Server error. Returned for HTTP `5xx`. |
 | `7` | `TIMEOUT` | Request timed out before the server responded. Also returned for HTTP `408`. |
 | `8` | `COMPATIBILITY` | Compatibility failure. The CLI and Server cannot safely run the command, for example because the Server does not advertise a capability it needs, so the command refused before sending the request. |
+| `9` | `REQUEST_ID_CONFLICT` | CLI 2.11.0 and later. HTTP `409` with reason `request_id_conflict`: the signal or update `--request-id` already names a retained command with a different name, input or run target. Nothing was recorded. See [Retry a signal or update](./cli-reference.md#retry-a-signal-or-update). |
+| `10` | `REQUEST_ID_AMBIGUOUS` | CLI 2.11.0 and later. HTTP `409` with reason `request_id_ambiguous`: the `--request-id` matches a legacy retained identity the Server cannot select. Nothing was recorded and no receipt was selected. Earlier releases exit `2` for both refusals. |
 
 Example:
 

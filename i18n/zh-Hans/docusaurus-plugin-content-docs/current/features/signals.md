@@ -154,9 +154,39 @@ $receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
 
 超时或响应丢失可能发生在信号已被持久接收之后。后续的运行已关闭或未找到响应描述的是后一次请求，无法证明原信号是否被应用。发送前检查状态也会留下窗口，工作流可能在此期间关闭或继续为新运行。
 
-调查不确定投递时，保留原始命名空间、工作流标识、信号名称、参数和应用操作键。重复信号必须遵守目标实际的重复处理契约。不要仅因为重试被拒绝就启动替代工作流。
+调查不确定投递时，保留原始命名空间、工作流标识、信号名称、参数和应用操作键。不要仅因为重试被拒绝就启动替代工作流。
 
-保留更新检查和应用自行管理的对账见[不确定命令的恢复](./updates.md#recover-after-an-uncertain-response)。
+### 使用相同的命令键重试 {#retry-with-the-same-command-key}
+
+命令键让重试本身变得安全。为每个逻辑信号选择一个键，例如 `approve-order-123`，并在发送前将它保存到操作记录中。在 Workflow 2.18.0 或更高版本中，使用 `withRequestId()` 附加该键。响应丢失后，使用相同的键、名称、参数和目标再次发送同一信号：
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- 使用相同键、信号名称、类型化参数和显式运行目标的重试会返回原始回执，且不记录任何内容，`retained()` 为 true。只要原始命令仍被保留，即使运行已关闭或已继续为新运行，这一点同样有效。
+- 相同键配合不同的名称、参数或运行目标会被拒绝：`requestIdConflict()` 为 true，`outcome()` 为 `rejected_request_id_conflict`。`conflict()` 会指出保留的命令以及不同的部分。不会记录任何内容，该键仍保留其原始回执。发送原始输入即可读取该回执；新输入请使用新键。
+- 在 Workflow 记录命令意图之前接收的回执，读回时 `retained()` 为 true、`intentVerified()` 为 false。它是原始接收记录，不能证明本次重试的参数与之匹配。在将其视为你的信号之前，请检查其中的标识。
+- 键的长度为 1 到 255 个 Unicode 字符，按原样精确比较，不做大小写折叠或规范化。空键、超长键或无效 UTF-8 键会在接收前抛出 `InvalidCommandRequestIdException`。不带键发送的信号始终是一个新信号。
+
+升级之前，先应用 Workflow 的 `intent_digest` 迁移，然后排空并同时升级所有嵌入式数据库写入方。旧版本不比较意图：在那些版本中，重复的信号键会记录第二个信号。
+
+服务模式客户端将该键作为请求体中的 `request_id` 发送。原生 Server 3.9.2 及更高版本应用相同的规则，并针对部分旧版键增加 `request_id_ambiguous` 拒绝。HTTP 契约以及 PHP、Python、Rust 和 CLI 调用方式见[信号与更新命令键](/docs/polyglot/server-api-reference#command-keys)。
+
+命令键只保证信号被接收一次，并不能让该信号触发的活动恰好执行一次。保留更新检查和应用自行管理的对账见[不确定命令的恢复](./updates.md#recover-after-an-uncertain-response)。
 
 ## 发送方身份与授权 {#sender-identity-and-authorization}
 

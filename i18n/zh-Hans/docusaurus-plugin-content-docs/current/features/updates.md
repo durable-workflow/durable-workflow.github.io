@@ -132,13 +132,33 @@ $latest->result(); // Available when that retained update completed.
 
 在应用记录中保存命名空间、实例 ID、原始运行 ID、更新 ID、操作名称和意图。已接受回执证明持久接收；已完成生命周期提供处理器记录的结果。两者都不能证明独立的支付、邮件或数据库写入恰好发生一次。
 
-`request_id` 不是可移植、按运行限定的更新 ID 契约。在已验证的 PHP 路径中，同一键以不同参数提交时，可能返回最先保留的更新。嵌入式查找还会跨该实例内的更新名称匹配。在 continue-as-new 之后复用键，可能返回前一运行的结果，而没有向后继运行接收更新。运行关闭后，也可能返回保留的带键回执，同时拒绝新的更新。
-
 嵌入式 Laravel 更新 webhook 从 `X-Request-Id` 读取调用方键。经过代理时应保留该请求头。独立 Server 的 HTTP 更新只使用 JSON 请求体中的 `request_id` 作为键，`X-Request-Id` 请求头仅用于关联追踪。省略请求体中的键时，即使多次请求使用相同请求头，更新也没有去重键。
 
-已验证的 PHP 路径可能在同一实例的不同更新名之间找到相同的保留回执。一个键只用于一个逻辑操作，并保留原始意图。不要更改参数、将键复用于其他更新名，或假定它会在下一运行启动新操作。[已发布 PHP 成果物的验证](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)确认调用方键独立于代理请求头，并可在运行关闭后恢复保留回执。这种恢复行为并不承诺可移植的“同键、不同意图”冲突检测；更广泛的契约见[跨仓库 issue 216](https://github.com/durable-workflow/.github/issues/216)。原生 Server 和其他 SDK 路径需要单独验证。
+命令键在一个工作流实例的所有运行范围内标识该实例上的一个更新。在 Workflow 2.18.0 或更高版本中，使用 `withRequestId()` 附加该键。响应丢失后，使用相同的键再次发送同一更新：
 
-回执恢复依赖保留的命令、更新和历史记录。本页不承诺独立于应用的去重有效期。请审查[历史保留](../configuration/pruning-workflows.md)，并按应用要求保留业务账本。缺失证据意味着结果仍未知。
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- 使用相同键、更新名称、类型化参数和显式运行目标的重试会返回原始回执（包括其更新 ID），且不记录任何内容。在运行关闭或 continue-as-new 之后，重试仍返回原始更新，不会在后继运行中接收新的更新。
+- 相同键配合不同的更新名称、参数或运行目标会被拒绝，结果为 `rejected_request_id_conflict`。`conflict()` 会指出保留的命令以及不同的部分。不会记录任何内容，该键仍保留其原始回执。
+- 在 Workflow 记录命令意图之前接收的回执，读回时 `retained()` 为 true、`intentVerified()` 为 false。它是原始接收记录，不能证明本次重试的参数与之匹配。
+- 键的长度为 1 到 255 个 Unicode 字符，按原样精确比较。无效的键会在接收前抛出 `InvalidCommandRequestIdException`。
+
+一个键只用于一个逻辑操作，且绝不要更改其参数。新操作请使用新键，包括在确认某个带键更新已被拒绝之后。Workflow 2.18.0 和原生 Server 3.9.0 之前的版本不比较意图：在这些版本中，以不同参数或其他更新名称复用的键会返回第一个更新的回执。
+
+服务模式客户端将该键作为请求体中的 `request_id` 发送。原生 Server 3.9.2 及更高版本应用相同的规则，并针对部分旧版键增加 `request_id_ambiguous` 拒绝。HTTP 契约以及 PHP、Python、Rust 和 CLI 调用方式见[信号与更新命令键](/docs/polyglot/server-api-reference#command-keys)。
+
+回执恢复依赖保留的命令、更新和历史记录。当保留策略清理某个运行的详细信息时，其中的键也随之移除，之后使用该键的请求会作为新命令被接收。本页不承诺独立于应用的去重有效期。请审查[历史保留](../configuration/pruning-workflows.md)，并按应用要求保留业务账本。缺失证据意味着结果仍未知。
 
 ### 保护业务效果 {#protect-the-business-effect}
 

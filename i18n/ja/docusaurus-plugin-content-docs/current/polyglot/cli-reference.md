@@ -149,9 +149,9 @@ dw server:info --output=json \
 | `dw workflow:show-run <workflow-id> <run-id>` | 1実行を表示。 | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | 実行の履歴イベントを読む。 | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | アーカイブ用実行履歴ペイロードをエクスポート。 | `--output-file`、グローバルオプション |
-| `dw workflow:signal <workflow-id> <signal-name>` | シグナルを送信。 | `--run-id`、入力オプション、`--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | シグナルを送信。 | `--request-id`、`--run-id`、入力オプション、`--json` |
 | `dw workflow:query <workflow-id> <query-name>` | 読み取り専用クエリを実行。 | `--run-id`、入力オプション、`--json` |
-| `dw workflow:update <workflow-id> <update-name>` | 更新を送信または実行。 | `--wait=accepted\|completed`, `--run-id`、入力オプション、`--json` |
+| `dw workflow:update <workflow-id> <update-name>` | 更新を送信または実行。 | `--wait=accepted\|completed`, `--request-id`、`--run-id`、入力オプション、`--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | 更新を再送信せずに、保持された更新結果を読み取ります。 | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | 1ワークフローまたは選択したバッチをキャンセルとして閉じる。コードのクリーンアップは動かない。 | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | ワークフローを強制終了。 | `--reason`, `--run-id`, `--json` |
@@ -174,6 +174,22 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 ```
 
 `workflow:start`、`workflow:signal`、`workflow:query`、`workflow:update` は、Server が公開する要求契約に照らして正規フィールドを検証します。正規でない旧別名は要求送信前に拒否します。
+
+### シグナルまたは更新を再試行する {#retry-a-signal-or-update}
+
+`workflow:signal` と `workflow:update` は、コマンドキーを本文の `request_id` として送ります。値は `--request-id` の値、または呼び出しごとに生成される `cli-signal-…` か `cli-update-…` のキーです。CLI は各コマンドを一度だけ送り、自動で再送することはありません。応答を失った後は、使用したキーが表示され、JSON エラーエンベロープの `request_id` にも含まれます。同じ `--request-id`、名前、入力、`--run-id` で同じコマンドを繰り返します。
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+native Server 3.9.2 以降では、再試行は元の受領記録（`Retained: yes`）を返し、何も記録しません。CLI 2.11.0 以降では次のようになります。
+
+- 同じキーで名前、入力、実行対象のいずれかが異なる場合、終了コード `9`（`request_id_conflict`）で終了します。
+- あいまいなレガシー識別情報に一致するキーは、終了コード `10`（`request_id_ambiguous`）で終了します。
+- レガシーの受領記録は `Intent Verified: no (legacy receipt; ...)` と表示されます。これは元の受理であり、再試行の入力が一致する証明ではありません。
+
+どちらの拒否でも何も記録されません。変更せずにそのまま繰り返さないでください。CLI 2.10.0 以前は、どちらの拒否でも終了コード `2` で終了します。キーは 1〜255 文字の Unicode 文字列で、完全一致で比較されます。Server の契約は[シグナルと更新のコマンドキー](./server-api-reference.md#command-keys)を参照してください。
 
 ### 更新の結果を読み取る {#read-update-outcome}
 
@@ -429,6 +445,8 @@ AI クライアントや CI ジョブが文章ドキュメントを解析せず�
 | `6` | Server 側 `5xx` 失敗。 |
 | `7` | タイムアウト。 |
 | `8` | 互換性エラー。コマンドは要求を送信する前に拒否した。 |
+| `9` | シグナルまたは更新のコマンドキーが、すでに別のコマンドを指している（`request_id_conflict`、CLI 2.11.0+）。 |
+| `10` | シグナルまたは更新のコマンドキーが、あいまいなレガシー識別情報に一致する（`request_id_ambiguous`、CLI 2.11.0+）。 |
 
 サポート用には `dw doctor --output=json`、`dw server:info --output=json`、`dw debug workflow <workflow-id> --output=json` を収集します。
 

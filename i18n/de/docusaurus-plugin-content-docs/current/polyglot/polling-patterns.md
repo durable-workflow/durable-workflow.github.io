@@ -166,13 +166,33 @@ Der Aufruf verwendet `POST /api/workflows/{workflowId}/signal/{signalName}` des 
 
 ### Doppelte Zustellung und Grenzen von Streaming {#duplicate-delivery-and-streaming-limits}
 
-Anbieter wiederholen Rückrufe; auch nach der Signalannahme kann ein Netzwerkfehler auftreten. Speichern Sie den Vorgangs-/Ereignisschlüssel und die genaue beabsichtigte Aktion, deduplizieren Sie am Rückrufeingang und bei der fachlichen Verarbeitung und bewahren Sie ungeklärte Zustellungen zur Abstimmung auf. Der Python-Handler behält das erste Ergebnis je Vorgang in diesem Lauf; das garantiert weder laufübergreifende Deduplizierung noch einmalige Annahme. Markieren Sie eine ungewisse Weiterleitung nicht allein deshalb als verarbeitet, weil die Anfrage gesendet wurde. [Gemeinsames Issue #216](https://github.com/durable-workflow/.github/issues/216) behandelt weiterhin sichere Signalwiederholungen und dauerhafte Annahmeidentität. Ein Idempotenz-Header oder eine einzelne Aktivitätsausführung garantiert für sich keine einmaligen externen Effekte.
+Anbieter wiederholen Rückrufe; auch nach der Signalannahme kann ein Netzwerkfehler auftreten. Speichern Sie den Vorgangs-/Ereignisschlüssel und die genaue beabsichtigte Aktion, deduplizieren Sie am Rückrufeingang und bei der fachlichen Verarbeitung und bewahren Sie ungeklärte Zustellungen zur Abstimmung auf. Der Python-Handler behält das erste Ergebnis je Vorgang in diesem Lauf; das garantiert weder laufübergreifende Deduplizierung noch einmalige Annahme. Markieren Sie eine ungewisse Weiterleitung nicht allein deshalb als verarbeitet, weil die Anfrage gesendet wurde. Auf nativem Server 3.9.2 und neuer macht ein Signal-Befehlsschlüssel die Weiterleitung selbst sicher wiederholbar; siehe [Einen weitergeleiteten Rückruf wiederholen](#retry-a-forwarded-callback). Ein Idempotenz-Header oder eine einzelne Aktivitätsausführung garantiert für sich keine einmaligen externen Effekte.
 
 Starten Sie den Workflow, bevor dieses Muster Arbeit übermittelt. Im Service-Modus sind `start(use-existing)` und ein folgendes `signal` **zwei Operationen** mit einem möglichen Abschluss dazwischen; atomare Annahme bleibt Gegenstand von [Issue #222](https://github.com/durable-workflow/.github/issues/222). Eingebettetes `signalWithStart` ist eine separate atomare API. Die Debounce-Anfrage [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) wurde durch diese Produktanforderung ersetzt und nicht durch dieses Rückrufmuster erledigt.
 
 Eine in einer Aktivität gehaltene HTTP-/SSE-Verbindung ist nicht dauerhaft: Worker- oder Prozessverlust beendet sie, sie belegt einen Aktivitätsslot, und erneutes Verbinden kann externe Ereignisse wiederholen oder verpassen. Übermittlung und Rückrufe ergänzen weiterhin Aktivitäts-, Signal- und Wartehistorie; das ist keine kostenlose oder unbegrenzte Ausführung. Nutzen Sie für dauerhafte **Workflow-Ausgaben** [Workflow Streams](./workflow-streams.md) mit ihrem gespeicherten Sequenz-/Cursor-Vertrag, statt eine Transportverbindung als Speicher zu behandeln.
 
 Der PHP- und Python-Code wurde mit veröffentlichtem **Server 2.9.7 / Core 2.7.2** und normal installiertem **Python SDK 2.6.1** ausgeführt. Separate PostgreSQL-17.11-Kontrollen deckten frühe und bereits wartende Rückrufe, verspätete Ablehnung sowie continue-as-new mit Rückruf während der Abwesenheit des Python-Workers und anschließendem kaltem Leser ab. Eingebettete Kontrollen verwendeten die echte Webhook-Route. Das belegt dieses Muster, nicht alle Datenbanken, Anbieterauthentifizierung, geordnetes Herunterfahren oder die native Laufzeit. Der [Qualifikationsnachweis](https://github.com/durable-workflow/durable-workflow.github.io/issues/321#issuecomment-6292485315) hält erfolglose Originalversuche getrennt fest.
+
+### Einen weitergeleiteten Rückruf wiederholen {#retry-a-forwarded-callback}
+
+Leiten Sie aus dem Ereignis des Anbieters einen Befehlsschlüssel ab, etwa `job-completed:op-42`, und speichern Sie ihn vor dem Weiterleiten im Zustellungsdatensatz. Mit Python SDK 2.19.1 oder neuer auf nativem Server 3.9.2 oder neuer liefert das erneute Senden desselben Signals mit demselben Schlüssel, denselben Argumenten und demselben Ziel den ursprünglichen Beleg, statt ein zweites Signal aufzuzeichnen:
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "external-job-42", "job-completed", args=["op-42", {"value": 42}],
+        request_id="job-completed:op-42",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise
+    receipt = None  # Nothing was recorded; keep the delivery for reconciliation.
+```
+
+`receipt["retained"]` ist `True`, wenn eine frühere Weiterleitung unter diesem Schlüssel bereits angenommen wurde. `request_id_conflict` bedeutet, dass der Schlüssel bereits ein Signal mit anderen Argumenten benennt, etwa weil ein Anbieter für denselben Vorgang ein anderes Ergebnis gesendet hat. `request_id_ambiguous` bedeutet, dass der Schlüssel einer Legacy-Identität entspricht, die der Server nicht auswählen kann. Keine der beiden Ablehnungen zeichnet etwas auf; senden Sie daher keine davon unverändert erneut. Ein Beleg mit `intent_verified` gleich `False` ist eine Legacy-Annahme, kein Nachweis, dass die Argumente dieser Weiterleitung mit ihm übereinstimmen. Der Schlüssel deckt nur die Annahme ab; der Workflow-Handler oben behält weiterhin das erste Ergebnis je Vorgang. Den vollständigen Vertrag und die Aufrufe für PHP, Rust und die CLI beschreibt [Befehlsschlüssel für Signale und Updates](./server-api-reference.md#command-keys).
 
 ## Wiederholungen und Historie begrenzen {#bound-retries-and-history}
 

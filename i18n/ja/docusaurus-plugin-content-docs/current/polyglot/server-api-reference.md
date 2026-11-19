@@ -352,6 +352,82 @@ Server は協調的な `request-cancellation` ルートも提供します。時�
 
 コマンドは業務値を Avro ペイロードエンベロープで運びます。公式 SDK が自動でエンコードします。直接 HTTP クライアントは、公式 Avro エンコーダーの `{codec, blob}` エンベロープか、以下のランタイム外部参照を使ってください。外側の HTTP 文書は JSON ですが、生の業務 JSON は別のペイロードコーデックとして使えません。
 
+### シグナルと更新のコマンドキー {#command-keys}
+
+シグナルまたは更新の本文にある `request_id` は、ワークフローインスタンス上のコマンドキーです。native Server 3.9.2 以降はこの契約を適用し、`GET /api/cluster/info` の `capabilities.command_request_keys` として通知します。`X-Request-Id` と `X-Correlation-Id` ヘッダーは相関情報にすぎません。本文に `request_id` がないリクエストは常に新しいコマンドです。
+
+- **同じ意図。** 同じキー、操作、名前、型付き引数、実行対象での再試行は、元の受領記録を返し、何も書き込みません。受領記録は元の `command_id`、`run_id`、および更新の場合は `update_id` を保持し、`retained: true` と `intent_verified: true` を伴います。新規の受理では `retained: false` を返します。Server は実行を確認する前に受領記録を探すため、実行が終了した後や continue-as-new した後の再試行でも受領記録を取得できます。型付きの値は厳密に比較されます。`1`、`1.0`、`"1"` は異なる値として扱われますが、マップのキーの順序は問いません。
+- **異なる意図。** 同じキーで名前、引数、実行対象のいずれかが異なる場合は、`409`、`reason: "request_id_conflict"`、`outcome: "rejected_request_id_conflict"` で拒否されます。`retained_command_id` は元のコマンドを示し、`conflict` は異なる部分（`name`、`arguments`、`target_or_arguments`）を列挙します。何も書き込まれず、キーは元の受領記録を保持し続けます。このリクエストを変更せずに再送しないでください。受領記録を読むには元の入力を送り、新しい入力には新しいキーを使います。
+- **あいまいなキー。** Server が安全に選択できないレガシーの保持済み識別情報に一致するキーは、`409`、`reason: "request_id_ambiguous"`、`retryable: false` で拒否されます。たとえば、別のキーのハッシュ化トークンのように見える生のレガシーキーや、大文字小文字を区別しないデータベース上で大文字小文字だけが異なるキーです。何も書き込まれず、受領記録も選択されません。新しいキーで入力を送る前に、ワークフロー履歴で元のコマンドを調べてください。
+- **レガシーの受領記録。** Server が意図を記録する前に受理されたコマンドは、キー、名前、および明示的な実行対象があればそれが一致する場合に、`retained: true` と `intent_verified: false` として読み戻されます。これは元の受理であり、この再試行の引数が一致する証明ではありません。
+- **キーの形式。** キーは 1〜255 文字の Unicode 文字列で、不透明かつ大文字小文字を区別し、正規化されません。空のキーやそれより長いキーは、受理されずに拒否されます。
+- **有効期間。** `run_not_active` などで拒否されたシグナルは、そのキーを予約しません。キーはそのコマンドが保持されている間だけ有効です。保持期間の処理で実行の詳細が削除されると、後でそのキーを使ったリクエストは新しいコマンドになります。
+
+3.9.0 より前では、シグナルキーを繰り返すと2つ目のシグナルが記録され、引数を変えて再試行した更新は元の受領記録を返していました。
+
+公式クライアントは送信前にキーを選択または生成するため、応答を失ってもキーは残ります。
+
+| クライアント | キーの指定 | 拒否 |
+| --- | --- | --- |
+| PHP SDK 3.17.0+ | `Client::signalWorkflow()`、`updateWorkflow()`、`updateWorkflowReceipt()`、またはハンドルの `signal()` と `update()` の `requestId` 引数。指定しない場合は呼び出しごとに `sdk-php-signal-…` または `sdk-php-update-…` のキーを1つ生成。 | `SignalFailed` または `UpdateFailed`: `conflict()` と `retainedCommandId()` を伴う `isRequestIdConflict()`。PHP SDK 3.21.0 からは `isRequestIdAmbiguous()` |
+| Python SDK 2.19.1+ | `Client.signal_workflow()`、`update_workflow()`、`handle.signal()`、`handle.update()` の `request_id=`。指定しない場合は呼び出しごとに `sdk-python-signal-…` または `sdk-python-update-…` のキーを1つ生成。 | `reason` が `request_id_conflict` または `request_id_ambiguous` の `SignalFailed` または `UpdateFailed`。`request_id` と `details` を含む |
+| Rust SDK 4.20.0+ | `Client::signal_workflow_with_request_id()`、`update_workflow()`、`update_workflow_receipt()` と、対応する `WorkflowHandle` のメソッド。`Client::generate_signal_request_id()` と `generate_update_request_id()` は事前にキーを返す。 | `Error::request_id_conflict()` と `Error::request_id_ambiguous()` |
+| CLI 2.11.0+ | `workflow:signal` と `workflow:update` の `--request-id`。指定しない場合は呼び出しごとに `cli-signal-…` または `cli-update-…` のキーを1つ生成。 | `request_id_conflict` は終了コード `9`、`request_id_ambiguous` は `10` |
+
+PHP、Rust、CLI は、各シグナルや更新を一度だけ送り、自動で再送することはありません。Python のトランスポート再試行ポリシーは同じキーで再送します。生成されたキーはその呼び出しの中にしか存在しないため、プロセスの再起動後も再試行を続ける必要がある場合は、自分のキーを保存してください。再試行は同じキーと同じ入力で行います。
+
+```php
+use DurableWorkflow\Exception\SignalFailed;
+
+try {
+    $receipt = $client->signalWorkflow('order-123', 'approve', ['Grace'], requestId: 'approve-order-123');
+} catch (SignalFailed $failed) {
+    if (!$failed->isRequestIdConflict() && !$failed->isRequestIdAmbiguous()) {
+        throw $failed; // Retry a transport failure with $failed->requestId().
+    }
+    // Nothing was recorded. Don't resend unchanged.
+}
+```
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "order-123", "approve", args=["Grace"], request_id="approve-order-123",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise  # Retry a transport failure with failed.request_id.
+    # Nothing was recorded. Don't resend unchanged.
+```
+
+```rust
+let request_id = durable_workflow::Client::generate_update_request_id();
+// Save request_id with your operation record before sending.
+match client
+    .update_workflow_receipt("order-123", "mark-ready", [true], Some(request_id.as_str()))
+    .await
+{
+    Ok(receipt) if receipt["intent_verified"] == false => {
+        // A legacy receipt: the original update, not a verified match.
+    }
+    Ok(receipt) => println!("update {}", receipt["update_id"]),
+    Err(error) if error.is_request_id_conflict() || error.is_request_id_ambiguous() => {
+        // Nothing was recorded. Don't resend unchanged.
+    }
+    Err(error) => return Err(error), // Retry a transport failure with request_id.
+}
+```
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+CLI は保持済みの受領記録に対して `Retained: yes` と表示します。CLI 2.11.0 からは、レガシーの受領記録に対して
+`Intent Verified: no (legacy receipt; the Server did not compare this command's intent with it)`
+と表示します。コマンドキーはシグナルや更新を一度だけ受理させます。ワークフローのアクティビティによる作用を厳密に1回にするものではないため、外部への作用にはアプリケーション側の冪等性を維持してください。
+
 ### 発火済みタイマーの native redrive とリプレイクロック {#native-redrive-timers}
 
 :::note native Server 3.11.0 から利用可能
@@ -715,7 +791,7 @@ PHP Server の保持では status ルートが現在の名前空間ポリシー�
 | `401` | 認証の欠落または不正。 |
 | `403` | 認証済みトークンに必要ロールがない。 |
 | `404` | 名前空間、ワークフロー、実行、スケジュール、Worker、検索属性が見つからない。 |
-| `409` | 開始済みワークフローや不正な実行対象など、重複・競合。 |
+| `409` | 開始済みワークフロー、不正な実行対象、再利用された[コマンドキー](#command-keys)（`request_id_conflict` または `request_id_ambiguous`）など、重複・競合。 |
 | `422` | 検証失敗。フィールド単位の詳細を含む。 |
 | `429` | 受け入れ容量またはタスクキュー容量が満杯。 |
 | `503` | 必要なトポロジーロールをホストしないノードへ届いた。ホスト型ルートは `reason: "topology_role_unavailable"` と `current_shape`、`current_process_class`、`current_roles`、`required_roles`、`missing_roles` を返す。同じ状態で `reason: "workflow_v2_blocked"`、`blocked_by`、`remediation` がある場合、workflow v2 ブートストラップがブロック中のワークフロー開始・変更、スケジュール変更、ブリッジアダプター、Worker プロトコルを対象とする。復旧中の検査のため、スケジュール読み取り（`GET /api/schedules`、`GET /api/schedules/{scheduleId}`、`GET /api/schedules/{scheduleId}/history`）は利用可能。 |

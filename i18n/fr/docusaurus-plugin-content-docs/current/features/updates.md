@@ -146,14 +146,6 @@ votre registre applicatif. Un reçu accepté prouve l’admission durable. Un cy
 terminé fournit le résultat enregistré du gestionnaire. Aucun ne prouve qu’un
 paiement, e-mail ou écriture en base distinct a eu lieu exactement une fois.
 
-`request_id` n’est pas un contrat portable d’identifiant de mise à jour limité
-à une exécution. Les chemins PHP vérifiés peuvent renvoyer la première mise à
-jour conservée si la même clé est soumise avec d’autres arguments. La recherche
-intégrée couvre aussi les différents noms de mises à jour de l’instance.
-Réutiliser une clé après continuation peut renvoyer le résultat d’un prédécesseur
-sans admettre de mise à jour dans le successeur. Un reçu conservé associé à une
-clé peut aussi être renvoyé après clôture alors qu’une nouvelle mise à jour est refusée.
-
 Les webhooks de mise à jour Laravel intégrés lisent la clé de l’appelant dans
 `X-Request-Id`. Préservez cet en-tête lors du passage par un proxy. Pour les
 mises à jour HTTP du Server autonome, seule la propriété `request_id` du corps
@@ -161,20 +153,60 @@ JSON fournit la clé ; l’en-tête `X-Request-Id` sert à la corrélation. Sans
 dans le corps, la mise à jour n’a pas de clé de déduplication, même si plusieurs
 requêtes partagent cet en-tête.
 
-Les chemins PHP qualifiés peuvent retrouver le même reçu conservé pour différents
-noms de mises à jour de l’instance. Utilisez une clé par opération logique et
-conservez son intention initiale. Ne changez pas les arguments, ne réutilisez pas
-la clé pour un autre nom et ne supposez pas qu’elle démarre une opération dans
-l’exécution suivante. La [qualification des artefacts PHP publiés](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
-vérifie l’indépendance des clés vis-à-vis des en-têtes du proxy et les reçus conservés
-après clôture. Ce comportement ne garantit pas une détection portable des conflits
-entre une même clé et une intention différente. Ce contrat plus large est suivi
-dans [l’issue 216](https://github.com/durable-workflow/.github/issues/216).
-Server natif et les autres SDK nécessitent leur propre qualification.
+Une clé de commande identifie une mise à jour sur une instance de workflow, pour
+l’ensemble de ses exécutions. Avec Workflow 2.18.0 ou une version ultérieure,
+associez-la au moyen de `withRequestId()`. Après une perte de réponse, envoyez de
+nouveau la même mise à jour avec la même clé :
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- Une nouvelle tentative avec la même clé, le même nom de mise à jour, les mêmes
+  arguments typés et la même exécution cible explicite renvoie le reçu initial,
+  y compris son identifiant de mise à jour, et n’enregistre rien. Après une
+  clôture ou une continuation dans une nouvelle exécution, la nouvelle tentative
+  renvoie toujours la mise à jour initiale. Elle n’admet pas de nouvelle mise à
+  jour dans une exécution successeur.
+- La même clé avec un autre nom de mise à jour, d’autres arguments ou une autre
+  exécution cible est refusée avec `rejected_request_id_conflict`. `conflict()`
+  indique la commande conservée et les éléments qui diffèrent. Rien n’est
+  enregistré et la clé conserve son reçu initial.
+- Un reçu admis avant que Workflow n’enregistre l’intention des commandes est
+  relu avec `retained()` à true et `intentVerified()` à false. Il s’agit de
+  l’admission initiale, et non de la preuve que les arguments de cette nouvelle
+  tentative lui correspondent.
+- Les clés comportent de 1 à 255 caractères Unicode et sont comparées
+  exactement. Une clé invalide lève `InvalidCommandRequestIdException` avant
+  l’admission.
+
+Utilisez une clé par opération logique et ne modifiez jamais ses arguments.
+Utilisez une nouvelle clé pour une nouvelle opération, y compris après avoir
+confirmé qu’une mise à jour associée à une clé a été rejetée. Les versions
+antérieures à Workflow 2.18.0 et à Server natif 3.9.0 ne comparent pas
+l’intention : une clé réutilisée avec d’autres arguments ou un autre nom de mise
+à jour y renvoie le reçu de la première mise à jour.
+
+Les clients en mode service envoient la clé dans la propriété `request_id` du
+corps. Server natif 3.9.2 et les versions ultérieures appliquent les mêmes règles
+et ajoutent un refus `request_id_ambiguous` pour certaines anciennes clés.
+Consultez les [clés de commande des signaux et des mises à jour](/docs/polyglot/server-api-reference#command-keys)
+pour le contrat HTTP et les appels PHP, Python, Rust et CLI.
 
 La récupération des reçus dépend de la conservation des commandes, mises à jour
-et historiques. Aucune durée de déduplication indépendante de l’application
-n’est promise ici. Consultez la [rétention de l’historique](../configuration/pruning-workflows.md)
+et historiques. Lorsque la rétention purge les détails d’une exécution, ses clés
+disparaissent avec eux, et une requête ultérieure portant cette clé est admise
+comme une nouvelle commande. Aucune durée de déduplication indépendante de
+l’application n’est promise ici. Consultez la [rétention de l’historique](../configuration/pruning-workflows.md)
 et gardez votre registre métier pendant la durée requise par votre application.
 Des preuves manquantes laissent un résultat inconnu.
 
