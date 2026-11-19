@@ -154,9 +154,39 @@ El mismo límite de valores registrados se aplica a los argumentos y resultados 
 
 Puede vencer un plazo o perderse una respuesta después de admitir la señal de forma duradera. Una respuesta posterior de ejecución cerrada o no encontrada describe esa solicitud posterior; no establece si se aplicó la señal original. Consultar el estado antes de enviar también deja un intervalo en el que el workflow puede cerrarse o continuar como nueva ejecución.
 
-Conserva el espacio de nombres, identidad del workflow, nombre de señal, argumentos y clave de operación originales al investigar una entrega incierta. Repetir una señal debe respetar el contrato real de duplicados del destino. No inicies un workflow de reemplazo solo porque se rechazó el reintento.
+Conserva el espacio de nombres, identidad del workflow, nombre de señal, argumentos y clave de operación originales al investigar una entrega incierta. No inicies un workflow de reemplazo solo porque se rechazó el reintento.
 
-Consulta [recuperar un comando incierto](./updates.md#recover-after-an-uncertain-response) para inspeccionar actualizaciones conservadas y conciliar desde la aplicación.
+### Reintentar con la misma clave de comando {#retry-with-the-same-command-key}
+
+Una clave de comando hace que el propio reintento sea seguro. Elige una clave para cada señal lógica, como `approve-order-123`, y guárdala con tu registro de operación antes de enviar. Con Workflow 2.18.0 o posterior, adjúntala con `withRequestId()`. Tras perder una respuesta, vuelve a enviar la misma señal con la misma clave, nombre, argumentos y destino:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- Un reintento con la misma clave, nombre de señal, argumentos tipados y ejecución de destino explícita devuelve el recibo original y no registra nada. `retained()` es verdadero. Esto también funciona después de que la ejecución se cierre o continúe como nueva ejecución, mientras se conserve el comando original.
+- La misma clave con otro nombre, otros argumentos u otra ejecución de destino se rechaza: `requestIdConflict()` es verdadero y `outcome()` es `rejected_request_id_conflict`. `conflict()` identifica el comando conservado y las partes que difieren. No se registra nada y la clave mantiene su recibo original. Envía la entrada original para leer ese recibo o usa una clave nueva para una entrada nueva.
+- Un recibo admitido antes de que Workflow registrara la intención del comando se lee con `retained()` verdadero e `intentVerified()` falso. Es la admisión original, no una prueba de que los argumentos de este reintento coincidan con ella. Comprueba sus identidades antes de tratarlo como tu señal.
+- Las claves tienen de 1 a 255 caracteres Unicode y se comparan exactamente, sin plegado de mayúsculas ni normalización. Una clave vacía, demasiado larga o con UTF-8 no válido lanza `InvalidCommandRequestIdException` antes de la admisión. Una señal enviada sin clave siempre es una señal nueva.
+
+Antes de actualizar, aplica la migración `intent_digest` de Workflow y, después, drena y actualiza a la vez todos los procesos que escriben en la base de datos embebida. Las versiones anteriores no comparan la intención: en ellas, una clave de señal repetida registra una segunda señal.
+
+Los clientes en modo servicio envían la clave como `request_id` en el cuerpo. El Server nativo 3.9.2 y posteriores aplican las mismas reglas y añaden un rechazo `request_id_ambiguous` para algunas claves heredadas. Consulta [claves de comando de señales y actualizaciones](/docs/polyglot/server-api-reference#command-keys) para el contrato HTTP y las llamadas de PHP, Python, Rust y la CLI.
+
+Una clave de comando admite la señal una sola vez. No hace que las actividades que desencadena la señal se ejecuten exactamente una vez. Consulta [recuperar un comando incierto](./updates.md#recover-after-an-uncertain-response) para inspeccionar actualizaciones conservadas y conciliar desde la aplicación.
 
 ## Identidad y autorización del remitente {#sender-identity-and-authorization}
 

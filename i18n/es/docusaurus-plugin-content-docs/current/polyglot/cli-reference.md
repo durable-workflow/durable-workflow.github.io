@@ -149,9 +149,9 @@ Prefiere `--token-env=NAME` en producción para mantener secretos en el entorno 
 | `dw workflow:show-run <workflow-id> <run-id>` | Mostrar una ejecución. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Leer eventos del historial. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Exportar la carga de historial para archivo. | `--output-file`, opciones globales |
-| `dw workflow:signal <workflow-id> <signal-name>` | Enviar una señal. | `--run-id`, opciones de entrada, `--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | Enviar una señal. | `--request-id`, `--run-id`, opciones de entrada, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Ejecutar una consulta de solo lectura. | `--run-id`, opciones de entrada, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Enviar o ejecutar una actualización. | `--wait=accepted\|completed`, `--run-id`, opciones de entrada, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Enviar o ejecutar una actualización. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, opciones de entrada, `--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | Leer el resultado guardado de una actualización sin volver a enviarla. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Cerrar un workflow o lote seleccionado como cancelado; no ejecuta limpieza del código. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Terminar un workflow por la fuerza. | `--reason`, `--run-id`, `--json` |
@@ -174,6 +174,22 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 ```
 
 `workflow:start`, `workflow:signal`, `workflow:query` y `workflow:update` validan campos canónicos contra el contrato publicado por el servidor. Los alias heredados no canónicos se rechazan antes de enviar la solicitud.
+
+### Reintentar una señal o actualización {#retry-a-signal-or-update}
+
+`workflow:signal` y `workflow:update` envían una clave de comando como `request_id` en el cuerpo: el valor de `--request-id` o una clave `cli-signal-…` o `cli-update-…` generada por invocación. La CLI envía cada comando una vez y nunca lo reenvía. Tras perder una respuesta, la clave usada se imprime y aparece en el campo `request_id` del sobre de error JSON. Repite el mismo comando con el mismo `--request-id`, nombre, entrada y `--run-id`:
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+En el Server nativo 3.9.2 y posteriores, el reintento devuelve el recibo original (`Retained: yes`) y no registra nada. Con CLI 2.11.0 y posteriores:
+
+- La misma clave con otro nombre, otra entrada u otra ejecución de destino sale con `9` (`request_id_conflict`).
+- Una clave que coincide con una identidad heredada ambigua sale con `10` (`request_id_ambiguous`).
+- Un recibo heredado imprime `Intent Verified: no (legacy receipt; ...)`. Es la admisión original, no una prueba de que la entrada del reintento coincida con ella.
+
+Ningún rechazo registra nada; no lo repitas sin cambios. CLI 2.10.0 y anteriores salen con `2` para ambos rechazos. Las claves tienen de 1 a 255 caracteres Unicode y se comparan exactamente. Consulta [claves de comando de señales y actualizaciones](./server-api-reference.md#command-keys) para el contrato del Server.
 
 ### Leer el resultado de una actualización {#read-update-outcome}
 
@@ -440,6 +456,8 @@ Todos los comandos utilizan la política estable documentada en la [guía de CLI
 | `6` | Fallo `5xx` del servidor. |
 | `7` | Tiempo de espera agotado. |
 | `8` | Fallo de compatibilidad: el comando se negó antes de enviar la solicitud. |
+| `9` | Una clave de comando de señal o actualización ya identifica otro comando (`request_id_conflict`, CLI 2.11.0+). |
+| `10` | Una clave de comando de señal o actualización coincide con una identidad heredada ambigua (`request_id_ambiguous`, CLI 2.11.0+). |
 
 Para paquetes de soporte, recopila `dw doctor --output=json`, `dw server:info --output=json` y `dw debug workflow <workflow-id> --output=json`.
 

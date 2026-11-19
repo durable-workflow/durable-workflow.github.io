@@ -166,13 +166,33 @@ await client.signal_workflow(
 
 ### 重复投递与流式传输的限制 {#duplicate-delivery-and-streaming-limits}
 
-供应商会重试回调，信号接纳后也可能发生网络错误。持久化应用操作或事件键及准确意图，在回调入口与业务处理中都做去重，并保留结果不确定的投递以便核对。Python 处理器只保留本次运行中每个操作的第一个结果；这不是跨运行去重或仅接纳一次的保证。不要仅因已发出请求就把不确定的转发标记为已处理。[共享问题 #216](https://github.com/durable-workflow/.github/issues/216) 仍负责安全重试信号与保留接纳身份。幂等请求头或仅一次活动尝试，本身都不能保证外部副作用只发生一次。
+供应商会重试回调，信号接纳后也可能发生网络错误。持久化应用操作或事件键及准确意图，在回调入口与业务处理中都做去重，并保留结果不确定的投递以便核对。Python 处理器只保留本次运行中每个操作的第一个结果；这不是跨运行去重或仅接纳一次的保证。不要仅因已发出请求就把不确定的转发标记为已处理。在原生 Server 3.9.2 及更高版本上，信号命令键让转发本身可以安全重试；见[重试转发的回调](#retry-a-forwarded-callback)。幂等请求头或仅一次活动尝试，本身都不能保证外部副作用只发生一次。
 
 先启动工作流，再按此方案提交外部任务。服务模式下，`start(use-existing)` 后接 `signal` 是**两个操作**，中间可能发生关闭竞态；原子接纳仍属于[共享问题 #222](https://github.com/durable-workflow/.github/issues/222)。嵌入式 `signalWithStart` 是单独的原子 API。防抖请求 [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) 已由该产品需求替代，并非由此回调方案交付完成。
 
 活动内保持的 HTTP/SSE 套接字并不持久：工作器或进程丢失时连接会结束，它占用活动槽位，重连还可能重复或遗漏外部事件。提交与回调仍会增加活动、信号和等待历史；执行并非免费或无限。需要持久的**工作流输出**时，请使用 [Workflow Streams](./workflow-streams.md) 及其持久化序列与游标契约，不要把传输连接当成存储。
 
 上述 PHP 和 Python 代码已在发布的 **Server 2.9.7 / Core 2.7.2** 与正常安装的 **Python SDK 2.6.1** 上执行。独立的 PostgreSQL 17.11 检查覆盖了提前回调、等待中回调、迟到拒绝，以及 Python 工作器缺席时接收回调、随后冷读取的 continue-as-new。嵌入式检查使用真实 Webhook 路由。这些是本方案的证据，不代表所有数据库、供应商身份验证、优雅关闭或原生运行时均已通过资格验证。[验证记录](https://github.com/durable-workflow/durable-workflow.github.io/issues/321#issuecomment-6292485315) 单独保留了未成功的原始尝试。
+
+### 重试转发的回调 {#retry-a-forwarded-callback}
+
+从供应商的事件派生一个命令键，例如 `job-completed:op-42`，并在转发前将其存入投递记录。使用 Python SDK 2.19.1 或更高版本并连接原生 Server 3.9.2 或更高版本时，以相同的键、参数和目标重新发送同一信号，会返回原始回执，而不是记录第二个信号：
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "external-job-42", "job-completed", args=["op-42", {"value": 42}],
+        request_id="job-completed:op-42",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise
+    receipt = None  # Nothing was recorded; keep the delivery for reconciliation.
+```
+
+当此键下较早的一次转发已被接纳时，`receipt["retained"]` 为 `True`。`request_id_conflict` 表示该键已指向一个参数不同的信号，例如供应商为同一操作发送了不同的结果。`request_id_ambiguous` 表示该键与 Server 无法选定的旧版标识匹配。这两种拒绝都不会记录任何内容，因此不要原样重新发送其中任何一种。`intent_verified` 为 `False` 的回执是旧版接纳记录，不能证明本次转发的参数与之匹配。该键只覆盖接纳；上面的工作流处理器仍为每个操作保留第一个结果。完整契约以及 PHP、Rust 和 CLI 调用方式见[信号与更新命令键](./server-api-reference.md#command-keys)。
 
 ## 限制重试与历史增长 {#bound-retries-and-history}
 

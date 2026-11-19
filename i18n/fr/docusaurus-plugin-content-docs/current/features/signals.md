@@ -180,11 +180,70 @@ pendant lequel le workflow peut se clôturer ou continuer dans une nouvelle exé
 
 Conservez l’espace de noms, l’identité du workflow, le nom du signal, les
 arguments et la clé d’opération applicative d’origine pour enquêter sur une
-livraison incertaine. Répéter un signal doit respecter le contrat réel de gestion
-des doublons de la cible. Ne démarrez pas un workflow de remplacement au seul
+livraison incertaine. Ne démarrez pas un workflow de remplacement au seul
 motif que la nouvelle tentative a été refusée.
 
-Consultez la [récupération d’une commande incertaine](./updates.md#recover-after-an-uncertain-response)
+### Réessayer avec la même clé de commande {#retry-with-the-same-command-key}
+
+Une clé de commande rend la nouvelle tentative elle-même sûre. Choisissez une clé
+pour chaque signal logique, par exemple `approve-order-123`, et enregistrez-la
+dans votre registre d’opérations avant l’envoi. Avec Workflow 2.18.0 ou une
+version ultérieure, associez-la au moyen de `withRequestId()`. Après une perte de
+réponse, envoyez de nouveau le même signal avec la même clé, le même nom, les
+mêmes arguments et la même cible :
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- Une nouvelle tentative avec la même clé, le même nom de signal, les mêmes
+  arguments typés et la même exécution cible explicite renvoie le reçu initial
+  et n’enregistre rien. `retained()` vaut true. Cela fonctionne aussi après la
+  clôture de l’exécution ou sa continuation dans une nouvelle exécution, tant
+  que la commande initiale est conservée.
+- La même clé avec un autre nom, d’autres arguments ou une autre exécution cible
+  est refusée : `requestIdConflict()` vaut true et `outcome()` vaut
+  `rejected_request_id_conflict`. `conflict()` indique la commande conservée et
+  les éléments qui diffèrent. Rien n’est enregistré et la clé conserve son reçu
+  initial. Envoyez l’entrée initiale pour lire ce reçu, ou utilisez une nouvelle
+  clé pour une nouvelle entrée.
+- Un reçu admis avant que Workflow n’enregistre l’intention des commandes est
+  relu avec `retained()` à true et `intentVerified()` à false. Il s’agit de
+  l’admission initiale, et non de la preuve que les arguments de cette nouvelle
+  tentative lui correspondent. Vérifiez ses identifiants avant de le considérer
+  comme votre signal.
+- Les clés comportent de 1 à 255 caractères Unicode et sont comparées
+  exactement, sans uniformisation de la casse ni normalisation. Une clé vide,
+  trop longue ou en UTF-8 invalide lève `InvalidCommandRequestIdException` avant
+  l’admission. Un signal envoyé sans clé est toujours un nouveau signal.
+
+Avant la mise à niveau, appliquez la migration `intent_digest` de Workflow, puis
+terminez le travail en cours et mettez à niveau ensemble tous les composants
+d’écriture de la base de données intégrée. Les versions antérieures ne comparent pas l’intention : une
+clé de signal répétée y enregistre un second signal.
+
+Les clients en mode service envoient la clé dans la propriété `request_id` du
+corps. Server natif 3.9.2 et les versions ultérieures appliquent les mêmes règles
+et ajoutent un refus `request_id_ambiguous` pour certaines anciennes clés.
+Consultez les [clés de commande des signaux et des mises à jour](/docs/polyglot/server-api-reference#command-keys)
+pour le contrat HTTP et les appels PHP, Python, Rust et CLI.
+
+Une clé de commande admet le signal une seule fois. Elle ne garantit pas que les
+activités déclenchées par le signal s’exécutent exactement une fois. Consultez la
+[récupération d’une commande incertaine](./updates.md#recover-after-an-uncertain-response)
 pour inspecter les mises à jour conservées et effectuer un rapprochement applicatif.
 
 ## Identité de l’émetteur et autorisation {#sender-identity-and-authorization}

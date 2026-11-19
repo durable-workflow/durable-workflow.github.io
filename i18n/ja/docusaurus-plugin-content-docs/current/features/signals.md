@@ -154,9 +154,39 @@ runは、開始時に記録したシグナル宣言とデフォルト値を維�
 
 永続的に受理された後でも、タイムアウトや応答喪失は起こります。後の終了済み・未検出の応答は後のリクエストを表すだけで、元のシグナルが適用されたかは分かりません。送信前の状態確認でも、その後に終了や continue-as-new が起こり得る隙間は残ります。
 
-配信が不確かな場合、元の名前空間、ワークフロー識別情報、シグナル名、引数、アプリの操作キーを保持して調べます。再送は対象の実際の重複処理契約に従ってください。リトライを拒否されたという理由だけで代替ワークフローを開始しないでください。
+配信が不確かな場合、元の名前空間、ワークフロー識別情報、シグナル名、引数、アプリの操作キーを保持して調べます。リトライを拒否されたという理由だけで代替ワークフローを開始しないでください。
 
-保持された更新の調査とアプリ側の照合は、[不確かなコマンドからの復旧](./updates.md#recover-after-an-uncertain-response)を参照してください。
+### 同じコマンドキーで再試行する {#retry-with-the-same-command-key}
+
+コマンドキーを使うと、再試行そのものが安全になります。`approve-order-123` のように論理的なシグナルごとに1つのキーを選び、送信前に操作記録とともに保存します。Workflow 2.18.0 以降では、`withRequestId()` でキーを付けます。応答を失った後は、同じキー、名前、引数、対象で同じシグナルを再送します。
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- 同じキー、シグナル名、型付き引数、明示的な実行対象での再試行は、元の受領記録を返し、何も記録しません。`retained()` は true です。元のコマンドが保持されている限り、実行が終了した後や continue-as-new した後でも同様に動作します。
+- 同じキーで名前、引数、実行対象のいずれかが異なる場合は拒否されます。`requestIdConflict()` が true になり、`outcome()` は `rejected_request_id_conflict` です。`conflict()` は保持されたコマンドと異なる部分を示します。何も記録されず、キーは元の受領記録を保持し続けます。その受領記録を読むには元の入力を送り、新しい入力には新しいキーを使ってください。
+- Workflow がコマンドの意図を記録する前に受理された受領記録は、`retained()` が true、`intentVerified()` が false として読み戻されます。これは元の受理であり、この再試行の引数が一致する証明ではありません。自分のシグナルとして扱う前に、その識別情報を確認してください。
+- キーは 1〜255 文字の Unicode 文字列で、大文字小文字の同一視や正規化を行わずに完全一致で比較されます。空、長すぎる、または不正な UTF-8 のキーは、受理前に `InvalidCommandRequestIdException` をスローします。キーなしで送ったシグナルは常に新しいシグナルです。
+
+アップグレード前に Workflow の `intent_digest` マイグレーションを適用し、埋め込みデータベースに書き込むすべてのプロセスを停止してまとめてアップグレードしてください。古いリリースは意図を比較しないため、同じシグナルキーを繰り返すと2つ目のシグナルが記録されます。
+
+サービスモードのクライアントは、キーを本文の `request_id` として送ります。Native Server 3.9.2 以降は同じ規則を適用し、一部のレガシーキーに対して `request_id_ambiguous` による拒否を追加します。HTTP 契約と PHP、Python、Rust、CLI の呼び出しは、[シグナルと更新のコマンドキー](/docs/polyglot/server-api-reference#command-keys)を参照してください。
+
+コマンドキーはシグナルを一度だけ受理させます。シグナルがきっかけとなるアクティビティを厳密に1回だけ実行させるものではありません。保持された更新の調査とアプリ側の照合は、[不確かなコマンドからの復旧](./updates.md#recover-after-an-uncertain-response)を参照してください。
 
 ## 送信者の識別と認可 {#sender-identity-and-authorization}
 

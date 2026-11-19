@@ -149,9 +149,9 @@ dw server:info --output=json \
 | `dw workflow:show-run <workflow-id> <run-id>` | 展示单次运行。 | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | 读取运行历史事件。 | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | 导出归档用的运行历史负载。 | `--output-file`, 全局选项 |
-| `dw workflow:signal <workflow-id> <signal-name>` | 发送信号。 | `--run-id`, 输入选项, `--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | 发送信号。 | `--request-id`, `--run-id`, 输入选项, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | 执行只读工作流查询。 | `--run-id`, 输入选项, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | 提交或执行工作流更新。 | `--wait=accepted\|completed`, `--run-id`, 输入选项, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | 提交或执行工作流更新。 | `--wait=accepted\|completed`, `--request-id`, `--run-id`, 输入选项, `--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | 读取保留的更新结果，不重新提交更新。 | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | 将单个工作流或选定批次关闭为已取消；不运行工作流代码清理。 | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | 强制终止工作流。 | `--reason`, `--run-id`, `--json` |
@@ -174,6 +174,22 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 ```
 
 `workflow:start`、`workflow:signal`、`workflow:query` 和 `workflow:update` 根据 Server 公布的请求契约验证规范请求字段。非规范的旧别名在请求发送前即被拒绝。
+
+### 重试信号或更新 {#retry-a-signal-or-update}
+
+`workflow:signal` 和 `workflow:update` 将命令键作为请求体中的 `request_id` 发送：使用 `--request-id` 的值，或者每次调用生成一个 `cli-signal-…` 或 `cli-update-…` 键。CLI 每个命令只发送一次，从不自动重发。响应丢失后，CLI 会打印所用的键，该键也位于 JSON 错误信封的 `request_id` 中。使用相同的 `--request-id`、名称、输入和 `--run-id` 重复同一命令：
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+在原生 Server 3.9.2 及更高版本上，重试会返回原始回执（`Retained: yes`），且不记录任何内容。使用 CLI 2.11.0 及更高版本时：
+
+- 相同键配合不同的名称、输入或运行目标，以退出码 `9`（`request_id_conflict`）退出。
+- 与有歧义的旧版标识匹配的键，以退出码 `10`（`request_id_ambiguous`）退出。
+- 旧版回执会打印 `Intent Verified: no (legacy receipt; ...)`。它是原始接收记录，不能证明本次重试的输入与之匹配。
+
+这两种拒绝都不会记录任何内容；不要原样重复。CLI 2.10.0 及更早版本对这两种拒绝都以退出码 `2` 退出。键的长度为 1 到 255 个 Unicode 字符，按原样精确比较。Server 契约见[信号与更新命令键](./server-api-reference.md#command-keys)。
 
 ### 读取更新结果 {#read-update-outcome}
 
@@ -429,6 +445,8 @@ AI 客户端或 CI 任务需要当前控制平面、响应或输出契约且不�
 | `6` | Server 端 `5xx` 失败。 |
 | `7` | 超时。 |
 | `8` | 兼容性失败：命令在发送请求之前拒绝。 |
+| `9` | 信号或更新命令键已指向另一个不同的命令（`request_id_conflict`，CLI 2.11.0+）。 |
+| `10` | 信号或更新命令键与有歧义的旧版标识匹配（`request_id_ambiguous`，CLI 2.11.0+）。 |
 
 支持资料包应收集 `dw doctor --output=json`、`dw server:info --output=json` 和 `dw debug workflow <workflow-id> --output=json`。
 

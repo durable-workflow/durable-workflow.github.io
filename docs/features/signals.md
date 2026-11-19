@@ -209,11 +209,66 @@ not establish whether the original signal was applied. A status check before
 sending also leaves a gap in which the workflow can close or continue as new.
 
 Keep the original namespace, workflow identity, signal name, arguments and
-application operation key when investigating an uncertain delivery. Repeating
-a signal must follow the target's actual duplicate-handling contract. Do not
+application operation key when investigating an uncertain delivery. Do not
 start a replacement workflow merely because the retry was refused.
 
-See [recovering an uncertain command](./updates.md#recover-after-an-uncertain-response)
+### Retry with the same command key {#retry-with-the-same-command-key}
+
+A command key makes the retry itself safe. Choose one key for each logical
+signal, such as `approve-order-123`, and save it with your operation record
+before you send. With Workflow 2.18.0 or later, attach it with
+`withRequestId()`. After a lost response, send the same signal again with the
+same key, name, arguments and target:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- A retry with the same key, signal name, typed arguments and explicit run
+  target returns the original receipt and records nothing. `retained()` is
+  true. This also works after the run closed or continued as new, for as long
+  as the original command is retained.
+- The same key with a different name, arguments or run target is refused:
+  `requestIdConflict()` is true and `outcome()` is
+  `rejected_request_id_conflict`. `conflict()` names the retained command and
+  the parts that differ. Nothing is recorded, and the key keeps its original
+  receipt. Send the original input to read that receipt, or use a new key for
+  new input.
+- A receipt admitted before Workflow recorded command intent reads back with
+  `retained()` true and `intentVerified()` false. That is the original
+  admission, not proof that this retry's arguments match it. Check its
+  identities before treating it as your signal.
+- Keys are 1 to 255 Unicode characters and are compared exactly, without case
+  folding or normalization. An empty, oversized or invalid UTF-8 key throws
+  `InvalidCommandRequestIdException` before admission. A signal sent without a
+  key is always a new signal.
+
+Before upgrading, apply Workflow's `intent_digest` migration, then drain and
+upgrade every embedded database writer together. Older releases do not compare
+intent: a repeated signal key records a second signal there.
+
+Service-mode clients send the key as the body `request_id`. Native Server
+3.9.2 and later apply the same rules and add a `request_id_ambiguous` refusal
+for some legacy keys. See
+[signal and update command keys](/docs/polyglot/server-api-reference#command-keys)
+for the HTTP contract and the PHP, Python, Rust and CLI calls.
+
+A command key admits the signal once. It does not make the activities that the
+signal triggers run exactly once. See
+[recovering an uncertain command](./updates.md#recover-after-an-uncertain-response)
 for retained update inspection and application-owned reconciliation.
 
 ## Sender identity and authorization

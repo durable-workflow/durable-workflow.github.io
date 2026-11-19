@@ -235,9 +235,9 @@ runtime environment and not in the profile file.
 | `dw workflow:show-run <workflow-id> <run-id>` | Show one run. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Read run history events. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Export the archival run-history payload. | `--output-file`, global options |
-| `dw workflow:signal <workflow-id> <signal-name>` | Send a signal. | `--run-id`, input options, `--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | Send a signal. | `--request-id`, `--run-id`, input options, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Execute a read-only workflow query. | `--run-id`, input options, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Submit or execute a workflow update. | `--wait=accepted\|completed`, `--run-id`, input options, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Submit or execute a workflow update. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, input options, `--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | Read a retained update outcome without submitting it again. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Close one workflow or a selected batch as cancelled; no workflow-code cleanup runs. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Force terminate a workflow. | `--reason`, `--run-id`, `--json` |
@@ -262,6 +262,35 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query`, and `workflow:update`
 validate canonical request fields against the server-published request
 contract. Non-canonical legacy aliases are rejected before the request is sent.
+
+### Retry a signal or update {#retry-a-signal-or-update}
+
+`workflow:signal` and `workflow:update` send a command key as the body
+`request_id`: the `--request-id` value, or one `cli-signal-…` or `cli-update-…`
+key generated per invocation. The CLI sends each command once and never resends
+it. After a lost response, the key it used is printed and is in the JSON error
+envelope's `request_id`. Repeat the same command with the same
+`--request-id`, name, input and `--run-id`:
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+On native Server 3.9.2 and later, the retry returns the original receipt
+(`Retained: yes`) and records nothing. With CLI 2.11.0 and later:
+
+- The same key with a different name, input or run target exits `9`
+  (`request_id_conflict`).
+- A key that matches an ambiguous legacy identity exits `10`
+  (`request_id_ambiguous`).
+- A legacy receipt prints `Intent Verified: no (legacy receipt; ...)`. It is the
+  original admission, not proof that the retry's input matches it.
+
+Neither refusal records anything; do not repeat it unchanged. CLI 2.10.0 and
+earlier exit `2` for both refusals. Keys are 1 to 255 Unicode characters and
+are compared exactly. See
+[signal and update command keys](./server-api-reference.md#command-keys) for
+the Server contract.
 
 ### Read an update outcome {#read-update-outcome}
 
@@ -613,6 +642,8 @@ All commands use the stable exit-code policy documented in the
 | `6` | Server-side `5xx` failure. |
 | `7` | Timeout. |
 | `8` | Compatibility failure: the command refused before sending the request. |
+| `9` | A signal or update command key already names a different command (`request_id_conflict`, CLI 2.11.0+). |
+| `10` | A signal or update command key matches an ambiguous legacy identity (`request_id_ambiguous`, CLI 2.11.0+). |
 
 For support bundles, collect `dw doctor --output=json`, `dw server:info
 --output=json`, and `dw debug workflow <workflow-id> --output=json`.

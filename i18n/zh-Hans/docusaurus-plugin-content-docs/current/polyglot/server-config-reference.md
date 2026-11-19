@@ -289,7 +289,7 @@ PHP Server 2.x 的可配置限制请使用已记录的 `DW_*` 设置。控制器
 
 原生 3.9.2 在信号和更新命令键的整个受理路径上应用现有的 255 Unicode 码点上限。255 字符的多字节 `request_id` 可被接受，256 字符则不经受理即被拒绝。这修复了 [3.9.1 按 UTF-8 字节数拒绝的问题](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)。重试键是请求体中的 `request_id`；HTTP `X-Request-Id` 头不是命令键。
 
-3.9.2 的新键控信号和已接受更新回执返回字面 `request_id`，并标明 `retained:false`、`intent_verified:true`。保留回执返回该键及 `retained:true`，保留原始命令、run、更新的标识。现代意图证明标明 `intent_verified:true`；兼容的意图记录引入前的旧式读取标明 `intent_verified:false`。无键和 bridge 回执保持原状。[已发布修正](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)不代表[共享 #216](https://github.com/durable-workflow/.github/issues/216) 的所有已安装客户端组合均已验证；此前 3.9.1 的失败必须在确切的修正后组合上重跑。
+3.9.2 的新键控信号和已接受更新回执返回字面 `request_id`，并标明 `retained:false`、`intent_verified:true`。保留回执返回该键及 `retained:true`，保留原始命令、run、更新的标识。现代意图证明标明 `intent_verified:true`；兼容的意图记录引入前的旧式读取标明 `intent_verified:false`。无键和 bridge 回执保持原状。冲突与歧义拒绝以及支持它们的客户端版本，见[已发布修正](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)和[信号与更新命令键](./server-api-reference.md#command-keys)。
 
 当前配置值发布在 `GET /api/cluster/info` 响应的 `limits` 下，客户端可在运行时发现这些限制：
 

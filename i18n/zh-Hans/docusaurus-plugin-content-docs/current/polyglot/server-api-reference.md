@@ -351,6 +351,82 @@ Server 也提供协作式 `request-cancellation` 路由。有时限清理契约�
 
 命令通过 Avro 负载封装传递业务值，官方 SDK 自动完成编码。直接 HTTP 客户端必须使用官方 Avro 编码器的 `{codec, blob}` 封装，或下述运行时外部引用。外围 HTTP 文档是 JSON，但原始业务 JSON 不是另一种负载编解码格式。
 
+### 信号与更新命令键 {#command-keys}
+
+信号或更新请求体中的 `request_id` 是工作流实例上的命令键。原生 Server 3.9.2 及更高版本应用此契约，并在 `GET /api/cluster/info` 中以 `capabilities.command_request_keys` 公布。`X-Request-Id` 和 `X-Correlation-Id` 请求头仅用于关联。不带请求体 `request_id` 的请求始终是新命令。
+
+- **相同意图。** 使用相同键、操作、名称、类型化参数和运行目标的重试会返回原始回执，且不写入任何内容。回执保留原始的 `command_id`、`run_id`，对于更新还保留 `update_id`，并带有 `retained: true` 和 `intent_verified: true`。全新准入报告 `retained: false`。Server 在检查运行之前先查找回执，因此在运行关闭或继续为新运行之后的重试仍能拿到它。类型化值按原样精确比较：`1`、`1.0` 和 `"1"` 互不相同，而映射的键顺序无关紧要。
+- **不同意图。** 相同键配合不同的名称、参数或运行目标会被拒绝，返回 `409`、`reason: "request_id_conflict"` 和 `outcome: "rejected_request_id_conflict"`。`retained_command_id` 指出原始命令，`conflict` 列出不同的部分（`name`、`arguments` 或 `target_or_arguments`）。不会写入任何内容，该键仍保留其原始回执。绝不要原样重发此请求：发送原始输入以读取回执，或为新输入使用新键。
+- **有歧义的键。** 若键与 Server 无法安全选定的旧版保留标识匹配，会被拒绝，返回 `409`、`reason: "request_id_ambiguous"` 和 `retryable: false`。例如，看起来像另一个键哈希令牌的原始旧版键，以及在不区分大小写的数据库上仅大小写不同的键。不会写入任何内容，也不会选定任何回执。在以新键发送该输入之前，请先在工作流历史中检查原始命令。
+- **旧版回执。** 在 Server 记录意图之前准入的命令，当键、名称和任何显式运行目标都匹配时，读回为 `retained: true` 且 `intent_verified: false`。它是原始准入记录，不能证明本次重试的参数与之匹配。
+- **键格式。** 键的长度为 1 到 255 个 Unicode 字符，不透明且区分大小写，不做规范化。空键或更长的键会被拒绝，不予准入。
+- **生命周期。** 被拒绝的信号（例如 `run_not_active`）不会占用其键。键的有效期与其命令被保留的时间相同。当保留策略清理某个运行的详细信息后，之后使用该键的请求就是新命令。
+
+在 3.9.0 之前，重复的信号键会记录第二个信号，而以更改后参数重试的更新会返回原始回执。
+
+官方客户端在发送之前选择或生成键，因此键在响应丢失后依然存在：
+
+| 客户端 | 提供键 | 拒绝 |
+| --- | --- | --- |
+| PHP SDK 3.17.0+ | `Client::signalWorkflow()`、`updateWorkflow()` 和 `updateWorkflowReceipt()` 的 `requestId` 参数，或句柄 `signal()` 和 `update()` 的同名参数。否则每次调用使用一个 `sdk-php-signal-…` 或 `sdk-php-update-…` 键。 | `SignalFailed` 或 `UpdateFailed`：`isRequestIdConflict()`，配合 `conflict()` 和 `retainedCommandId()`；从 PHP SDK 3.21.0 起提供 `isRequestIdAmbiguous()` |
+| Python SDK 2.19.1+ | `Client.signal_workflow()`、`update_workflow()`、`handle.signal()` 和 `handle.update()` 上的 `request_id=`。否则每次调用使用一个 `sdk-python-signal-…` 或 `sdk-python-update-…` 键。 | `SignalFailed` 或 `UpdateFailed`，其 `reason` 为 `request_id_conflict` 或 `request_id_ambiguous`，另带 `request_id` 和 `details` |
+| Rust SDK 4.20.0+ | `Client::signal_workflow_with_request_id()`、`update_workflow()`、`update_workflow_receipt()` 以及对应的 `WorkflowHandle` 方法。`Client::generate_signal_request_id()` 和 `generate_update_request_id()` 可预先返回一个键。 | `Error::request_id_conflict()` 和 `Error::request_id_ambiguous()` |
+| CLI 2.11.0+ | `workflow:signal` 和 `workflow:update` 上的 `--request-id`。否则每次调用使用一个 `cli-signal-…` 或 `cli-update-…` 键。 | `request_id_conflict` 以退出码 `9` 退出，`request_id_ambiguous` 以退出码 `10` 退出 |
+
+PHP、Rust 和 CLI 每个信号或更新只发送一次，从不自行重发。Python 的传输重试策略会以相同的键重发。生成的键只存在于该次调用中，因此当重试需要在进程重启后继续时，请保存你自己的键。使用相同的键和相同的输入重试：
+
+```php
+use DurableWorkflow\Exception\SignalFailed;
+
+try {
+    $receipt = $client->signalWorkflow('order-123', 'approve', ['Grace'], requestId: 'approve-order-123');
+} catch (SignalFailed $failed) {
+    if (!$failed->isRequestIdConflict() && !$failed->isRequestIdAmbiguous()) {
+        throw $failed; // Retry a transport failure with $failed->requestId().
+    }
+    // Nothing was recorded. Don't resend unchanged.
+}
+```
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "order-123", "approve", args=["Grace"], request_id="approve-order-123",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise  # Retry a transport failure with failed.request_id.
+    # Nothing was recorded. Don't resend unchanged.
+```
+
+```rust
+let request_id = durable_workflow::Client::generate_update_request_id();
+// Save request_id with your operation record before sending.
+match client
+    .update_workflow_receipt("order-123", "mark-ready", [true], Some(request_id.as_str()))
+    .await
+{
+    Ok(receipt) if receipt["intent_verified"] == false => {
+        // A legacy receipt: the original update, not a verified match.
+    }
+    Ok(receipt) => println!("update {}", receipt["update_id"]),
+    Err(error) if error.is_request_id_conflict() || error.is_request_id_ambiguous() => {
+        // Nothing was recorded. Don't resend unchanged.
+    }
+    Err(error) => return Err(error), // Retry a transport failure with request_id.
+}
+```
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+对于保留的回执，CLI 会打印 `Retained: yes`。从 CLI 2.11.0 起，旧版回执会打印
+`Intent Verified: no (legacy receipt; the Server did not compare this command's intent with it)`。
+命令键只保证信号或更新被准入一次，并不能让工作流的活动效果恰好发生一次，因此对外部效果仍需保持应用层幂等性。
+
 ### 原生已触发定时器重驱动与重放时钟 {#native-redrive-timers}
 
 :::note 原生 Server 3.11.0 起可用
@@ -714,7 +790,7 @@ Worker 应将租约 ID、尝试、任务 ID 和心跳端点视为 Server 签发�
 | `401` | 缺失或无效认证。 |
 | `403` | 已认证令牌缺少所需角色。 |
 | `404` | 找不到命名空间、工作流、运行、计划、Worker 或搜索属性。 |
-| `409` | 重复或冲突，例如工作流已启动，或运行目标无效。 |
+| `409` | 重复或冲突，例如工作流已启动、运行目标无效，或复用了[命令键](#command-keys)（`request_id_conflict` 或 `request_id_ambiguous`）。 |
 | `422` | 验证失败；响应包含字段级验证细节。 |
 | `429` | 准入或任务队列容量已满。 |
 | `503` | 请求到达未托管所需拓扑角色的节点。托管路由返回 `reason: "topology_role_unavailable"` 及 `current_shape`、`current_process_class`、`current_roles`、`required_roles` 和 `missing_roles`。工作流 v2 引导被阻塞时，相同状态配合 `reason: "workflow_v2_blocked"`、`blocked_by` 和 `remediation`，适用于工作流启动/变更、计划变更、桥接适配器及 Worker 协议路由；计划读取路由（`GET /api/schedules`、`GET /api/schedules/{scheduleId}`、`GET /api/schedules/{scheduleId}/history`）仍可用，使运维人员能在恢复期间检查计划状态。 |

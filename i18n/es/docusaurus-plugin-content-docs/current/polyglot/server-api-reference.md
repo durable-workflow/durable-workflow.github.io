@@ -352,6 +352,82 @@ Los comandos dirigidos a ejecución rechazan explícitamente destinos histórico
 
 Los comandos llevan valores de negocio en sobres Avro. Los SDK oficiales los codifican automáticamente. Un cliente HTTP directo debe usar el sobre `{codec, blob}` del codificador Avro oficial o la referencia del runtime descrita abajo. El documento HTTP exterior es JSON; el JSON de negocio sin codificar no es un códec alternativo.
 
+### Claves de comando de señales y actualizaciones {#command-keys}
+
+El `request_id` del cuerpo de una señal o actualización es una clave de comando en la instancia de workflow. El Server nativo 3.9.2 y posteriores aplican este contrato y lo anuncian como `capabilities.command_request_keys` en `GET /api/cluster/info`. Las cabeceras `X-Request-Id` y `X-Correlation-Id` solo sirven para correlación. Una solicitud sin `request_id` en el cuerpo siempre es un comando nuevo.
+
+- **Misma intención.** Un reintento con la misma clave, operación, nombre, argumentos tipados y ejecución de destino devuelve el recibo original y no escribe nada. El recibo conserva el `command_id` y el `run_id` originales y, en una actualización, el `update_id`, con `retained: true` e `intent_verified: true`. Una admisión nueva indica `retained: false`. El Server busca el recibo antes de comprobar la ejecución, así que un reintento después de que la ejecución se cierre o continúe como nueva ejecución sigue obteniéndolo. Los valores tipados se comparan exactamente: `1`, `1.0` y `"1"` son distintos, mientras que el orden de las claves de un mapa no importa.
+- **Intención distinta.** La misma clave con otro nombre, otros argumentos u otra ejecución de destino se rechaza con `409`, `reason: "request_id_conflict"` y `outcome: "rejected_request_id_conflict"`. `retained_command_id` identifica el comando original y `conflict` enumera las partes que difieren (`name`, `arguments` o `target_or_arguments`). No se escribe nada y la clave mantiene su recibo original. Nunca reenvíe esta solicitud sin cambios: envíe la entrada original para leer el recibo o use una clave nueva para una entrada nueva.
+- **Clave ambigua.** Una clave que coincide con una identidad conservada heredada que el Server no puede seleccionar con seguridad se rechaza con `409`, `reason: "request_id_ambiguous"` y `retryable: false`. Por ejemplo, una clave heredada sin procesar que parece el token hash de otra clave, o claves que solo difieren en mayúsculas y minúsculas en una base de datos que no las distingue. No se escribe nada ni se selecciona ningún recibo. Inspeccione el comando original en el historial del workflow antes de enviar la entrada con una clave nueva.
+- **Recibo heredado.** Un comando admitido antes de que el Server registrara la intención se lee como `retained: true` con `intent_verified: false` cuando coinciden la clave, el nombre y cualquier ejecución de destino explícita. Es la admisión original, no una prueba de que los argumentos de este reintento coincidan con ella.
+- **Formato de la clave.** Las claves tienen de 1 a 255 caracteres Unicode, son opacas y distinguen mayúsculas de minúsculas, sin normalización. Las claves vacías o más largas se rechazan sin admisión.
+- **Duración.** Una señal rechazada, por ejemplo con `run_not_active`, no reserva su clave. Una clave dura mientras se conserve su comando. Cuando la retención depura los detalles de una ejecución, una solicitud posterior con esa clave es un comando nuevo.
+
+Antes de 3.9.0, una clave de señal repetida registraba una segunda señal, y una actualización reintentada con argumentos cambiados devolvía el recibo original.
+
+Los clientes oficiales eligen o generan una clave antes de enviar, de modo que la clave sobrevive a una respuesta perdida:
+
+| Cliente | Proporcionar una clave | Rechazos |
+| --- | --- | --- |
+| PHP SDK 3.17.0+ | El argumento `requestId` de `Client::signalWorkflow()`, `updateWorkflow()` y `updateWorkflowReceipt()`, o de `signal()` y `update()` del handle. Si no, una clave `sdk-php-signal-…` o `sdk-php-update-…` por llamada. | `SignalFailed` o `UpdateFailed`: `isRequestIdConflict()` con `conflict()` y `retainedCommandId()`; `isRequestIdAmbiguous()` desde PHP SDK 3.21.0 |
+| Python SDK 2.19.1+ | `request_id=` en `Client.signal_workflow()`, `update_workflow()`, `handle.signal()` y `handle.update()`. Si no, una clave `sdk-python-signal-…` o `sdk-python-update-…` por llamada. | `SignalFailed` o `UpdateFailed` con `reason` `request_id_conflict` o `request_id_ambiguous`, además de `request_id` y `details` |
+| Rust SDK 4.20.0+ | `Client::signal_workflow_with_request_id()`, `update_workflow()`, `update_workflow_receipt()` y los métodos equivalentes de `WorkflowHandle`. `Client::generate_signal_request_id()` y `generate_update_request_id()` devuelven una clave por adelantado. | `Error::request_id_conflict()` y `Error::request_id_ambiguous()` |
+| CLI 2.11.0+ | `--request-id` en `workflow:signal` y `workflow:update`. Si no, una clave `cli-signal-…` o `cli-update-…` por invocación. | Salida `9` para `request_id_conflict` y `10` para `request_id_ambiguous` |
+
+PHP, Rust y la CLI envían cada señal o actualización una vez y nunca la reenvían por su cuenta. La política de reintentos de transporte de Python reenvía la misma clave. Una clave generada solo existe para esa llamada, así que guarde su propia clave cuando un reintento deba sobrevivir a un reinicio del proceso. Reintente con la misma clave y la misma entrada:
+
+```php
+use DurableWorkflow\Exception\SignalFailed;
+
+try {
+    $receipt = $client->signalWorkflow('order-123', 'approve', ['Grace'], requestId: 'approve-order-123');
+} catch (SignalFailed $failed) {
+    if (!$failed->isRequestIdConflict() && !$failed->isRequestIdAmbiguous()) {
+        throw $failed; // Retry a transport failure with $failed->requestId().
+    }
+    // Nothing was recorded. Don't resend unchanged.
+}
+```
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "order-123", "approve", args=["Grace"], request_id="approve-order-123",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise  # Retry a transport failure with failed.request_id.
+    # Nothing was recorded. Don't resend unchanged.
+```
+
+```rust
+let request_id = durable_workflow::Client::generate_update_request_id();
+// Save request_id with your operation record before sending.
+match client
+    .update_workflow_receipt("order-123", "mark-ready", [true], Some(request_id.as_str()))
+    .await
+{
+    Ok(receipt) if receipt["intent_verified"] == false => {
+        // A legacy receipt: the original update, not a verified match.
+    }
+    Ok(receipt) => println!("update {}", receipt["update_id"]),
+    Err(error) if error.is_request_id_conflict() || error.is_request_id_ambiguous() => {
+        // Nothing was recorded. Don't resend unchanged.
+    }
+    Err(error) => return Err(error), // Retry a transport failure with request_id.
+}
+```
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+La CLI imprime `Retained: yes` para un recibo conservado. Desde CLI 2.11.0, un recibo heredado imprime
+`Intent Verified: no (legacy receipt; the Server did not compare this command's intent with it)`.
+Una clave de comando admite una señal o actualización una sola vez. No hace que los efectos de las actividades del workflow ocurran exactamente una vez, así que mantenga la idempotencia de la aplicación para los efectos externos.
+
 ### Redrive nativo de temporizadores disparados y relojes de replay {#native-redrive-timers}
 
 :::note Disponible desde Server nativo 3.11.0
@@ -715,7 +791,7 @@ Estados habituales:
 | `401` | Autenticación ausente o no válida. |
 | `403` | El token autenticado no tiene el rol requerido. |
 | `404` | Espacio de nombres, workflow, ejecución, programación, worker o atributo no encontrado. |
-| `409` | Duplicado o conflicto, como workflow ya iniciado o destino de ejecución no válido. |
+| `409` | Duplicado o conflicto, como workflow ya iniciado, destino de ejecución no válido o una [clave de comando](#command-keys) reutilizada (`request_id_conflict` o `request_id_ambiguous`). |
 | `422` | Validación fallida con detalles por campo. |
 | `429` | Admisión o capacidad de cola completa. |
 | `503` | El nodo no aloja los roles requeridos. Las rutas alojadas devuelven `reason: "topology_role_unavailable"` con `current_shape`, `current_process_class`, `current_roles`, `required_roles` y `missing_roles`. El mismo estado con `reason: "workflow_v2_blocked"`, `blocked_by` y `remediation` cubre inicio/modificación de workflows, modificación de programaciones, adaptadores puente y protocolo de workers si el arranque v2 está bloqueado; las lecturas (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`, `GET /api/schedules/{scheduleId}/history`) siguen disponibles durante la recuperación. |

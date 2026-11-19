@@ -1274,12 +1274,15 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-Keep `business_event_id` stable across retries and within the Server's
-command-key length limit. The currently published Server does not retain
-these keys for every signal path. Make business-event processing idempotent
-and reconcile uncertain delivery. See the
+Keep `business_event_id` stable across retries, and keep the whole key within
+255 Unicode characters. On native Server 3.9.2 and later, a retry with the same
+key and arguments returns the original receipt instead of recording another
+signal. The same key with different arguments raises `SignalFailed` with
+`reason == "request_id_conflict"`, and nothing is recorded. Older Servers do
+not retain these keys for every signal path. Make business-event processing
+idempotent and reconcile uncertain delivery. See the
 [canonical activity reference](https://python.durable-workflow.com/reference/activity/)
-and [signal receipt-retention requirement](https://github.com/durable-workflow/.github/issues/216).
+and [signal and update command keys](./server-api-reference.md#command-keys).
 
 ### Heartbeat requests {#activity-heartbeat-requests}
 

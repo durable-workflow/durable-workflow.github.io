@@ -225,9 +225,9 @@ JSON містить стабільне поле `status` для автомати
 | `dw workflow:show-run <workflow-id> <run-id>` | Показати одне виконання. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Прочитати події історії виконання. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Експортувати архівний payload історії виконання. | `--output-file`, глобальні параметри |
-| `dw workflow:signal <workflow-id> <signal-name>` | Надіслати signal. | `--run-id`, параметри вводу, `--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | Надіслати signal. | `--request-id`, `--run-id`, параметри вводу, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Виконати query workflow лише для читання. | `--run-id`, параметри вводу, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Подати чи виконати update workflow. | `--wait=accepted\|completed`, `--run-id`, параметри вводу, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Подати чи виконати update workflow. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, параметри вводу, `--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | Прочитати збережений результат update без повторного надсилання. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Закрити один workflow чи вибрану групу як скасовані без очищення в коді workflow. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Примусово завершити workflow. | `--reason`, `--run-id`, `--json` |
@@ -252,6 +252,35 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` і `workflow:update`
 перевіряють канонічні поля запиту за контрактом, опублікованим сервером.
 Неканонічні застарілі псевдоніми відхиляються до надсилання запиту.
+
+### Повторити signal або update {#retry-a-signal-or-update}
+
+`workflow:signal` і `workflow:update` надсилають ключ команди як `request_id`
+у тілі запиту: значення `--request-id` або один ключ `cli-signal-…` чи
+`cli-update-…`, згенерований для кожного виклику. CLI надсилає кожну команду
+один раз і ніколи не повторює її сам. Після втраченої відповіді використаний
+ключ виводиться на екран і міститься в `request_id` JSON-конверта помилки.
+Повторіть ту саму команду з тим самим `--request-id`, назвою, вводом і
+`--run-id`:
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+У native Server 3.9.2 і новіших повтор повертає початкову квитанцію
+(`Retained: yes`) і нічого не записує. З CLI 2.11.0 і новішими:
+
+- Той самий ключ з іншою назвою, вводом чи ціллю-запуском завершується з кодом
+  `9` (`request_id_conflict`).
+- Ключ, що збігається з неоднозначною legacy-ідентичністю, завершується з кодом
+  `10` (`request_id_ambiguous`).
+- Legacy-квитанція виводить `Intent Verified: no (legacy receipt; ...)`. Це
+  початкове приймання, а не доказ того, що ввід повтору з ним збігається.
+
+Жодна з цих відмов нічого не записує; не повторюйте таку команду без змін.
+CLI 2.10.0 і старіші для обох відмов завершуються з кодом `2`. Ключі мають
+довжину від 1 до 255 символів Unicode і порівнюються точно. Контракт Server
+описано в розділі [ключі команд signal і update](./server-api-reference.md#command-keys).
 
 ### Прочитати результат update {#read-update-outcome}
 
@@ -603,6 +632,8 @@ dw storage:test --driver=s3 --small-bytes=128 --large-bytes=3145728 --json
 | `6` | Серверна помилка `5xx`. |
 | `7` | Тайм-аут. |
 | `8` | Помилка сумісності: команда відмовила до надсилання запиту. |
+| `9` | Ключ команди signal або update уже називає іншу команду (`request_id_conflict`, CLI 2.11.0+). |
+| `10` | Ключ команди signal або update збігається з неоднозначною legacy-ідентичністю (`request_id_ambiguous`, CLI 2.11.0+). |
 
 Для підтримки зберіть `dw doctor --output=json`, `dw server:info
 --output=json` і `dw debug workflow <workflow-id> --output=json`.

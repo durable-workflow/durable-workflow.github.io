@@ -132,13 +132,33 @@ $latest->result(); // Available when that retained update completed.
 
 名前空間、インスタンス ID、元の実行 ID、更新 ID、操作名、意図をアプリに保存します。受理確認は永続的な受理を証明し、完了ライフサイクルは記録済みハンドラー結果を示します。どちらも別の決済、メール、データベース書き込みが厳密に1回行われたことは証明しません。
 
-`request_id` はポータブルな実行単位の Update-ID 契約ではありません。検証済み PHP 経路では、同じキーを異なる引数で送っても最初の保持更新を返すことがあります。埋め込みの検索はインスタンス内の更新名もまたぎます。continue-as-new 後に再利用すると、後続へ更新を受理せず前の実行の結果を返す場合があります。終了後も保持済みキーの確認記録を返せる一方、新規更新は拒否されます。
-
 埋め込み Laravel の更新 webhook は、呼び出し元のキーを `X-Request-Id` から取得します。プロキシを通す場合も、このヘッダーを維持してください。スタンドアロン Server の HTTP 更新は、JSON 本文の `request_id` だけをキーとして使い、`X-Request-Id` ヘッダーは相関情報として扱います。本文のキーを省略すると、同じヘッダーを持つリクエストでも重複排除キーは付きません。
 
-検証済みの PHP 経路では、同じインスタンス内の更新名が異なっていても、同じキーで保持された記録が見つかる場合があります。1つのキーは1つの論理操作に使い、元の意図を維持します。引数を変えたり、別の更新名で再利用したり、次の実行で新しい操作を開始すると仮定したりしないでください。[公開 PHP 成果物の検証](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)では、プロキシのヘッダーとは独立したキーと、終了後の保持記録を確認しています。この復旧動作は、同じキーを異なる意図で使った場合の移植可能な競合検出を保証しません。より広い契約は[共通 issue 216](https://github.com/durable-workflow/.github/issues/216)で扱います。Native Server や他 SDK は個別の検証が必要です。
+コマンドキーは、1つのワークフローインスタンス上の1つの更新を、そのすべての実行にわたって識別します。Workflow 2.18.0 以降では、`withRequestId()` でキーを付けます。応答を失った後は、同じキーで同じ更新を再送します。
 
-確認記録の復旧はコマンド、更新、履歴の保持に依存します。アプリに依存しない重複排除期間を保証するものではありません。[履歴保持](../configuration/pruning-workflows.md)を確認し、必要な期間は業務台帳を保持します。証拠がなければ結果は不明のままです。
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- 同じキー、更新名、型付き引数、明示的な実行対象での再試行は、更新 ID を含む元の確認記録を返し、何も記録しません。終了後や continue-as-new 後でも、再試行は元の更新を返します。後続の実行で新しい更新を受理することはありません。
+- 同じキーで更新名、引数、実行対象のいずれかが異なる場合は、`rejected_request_id_conflict` として拒否されます。`conflict()` は保持されたコマンドと異なる部分を示します。何も記録されず、キーは元の確認記録を保持し続けます。
+- Workflow がコマンドの意図を記録する前に受理された確認記録は、`retained()` が true、`intentVerified()` が false として読み戻されます。これは元の受理であり、この再試行の引数が一致する証明ではありません。
+- キーは 1〜255 文字の Unicode 文字列で、完全一致で比較されます。不正なキーは、受理前に `InvalidCommandRequestIdException` をスローします。
+
+1つのキーは1つの論理操作に使い、その引数は決して変更しないでください。新しい操作には新しいキーを使います。キー付きの更新が拒否されたことを確認した後も同様です。Workflow 2.18.0 および native Server 3.9.0 より前のリリースは意図を比較しません。そこでは、異なる引数や別の更新名で再利用したキーは、最初の更新の確認記録を返します。
+
+サービスモードのクライアントは、キーを本文の `request_id` として送ります。Native Server 3.9.2 以降は同じ規則を適用し、一部のレガシーキーに対して `request_id_ambiguous` による拒否を追加します。HTTP 契約と PHP、Python、Rust、CLI の呼び出しは、[シグナルと更新のコマンドキー](/docs/polyglot/server-api-reference#command-keys)を参照してください。
+
+確認記録の復旧はコマンド、更新、履歴の保持に依存します。保持期間の処理で実行の詳細が削除されると、そのキーも一緒に削除され、後でそのキーを使ったリクエストは新しいコマンドとして受理されます。アプリに依存しない重複排除期間を保証するものではありません。[履歴保持](../configuration/pruning-workflows.md)を確認し、必要な期間は業務台帳を保持します。証拠がなければ結果は不明のままです。
 
 ### 業務上の作用の保護 {#protect-the-business-effect}
 

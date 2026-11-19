@@ -289,7 +289,7 @@ PHP Server 2.x の設定可能な上限には、文書化された `DW_*` 設定
 
 Native 3.9.2 は Signal と Update のコマンドキーに対し、受理処理全体で既存の 255 Unicode コードポイント上限を適用します。255 文字のマルチバイト `request_id` は受理し、256 文字は受理せず拒否します。これは [3.9.1 の UTF-8 バイト数による拒否](https://github.com/durable-workflow/server/issues/934#issuecomment-6853943056)を修正します。再試行キーには body の `request_id` を使います。HTTP `X-Request-Id` ヘッダーはコマンドキーではありません。
 
-3.9.2 の新規のキー付き Signal と受理済み Update のレシートは、リテラルの `request_id` を `retained:false`、`intent_verified:true` とともに返します。保持済みレシートはそのキーを `retained:true` とともに返し、元のコマンド・run・Update ID を保持します。現在の intent 証明は `intent_verified:true`、intent 導入前の互換 legacy 読み取りは `intent_verified:false` です。キーなしと bridge のレシートは従来どおりです。[公開済み修正](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)は[共有 #216](https://github.com/durable-workflow/.github/issues/216)の全クライアントのインストール後検証を意味しません。以前の 3.9.1 の失敗は、正確な修正済み組み合わせで再検証する必要があります。
+3.9.2 の新規のキー付き Signal と受理済み Update のレシートは、リテラルの `request_id` を `retained:false`、`intent_verified:true` とともに返します。保持済みレシートはそのキーを `retained:true` とともに返し、元のコマンド・run・Update ID を保持します。現在の intent 証明は `intent_verified:true`、intent 導入前の互換 legacy 読み取りは `intent_verified:false` です。キーなしと bridge のレシートは従来どおりです。競合とあいまいさによる拒否、およびそれに対応するクライアントのリリースについては、[公開済み修正](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)と[Signal と Update のコマンドキー](./server-api-reference.md#command-keys)を参照してください。
 
 `GET /api/cluster/info` の `limits` に現在値を公開し、クライアントが実行時に確認できます。
 

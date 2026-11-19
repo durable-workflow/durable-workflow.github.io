@@ -485,6 +485,82 @@ Laufbezogene Befehlsrouten lehnen historische oder falsche Laufziele explizit ab
 
 Befehle übertragen Geschäftswerte in Avro-Envelopes. Die offiziellen SDKs codieren sie automatisch. Direkte HTTP-Clients müssen den `{codec, blob}`-Envelope des offiziellen Avro-Encoders oder die unten beschriebene Runtime-Referenz verwenden. Das äußere HTTP-Dokument ist JSON; uncodiertes Geschäfts-JSON ist kein alternativer Nutzlast-Codec.
 
+### Befehlsschlüssel für Signale und Updates {#command-keys}
+
+Die `request_id` im Body eines Signals oder Updates ist ein Befehlsschlüssel auf der Workflow-Instanz. Native Server 3.9.2 und neuer wenden diesen Vertrag an und melden ihn als `capabilities.command_request_keys` in `GET /api/cluster/info`. Die Header `X-Request-Id` und `X-Correlation-Id` dienen nur der Korrelation. Eine Anfrage ohne `request_id` im Body ist immer ein neuer Befehl.
+
+- **Gleiche Absicht.** Eine Wiederholung mit demselben Schlüssel, derselben Operation, demselben Namen, denselben typisierten Argumenten und demselben Laufziel gibt den ursprünglichen Beleg zurück und schreibt nichts. Der Beleg behält die ursprüngliche `command_id`, `run_id` und bei einem Update die `update_id`, mit `retained: true` und `intent_verified: true`. Eine neue Annahme meldet `retained: false`. Der Server findet den Beleg, bevor er den Lauf prüft, sodass auch eine Wiederholung nach dem Schließen des Laufs oder nach Continue-as-new ihn erhält. Typisierte Werte werden exakt verglichen: `1`, `1.0` und `"1"` unterscheiden sich, die Reihenfolge der Map-Schlüssel spielt dagegen keine Rolle.
+- **Andere Absicht.** Derselbe Schlüssel mit anderem Namen, anderen Argumenten oder anderem Laufziel wird mit `409`, `reason: "request_id_conflict"` und `outcome: "rejected_request_id_conflict"` abgelehnt. `retained_command_id` nennt den ursprünglichen Befehl, und `conflict` listet die abweichenden Teile auf (`name`, `arguments` oder `target_or_arguments`). Nichts wird geschrieben, und der Schlüssel behält seinen ursprünglichen Beleg. Senden Sie diese Anfrage nie unverändert erneut: Senden Sie die ursprüngliche Eingabe, um den Beleg zu lesen, oder verwenden Sie für neue Eingaben einen neuen Schlüssel.
+- **Mehrdeutiger Schlüssel.** Ein Schlüssel, der einer aufbewahrten Legacy-Identität entspricht, die der Server nicht sicher auswählen kann, wird mit `409`, `reason: "request_id_ambiguous"` und `retryable: false` abgelehnt. Beispiele sind ein roher Legacy-Schlüssel, der wie das gehashte Token eines anderen Schlüssels aussieht, und Schlüssel, die sich auf einer Datenbank ohne Unterscheidung der Groß-/Kleinschreibung nur in der Schreibweise unterscheiden. Nichts wird geschrieben, und kein Beleg wird ausgewählt. Prüfen Sie den ursprünglichen Befehl in der Workflow-Historie, bevor Sie die Eingabe unter einem neuen Schlüssel senden.
+- **Legacy-Beleg.** Ein Befehl, der angenommen wurde, bevor der Server die Absicht aufzeichnete, wird als `retained: true` mit `intent_verified: false` zurückgelesen, wenn Schlüssel, Name und ein gegebenenfalls explizites Laufziel übereinstimmen. Das ist die ursprüngliche Annahme, kein Nachweis, dass die Argumente dieser Wiederholung mit ihr übereinstimmen.
+- **Schlüsselformat.** Schlüssel umfassen 1 bis 255 Unicode-Zeichen, sind opak und unterscheiden Groß-/Kleinschreibung, ohne Normalisierung. Leere oder längere Schlüssel werden ohne Annahme abgelehnt.
+- **Lebensdauer.** Ein abgelehntes Signal, etwa mit `run_not_active`, reserviert seinen Schlüssel nicht. Ein Schlüssel besteht, solange sein Befehl aufbewahrt wird. Wenn die Aufbewahrung die Details eines Laufs bereinigt, ist eine spätere Anfrage unter diesem Schlüssel ein neuer Befehl.
+
+Vor 3.9.0 zeichnete ein wiederholter Signalschlüssel ein zweites Signal auf, und ein mit geänderten Argumenten wiederholtes Update lieferte den ursprünglichen Beleg.
+
+Die offiziellen Clients wählen oder erzeugen einen Schlüssel vor dem Senden, sodass der Schlüssel eine verlorene Antwort übersteht:
+
+| Client | Schlüssel angeben | Ablehnungen |
+| --- | --- | --- |
+| PHP SDK 3.17.0+ | Das Argument `requestId` von `Client::signalWorkflow()`, `updateWorkflow()` und `updateWorkflowReceipt()` oder von `signal()` und `update()` des Handles. Andernfalls ein Schlüssel `sdk-php-signal-…` bzw. `sdk-php-update-…` pro Aufruf. | `SignalFailed` oder `UpdateFailed`: `isRequestIdConflict()` mit `conflict()` und `retainedCommandId()`; `isRequestIdAmbiguous()` ab PHP SDK 3.21.0 |
+| Python SDK 2.19.1+ | `request_id=` bei `Client.signal_workflow()`, `update_workflow()`, `handle.signal()` und `handle.update()`. Andernfalls ein Schlüssel `sdk-python-signal-…` bzw. `sdk-python-update-…` pro Aufruf. | `SignalFailed` oder `UpdateFailed` mit `reason` `request_id_conflict` oder `request_id_ambiguous`, dazu `request_id` und `details` |
+| Rust SDK 4.20.0+ | `Client::signal_workflow_with_request_id()`, `update_workflow()`, `update_workflow_receipt()` und die entsprechenden `WorkflowHandle`-Methoden. `Client::generate_signal_request_id()` und `generate_update_request_id()` liefern vorab einen Schlüssel. | `Error::request_id_conflict()` und `Error::request_id_ambiguous()` |
+| CLI 2.11.0+ | `--request-id` bei `workflow:signal` und `workflow:update`. Andernfalls ein Schlüssel `cli-signal-…` bzw. `cli-update-…` pro Aufruf. | Exit-Code `9` für `request_id_conflict` und `10` für `request_id_ambiguous` |
+
+PHP, Rust und die CLI senden jedes Signal und jedes Update einmal und senden es nie von sich aus erneut. Die Transport-Wiederholungsrichtlinie von Python sendet denselben Schlüssel erneut. Ein erzeugter Schlüssel existiert nur für diesen Aufruf; speichern Sie daher Ihren eigenen Schlüssel, wenn eine Wiederholung einen Prozessneustart überstehen muss. Wiederholen Sie mit demselben Schlüssel und derselben Eingabe:
+
+```php
+use DurableWorkflow\Exception\SignalFailed;
+
+try {
+    $receipt = $client->signalWorkflow('order-123', 'approve', ['Grace'], requestId: 'approve-order-123');
+} catch (SignalFailed $failed) {
+    if (!$failed->isRequestIdConflict() && !$failed->isRequestIdAmbiguous()) {
+        throw $failed; // Retry a transport failure with $failed->requestId().
+    }
+    // Nothing was recorded. Don't resend unchanged.
+}
+```
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "order-123", "approve", args=["Grace"], request_id="approve-order-123",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise  # Retry a transport failure with failed.request_id.
+    # Nothing was recorded. Don't resend unchanged.
+```
+
+```rust
+let request_id = durable_workflow::Client::generate_update_request_id();
+// Save request_id with your operation record before sending.
+match client
+    .update_workflow_receipt("order-123", "mark-ready", [true], Some(request_id.as_str()))
+    .await
+{
+    Ok(receipt) if receipt["intent_verified"] == false => {
+        // A legacy receipt: the original update, not a verified match.
+    }
+    Ok(receipt) => println!("update {}", receipt["update_id"]),
+    Err(error) if error.is_request_id_conflict() || error.is_request_id_ambiguous() => {
+        // Nothing was recorded. Don't resend unchanged.
+    }
+    Err(error) => return Err(error), // Retry a transport failure with request_id.
+}
+```
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+Die CLI gibt für einen aufbewahrten Beleg `Retained: yes` aus. Ab CLI 2.11.0 gibt ein Legacy-Beleg
+`Intent Verified: no (legacy receipt; the Server did not compare this command's intent with it)`
+aus. Ein Befehlsschlüssel nimmt ein Signal oder Update einmal an. Er macht die Aktivitätseffekte des Workflows nicht genau einmalig; behalten Sie daher die Idempotenz der Anwendung für externe Effekte bei.
+
 ### Native Redrive ausgelöster Timer und Replay-Uhren {#native-redrive-timers}
 
 :::note Verfügbar ab nativem Server 3.11.0
@@ -919,7 +995,7 @@ Häufige Statuscodes:
 | `401` | Fehlende oder ungültige Authentifizierung. |
 | `403` | Authentifiziertes Token besitzt die erforderliche Rolle nicht. |
 | `404` | Namespace, Workflow, Lauf, Zeitplan, Worker oder Suchattribut nicht gefunden. |
-| `409` | Duplikat oder Konflikt, etwa bereits gestarteter Workflow oder ungültiges Laufziel. |
+| `409` | Duplikat oder Konflikt, etwa bereits gestarteter Workflow, ungültiges Laufziel oder wiederverwendeter [Befehlsschlüssel](#command-keys) (`request_id_conflict` oder `request_id_ambiguous`). |
 | `422` | Validierung fehlgeschlagen; Antwort enthält Details je Feld. |
 | `429` | Zulassungs- oder Task-Warteschlangenkapazität ist voll. |
 | `503` | Anfrage erreichte einen Knoten ohne die erforderlichen Topologierollen. Gehostete Routen liefern `reason: "topology_role_unavailable"` mit `current_shape`, `current_process_class`, `current_roles`, `required_roles` und `missing_roles`. Derselbe Status mit `reason: "workflow_v2_blocked"`, `blocked_by` und `remediation` gilt für Workflow-Start/-Änderung, Zeitplanänderung, Brückenadapter und Worker-Protokoll, während Workflow-v2-Bootstrap blockiert ist. Zeitplan-Leserouten (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`, `GET /api/schedules/{scheduleId}/history`) bleiben zur Inspektion während Wiederherstellung verfügbar. |
