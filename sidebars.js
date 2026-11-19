@@ -105,6 +105,7 @@ const sidebars = {
             'features/concurrency',
             'features/sagas',
             'features/child-workflows',
+            'features/business-state-machines',
             'features/service-operations',
             'features/cancel-and-terminate',
             'features/heartbeats',
