@@ -68,3 +68,21 @@ plano. Necesitas ejecutar el [comando `queue:work`](https://laravel.com/docs/12.
 o usar [Horizon](https://laravel.com/docs/12.x/horizon) para administrar los
 workers de las colas. Sin un worker, los workflows y las actividades no se
 procesan. Para ejecutarlos en paralelo, necesitas más de un worker.
+
+### Tiempo límite del worker {#worker-timeout}
+
+```bash
+php artisan queue:work --timeout=0
+```
+
+Cuando PHP tiene la extensión `pcntl`, `queue:work` termina cualquier job que se
+ejecute durante más de `--timeout` segundos, que por defecto son 60. Una tarea
+de workflow terminada así se revierte. Se reintenta cuando vence su lease de
+tarea de workflow (300 segundos por defecto), y el reintento repite el mismo
+trabajo. Una tarea de workflow que siempre necesita más tiempo que el límite,
+como una que programa o termina un `all()` amplio, nunca se completa.
+
+Ejecuta los workers de workflows con `--timeout=0` o con un valor superior a tu
+tarea de workflow más larga. Mantén `workflows.v2.workflow_task_lease_seconds`
+por encima de ese valor. En Horizon, la opción `timeout` del supervisor es el
+mismo ajuste.

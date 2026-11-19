@@ -454,6 +454,10 @@ php artisan migrate
 php artisan queue:work
 ```
 
+Antes de ejecutar ramificaciones amplias, configura el tiempo límite de jobs del
+worker como se describe en
+[Tiempo límite del worker](/docs/installation/#worker-timeout).
+
 Para añadir la interfaz de operación a esa misma aplicación, instala el
 paquete Composer de Waterline integrado:
 

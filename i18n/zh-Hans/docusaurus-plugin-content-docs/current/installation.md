@@ -52,3 +52,13 @@ php artisan migrate
 ## 运行 Worker {#running-workers}
 
 Durable Workflow 使用队列在后台执行工作流和活动。运行 [`queue:work` 命令](https://laravel.com/docs/12.x/queues#the-queue-work-command)，或通过 [Horizon](https://laravel.com/docs/12.x/horizon)管理队列 Worker。没有队列 Worker，工作流和活动就不会被处理。并行执行工作流和活动需要多个队列 Worker。
+
+### Worker 超时 {#worker-timeout}
+
+```bash
+php artisan queue:work --timeout=0
+```
+
+当 PHP 启用了 `pcntl` 扩展时，`queue:work` 会终止运行时间超过 `--timeout` 秒的任何作业，默认值为 60。以这种方式被终止的工作流任务会被回滚。它会在工作流任务租约到期（默认 300 秒）后重试，而重试会重复同样的工作。始终需要比超时更长时间的工作流任务（例如调度或完成一个大规模 `all()` 的任务）永远无法完成。
+
+运行工作流 Worker 时请使用 `--timeout=0`，或使用大于最长工作流任务耗时的值。让 `workflows.v2.workflow_task_lease_seconds` 保持大于该值。在 Horizon 中，supervisor 的 `timeout` 选项就是同一个设置。

@@ -53,3 +53,13 @@ php artisan migrate
 ## Worker を実行する {#running-workers}
 
 Durable Workflow はキューを使って、ワークフローとアクティビティをバックグラウンドで実行します。[`queue:work` コマンド](https://laravel.com/docs/12.x/queues#the-queue-work-command)を実行するか、[Horizon](https://laravel.com/docs/12.x/horizon)でキュー Worker を管理してください。キュー Worker がなければ、ワークフローとアクティビティは処理されません。並列に実行するには、複数のキュー Worker が必要です。
+
+### Worker のタイムアウト {#worker-timeout}
+
+```bash
+php artisan queue:work --timeout=0
+```
+
+PHP に `pcntl` 拡張がある場合、`queue:work` は `--timeout` 秒（デフォルトは 60）を超えて実行されたジョブを強制終了します。こうして強制終了されたワークフロータスクはロールバックされます。そのタスクはワークフロータスクのリース（デフォルトは 300 秒）の期限が切れた後に再試行され、再試行では同じ作業が繰り返されます。幅の広い `all()` をスケジュールまたは完了するタスクのように、常にタイムアウトより長い時間を必要とするワークフロータスクは、いつまでも完了しません。
+
+ワークフロー Worker は `--timeout=0`、または最も長いワークフロータスクを上回る値で実行してください。`workflows.v2.workflow_task_lease_seconds` はその値より大きく保ってください。Horizon では、supervisor の `timeout` オプションが同じ設定です。

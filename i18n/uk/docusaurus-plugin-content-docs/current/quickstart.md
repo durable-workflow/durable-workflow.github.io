@@ -456,6 +456,9 @@ php artisan migrate
 php artisan queue:work
 ```
 
+Перед запуском широких розгалужень налаштуйте тайм-аут job для worker, як
+описано в розділі [Тайм-аут worker](/docs/installation/#worker-timeout).
+
 Для UI оператора в тому самому Laravel-застосунку додайте перевірений
 вбудований пакет Waterline Composer:
 

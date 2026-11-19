@@ -135,6 +135,8 @@ php artisan queue:work shared --queue=workflows
 php artisan queue:work shared --queue=activities
 ```
 
-Worker застосунку A відтворює workflow та планує завдання activity. Worker
-застосунку B отримує ці завдання, виконує їх і повертає результати. Рушій
-координує передавання через спільну базу даних.
+Worker застосунку A відтворює workflow та планує завдання activity. Налаштуйте
+його тайм-аут job, як описано в розділі
+[Тайм-аут worker](/docs/installation/#worker-timeout). Worker застосунку B
+отримує ці завдання, виконує їх і повертає результати. Рушій координує
+передавання через спільну базу даних.

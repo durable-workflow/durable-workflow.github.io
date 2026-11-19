@@ -411,6 +411,8 @@ php artisan migrate
 php artisan queue:work
 ```
 
+运行大规模扇出之前，请按照[Worker 超时](/docs/installation/#worker-timeout)中的说明设置 Worker 的作业超时。
+
 如果需要在同一个 Laravel 应用中使用操作界面，再添加经过验证的 Waterline 内嵌 Composer 包：
 
 ```bash

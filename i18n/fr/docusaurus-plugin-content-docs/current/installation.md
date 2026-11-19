@@ -54,3 +54,13 @@ php artisan migrate
 ## Exécuter les workers {#running-workers}
 
 Durable Workflow utilise des files pour exécuter les workflows et les activités en arrière-plan. Exécutez la commande [`queue:work`](https://laravel.com/docs/12.x/queues#the-queue-work-command) ou utilisez [Horizon](https://laravel.com/docs/12.x/horizon) pour gérer vos workers de file. Sans worker, les workflows et les activités ne sont pas traités. Pour les exécuter en parallèle, il faut plusieurs workers.
+
+### Délai d’expiration du worker {#worker-timeout}
+
+```bash
+php artisan queue:work --timeout=0
+```
+
+Lorsque PHP dispose de l’extension `pcntl`, `queue:work` tue tout job qui s’exécute plus de `--timeout` secondes, 60 par défaut. Les changements d’une tâche de workflow tuée de cette façon sont annulés. Elle est relancée après l’expiration de son bail de tâche de workflow (300 secondes par défaut), et la nouvelle tentative refait le même travail. Une tâche de workflow qui a toujours besoin de plus de temps que ce délai, par exemple une tâche qui planifie ou termine un large `all()`, ne se termine jamais.
+
+Exécutez les workers de workflow avec `--timeout=0`, ou avec une valeur supérieure à votre plus longue tâche de workflow. Gardez `workflows.v2.workflow_task_lease_seconds` au-dessus de cette valeur. Dans Horizon, l’option `timeout` du superviseur est le même réglage.

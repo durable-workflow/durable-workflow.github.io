@@ -458,6 +458,9 @@ php artisan migrate
 php artisan queue:work
 ```
 
+Antes de executar ramificações amplas, configure o timeout de jobs do worker
+como descrito em [Timeout do worker](/docs/installation/#worker-timeout).
+
 Para usar a interface de operação dentro da mesma aplicação Laravel, adicione
 o pacote Composer qualificado do Waterline integrado:
 

@@ -131,4 +131,4 @@ php artisan queue:work shared --queue=workflows
 php artisan queue:work shared --queue=activities
 ```
 
-アプリ A の Worker はワークフローをリプレイし、アクティビティタスクをスケジュールします。アプリ B の Worker はそのタスクを取得して実行し、結果を返します。引き継ぎはエンジンが共有データベースを通じて処理します。
+アプリ A の Worker はワークフローをリプレイし、アクティビティタスクをスケジュールします。この Worker のジョブタイムアウトは、[Worker のタイムアウト](/docs/installation/#worker-timeout)の説明に従って設定してください。アプリ B の Worker はそのタスクを取得して実行し、結果を返します。引き継ぎはエンジンが共有データベースを通じて処理します。

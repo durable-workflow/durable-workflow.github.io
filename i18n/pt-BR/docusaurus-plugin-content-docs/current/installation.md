@@ -70,3 +70,22 @@ plano. Execute o [comando `queue:work`](https://laravel.com/docs/12.x/queues#the
 ou use o [Horizon](https://laravel.com/docs/12.x/horizon) para operar os workers
 de fila. Sem um worker, workflows e atividades não são processados. Para
 executá-los em paralelo, você precisa de mais de um worker de fila.
+
+### Timeout do worker {#worker-timeout}
+
+```bash
+php artisan queue:work --timeout=0
+```
+
+Quando o PHP tem a extensão `pcntl`, o `queue:work` encerra qualquer job que
+rode por mais de `--timeout` segundos, que por padrão são 60. Uma tarefa de
+workflow encerrada dessa forma sofre rollback. Ela é tentada novamente depois
+que o lease da tarefa de workflow expira (300 segundos por padrão), e a nova
+tentativa repete o mesmo trabalho. Uma tarefa de workflow que sempre precisa de
+mais tempo que o timeout, como uma que agenda ou conclui um `all()` amplo, nunca
+é concluída.
+
+Execute os workers de workflow com `--timeout=0` ou com um valor acima da sua
+tarefa de workflow mais longa. Mantenha
+`workflows.v2.workflow_task_lease_seconds` acima desse valor. No Horizon, a
+opção `timeout` do supervisor é a mesma configuração.

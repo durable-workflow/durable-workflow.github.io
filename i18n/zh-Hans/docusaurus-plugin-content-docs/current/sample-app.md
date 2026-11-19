@@ -105,6 +105,8 @@ php artisan app:init
 php artisan queue:work
 ```
 
+在你自己的应用中，请按照[Worker 超时](/docs/installation/#worker-timeout)中的说明设置 Worker 的作业超时。
+
 若要验证修复循环本身，而不等待繁忙队列 Worker 进入下一个 `Looping` 周期，在第二个终端中明确执行一次恢复扫描：
 
 ```bash

@@ -105,6 +105,8 @@ Starten Sie den Warteschlangen-Worker. Damit werden Workflows und Aktivitäten v
 php artisan queue:work
 ```
 
+Legen Sie in Ihrer eigenen Anwendung das Job-Timeout des Workers wie unter [Worker-Timeout](/docs/installation/#worker-timeout) beschrieben fest.
+
 Wenn Sie die Reparaturschleife selbst nachweisen möchten, ohne auf einen weiteren `Looping`-Zyklus eines beschäftigten Warteschlangen-Workers zu warten, starten Sie in einem zweiten Terminal einen expliziten Wiederherstellungsdurchlauf:
 
 ```bash

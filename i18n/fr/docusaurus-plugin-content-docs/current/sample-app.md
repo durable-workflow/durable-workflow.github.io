@@ -125,6 +125,10 @@ Démarrez le worker de file pour traiter workflows et activités.
 php artisan queue:work
 ```
 
+Dans votre propre application, réglez le délai d'expiration des jobs du worker
+comme décrit dans
+[Délai d'expiration du worker](/docs/installation/#worker-timeout).
+
 Pour vérifier la boucle de réparation elle-même sans attendre un nouveau cycle
 `Looping` d'un worker occupé, lancez un passage explicite de reprise depuis un
 second terminal :
