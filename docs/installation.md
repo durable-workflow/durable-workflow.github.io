@@ -65,10 +65,30 @@ Durable Workflow uses queues to run workflows and activities in the background. 
 
 ### Worker timeout {#worker-timeout}
 
-```bash
-php artisan queue:work --timeout=0
+When PHP has the `pcntl` extension, a queue worker kills any job that runs longer than its timeout: the worker's `--timeout`, 60 seconds by default, unless the job sets its own. A workflow task that is killed loses its lease and is rolled back. It is retried only after the lease expires (`workflows.v2.workflow_task_lease_seconds`, 300 seconds by default), and the retry repeats the same work. A workflow task that always needs longer than the timeout, such as one that schedules or finishes a wide `all()`, never completes.
+
+Three settings must line up:
+
+- The **workflow task timeout** must be below the **workflow task lease**. Work that runs past the lease cannot complete.
+- The queue connection's **`retry_after`** must exceed the timeout of every job on it, as Laravel requires. Otherwise the queue hands a job that is still running to a second worker.
+- **Activities** should keep a bounded timeout, so that a hung activity cannot hold a worker forever. Do not use `--timeout=0`.
+
+Run workflow tasks on their own queue connection whose `retry_after` exceeds the lease, with workers whose `--timeout` is below the lease. Run activities on another queue with a timeout that suits them. Activities use their workflow's queue unless the activity class sets its own `$connection` or `$queue`.
+
+```php
+// config/queue.php: a connection for workflow tasks
+'workflows' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'workflows',
+    'retry_after' => 330, // above the 300-second workflow task lease
+],
 ```
 
-When PHP has the `pcntl` extension, `queue:work` kills any job that runs longer than `--timeout` seconds, which defaults to 60. A workflow task killed this way is rolled back. It is retried after its workflow task lease expires (300 seconds by default), and the retry repeats the same work. A workflow task that always needs longer than the timeout, such as one that schedules or finishes a wide `all()`, never completes.
+```bash
+# DW_V2_CONNECTION=workflows DW_V2_QUEUE=workflows
+php artisan queue:work workflows --queue=workflows --timeout=270
+php artisan queue:work --queue=default --timeout=60
+```
 
-Run workflow workers with `--timeout=0`, or with a value above your longest workflow task. Keep `workflows.v2.workflow_task_lease_seconds` above that value. In Horizon, the supervisor's `timeout` option is the same setting.
+In Horizon, each supervisor's `timeout` option is the worker timeout. Newer Workflow releases give every workflow task job this timeout (the lease less 30 seconds, kept 10 seconds below `retry_after`), so a short worker timeout no longer kills workflow tasks. A worker on the workflow queue logs a warning at start when `retry_after` limits workflow tasks.
