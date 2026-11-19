@@ -8,7 +8,7 @@ description: 嵌入式 Laravel 工作流中的实验性转换协议，用于共�
 
 :::warning 实验性
 
-`Workflow\V2\StateMachine` API，以及它所使用的保留式补偿作用域 API 和已确认的子工作流启动（`Workflow::startChild()`），均为实验性功能。它们从 Workflow 2.29.0 起以实验性方式提供，不受本包稳定性保证的覆盖，并且可能在次要版本中发生变化。按照[稳定性级别](../compatibility.md#stability-levels)，它们属于 `experimental` 接口。
+`Workflow\V2\StateMachine` API，以及它所使用的已确认的子工作流启动（`Workflow::startChild()`）和 `DurableScope::reserveChild()`，均为实验性功能。它们从 Workflow 2.29.0 起以实验性方式提供，不受本包稳定性保证的覆盖，并且可能在次要版本中发生变化。按照[稳定性级别](../compatibility.md#stability-levels)，它们属于 `experimental` 接口。它所使用的保留式补偿作用域 API 的其余部分自 Workflow 2.33.0 起为稳定版。
 
 本页示例是使用合成提供方的仓库源码示例，并非针对已安装包或真实提供方的资格验证。本页内容不意味着以下任何一项：
 
@@ -224,7 +224,7 @@ if ($key === 'begin') {
 
 运行器会在 `execute()` 可能挂起或失败之前，将原始步骤注册到原生 Saga。回调捕获的是原始执行和步骤，而不是回执。补偿期间，运行器请求一个新的 `compensation` 快照，并使用原始执行调用 `compensate()`。请使用默认的顺序补偿。
 
-运行本地的 Saga 回调随其运行一同结束。保留式补偿作用域（`Workflow\V2\Compensation`，同样是实验性功能）将每项义务保存在持久账本中，因此可以在发起运行关闭之后对其进行补偿。引擎仓库的[补偿作用域指南](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md)介绍了该 API。在这些示例中，每个外部效果在派发之前都会通过 `DurableScope::execute()` 注册为 `Obligation`，并且在撤销较早的父级效果之前会先验证子作用域。随后，该步骤自身的补偿只验证其原始义务：
+运行本地的 Saga 回调随其运行一同结束。保留式补偿作用域（`Workflow\V2\Compensation`）将每项义务保存在持久账本中，因此可以在发起运行关闭之后对其进行补偿。[补偿作用域指南](./compensation-scopes.md)介绍了该 API 及其中哪些部分是稳定的。在这些示例中，每个外部效果在派发之前都会通过 `DurableScope::execute()` 注册为 `Obligation`，并且在撤销较早的父级效果之前会先验证子作用域。随后，该步骤自身的补偿只验证其原始义务：
 
 ```php
 public function compensate(TransitionContext $context, ExecutionReference $originalExecution): void

@@ -8,7 +8,7 @@ description: 組み込み Laravel ワークフローで、共有の業務状態�
 
 :::warning 実験的
 
-`Workflow\V2\StateMachine` API と、それが使用する保持型補償スコープ API および確認付きの子開始（`Workflow::startChild()`）は実験的です。これらは Workflow 2.29.0 から実験的に提供され、パッケージの安定性保証の対象外であり、マイナーリリースで変更される可能性があります。[安定性レベル](../compatibility.md#stability-levels)における `experimental` のサーフェスです。
+`Workflow\V2\StateMachine` API と、それが使用する確認付きの子開始（`Workflow::startChild()`）および `DurableScope::reserveChild()` は実験的です。これらは Workflow 2.29.0 から実験的に提供され、パッケージの安定性保証の対象外であり、マイナーリリースで変更される可能性があります。[安定性レベル](../compatibility.md#stability-levels)における `experimental` のサーフェスです。それが使用する保持型補償スコープ API のその他の部分は、Workflow 2.33.0 から安定版です。
 
 このページの例は、合成プロバイダーを使用するリポジトリのソース例です。インストール済みパッケージや実際のプロバイダーでの適格性確認ではありません。このページのいかなる内容も、次のことを意味しません。
 
@@ -224,7 +224,7 @@ if ($key === 'begin') {
 
 ランナーは、`execute()` が中断または失敗し得るより前に、元のステップをネイティブ Saga に登録します。コールバックが捕捉するのは元の実行とステップであり、レシートではありません。補償中、ランナーは新しい `compensation` スナップショットを要求し、元の実行を指定して `compensate()` を呼び出します。既定の逐次補償を使用してください。
 
-実行ローカルな Saga コールバックは、その実行とともに終了します。保持型の補償スコープ（`Workflow\V2\Compensation`、これも実験的）は各義務を永続台帳に保持するため、発生元の実行が閉じた後でも補償できます。この API については、エンジンリポジトリの[補償スコープガイド](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md)で説明しています。例では、すべての外部効果をディスパッチする前に `DurableScope::execute()` を通じて `Obligation` として登録し、親の以前の効果を取り消す前に子スコープを検証します。その後、ステップ自身の補償は元の義務のみを検証します。
+実行ローカルな Saga コールバックは、その実行とともに終了します。保持型の補償スコープ（`Workflow\V2\Compensation`）は各義務を永続台帳に保持するため、発生元の実行が閉じた後でも補償できます。この API と、そのどの部分が安定版かについては、[補償スコープガイド](./compensation-scopes.md)で説明しています。例では、すべての外部効果をディスパッチする前に `DurableScope::execute()` を通じて `Obligation` として登録し、親の以前の効果を取り消す前に子スコープを検証します。その後、ステップ自身の補償は元の義務のみを検証します。
 
 ```php
 public function compensate(TransitionContext $context, ExecutionReference $originalExecution): void

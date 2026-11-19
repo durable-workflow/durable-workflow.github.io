@@ -8,7 +8,7 @@ description: Protocolo experimental de transições para estados de negócio com
 
 :::warning Experimental
 
-A API `Workflow\V2\StateMachine`, assim como a API de escopos de compensação retidos e o início confirmado de filho (`Workflow::startChild()`) que ela usa, são experimentais. Elas são disponibilizadas de forma experimental a partir do Workflow 2.29.0, não estão cobertas pelas garantias de estabilidade do pacote e podem mudar em um release secundário. Elas são uma superfície `experimental` segundo os [níveis de estabilidade](../compatibility.md#stability-levels).
+A API `Workflow\V2\StateMachine`, assim como o início confirmado de filho (`Workflow::startChild()`) e `DurableScope::reserveChild()` que ela usa, são experimentais. Eles são disponibilizados de forma experimental a partir do Workflow 2.29.0, não estão cobertos pelas garantias de estabilidade do pacote e podem mudar em um release secundário. Eles são uma superfície `experimental` segundo os [níveis de estabilidade](../compatibility.md#stability-levels). O restante da API de escopos de compensação retidos que ela usa é estável desde o Workflow 2.33.0.
 
 Os exemplos desta página são exemplos de código-fonte do repositório com provedores sintéticos. Eles não constituem qualificação de pacote instalado nem de provedor real. Nada nesta página implica:
 
@@ -224,7 +224,7 @@ Sem uma reserva, `Workflow::startChild()` retorna um recibo `StartedChildWorkflo
 
 O runner registra a etapa original com a Saga nativa antes que `execute()` possa suspender ou falhar. O callback captura a execução e a etapa originais, não o recibo. Durante a compensação, o runner solicita um novo snapshot `compensation` e chama `compensate()` com a execução original. Use a compensação sequencial padrão.
 
-Um callback de Saga local a uma execução termina com essa execução. Os escopos de compensação retidos (`Workflow\V2\Compensation`, também experimentais) mantêm cada obrigação em um registro durável, de modo que ela possa ser compensada depois que a execução de origem for fechada. O [guia de escopos de compensação](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md) do repositório do motor descreve essa API. Nos exemplos, cada efeito externo é registrado como uma `Obligation` por meio de `DurableScope::execute()` antes de ser despachado, e um escopo filho é verificado antes que efeitos anteriores do pai sejam desfeitos. A compensação da própria etapa verifica então apenas as obrigações originais dela:
+Um callback de Saga local a uma execução termina com essa execução. Os escopos de compensação retidos (`Workflow\V2\Compensation`) mantêm cada obrigação em um registro durável, de modo que ela possa ser compensada depois que a execução de origem for fechada. O [guia de escopos de compensação](./compensation-scopes.md) descreve essa API e quais partes dela são estáveis. Nos exemplos, cada efeito externo é registrado como uma `Obligation` por meio de `DurableScope::execute()` antes de ser despachado, e um escopo filho é verificado antes que efeitos anteriores do pai sejam desfeitos. A compensação da própria etapa verifica então apenas as obrigações originais dela:
 
 ```php
 public function compensate(TransitionContext $context, ExecutionReference $originalExecution): void

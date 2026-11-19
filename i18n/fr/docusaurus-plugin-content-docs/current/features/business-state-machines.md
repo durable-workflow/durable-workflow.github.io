@@ -8,7 +8,7 @@ description: Protocole de transition expérimental pour des états métier parta
 
 :::warning Expérimental
 
-L’API `Workflow\V2\StateMachine`, ainsi que l’API de portées de compensation conservées et le démarrage d’enfant confirmé (`Workflow::startChild()`) qu’elle utilise, sont expérimentales. Elles sont livrées à titre expérimental depuis Workflow 2.29.0, ne sont pas couvertes par les garanties de stabilité du paquet et peuvent changer dans une version mineure. Elles constituent une surface `experimental` au sens des [niveaux de stabilité](../compatibility.md#stability-levels).
+L’API `Workflow\V2\StateMachine`, ainsi que le démarrage d’enfant confirmé (`Workflow::startChild()`) et `DurableScope::reserveChild()` qu’elle utilise, sont expérimentaux. Ils sont livrés à titre expérimental depuis Workflow 2.29.0, ne sont pas couverts par les garanties de stabilité du paquet et peuvent changer dans une version mineure. Ils constituent une surface `experimental` au sens des [niveaux de stabilité](../compatibility.md#stability-levels). Le reste de l’API de portées de compensation conservées qu’elle utilise est stable depuis Workflow 2.33.0.
 
 Les exemples de cette page sont des exemples de code source du dépôt avec des fournisseurs synthétiques. Ils ne constituent pas une qualification sur paquet installé ni avec un fournisseur réel. Rien sur cette page n’implique :
 
@@ -224,7 +224,7 @@ Sans réservation, `Workflow::startChild()` renvoie un reçu `StartedChildWorkfl
 
 L’exécuteur enregistre l’étape d’origine auprès de la Saga native avant que `execute()` puisse se suspendre ou échouer. Le rappel capture l’exécution et l’étape d’origine, et non le reçu. Pendant la compensation, l’exécuteur demande un nouvel instantané `compensation` et appelle `compensate()` avec l’exécution d’origine. Utilisez la compensation séquentielle par défaut.
 
-Un rappel de Saga local à une exécution (run) prend fin avec celle-ci. Les portées de compensation conservées (`Workflow\V2\Compensation`, également expérimentales) gardent chaque obligation dans un registre durable, de sorte qu’elle puisse être compensée après la clôture de l’exécution d’origine. Le [guide des portées de compensation](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md) du dépôt du moteur décrit cette API. Dans les exemples, chaque effet externe est enregistré comme `Obligation` via `DurableScope::execute()` avant d’être déclenché, et une portée enfant est vérifiée avant que les effets antérieurs du parent soient annulés. La compensation propre à l’étape ne vérifie ensuite que ses obligations d’origine :
+Un rappel de Saga local à une exécution (run) prend fin avec celle-ci. Les portées de compensation conservées (`Workflow\V2\Compensation`) gardent chaque obligation dans un registre durable, de sorte qu’elle puisse être compensée après la clôture de l’exécution d’origine. Le [guide des portées de compensation](./compensation-scopes.md) décrit cette API et indique quelles parties en sont stables. Dans les exemples, chaque effet externe est enregistré comme `Obligation` via `DurableScope::execute()` avant d’être déclenché, et une portée enfant est vérifiée avant que les effets antérieurs du parent soient annulés. La compensation propre à l’étape ne vérifie ensuite que ses obligations d’origine :
 
 ```php
 public function compensate(TransitionContext $context, ExecutionReference $originalExecution): void

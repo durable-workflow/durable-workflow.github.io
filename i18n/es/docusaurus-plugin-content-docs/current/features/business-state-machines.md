@@ -8,7 +8,7 @@ description: Protocolo experimental de transiciones para estados de negocio comp
 
 :::warning Experimental
 
-La API `Workflow\V2\StateMachine`, así como la API de ámbitos de compensación retenidos y el inicio confirmado de hijos (`Workflow::startChild()`) que utiliza, son experimentales. Se distribuyen de forma experimental desde Workflow 2.29.0, no están cubiertas por las garantías de estabilidad del paquete y pueden cambiar en una versión menor. Son una superficie `experimental` según los [niveles de estabilidad](../compatibility.md#stability-levels).
+La API `Workflow\V2\StateMachine`, así como el inicio confirmado de hijos (`Workflow::startChild()`) y `DurableScope::reserveChild()` que utiliza, son experimentales. Se distribuyen de forma experimental desde Workflow 2.29.0, no están cubiertas por las garantías de estabilidad del paquete y pueden cambiar en una versión menor. Son una superficie `experimental` según los [niveles de estabilidad](../compatibility.md#stability-levels). El resto de la API de ámbitos de compensación retenidos que utiliza es estable desde Workflow 2.33.0.
 
 Los ejemplos de esta página son ejemplos del código fuente del repositorio con proveedores sintéticos. No constituyen una cualificación con el paquete instalado ni con proveedores reales. Nada en esta página implica:
 
@@ -224,7 +224,7 @@ Sin una reserva, `Workflow::startChild()` devuelve un recibo `StartedChildWorkfl
 
 El runner registra el paso original con la Saga nativa antes de que `execute()` pueda suspenderse o fallar. La función de retorno captura la ejecución y el paso originales, no el recibo. Durante la compensación, el runner solicita una instantánea `compensation` nueva y llama a `compensate()` con la ejecución original. Use la compensación secuencial predeterminada.
 
-Una función de retorno de Saga local a la ejecución termina con su ejecución. Los ámbitos de compensación retenidos (`Workflow\V2\Compensation`, también experimentales) conservan cada obligación en un libro de registro duradero, de modo que pueda compensarse después de que se cierre la ejecución que la originó. La [guía de ámbitos de compensación](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md) del repositorio del motor describe esa API. En los ejemplos, cada efecto externo se registra como `Obligation` mediante `DurableScope::execute()` antes de despacharse, y un ámbito hijo se verifica antes de deshacer los efectos anteriores del padre. Después, la compensación propia del paso verifica solo sus obligaciones originales:
+Una función de retorno de Saga local a la ejecución termina con su ejecución. Los ámbitos de compensación retenidos (`Workflow\V2\Compensation`) conservan cada obligación en un libro de registro duradero, de modo que pueda compensarse después de que se cierre la ejecución que la originó. La [guía de ámbitos de compensación](./compensation-scopes.md) describe esa API y qué partes de ella son estables. En los ejemplos, cada efecto externo se registra como `Obligation` mediante `DurableScope::execute()` antes de despacharse, y un ámbito hijo se verifica antes de deshacer los efectos anteriores del padre. Después, la compensación propia del paso verifica solo sus obligaciones originales:
 
 ```php
 public function compensate(TransitionContext $context, ExecutionReference $originalExecution): void

@@ -8,12 +8,13 @@ description: Experimental transition protocol for shared business states, integr
 
 :::warning Experimental
 
-The `Workflow\V2\StateMachine` API, and the retained compensation-scope API and
-confirmed child start (`Workflow::startChild()`) it uses, are experimental. They
-ship experimentally from Workflow 2.29.0, are not covered by the package's
-stability guarantees, and may change in a minor release. They are an
-`experimental` surface under the
-[stability levels](../compatibility.md#stability-levels).
+The `Workflow\V2\StateMachine` API, and the confirmed child start
+(`Workflow::startChild()`) and `DurableScope::reserveChild()` it uses, are
+experimental. They ship experimentally from Workflow 2.29.0, are not covered by
+the package's stability guarantees, and may change in a minor release. They are
+an `experimental` surface under the
+[stability levels](../compatibility.md#stability-levels). The rest of the
+retained compensation-scope API it uses is stable since Workflow 2.33.0.
 
 The examples on this page are repository source examples with synthetic
 providers. They are not installed-package or real-provider qualification.
@@ -354,11 +355,10 @@ snapshot and calls `compensate()` with the original execution. Use the default
 sequential compensation.
 
 A run-local Saga callback ends with its run. Retained compensation scopes
-(`Workflow\V2\Compensation`, also experimental) keep each obligation in a
-durable ledger, so it can be compensated after the originating run closes. The
-engine repository's
-[compensation scopes guide](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md)
-describes that API. In the examples, every external effect is registered as an
+(`Workflow\V2\Compensation`) keep each obligation in a durable ledger, so it
+can be compensated after the originating run closes. The
+[compensation scopes guide](./compensation-scopes.md) describes that API and
+which parts of it are stable. In the examples, every external effect is registered as an
 `Obligation` through `DurableScope::execute()` before it is dispatched, and a
 child scope is verified before earlier parent effects are undone. The step's
 own compensation then verifies only its original obligations:

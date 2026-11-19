@@ -8,7 +8,7 @@ description: Experimentelles Übergangsprotokoll für gemeinsame fachliche Zust�
 
 :::warning Experimentell
 
-Die API `Workflow\V2\StateMachine` sowie die von ihr verwendete API für beibehaltene Kompensationsbereiche und der bestätigte Kindstart (`Workflow::startChild()`) sind experimentell. Sie werden ab Workflow 2.29.0 experimentell ausgeliefert, fallen nicht unter die Stabilitätsgarantien des Pakets und können sich in einem Minor-Release ändern. Sie sind eine `experimental`-Oberfläche gemäß den [Stabilitätsstufen](../compatibility.md#stability-levels).
+Die API `Workflow\V2\StateMachine` sowie der von ihr verwendete bestätigte Kindstart (`Workflow::startChild()`) und `DurableScope::reserveChild()` sind experimentell. Sie werden ab Workflow 2.29.0 experimentell ausgeliefert, fallen nicht unter die Stabilitätsgarantien des Pakets und können sich in einem Minor-Release ändern. Sie sind eine `experimental`-Oberfläche gemäß den [Stabilitätsstufen](../compatibility.md#stability-levels). Die übrige von ihr verwendete API für beibehaltene Kompensationsbereiche ist seit Workflow 2.33.0 stabil.
 
 Die Beispiele auf dieser Seite sind Quellbeispiele aus dem Repository mit synthetischen Anbietern. Sie sind keine Qualifizierung für installierte Pakete oder echte Anbieter. Nichts auf dieser Seite impliziert:
 
@@ -224,7 +224,7 @@ Ohne Reservierung gibt `Workflow::startChild()` einen `StartedChildWorkflow`-Bel
 
 Der Runner registriert den ursprünglichen Schritt bei der nativen Saga, bevor `execute()` suspendieren oder fehlschlagen kann. Der Callback erfasst die ursprüngliche Ausführung und den Schritt, nicht den Beleg. Während der Kompensation fordert der Runner einen frischen `compensation`-Snapshot an und ruft `compensate()` mit der ursprünglichen Ausführung auf. Verwenden Sie die standardmäßige sequenzielle Kompensation.
 
-Ein laufgebundener Saga-Callback endet mit seinem Lauf. Beibehaltene Kompensationsbereiche (`Workflow\V2\Compensation`, ebenfalls experimentell) halten jede Verpflichtung in einem dauerhaften Ledger fest, sodass sie kompensiert werden kann, nachdem der auslösende Lauf geschlossen wurde. Der [Leitfaden zu Kompensationsbereichen](https://github.com/durable-workflow/workflow/blob/main/docs/compensation-scopes.md) im Engine-Repository beschreibt diese API. In den Beispielen wird jede externe Wirkung über `DurableScope::execute()` als `Obligation` registriert, bevor sie ausgelöst wird, und ein Kindbereich wird verifiziert, bevor frühere Wirkungen des Eltern-Workflows rückgängig gemacht werden. Die eigene Kompensation des Schritts verifiziert dann nur seine ursprünglichen Verpflichtungen:
+Ein laufgebundener Saga-Callback endet mit seinem Lauf. Beibehaltene Kompensationsbereiche (`Workflow\V2\Compensation`) halten jede Verpflichtung in einem dauerhaften Ledger fest, sodass sie kompensiert werden kann, nachdem der auslösende Lauf geschlossen wurde. Der [Leitfaden zu Kompensationsbereichen](./compensation-scopes.md) beschreibt diese API und welche ihrer Teile stabil sind. In den Beispielen wird jede externe Wirkung über `DurableScope::execute()` als `Obligation` registriert, bevor sie ausgelöst wird, und ein Kindbereich wird verifiziert, bevor frühere Wirkungen des Eltern-Workflows rückgängig gemacht werden. Die eigene Kompensation des Schritts verifiziert dann nur seine ursprünglichen Verpflichtungen:
 
 ```php
 public function compensate(TransitionContext $context, ExecutionReference $originalExecution): void
