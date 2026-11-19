@@ -88,6 +88,60 @@ $result->instanceId();  // "order-123"
 - 无契约时，`await('name')` 在无参数时返回 `true`，一个参数时返回该值，多个参数时返回完整参数数组。
 - 未知信号名以 `rejected_unknown_signal` 拒绝；针对已关闭或未启动实例的信号分别以 `rejected_not_active` 或 `rejected_not_started` 拒绝。
 
+## 在一次操作中启动并发送信号 {#signal-with-start}
+
+`signalWithStart()` 在一个事务中启动工作流或复用其打开的运行，并在该运行上记录信号。分开调用 `start()` 和 `signal()` 会留下间隙，运行可能在此期间关闭，信号随之被拒绝：
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::make(OrderApprovalWorkflow::class, 'order-123')
+    ->signalWithStart('approved-by', ['approvedBy' => 'Taylor'], StartOptions::returnExistingActive());
+
+$result->startOutcome(); // "started_new" or "returned_existing_active"
+```
+
+当前运行已关闭时，嵌入式 signal-with-start 会在其之后启动新运行，已关闭的运行保留其结果。服务模式客户端使用 Server 的 signal-with-start，它需要原生 Server 3.15.0 或更高版本，并且除非调用方要求新运行，否则会拒绝已关闭的运行。PHP、Python 和 Rust SDK 的调用方式见 [signal-with-start](/docs/polyglot/workflow-signals#signal-with-start)。
+
+## 向另一个工作流发送信号 {#signal-another-workflow}
+
+:::note 待发布
+面向嵌入式工作流的持久 signal-external 位于 [Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247)，尚未发布。其 API 为实验性。
+:::
+
+工作流代码可以通过 `signalExternalWorkflow()` 向其命名空间内的另一个工作流发送信号。请求及其结果会在此工作流的历史中只记录一次，与在目标上接收该信号处于同一事务中；重放返回已记录的结果，不会再次发送：
+
+```php
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\signalExternalWorkflow;
+
+#[Type('order-approver')]
+final class OrderApproverWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $result = signalExternalWorkflow($orderId, 'approved-by', ['Taylor']);
+
+        if (! $result->delivered()) {
+            // target_not_found, target_closed or rejected, with a reason
+            return ['skipped' => $result->outcome->value, 'reason' => $result->reason];
+        }
+
+        return ['delivered_to' => $result->targetRunId];
+    }
+}
+```
+
+- 目标不存在、已关闭或拒绝时，返回 `ExternalSignalResult`，而不是抛出异常。结果和原因与 Server 一致，列于[服务模式指南](/docs/polyglot/workflow-signals#signal-another-workflow)。
+- 将运行 ID 作为第四个参数传入，即可只向该运行发送信号。子工作流句柄具有 `signalDurably()`，例如 `$this->lastChild()->signalDurably('approved-by', 'Taylor')`。句柄的 `signal()` 仍在父工作流历史之外直接发送，并可能在父工作流重放时再次发送。
+- 在目标上，它是归属于发送方运行的普通信号，键为 `workflow-signal:<sender run id>:<sequence>`。应用不能使用该请求 ID 前缀。
+- 信号名称遵循 Server 的规则（不能为空、不含控制字符、最多 191 个字符和 255 个字节）。被拒绝的名称会在记录任何内容之前，在工作流代码中抛出 `InvalidExternalSignalException`。
+- 在已记录的步骤上更改目标、运行、信号名称或参数，会作为历史形状不匹配而阻止重放。
+
+信号仅限于命名空间内。要访问另一个命名空间，请使用[服务操作](./service-operations.md)。需要从工作流代码执行 signal-with-start 时，请使用活动，并为其提供稳定的请求 ID，避免重试的活动发送两次信号。
+
 ## 兼容地演进信号载荷 {#evolve-a-signal-payload}
 
 需要兼容扩展的应用载荷应使用一个已声明的映射参数。本例添加可选的信息性 `note` 时仍保留 `schema_version: 1`。旧发送方省略该字段，新读取方使用 `null`。旧读取方可以忽略它，而不会改变审批决定。需要影响授权或业务行为的变更，不应放在会被忽略的字段中。

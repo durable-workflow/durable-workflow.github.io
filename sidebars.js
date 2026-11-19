@@ -23,6 +23,7 @@ const sidebars = {
         'polyglot/cancellation',
         'polyglot/workflow-streams',
         'polyglot/service-operations',
+        'polyglot/workflow-signals',
         'polyglot/polling-patterns',
         {
           type: 'category',
