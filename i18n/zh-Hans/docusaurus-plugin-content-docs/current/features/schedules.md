@@ -435,7 +435,7 @@ schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurr
 
 ## 在工作流代码中读取调度发生 {#reading-the-occurrence-in-workflow-code}
 
-调度会向每次运行传递相同的参数，回填启动的运行也不例外。要了解某次运行对应哪次发生，请在工作流中调用 `$this->scheduleOrigin()`。它返回一个 `Workflow\V2\Support\ScheduleOrigin`；对于不是由调度启动的运行，则返回 `null`。该方法在 2.29.1 之后的嵌入式 Workflow 版本中可用。
+调度会向每次运行传递相同的参数，回填启动的运行也不例外。要了解某次运行对应哪次发生，请在工作流中调用 `$this->scheduleOrigin()`。它返回一个 `Workflow\V2\Support\ScheduleOrigin`；对于不是由调度启动的运行，则返回 `null`。该方法自嵌入式 Workflow 2.30.0 起可用。
 
 - `scheduleId` 是调度的标识符。
 - `occurrenceTime` 是调度器评估的时间，类型为 `DateTimeImmutable`。对于 tick，它是加上抖动后的触发时间。对于回填，它是枚举出的过去发生。对于没有对应发生的手动 `trigger()`，它为 `null`。
@@ -475,7 +475,11 @@ final class DailyReportWorkflow extends Workflow
 
 在此 API 出现之前启动的运行已经拥有该事件，因此同样能读取其来源。没有该事件的历史读取到 `null`。
 
-PHP、Python 和 Rust SDK 在其面向服务模式 worker 的工作流上下文中公开相同的值。
+服务模式 worker 从其工作流上下文中读取相同的值。请将它们与原生 Server 3.13.0 或更高版本配合使用，该版本会记录它们读取的 `ScheduleTriggered` 事件。
+
+- PHP SDK 3.13.0 及更高版本：`WorkflowContext::scheduleOrigin()`。
+- Python SDK 2.19.0 及更高版本：`ctx.schedule_origin`。
+- Rust SDK 4.19.0 及更高版本：`ctx.schedule_origin()`。
 
 ## 队列路由 {#queue-routing}
 

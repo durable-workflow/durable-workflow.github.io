@@ -560,8 +560,8 @@ Ein Zeitplan übergibt jedem Lauf dieselben Argumente, auch nachgeholten Läufen
 Um zu erfahren, für welches Vorkommen ein Lauf steht, rufen Sie im Workflow
 `$this->scheduleOrigin()` auf. Die Methode gibt ein
 `Workflow\V2\Support\ScheduleOrigin` zurück, oder `null` für einen Lauf, den
-kein Zeitplan gestartet hat. Sie ist in eingebetteten Workflow-Releases nach
-2.29.1 verfügbar.
+kein Zeitplan gestartet hat. Sie ist ab eingebettetem Workflow
+2.30.0 verfügbar.
 
 - `scheduleId` ist die Kennung des Zeitplans.
 - `occurrenceTime` ist die vom Scheduler ausgewertete Zeit als
@@ -623,8 +623,13 @@ Läufe, die gestartet wurden, bevor es diese API gab, haben das Ereignis bereits
 und lesen daher ebenfalls ihren Ursprung. Historien ohne das Ereignis liefern
 `null`.
 
-Die PHP-, Python- und Rust-SDKs stellen denselben Wert in ihren
-Workflow-Kontexten für Worker im Service-Modus bereit.
+Worker im Service-Modus lesen denselben Wert aus ihrem Workflow-Kontext.
+Verwenden Sie sie mit nativem Server 3.13.0 oder neuer, der das von ihnen
+gelesene `ScheduleTriggered`-Ereignis aufzeichnet.
+
+- PHP-SDK 3.13.0 und neuer: `WorkflowContext::scheduleOrigin()`.
+- Python-SDK 2.19.0 und neuer: `ctx.schedule_origin`.
+- Rust-SDK 4.19.0 und neuer: `ctx.schedule_origin()`.
 
 ## Queue-Routing {#queue-routing}
 

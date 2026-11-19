@@ -499,7 +499,7 @@ A schedule passes the same arguments to every run, including backfilled ones.
 To learn which occurrence a run stands for, call `$this->scheduleOrigin()` in
 the workflow. It returns a `Workflow\V2\Support\ScheduleOrigin`, or `null`
 for a run that no schedule started. It is available in embedded Workflow
-releases after 2.29.1.
+2.30.0 and later.
 
 - `scheduleId` is the schedule's identifier.
 - `occurrenceTime` is the time the scheduler evaluated, as a
@@ -555,8 +555,13 @@ Which runs keep the origin:
 Runs started before this API existed already have the event, so they read their
 origin too. Histories without the event read `null`.
 
-The PHP, Python and Rust SDKs expose the same value on their workflow contexts
-for service-mode workers.
+Service-mode workers read the same value from their workflow context. Use them
+with native Server 3.13.0 or later, which records the `ScheduleTriggered` event
+they read.
+
+- PHP SDK 3.13.0 and later: `WorkflowContext::scheduleOrigin()`.
+- Python SDK 2.19.0 and later: `ctx.schedule_origin`.
+- Rust SDK 4.19.0 and later: `ctx.schedule_origin()`.
 
 ## Queue routing
 

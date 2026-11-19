@@ -438,7 +438,7 @@ schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurr
 
 ## ワークフローコードで発生回を読み取る {#reading-the-occurrence-in-workflow-code}
 
-スケジュールは、バックフィルによる実行も含め、すべての実行に同じ引数を渡します。実行がどの発生回に対応するかを知るには、ワークフロー内で `$this->scheduleOrigin()` を呼び出します。これは `Workflow\V2\Support\ScheduleOrigin` を返し、スケジュールが開始していない実行では `null` を返します。2.29.1 より後の埋め込み Workflow リリースで利用できます。
+スケジュールは、バックフィルによる実行も含め、すべての実行に同じ引数を渡します。実行がどの発生回に対応するかを知るには、ワークフロー内で `$this->scheduleOrigin()` を呼び出します。これは `Workflow\V2\Support\ScheduleOrigin` を返し、スケジュールが開始していない実行では `null` を返します。埋め込み Workflow 2.30.0 以降で利用できます。
 
 - `scheduleId` はスケジュールの識別子です。
 - `occurrenceTime` はスケジューラーが評価した時刻で、`DateTimeImmutable` として返ります。tick ではジッター適用後の起動時刻です。バックフィルでは列挙された過去の発生回です。発生回を持たない手動の `trigger()` では `null` です。
@@ -478,7 +478,11 @@ final class DailyReportWorkflow extends Workflow
 
 この API より前に開始された実行もすでにイベントを持っているため、起点を読み取れます。イベントのない履歴では `null` になります。
 
-PHP、Python、Rust の SDK は、サービスモードのワーカー向けに、ワークフローコンテキストで同じ値を公開します。
+サービスモードのワーカーは、ワークフローコンテキストから同じ値を読み取ります。読み取る `ScheduleTriggered` イベントを記録するネイティブ Server 3.13.0 以降と組み合わせて使用してください。
+
+- PHP SDK 3.13.0 以降: `WorkflowContext::scheduleOrigin()`。
+- Python SDK 2.19.0 以降: `ctx.schedule_origin`。
+- Rust SDK 4.19.0 以降: `ctx.schedule_origin()`。
 
 ## キュールーティング {#queue-routing}
 

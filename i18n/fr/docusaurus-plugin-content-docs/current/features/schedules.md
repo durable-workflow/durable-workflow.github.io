@@ -450,7 +450,7 @@ Où le format s’applique :
 
 ## Lire l’occurrence dans le code du workflow {#reading-the-occurrence-in-workflow-code}
 
-Une planification transmet les mêmes arguments à chaque exécution, y compris celles issues d’un rattrapage. Pour savoir quelle occurrence une exécution représente, appelez `$this->scheduleOrigin()` dans le workflow. Cette méthode renvoie un `Workflow\V2\Support\ScheduleOrigin`, ou `null` pour une exécution qu’aucune planification n’a lancée. Elle est disponible dans les versions de Workflow intégré postérieures à 2.29.1.
+Une planification transmet les mêmes arguments à chaque exécution, y compris celles issues d’un rattrapage. Pour savoir quelle occurrence une exécution représente, appelez `$this->scheduleOrigin()` dans le workflow. Cette méthode renvoie un `Workflow\V2\Support\ScheduleOrigin`, ou `null` pour une exécution qu’aucune planification n’a lancée. Elle est disponible à partir de Workflow intégré 2.30.0.
 
 - `scheduleId` est l’identifiant de la planification.
 - `occurrenceTime` est l’heure évaluée par le planificateur, sous forme de `DateTimeImmutable`. Pour un passage, c’est l’échéance avec jitter. Pour un rattrapage, c’est l’occurrence passée énumérée. Elle vaut `null` pour un `trigger()` manuel, qui n’a pas d’occurrence.
@@ -490,7 +490,11 @@ Exécutions qui conservent l’origine :
 
 Les exécutions lancées avant l’existence de cette API possèdent déjà l’événement et lisent donc aussi leur origine. Les historiques sans cet événement renvoient `null`.
 
-Les SDK PHP, Python et Rust exposent la même valeur dans leurs contextes de workflow pour les workers en mode service.
+Les workers en mode service lisent la même valeur depuis leur contexte de workflow. Utilisez-les avec Server natif 3.13.0 ou une version ultérieure, qui enregistre l’événement `ScheduleTriggered` qu’ils lisent.
+
+- SDK PHP 3.13.0 et versions ultérieures : `WorkflowContext::scheduleOrigin()`.
+- SDK Python 2.19.0 et versions ultérieures : `ctx.schedule_origin`.
+- SDK Rust 4.19.0 et versions ultérieures : `ctx.schedule_origin()`.
 
 ## Routage par file {#queue-routing}
 

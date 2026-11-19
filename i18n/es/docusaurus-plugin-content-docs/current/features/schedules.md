@@ -476,7 +476,7 @@ Dónde se aplica el formato:
 
 ## Leer la ocurrencia en el código del workflow {#reading-the-occurrence-in-workflow-code}
 
-Una programación pasa los mismos argumentos a todas las ejecuciones, incluidas las de recuperación. Para saber qué ocurrencia representa una ejecución, llama a `$this->scheduleOrigin()` en el workflow. Devuelve un `Workflow\V2\Support\ScheduleOrigin`, o `null` para una ejecución que no inició ninguna programación. Está disponible en las versiones de Workflow embebido posteriores a 2.29.1.
+Una programación pasa los mismos argumentos a todas las ejecuciones, incluidas las de recuperación. Para saber qué ocurrencia representa una ejecución, llama a `$this->scheduleOrigin()` en el workflow. Devuelve un `Workflow\V2\Support\ScheduleOrigin`, o `null` para una ejecución que no inició ninguna programación. Está disponible a partir de Workflow embebido 2.30.0.
 
 - `scheduleId` es el identificador de la programación.
 - `occurrenceTime` es el momento que evaluó el planificador, como `DateTimeImmutable`. En un tick es la hora de activación con el jitter aplicado. En una recuperación es la ocurrencia pasada enumerada. Es `null` en un `trigger()` manual, que no tiene ocurrencia.
@@ -516,7 +516,11 @@ Qué ejecuciones conservan el origen:
 
 Las ejecuciones iniciadas antes de que existiera esta API ya tienen el evento, así que también leen su origen. Los historiales sin el evento leen `null`.
 
-Los SDK de PHP, Python y Rust exponen el mismo valor en sus contextos de workflow para workers en modo de servicio.
+Los workers en modo de servicio leen el mismo valor desde su contexto de workflow. Úsalos con Server nativo 3.13.0 o posterior, que registra el evento `ScheduleTriggered` que leen.
+
+- SDK de PHP 3.13.0 y posteriores: `WorkflowContext::scheduleOrigin()`.
+- SDK de Python 2.19.0 y posteriores: `ctx.schedule_origin`.
+- SDK de Rust 4.19.0 y posteriores: `ctx.schedule_origin()`.
 
 ## Enrutamiento por colas {#queue-routing}
 

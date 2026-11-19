@@ -487,7 +487,7 @@ Onde o formato se aplica:
 
 ## Leitura da ocorrência no código do workflow {#reading-the-occurrence-in-workflow-code}
 
-Um agendamento passa os mesmos argumentos a todas as execuções, inclusive as de preenchimento retroativo. Para saber qual ocorrência uma execução representa, chame `$this->scheduleOrigin()` no workflow. O método retorna um `Workflow\V2\Support\ScheduleOrigin`, ou `null` para uma execução que nenhum agendamento iniciou. Ele está disponível nas versões do Workflow embutido posteriores a 2.29.1.
+Um agendamento passa os mesmos argumentos a todas as execuções, inclusive as de preenchimento retroativo. Para saber qual ocorrência uma execução representa, chame `$this->scheduleOrigin()` no workflow. O método retorna um `Workflow\V2\Support\ScheduleOrigin`, ou `null` para uma execução que nenhum agendamento iniciou. Ele está disponível a partir do Workflow embutido 2.30.0.
 
 - `scheduleId` é o identificador do agendamento.
 - `occurrenceTime` é o horário avaliado pelo agendador, como `DateTimeImmutable`. Em um tick, é o horário de disparo com jitter. Em um preenchimento retroativo, é a ocorrência passada enumerada. É `null` em um `trigger()` manual, que não tem ocorrência.
@@ -527,7 +527,11 @@ Quais execuções mantêm a origem:
 
 Execuções iniciadas antes de esta API existir já têm o evento, então também leem sua origem. Históricos sem o evento leem `null`.
 
-Os SDKs de PHP, Python e Rust expõem o mesmo valor em seus contextos de workflow para workers em modo de serviço.
+Workers em modo de serviço leem o mesmo valor do seu contexto de workflow. Use-os com o Server nativo 3.13.0 ou posterior, que registra o evento `ScheduleTriggered` que eles leem.
+
+- SDK de PHP 3.13.0 e posteriores: `WorkflowContext::scheduleOrigin()`.
+- SDK de Python 2.19.0 e posteriores: `ctx.schedule_origin`.
+- SDK de Rust 4.19.0 e posteriores: `ctx.schedule_origin()`.
 
 ## Roteamento por fila {#queue-routing}
 
