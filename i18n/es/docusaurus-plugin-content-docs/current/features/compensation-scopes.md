@@ -14,13 +14,13 @@ Use un ámbito cuando la cancelación pueda llegar tarde, por ejemplo cuando un 
 
 | Parte | Estado |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estable desde 2.31.0 |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Estable desde 2.31.0 |
-| `ScopeAuthorization`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estable desde 2.31.0 |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estabilidad prevista (2.32.0 o posterior) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Estabilidad prevista (2.32.0 o posterior) |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estabilidad prevista (2.32.0 o posterior) |
 | `DurableScope::reserveChild()` y admisión raíz (`RootReservationStore`) | Experimental |
 | Clases marcadas con `@internal` (actividades, persistencia, motor de recuperación) | No es API pública |
 
-Las API de ámbitos se publicaron por primera vez como experimentales en 2.29.0. La recuperación automática después de que se cierre la ejecución de origen, el calendario de reintentos de recuperación y `describe()` llegan en 2.31.0. Antes de 2.31.0, toda la API es experimental y puede cambiar en una versión menor. Desde 2.31.0, las partes estables siguen la [política de compatibilidad de 2.x](../compatibility.md). La compatibilidad inicial se limita a Laravel integrado y a la compensación secuencial.
+Las API de ámbitos se publicaron por primera vez como experimentales en 2.29.0. La recuperación automática después de que se cierre la ejecución de origen, el calendario de reintentos de recuperación y `describe()` llegan en 2.31.0. Toda la API sigue siendo experimental, y puede cambiar en una versión menor, hasta que una versión menor posterior (2.32.0 o posterior, según se decida en esa versión) promueva las partes marcadas con estabilidad prevista. Tras esa promoción, siguen la [política de compatibilidad de 2.x](../compatibility.md). La compatibilidad inicial se limita a Laravel integrado y a la compensación secuencial.
 
 ## Cómo funciona {#how-it-works}
 
@@ -28,14 +28,14 @@ Un ámbito se identifica mediante `(application, namespace, key, generation)`. S
 
 - un tipo y una versión de manejador cerrados, nunca un closure de PHP;
 - un ID de operación estable, que el manejador utiliza para conciliar con el proveedor;
-- una entrada portable (como máximo 16 KiB, 512 valores y profundidad 8);
+- una entrada portable (como máximo 15 360 bytes como JSON, 500 valores y profundidad 7);
 - los resultados del avance y de la compensación, con referencias de evidencia.
 
 Mientras la ejecución de origen está abierta, cancelarla ejecuta la saga nativa, que compensa en orden inverso al de registro. Después de que la ejecución se cierra, un workflow de recuperación canónico compensa las mismas obligaciones a partir del registro. Nunca reabre la ejecución original ni modifica su historial.
 
 ## Configurar el host {#set-up-the-host}
 
-Vincule una política de autorización de ámbitos y un registro de manejadores cerrado en un service provider. La política devuelve su versión de política o lanza una excepción para rechazar.
+Vincule una política de autorización de ámbitos y un registro de manejadores cerrado en un service provider. La política devuelve su versión de política. Para rechazar, lanza `ScopeAuthorizationRefused`.
 
 ```php
 use App\Compensation\OrderScopeAuthorization;
@@ -49,7 +49,9 @@ $this->app->singleton(HandlerRegistry::class, static fn (): HandlerRegistry => n
 ]));
 ```
 
-`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` se invoca con `register`, `forward`, `compensate`, `participate`, `request`, `release` o `inspect`. Derive el principal de una política de aplicación de confianza, nunca de la carga útil de una solicitud. Ejecute las migraciones del paquete; crean las tablas del registro en la conexión de almacenamiento del workflow.
+`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` se invoca con `register`, `forward`, `compensate`, `participate`, `request`, `release` o `inspect`. Rechace cualquier otro nombre de operación. Solo `ScopeAuthorizationRefused` es un rechazo permanente. Cualquier otra excepción se trata como transitoria: se reintenta, y la recuperación automática vuelve a intentarlo más tarde. Derive el principal de una política de aplicación de confianza, nunca de la carga útil de una solicitud. Ejecute las migraciones del paquete; crean las tablas del registro en la conexión de almacenamiento del workflow.
+
+Los identificadores (aplicación, clave, generación, clave de operación y versión del manejador) usan de 1 a 128 caracteres de `A-Z a-z 0-9 . _ : / -` y empiezan por una letra o un dígito. Los tipos de manejador usan `a-z 0-9 . _ -`, empiezan por una letra minúscula y no deben empezar por `dw.`, que está reservado para el motor.
 
 ## Registrar obligaciones en un workflow {#register-obligations-in-a-workflow}
 
@@ -118,12 +120,15 @@ final class StockReservation implements ScopedOperation
             return Resolution::unknown('stock-release-pending');
         }
 
-        return Resolution::verified(['stock-release:' . $context->operationId], true);
+        return Resolution::verified(['stock-release:' . $context->operationId]);
     }
 }
 ```
 
-Los manejadores pueden ejecutarse más de una vez para la misma operación, así que haga que ambos métodos sean idempotentes por `operationId`. Devuelva `ForwardResult::unknown()` cuando el resultado en el proveedor sea incierto. Devuelva `Resolution::verified()` solo con evidencia de que el efecto se ha deshecho; el valor devuelto por un callback, un timeout o una ejecución cerrada no constituye esa evidencia. `Resolution::unknown()` mantiene la obligación sin resolver y permite que se ejecuten los reintentos nativos.
+Los manejadores pueden ejecutarse más de una vez para la misma operación, así que haga que ambos métodos sean idempotentes por `operationId`.
+
+- `execute()` devuelve `ForwardResult::observed()` con evidencia, `unknown()` cuando el resultado en el proveedor es incierto, o `rejected()` cuando el proveedor con certeza no produjo ningún efecto. Un avance rechazado hace fallar la llamada del workflow con `scope_forward_rejected`, y su compensación no necesita ninguna llamada al proveedor. Cuando `$context->reconcileBeforeForward` es true, es posible que un intento anterior haya surtido efecto; consulte la operación antes de emitirla de nuevo.
+- `compensate()` devuelve `Resolution::verified()` solo con evidencia de que el efecto se ha deshecho y de que no es posible ningún efecto de avance tardío. El valor devuelto por un callback, un timeout o una ejecución cerrada no constituye esa evidencia. Devuelva `unknown()` para mantener la obligación sin resolver y permitir que se ejecuten los reintentos nativos, o `failed()` cuando la compensación con certeza no puede completarse. Cuando `$context->forwardOutcomeUnconfirmed` es true, el efecto de avance nunca se confirmó y aún puede llegar tarde.
 
 ## Cancelar y recuperar {#cancel-and-recover}
 
@@ -141,11 +146,11 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 Las ejecuciones de recuperación realizan hasta seis intentos por compensación. Entre intentos esperan 1, 2, 5 y 10 segundos, y después un lease de actividad más una pasada de reparación de tareas, de modo que el intento de un worker que se haya caído se recupera antes del último intento. La verificación de un hijo, o una nueva solicitud autorizada, despierta de inmediato un reintento en espera. Un fallo persistente sigue haciendo fallar la ejecución de recuperación, y la obligación queda sin resolver.
 
-Inspeccione el resultado con `describe()`. Es de solo lectura y requiere la autorización `inspect`:
+Inspeccione el resultado con `describe()`. Es de solo lectura y requiere la autorización `inspect`. Siempre devuelve las mismas claves. Los estados provienen de los enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` y `ObligationStatus`, y un rechazo es un `code` estable más el `message` del host, que no es estable para su procesamiento automático:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
-// scopeStatus, originStatus, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
+// scopeStatus, originStatus, recoveryRunId, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
 ```
 
 `nextAction` es `submit_fresh_authorized_request` cuando la recuperación automática fue rechazada (`automaticRecovery: recovery_authorization_failed`) o una ejecución de recuperación falló. En ese caso, envíe una nueva clave de solicitud. Repetir una clave de solicitud devuelve su comprobante original y nunca inicia otra ejecución.
@@ -160,12 +165,13 @@ El registro del ámbito liquida la compensación. Una decisión de negocio, como
 
 ## Garantías y límites {#guarantees-and-limits}
 
-Desde 2.31.0, las API estables no cambian de forma incompatible dentro de 2.x. Los historiales de compensación registrados se reproducen en cada versión 2.x posterior, y el comportamiento nuevo solo llega tras un marcador de versión registrado. Las migraciones del registro solo añaden.
+Tras la promoción, las API estables no cambian de forma incompatible dentro de 2.x. Los historiales de compensación registrados se reproducen en cada versión 2.x posterior, y el comportamiento nuevo solo llega tras un marcador de versión registrado. Las migraciones del registro solo añaden.
 
 Estos límites son mínimos que pueden aumentar, pero no disminuirán:
 
-- 256 obligaciones por ámbito, 16 ámbitos hijos por padre, un nivel de anidamiento;
-- 128 solicitudes por ámbito;
+- entrada de una obligación: 15 360 bytes como JSON, 500 valores y profundidad 7; valor del resultado de avance: 11 264 bytes, 400 valores y profundidad 7;
+- 256 obligaciones por ámbito, incluidos hasta 16 participantes hijos, y un nivel de anidamiento;
+- 128 solicitudes por ámbito, compartidas con las solicitudes hijas del motor;
 - 32 referencias de evidencia de como máximo 128 bytes por resultado.
 
 No se garantiza: el momento en que actúa el watchdog, los intervalos exactos de reintento (solo que la recuperación dura más que una reparación de lease), la disposición de las filas del registro ni nada marcado con `@internal`. Nunca se prometen efectos externos exactamente una vez; la conciliación con el proveedor por ID de operación es responsabilidad de su manejador.

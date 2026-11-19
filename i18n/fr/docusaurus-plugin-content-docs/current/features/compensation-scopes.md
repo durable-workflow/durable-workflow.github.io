@@ -14,13 +14,13 @@ Utilisez une portée lorsque l’annulation peut arriver tardivement, par exempl
 
 | Élément | Statut |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stable à partir de 2.31.0 |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Stable à partir de 2.31.0 |
-| `ScopeAuthorization`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stable à partir de 2.31.0 |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stabilité prévue (2.32.0 ou ultérieure) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Stabilité prévue (2.32.0 ou ultérieure) |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stabilité prévue (2.32.0 ou ultérieure) |
 | `DurableScope::reserveChild()` et admission racine (`RootReservationStore`) | Expérimental |
 | Classes marquées `@internal` (activités, persistance, moteur de récupération) | Pas une API publique |
 
-Les API de portée ont d’abord été livrées à titre expérimental dans 2.29.0. La récupération automatique après la clôture de l’exécution d’origine, le calendrier de nouvelles tentatives de récupération et `describe()` arrivent dans 2.31.0. Avant 2.31.0, l’ensemble de l’API est expérimental et peut changer dans une version mineure. À partir de 2.31.0, les parties stables suivent la [politique de compatibilité 2.x](../compatibility.md). La prise en charge initiale se limite à Laravel intégré et à la compensation séquentielle.
+Les API de portée ont d’abord été livrées à titre expérimental dans 2.29.0. La récupération automatique après la clôture de l’exécution d’origine, le calendrier de nouvelles tentatives de récupération et `describe()` arrivent dans 2.31.0. L’ensemble de l’API reste expérimental, et peut changer dans une version mineure, jusqu’à ce qu’une version mineure ultérieure (2.32.0 ou ultérieure, selon ce qui sera décidé lors de cette version) promeuve les parties marquées comme à stabilité prévue. Après cette promotion, elles suivent la [politique de compatibilité 2.x](../compatibility.md). La prise en charge initiale se limite à Laravel intégré et à la compensation séquentielle.
 
 ## Fonctionnement {#how-it-works}
 
@@ -28,14 +28,14 @@ Une portée est identifiée par `(application, namespace, key, generation)`. Son
 
 - un type et une version de gestionnaire fermés, jamais une closure PHP ;
 - un identifiant d’opération stable, que le gestionnaire utilise pour se réconcilier avec le fournisseur ;
-- une entrée portable (au plus 16 KiB, 512 valeurs et une profondeur de 8) ;
+- une entrée portable (au plus 15 360 octets en JSON, 500 valeurs et une profondeur de 7) ;
 - les résultats de l’opération directe et de la compensation, avec des références de preuve.
 
 Tant que l’exécution d’origine est ouverte, son annulation lance la saga native, qui compense dans l’ordre inverse de l’enregistrement. Après la clôture de l’exécution, un workflow de récupération canonique compense les mêmes obligations à partir du registre. Il ne rouvre jamais l’exécution d’origine et ne modifie jamais son historique.
 
 ## Configurer l’hôte {#set-up-the-host}
 
-Liez une politique d’autorisation de portée et un registre de gestionnaires fermé dans un fournisseur de services. La politique renvoie sa version de politique, ou lève une exception pour refuser.
+Liez une politique d’autorisation de portée et un registre de gestionnaires fermé dans un fournisseur de services. La politique renvoie sa version de politique. Pour refuser, elle lève `ScopeAuthorizationRefused`.
 
 ```php
 use App\Compensation\OrderScopeAuthorization;
@@ -49,7 +49,9 @@ $this->app->singleton(HandlerRegistry::class, static fn (): HandlerRegistry => n
 ]));
 ```
 
-`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` est appelée avec `register`, `forward`, `compensate`, `participate`, `request`, `release` ou `inspect`. Dérivez le principal d’une politique applicative de confiance, jamais d’une charge utile de requête. Exécutez les migrations du paquet ; elles créent les tables du registre sur la connexion de stockage du workflow.
+`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` est appelée avec `register`, `forward`, `compensate`, `participate`, `request`, `release` ou `inspect`. Refusez tout autre nom d’opération. Seule `ScopeAuthorizationRefused` constitue un refus permanent. Toute autre exception est traitée comme transitoire : elle fait l’objet de nouvelles tentatives, et la récupération automatique réessaie plus tard. Dérivez le principal d’une politique applicative de confiance, jamais d’une charge utile de requête. Exécutez les migrations du paquet ; elles créent les tables du registre sur la connexion de stockage du workflow.
+
+Les identifiants (application, clé, génération, clé d’opération et version du gestionnaire) comptent de 1 à 128 caractères parmi `A-Z a-z 0-9 . _ : / -` et commencent par une lettre ou un chiffre. Les types de gestionnaire utilisent `a-z 0-9 . _ -`, commencent par une lettre minuscule et ne doivent pas commencer par `dw.`, qui est réservé au moteur.
 
 ## Enregistrer des obligations dans un workflow {#register-obligations-in-a-workflow}
 
@@ -118,12 +120,15 @@ final class StockReservation implements ScopedOperation
             return Resolution::unknown('stock-release-pending');
         }
 
-        return Resolution::verified(['stock-release:' . $context->operationId], true);
+        return Resolution::verified(['stock-release:' . $context->operationId]);
     }
 }
 ```
 
-Les gestionnaires peuvent s’exécuter plusieurs fois pour la même opération ; rendez donc les deux méthodes idempotentes par `operationId`. Renvoyez `ForwardResult::unknown()` lorsque le résultat chez le fournisseur est incertain. Renvoyez `Resolution::verified()` uniquement avec la preuve que l’effet est annulé ; une valeur de retour de callback, un délai d’expiration ou une exécution clôturée ne constitue pas une telle preuve. `Resolution::unknown()` laisse l’obligation non résolue et permet aux nouvelles tentatives natives de s’exécuter.
+Les gestionnaires peuvent s’exécuter plusieurs fois pour la même opération ; rendez donc les deux méthodes idempotentes par `operationId`.
+
+- `execute()` renvoie `ForwardResult::observed()` avec des preuves, `unknown()` lorsque le résultat chez le fournisseur est incertain, ou `rejected()` lorsque le fournisseur n’a assurément produit aucun effet. Une opération directe rejetée fait échouer l’appel du workflow avec `scope_forward_rejected`, et sa compensation ne nécessite aucun appel au fournisseur. Lorsque `$context->reconcileBeforeForward` vaut true, une tentative antérieure a pu prendre effet ; vérifiez l’état de l’opération avant de l’émettre à nouveau.
+- `compensate()` renvoie `Resolution::verified()` uniquement avec la preuve que l’effet est annulé et qu’aucun effet direct tardif n’est possible. Une valeur de retour de callback, un délai d’expiration ou une exécution clôturée ne constitue pas une telle preuve. Renvoyez `unknown()` pour laisser l’obligation non résolue et permettre aux nouvelles tentatives natives de s’exécuter, ou `failed()` lorsque la compensation ne peut assurément pas aboutir. Lorsque `$context->forwardOutcomeUnconfirmed` vaut true, l’effet direct n’a jamais été confirmé et peut encore survenir tardivement.
 
 ## Annuler et récupérer {#cancel-and-recover}
 
@@ -141,11 +146,11 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 Les exécutions de récupération effectuent jusqu’à six tentatives par compensation. Entre les tentatives, elles attendent 1, 2, 5 et 10 secondes, puis un bail d’activité plus un passage de réparation des tâches, de sorte que la tentative d’un worker tombé en panne est récupérée avant la dernière tentative. La vérification d’un enfant, ou une nouvelle requête autorisée, réveille immédiatement une nouvelle tentative en attente. Un échec persistant fait tout de même échouer l’exécution de récupération, l’obligation restant non résolue.
 
-Inspectez le résultat avec `describe()`. Cet appel est en lecture seule et nécessite l’autorisation `inspect` :
+Inspectez le résultat avec `describe()`. Cet appel est en lecture seule et nécessite l’autorisation `inspect`. Il renvoie toujours les mêmes clés. Les statuts proviennent des enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` et `ObligationStatus`, et un refus se compose d’un `code` stable et du `message` de l’hôte, qui n’est pas stable pour un traitement automatisé :
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
-// scopeStatus, originStatus, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
+// scopeStatus, originStatus, recoveryRunId, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
 ```
 
 `nextAction` vaut `submit_fresh_authorized_request` lorsque la récupération automatique a été refusée (`automaticRecovery: recovery_authorization_failed`) ou qu’une exécution de récupération a échoué. Soumettez dans ce cas une nouvelle clé de requête. Répéter une clé de requête renvoie son accusé de réception d’origine et ne démarre jamais une autre exécution.
@@ -160,12 +165,13 @@ Le registre de la portée règle la compensation. Une décision métier, comme m
 
 ## Garanties et limites {#guarantees-and-limits}
 
-À partir de 2.31.0, les API stables ne changent pas de manière incompatible au sein de 2.x. Les historiques de compensation enregistrés sont rejoués sur chaque version 2.x ultérieure, et tout nouveau comportement n’arrive que derrière un marqueur de version enregistré. Les migrations du registre ne font qu’ajouter.
+Après la promotion, les API stables ne changent pas de manière incompatible au sein de 2.x. Les historiques de compensation enregistrés sont rejoués sur chaque version 2.x ultérieure, et tout nouveau comportement n’arrive que derrière un marqueur de version enregistré. Les migrations du registre ne font qu’ajouter.
 
 Ces limites sont des minimums qui peuvent augmenter mais ne diminueront pas :
 
-- 256 obligations par portée, 16 portées enfants par parent, un seul niveau d’imbrication ;
-- 128 requêtes par portée ;
+- entrée d’une obligation : 15 360 octets en JSON, 500 valeurs et une profondeur de 7 ; valeur du résultat direct : 11 264 octets, 400 valeurs et une profondeur de 7 ;
+- 256 obligations par portée, dont jusqu’à 16 participants enfants, et un seul niveau d’imbrication ;
+- 128 requêtes par portée, partagées avec les requêtes enfants du moteur ;
 - 32 références de preuve d’au plus 128 octets par résultat.
 
 Ne sont pas garantis : le moment d’intervention du watchdog, les intervalles exacts entre les tentatives (seulement que la récupération dure plus longtemps qu’une réparation de bail), la disposition des lignes du registre et tout ce qui est marqué `@internal`. Des effets externes exactement une fois ne sont jamais promis ; la réconciliation avec le fournisseur par identifiant d’opération relève de la responsabilité de votre gestionnaire.

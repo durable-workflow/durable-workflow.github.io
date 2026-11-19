@@ -14,13 +14,13 @@ Verwenden Sie einen Bereich, wenn ein Abbruch spät eintreffen kann, etwa wenn e
 
 | Teil | Status |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stabil ab 2.31.0 |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Stabil ab 2.31.0 |
-| `ScopeAuthorization`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stabil ab 2.31.0 |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Geplant stabil (2.32.0 oder später) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Geplant stabil (2.32.0 oder später) |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Geplant stabil (2.32.0 oder später) |
 | `DurableScope::reserveChild()` und Root-Zulassung (`RootReservationStore`) | Experimentell |
 | Mit `@internal` markierte Klassen (Aktivitäten, Persistenz, Wiederherstellungs-Engine) | Keine öffentliche API |
 
-Die Bereichs-APIs wurden erstmals in 2.29.0 als experimentell ausgeliefert. Die automatische Wiederherstellung nach dem Schließen des ursprünglichen Laufs, der Wiederholungsplan der Wiederherstellung und `describe()` kommen mit 2.31.0. Vor 2.31.0 ist die gesamte API experimentell und kann sich in einem Minor-Release ändern. Ab 2.31.0 folgen die stabilen Teile der [2.x-Kompatibilitätsrichtlinie](../compatibility.md). Die anfängliche Unterstützung ist auf eingebettetes Laravel und sequenzielle Kompensation beschränkt.
+Die Bereichs-APIs wurden erstmals in 2.29.0 als experimentell ausgeliefert. Die automatische Wiederherstellung nach dem Schließen des ursprünglichen Laufs, der Wiederholungsplan der Wiederherstellung und `describe()` kommen mit 2.31.0. Die gesamte API bleibt experimentell und kann sich in einem Minor-Release ändern, bis ein späteres Minor-Release (2.32.0 oder später, wie bei diesem Release entschieden) die als geplant stabil markierten Teile hochstuft. Nach dieser Hochstufung folgen sie der [2.x-Kompatibilitätsrichtlinie](../compatibility.md). Die anfängliche Unterstützung ist auf eingebettetes Laravel und sequenzielle Kompensation beschränkt.
 
 ## Funktionsweise {#how-it-works}
 
@@ -28,14 +28,14 @@ Ein Bereich wird durch `(application, namespace, key, generation)` identifiziert
 
 - einen geschlossenen Handler-Typ und eine Handler-Version, niemals eine PHP-Closure;
 - eine stabile Vorgangs-ID, mit der der Handler den Abgleich mit dem Anbieter durchführt;
-- portable Eingaben (höchstens 16 KiB, 512 Werte und Tiefe 8);
+- portable Eingaben (höchstens 15.360 Bytes als JSON, 500 Werte und Tiefe 7);
 - Ergebnisse der Vorwärtsausführung und der Kompensation, mit Nachweisreferenzen.
 
 Solange der ursprüngliche Lauf offen ist, führt ein Abbruch die native Saga aus, die in umgekehrter Registrierungsreihenfolge kompensiert. Nach dem Schließen des Laufs kompensiert ein kanonischer Wiederherstellungs-Workflow dieselben Verpflichtungen anhand des Ledgers. Er öffnet den ursprünglichen Lauf nie erneut und ändert dessen Historie nicht.
 
 ## Host einrichten {#set-up-the-host}
 
-Binden Sie in einem Service-Provider eine Autorisierungsrichtlinie für Bereiche und eine geschlossene Handler-Registry. Die Richtlinie gibt ihre Richtlinienversion zurück oder wirft eine Ausnahme, um abzulehnen.
+Binden Sie in einem Service-Provider eine Autorisierungsrichtlinie für Bereiche und eine geschlossene Handler-Registry. Die Richtlinie gibt ihre Richtlinienversion zurück. Zum Ablehnen wirft sie `ScopeAuthorizationRefused`.
 
 ```php
 use App\Compensation\OrderScopeAuthorization;
@@ -49,7 +49,9 @@ $this->app->singleton(HandlerRegistry::class, static fn (): HandlerRegistry => n
 ]));
 ```
 
-`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` wird mit `register`, `forward`, `compensate`, `participate`, `request`, `release` oder `inspect` aufgerufen. Leiten Sie den Principal aus vertrauenswürdigen Anwendungsrichtlinien ab, niemals aus einer Anfrage-Nutzlast. Führen Sie die Paketmigrationen aus; sie legen die Ledger-Tabellen auf der Speicherverbindung des Workflows an.
+`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` wird mit `register`, `forward`, `compensate`, `participate`, `request`, `release` oder `inspect` aufgerufen. Lehnen Sie jeden anderen Vorgangsnamen ab. Nur `ScopeAuthorizationRefused` ist eine dauerhafte Ablehnung. Jede andere Ausnahme gilt als vorübergehend: Sie wird wiederholt, und die automatische Wiederherstellung versucht es später erneut. Leiten Sie den Principal aus vertrauenswürdigen Anwendungsrichtlinien ab, niemals aus einer Anfrage-Nutzlast. Führen Sie die Paketmigrationen aus; sie legen die Ledger-Tabellen auf der Speicherverbindung des Workflows an.
+
+Bezeichner (Anwendung, Schlüssel, Generation, Vorgangsschlüssel und Handler-Version) bestehen aus 1 bis 128 Zeichen aus `A-Z a-z 0-9 . _ : / -` und beginnen mit einem Buchstaben oder einer Ziffer. Handler-Typen verwenden `a-z 0-9 . _ -`, beginnen mit einem Kleinbuchstaben und dürfen nicht mit `dw.` beginnen, das für die Engine reserviert ist.
 
 ## Verpflichtungen in einem Workflow registrieren {#register-obligations-in-a-workflow}
 
@@ -118,12 +120,15 @@ final class StockReservation implements ScopedOperation
             return Resolution::unknown('stock-release-pending');
         }
 
-        return Resolution::verified(['stock-release:' . $context->operationId], true);
+        return Resolution::verified(['stock-release:' . $context->operationId]);
     }
 }
 ```
 
-Handler können für denselben Vorgang mehr als einmal laufen; machen Sie daher beide Methoden über `operationId` idempotent. Geben Sie `ForwardResult::unknown()` zurück, wenn das Ergebnis beim Anbieter ungewiss ist. Geben Sie `Resolution::verified()` nur mit einem Nachweis zurück, dass die Wirkung rückgängig gemacht wurde; ein Callback-Rückgabewert, ein Timeout oder ein geschlossener Lauf ist kein solcher Nachweis. `Resolution::unknown()` lässt die Verpflichtung ungelöst und erlaubt native Wiederholungen.
+Handler können für denselben Vorgang mehr als einmal laufen; machen Sie daher beide Methoden über `operationId` idempotent.
+
+- `execute()` gibt `ForwardResult::observed()` mit Nachweisen zurück, `unknown()`, wenn das Ergebnis beim Anbieter ungewiss ist, oder `rejected()`, wenn der Anbieter mit Sicherheit keine Wirkung erzielt hat. Ein abgelehnter Vorwärtsvorgang lässt den Aufruf des Workflows mit `scope_forward_rejected` fehlschlagen, und seine Kompensation benötigt keinen Aufruf beim Anbieter. Wenn `$context->reconcileBeforeForward` true ist, hat ein früherer Versuch möglicherweise bereits Wirkung gezeigt; fragen Sie den Vorgang ab, bevor Sie ihn erneut auslösen.
+- `compensate()` gibt `Resolution::verified()` nur mit einem Nachweis zurück, dass die Wirkung rückgängig gemacht wurde und keine verspätete Vorwärtswirkung mehr möglich ist. Ein Callback-Rückgabewert, ein Timeout oder ein geschlossener Lauf ist kein solcher Nachweis. Geben Sie `unknown()` zurück, um die Verpflichtung ungelöst zu lassen und native Wiederholungen zu erlauben, oder `failed()`, wenn die Kompensation mit Sicherheit nicht abgeschlossen werden kann. Wenn `$context->forwardOutcomeUnconfirmed` true ist, wurde die Vorwärtswirkung nie bestätigt und kann noch verspätet eintreten.
 
 ## Abbrechen und wiederherstellen {#cancel-and-recover}
 
@@ -141,11 +146,11 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 Wiederherstellungsläufe unternehmen bis zu sechs Versuche pro Kompensation. Zwischen den Versuchen warten sie 1, 2, 5 und 10 Sekunden, danach eine Aktivitäts-Lease plus einen Task-Reparaturdurchlauf, sodass der Versuch eines abgestürzten Workers vor dem letzten Versuch zurückgewonnen wird. Die Verifizierung eines untergeordneten Bereichs oder eine neue autorisierte Anfrage weckt eine wartende Wiederholung sofort. Ein dauerhafter Fehler lässt den Wiederherstellungslauf dennoch fehlschlagen, wobei die Verpflichtung ungelöst bleibt.
 
-Prüfen Sie das Ergebnis mit `describe()`. Der Aufruf ist schreibgeschützt und erfordert die Autorisierung `inspect`:
+Prüfen Sie das Ergebnis mit `describe()`. Der Aufruf ist schreibgeschützt und erfordert die Autorisierung `inspect`. Er gibt immer dieselben Schlüssel zurück. Status stammen aus den Enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` und `ObligationStatus`, und eine Ablehnung besteht aus einem stabilen `code` plus der `message` des Hosts, die nicht maschinenstabil ist:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
-// scopeStatus, originStatus, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
+// scopeStatus, originStatus, recoveryRunId, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
 ```
 
 `nextAction` ist `submit_fresh_authorized_request`, wenn die automatische Wiederherstellung abgelehnt wurde (`automaticRecovery: recovery_authorization_failed`) oder ein Wiederherstellungslauf fehlgeschlagen ist. Senden Sie in diesem Fall einen neuen Anfrageschlüssel. Ein wiederholter Anfrageschlüssel gibt seine ursprüngliche Quittung zurück und startet nie einen weiteren Lauf.
@@ -160,12 +165,13 @@ Das Bereichs-Ledger erledigt die Kompensation. Eine fachliche Entscheidung, etwa
 
 ## Garantien und Grenzen {#guarantees-and-limits}
 
-Ab 2.31.0 ändern sich die stabilen APIs innerhalb von 2.x nicht inkompatibel. Aufgezeichnete Kompensationshistorien werden in jedem späteren 2.x-Release wiedergegeben, und neues Verhalten kommt nur hinter einer aufgezeichneten Versionsmarkierung. Ledger-Migrationen fügen nur hinzu.
+Nach der Hochstufung ändern sich die stabilen APIs innerhalb von 2.x nicht inkompatibel. Aufgezeichnete Kompensationshistorien werden in jedem späteren 2.x-Release wiedergegeben, und neues Verhalten kommt nur hinter einer aufgezeichneten Versionsmarkierung. Ledger-Migrationen fügen nur hinzu.
 
 Diese Grenzen sind Mindestwerte, die steigen, aber nicht sinken können:
 
-- 256 Verpflichtungen pro Bereich, 16 untergeordnete Bereiche pro übergeordnetem Bereich, eine Verschachtelungsebene;
-- 128 Anfragen pro Bereich;
+- Eingabe einer Verpflichtung: 15.360 Bytes als JSON, 500 Werte und Tiefe 7; Wert eines Vorwärtsergebnisses: 11.264 Bytes, 400 Werte und Tiefe 7;
+- 256 Verpflichtungen pro Bereich, einschließlich bis zu 16 untergeordneter Teilnehmer, und eine Verschachtelungsebene;
+- 128 Anfragen pro Bereich, gemeinsam mit den untergeordneten Anfragen der Engine;
 - 32 Nachweisreferenzen von höchstens 128 Bytes pro Ergebnis.
 
 Nicht garantiert sind: das Timing des Watchdogs, genaue Wiederholungsintervalle (nur, dass die Wiederherstellung länger dauert als eine Lease-Reparatur), das Zeilenlayout des Ledgers und alles, was mit `@internal` markiert ist. Genau-einmal-Wirkungen nach außen werden nie zugesagt; der Abgleich mit dem Anbieter über die Vorgangs-ID liegt in der Verantwortung Ihres Handlers.

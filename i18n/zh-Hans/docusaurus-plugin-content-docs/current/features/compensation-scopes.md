@@ -14,13 +14,13 @@ description: 在嵌入式 Laravel 工作流中，让补偿义务在创建它们�
 
 | 部分 | 状态 |
 | --- | --- |
-| `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 自 2.31.0 起稳定 |
-| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry` | 自 2.31.0 起稳定 |
-| `ScopeAuthorization`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 自 2.31.0 起稳定 |
+| `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 计划稳定（2.32.0 或更高版本） |
+| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry` | 计划稳定（2.32.0 或更高版本） |
+| `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 计划稳定（2.32.0 或更高版本） |
 | `DurableScope::reserveChild()` 和根准入（`RootReservationStore`） | 实验性 |
 | 标记为 `@internal` 的类（活动、持久化、恢复引擎） | 非公共 API |
 
-作用域 API 最初在 2.29.0 中以实验性功能发布。来源运行关闭后的自动恢复、恢复重试计划以及 `describe()` 在 2.31.0 中提供。在 2.31.0 之前，整个 API 都是实验性的，可能在次要版本中发生变化。自 2.31.0 起，稳定部分遵循 [2.x 兼容性策略](../compatibility.md)。初始支持仅限于嵌入式 Laravel 和顺序补偿。
+作用域 API 最初在 2.29.0 中以实验性功能发布。来源运行关闭后的自动恢复、恢复重试计划以及 `describe()` 在 2.31.0 中提供。在后续某个次要版本（2.32.0 或更高版本，具体在该版本发布时决定）将标记为计划稳定的部分提升为稳定之前，整个 API 仍是实验性的，可能在次要版本中发生变化。提升之后，这些部分遵循 [2.x 兼容性策略](../compatibility.md)。初始支持仅限于嵌入式 Laravel 和顺序补偿。
 
 ## 工作原理 {#how-it-works}
 
@@ -28,14 +28,14 @@ description: 在嵌入式 Laravel 工作流中，让补偿义务在创建它们�
 
 - 封闭的处理器类型和版本，绝不是 PHP 闭包；
 - 稳定的操作 ID，处理器用它与提供方对账；
-- 可移植的输入（最多 16 KiB、512 个值、深度 8）；
+- 可移植的输入（以 JSON 计最多 15,360 字节、500 个值、深度 7）；
 - 正向结果和补偿结果，以及证据引用。
 
 来源运行处于打开状态时，取消它会运行原生 saga，按注册的逆序进行补偿。运行关闭后，规范恢复工作流会根据账本补偿相同的义务。它绝不会重新打开原始运行，也不会更改该运行的历史。
 
 ## 设置宿主 {#set-up-the-host}
 
-在服务提供者中绑定作用域授权策略和封闭的处理器注册表。策略返回其策略版本，或通过抛出异常来拒绝。
+在服务提供者中绑定作用域授权策略和封闭的处理器注册表。策略返回其策略版本。要拒绝时，它会抛出 `ScopeAuthorizationRefused`。
 
 ```php
 use App\Compensation\OrderScopeAuthorization;
@@ -49,7 +49,9 @@ $this->app->singleton(HandlerRegistry::class, static fn (): HandlerRegistry => n
 ]));
 ```
 
-调用 `ScopeAuthorization::assertAllowed($scope, $principal, $operation)` 时，操作为 `register`、`forward`、`compensate`、`participate`、`request`、`release` 或 `inspect` 之一。请从可信的应用策略推导主体，绝不要从请求载荷中获取。运行包迁移；它们会在工作流存储连接上创建账本表。
+调用 `ScopeAuthorization::assertAllowed($scope, $principal, $operation)` 时，操作为 `register`、`forward`、`compensate`、`participate`、`request`、`release` 或 `inspect` 之一。对其他任何操作名都应拒绝。只有 `ScopeAuthorizationRefused` 是永久拒绝。其他任何异常都被视为暂时性的：它会被重试，自动恢复也会稍后再次尝试。请从可信的应用策略推导主体，绝不要从请求载荷中获取。运行包迁移；它们会在工作流存储连接上创建账本表。
+
+标识符（应用、键、generation、操作键和处理器版本）由 1 到 128 个来自 `A-Z a-z 0-9 . _ : / -` 的字符组成，并以字母或数字开头。处理器类型使用 `a-z 0-9 . _ -`，以小写字母开头，且不得以 `dw.` 开头，该前缀保留给引擎使用。
 
 ## 在工作流中注册义务 {#register-obligations-in-a-workflow}
 
@@ -118,12 +120,15 @@ final class StockReservation implements ScopedOperation
             return Resolution::unknown('stock-release-pending');
         }
 
-        return Resolution::verified(['stock-release:' . $context->operationId], true);
+        return Resolution::verified(['stock-release:' . $context->operationId]);
     }
 }
 ```
 
-处理器可能针对同一操作运行多次，因此请让两个方法都基于 `operationId` 保持幂等。当提供方的结果不确定时，返回 `ForwardResult::unknown()`。只有在有证据表明效果已被撤销时，才返回 `Resolution::verified()`；回调返回、超时或已关闭的运行都不是这种证据。`Resolution::unknown()` 会让义务保持未解决状态，并允许原生重试运行。
+处理器可能针对同一操作运行多次，因此请让两个方法都基于 `operationId` 保持幂等。
+
+- `execute()` 在有证据时返回 `ForwardResult::observed()`，在提供方的结果不确定时返回 `unknown()`，在提供方确定没有产生任何效果时返回 `rejected()`。被拒绝的正向操作会使工作流的调用以 `scope_forward_rejected` 失败，其补偿也无需调用提供方。当 `$context->reconcileBeforeForward` 为 true 时，之前的尝试可能已经生效；请先查询该操作，再重新发起。
+- 只有在有证据表明效果已被撤销、且不可能再出现迟到的正向效果时，`compensate()` 才返回 `Resolution::verified()`。回调返回、超时或已关闭的运行都不是这种证据。返回 `unknown()` 可让义务保持未解决状态并允许原生重试运行；在补偿确定无法完成时返回 `failed()`。当 `$context->forwardOutcomeUnconfirmed` 为 true 时，正向效果从未得到确认，仍可能迟到。
 
 ## 取消与恢复 {#cancel-and-recover}
 
@@ -141,11 +146,11 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 恢复运行对每项补偿最多尝试六次。两次尝试之间依次等待 1、2、5 和 10 秒，之后等待一个活动租约加一轮任务修复的时间，以便在最后一次尝试之前回收崩溃 worker 的尝试。子作用域完成验证或出现新的已授权请求时，会立即唤醒正在等待的重试。持续失败仍会使恢复运行失败，义务保持未解决状态。
 
-使用 `describe()` 检查结果。它是只读的，需要 `inspect` 授权：
+使用 `describe()` 检查结果。它是只读的，需要 `inspect` 授权。它始终返回相同的键。状态取自 `ScopeStatus`、`NextAction`、`AutomaticRecovery` 和 `ObligationStatus` 枚举；拒绝由稳定的 `code` 加上宿主的 `message` 组成，其中 `message` 不保证对机器处理保持稳定：
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
-// scopeStatus, originStatus, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
+// scopeStatus, originStatus, recoveryRunId, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
 ```
 
 当自动恢复被拒绝（`automaticRecovery: recovery_authorization_failed`）或恢复运行失败时，`nextAction` 为 `submit_fresh_authorized_request`。这种情况下请提交新的请求键。重复使用请求键会返回其原始回执，绝不会启动另一个运行。
@@ -160,12 +165,13 @@ $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
 
 ## 保证与限制 {#guarantees-and-limits}
 
-自 2.31.0 起，稳定 API 在 2.x 范围内不会发生不兼容的变更。已记录的补偿历史会在之后的每个 2.x 版本上重放，新行为只会在已记录的版本标记之后引入。账本迁移只做添加。
+提升之后，稳定 API 在 2.x 范围内不会发生不兼容的变更。已记录的补偿历史会在之后的每个 2.x 版本上重放，新行为只会在已记录的版本标记之后引入。账本迁移只做添加。
 
 以下限制是最小值，可能提高但不会降低：
 
-- 每个作用域 256 项义务，每个父作用域 16 个子作用域，一层嵌套；
-- 每个作用域 128 个请求；
+- 义务输入：以 JSON 计 15,360 字节、500 个值、深度 7；正向结果值：11,264 字节、400 个值、深度 7；
+- 每个作用域 256 项义务，其中最多包含 16 个子参与者，一层嵌套；
+- 每个作用域 128 个请求，与引擎的子请求共享；
 - 每个结果 32 个证据引用，每个最多 128 字节。
 
 不保证的内容：看门狗的时机、精确的重试间隔（仅保证恢复持续时间超过一次租约修复）、账本行布局，以及任何标记为 `@internal` 的内容。绝不承诺外部效果恰好执行一次；按操作 ID 与提供方对账是处理器的责任。

@@ -14,13 +14,13 @@ Use um escopo quando o cancelamento puder chegar tarde, por exemplo depois que u
 
 | Parte | Status |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estável a partir da 2.31.0 |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Estável a partir da 2.31.0 |
-| `ScopeAuthorization`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estável a partir da 2.31.0 |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estabilidade planejada (2.32.0 ou posterior) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Estabilidade planejada (2.32.0 ou posterior) |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estabilidade planejada (2.32.0 ou posterior) |
 | `DurableScope::reserveChild()` e admissão de raiz (`RootReservationStore`) | Experimental |
 | Classes marcadas como `@internal` (atividades, persistência, motor de recuperação) | Não fazem parte da API pública |
 
-As APIs de escopo foram lançadas inicialmente como experimentais na 2.29.0. A recuperação automática depois que a execução de origem é encerrada, o cronograma de novas tentativas da recuperação e `describe()` chegam na 2.31.0. Antes da 2.31.0, toda a API é experimental e pode mudar em uma versão secundária. A partir da 2.31.0, as partes estáveis seguem a [política de compatibilidade 2.x](../compatibility.md). O suporte inicial se limita ao Laravel incorporado e à compensação sequencial.
+As APIs de escopo foram lançadas inicialmente como experimentais na 2.29.0. A recuperação automática depois que a execução de origem é encerrada, o cronograma de novas tentativas da recuperação e `describe()` chegam na 2.31.0. Toda a API continua experimental, e pode mudar em uma versão secundária, até que uma versão secundária posterior (2.32.0 ou posterior, conforme decidido nessa versão) promova as partes marcadas com estabilidade planejada. Depois dessa promoção, elas seguem a [política de compatibilidade 2.x](../compatibility.md). O suporte inicial se limita ao Laravel incorporado e à compensação sequencial.
 
 ## Como funciona {#how-it-works}
 
@@ -28,14 +28,14 @@ Um escopo é identificado por `(application, namespace, key, generation)`. Seu t
 
 - um tipo e uma versão de handler fechados, nunca uma closure PHP;
 - um ID de operação estável, que o handler usa para reconciliar o provedor;
-- entrada portável (no máximo 16 KiB, 512 valores e profundidade 8);
+- entrada portável (no máximo 15.360 bytes como JSON, 500 valores e profundidade 7);
 - resultados de avanço e de compensação, com referências de evidência.
 
 Enquanto a execução de origem está aberta, cancelá-la executa a saga nativa, que compensa em ordem inversa à de registro. Depois que a execução é encerrada, um workflow de recuperação canônico compensa as mesmas obrigações a partir do registro durável. Ele nunca reabre a execução original nem altera o histórico dessa execução.
 
 ## Configurar o host {#set-up-the-host}
 
-Vincule uma política de autorização de escopo e um registro fechado de handlers em um service provider. A política retorna sua versão de política ou lança uma exceção para recusar.
+Vincule uma política de autorização de escopo e um registro fechado de handlers em um service provider. A política retorna sua versão de política. Para recusar, ela lança `ScopeAuthorizationRefused`.
 
 ```php
 use App\Compensation\OrderScopeAuthorization;
@@ -49,7 +49,9 @@ $this->app->singleton(HandlerRegistry::class, static fn (): HandlerRegistry => n
 ]));
 ```
 
-`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` é chamado com `register`, `forward`, `compensate`, `participate`, `request`, `release` ou `inspect`. Derive o principal de uma política confiável da aplicação, nunca do payload de uma requisição. Execute as migrations do pacote; elas criam as tabelas do registro durável na conexão de armazenamento do workflow.
+`ScopeAuthorization::assertAllowed($scope, $principal, $operation)` é chamado com `register`, `forward`, `compensate`, `participate`, `request`, `release` ou `inspect`. Recuse qualquer outro nome de operação. Somente `ScopeAuthorizationRefused` é uma recusa permanente. Qualquer outra exceção é tratada como transitória: ela é repetida, e a recuperação automática tenta novamente mais tarde. Derive o principal de uma política confiável da aplicação, nunca do payload de uma requisição. Execute as migrations do pacote; elas criam as tabelas do registro durável na conexão de armazenamento do workflow.
+
+Identificadores (aplicação, chave, geração, chave de operação e versão do handler) usam de 1 a 128 caracteres de `A-Z a-z 0-9 . _ : / -` e começam com uma letra ou um dígito. Tipos de handler usam `a-z 0-9 . _ -`, começam com uma letra minúscula e não podem começar com `dw.`, que é reservado para o motor.
 
 ## Registrar obrigações em um workflow {#register-obligations-in-a-workflow}
 
@@ -118,12 +120,15 @@ final class StockReservation implements ScopedOperation
             return Resolution::unknown('stock-release-pending');
         }
 
-        return Resolution::verified(['stock-release:' . $context->operationId], true);
+        return Resolution::verified(['stock-release:' . $context->operationId]);
     }
 }
 ```
 
-Handlers podem ser executados mais de uma vez para a mesma operação, então torne os dois métodos idempotentes por `operationId`. Retorne `ForwardResult::unknown()` quando o resultado do provedor for incerto. Retorne `Resolution::verified()` somente com evidência de que o efeito foi desfeito; o retorno de um callback, um tempo limite ou uma execução encerrada não constituem essa evidência. `Resolution::unknown()` mantém a obrigação não resolvida e permite que as novas tentativas nativas sejam executadas.
+Handlers podem ser executados mais de uma vez para a mesma operação, então torne os dois métodos idempotentes por `operationId`.
+
+- `execute()` retorna `ForwardResult::observed()` com evidência, `unknown()` quando o resultado do provedor for incerto, ou `rejected()` quando o provedor com certeza não produziu nenhum efeito. Um avanço rejeitado faz a chamada do workflow falhar com `scope_forward_rejected`, e sua compensação não precisa de nenhuma chamada ao provedor. Quando `$context->reconcileBeforeForward` for true, uma tentativa anterior pode ter produzido efeito; consulte a operação antes de emiti-la novamente.
+- `compensate()` retorna `Resolution::verified()` somente com evidência de que o efeito foi desfeito e de que nenhum efeito de avanço tardio é possível. O retorno de um callback, um tempo limite ou uma execução encerrada não constituem essa evidência. Retorne `unknown()` para manter a obrigação não resolvida e permitir que as novas tentativas nativas sejam executadas, ou `failed()` quando a compensação com certeza não puder ser concluída. Quando `$context->forwardOutcomeUnconfirmed` for true, o efeito de avanço nunca foi confirmado e ainda pode chegar tarde.
 
 ## Cancelar e recuperar {#cancel-and-recover}
 
@@ -141,11 +146,11 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 As execuções de recuperação fazem até seis tentativas por compensação. Entre as tentativas, elas aguardam 1, 2, 5 e 10 segundos e, depois, o equivalente a uma concessão (lease) de atividade mais uma passagem de reparo de tarefas, para que a tentativa de um worker que travou seja recuperada antes da última tentativa. A verificação de um filho, ou uma nova requisição autorizada, desperta imediatamente uma nova tentativa em espera. Uma falha persistente ainda faz a execução de recuperação falhar, deixando a obrigação não resolvida.
 
-Inspecione o resultado com `describe()`. Ele é somente leitura e exige autorização `inspect`:
+Inspecione o resultado com `describe()`. Ele é somente leitura e exige autorização `inspect`. Ele sempre retorna as mesmas chaves. Os status vêm dos enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` e `ObligationStatus`, e uma recusa é um `code` estável mais a `message` do host, que não é estável para processamento automático:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
-// scopeStatus, originStatus, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
+// scopeStatus, originStatus, recoveryRunId, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
 ```
 
 `nextAction` é `submit_fresh_authorized_request` quando a recuperação automática foi recusada (`automaticRecovery: recovery_authorization_failed`) ou uma execução de recuperação falhou. Nesse caso, envie uma nova chave de requisição. Repetir uma chave de requisição retorna o recibo original e nunca inicia outra execução.
@@ -160,12 +165,13 @@ O registro durável do escopo liquida a compensação. Uma decisão de negócio,
 
 ## Garantias e limites {#guarantees-and-limits}
 
-A partir da 2.31.0, as APIs estáveis não mudam de forma incompatível dentro da 2.x. Históricos de compensação registrados fazem replay em todas as versões 2.x posteriores, e novos comportamentos chegam apenas por trás de um marcador de versão registrado. As migrations do registro durável apenas adicionam.
+Depois da promoção, as APIs estáveis não mudam de forma incompatível dentro da 2.x. Históricos de compensação registrados fazem replay em todas as versões 2.x posteriores, e novos comportamentos chegam apenas por trás de um marcador de versão registrado. As migrations do registro durável apenas adicionam.
 
 Estes limites são mínimos que podem aumentar, mas não diminuirão:
 
-- 256 obrigações por escopo, 16 escopos filhos por pai, um nível de aninhamento;
-- 128 requisições por escopo;
+- entrada de obrigação: 15.360 bytes como JSON, 500 valores e profundidade 7; valor do resultado de avanço: 11.264 bytes, 400 valores e profundidade 7;
+- 256 obrigações por escopo, incluindo até 16 participantes filhos, e um nível de aninhamento;
+- 128 requisições por escopo, compartilhadas com as requisições filhas do motor;
 - 32 referências de evidência de no máximo 128 bytes por resultado.
 
 Não garantidos: o tempo do watchdog, os intervalos exatos entre novas tentativas (apenas que a recuperação dura mais que um reparo de concessão), o layout das linhas do registro durável e qualquer coisa marcada como `@internal`. Efeitos externos exatamente uma vez nunca são prometidos; a reconciliação com o provedor por ID de operação é responsabilidade do seu handler.

@@ -20,16 +20,17 @@ operation can take effect without returning a recorded result.
 
 | Part | Status |
 | --- | --- |
-| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stable from 2.31.0 |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Stable from 2.31.0 |
-| `ScopeAuthorization`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stable from 2.31.0 |
+| `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Planned stable (2.32.0 or later) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Planned stable (2.32.0 or later) |
+| `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Planned stable (2.32.0 or later) |
 | `DurableScope::reserveChild()` and root admission (`RootReservationStore`) | Experimental |
 | Classes marked `@internal` (activities, persistence, recovery engine) | Not public API |
 
 The scope APIs first shipped as experimental in 2.29.0. Automatic recovery after
 the originating run closes, the recovery retry schedule, and `describe()` arrive in
-2.31.0. Before 2.31.0 the whole API is experimental and may change in a minor
-release. From 2.31.0 the stable parts follow the
+2.31.0. The whole API stays experimental, and may change in a minor release, until
+a later minor release (2.32.0 or later, as decided at that release) promotes the
+parts marked planned stable. After that promotion they follow the
 [2.x compatibility policy](../compatibility.md). Initial support is limited to
 embedded Laravel and sequential compensation.
 
@@ -42,7 +43,7 @@ forward effect is dispatched. The ledger records:
 
 - a closed handler type and version, never a PHP closure;
 - a stable operation ID, which the handler uses to reconcile the provider;
-- portable input (at most 16 KiB, 512 values and depth 8);
+- portable input (at most 15,360 bytes as JSON, 500 values and depth 7);
 - forward and compensation outcomes, with evidence references.
 
 While the originating run is open, cancelling it runs the native saga, which
@@ -53,7 +54,8 @@ reopens the original run or changes that run's history.
 ## Set up the host
 
 Bind a scope authorization policy and a closed handler registry in a service
-provider. The policy returns its policy version, or throws to refuse.
+provider. The policy returns its policy version. To refuse, it throws
+`ScopeAuthorizationRefused`.
 
 ```php
 use App\Compensation\OrderScopeAuthorization;
@@ -69,9 +71,16 @@ $this->app->singleton(HandlerRegistry::class, static fn (): HandlerRegistry => n
 
 `ScopeAuthorization::assertAllowed($scope, $principal, $operation)` is called with
 `register`, `forward`, `compensate`, `participate`, `request`, `release` or
-`inspect`. Derive the principal from trusted application policy, never from a
-request payload. Run the package migrations; they create the ledger tables on the
-workflow storage connection.
+`inspect`. Refuse any other operation name. Only `ScopeAuthorizationRefused` is a
+permanent refusal. Any other exception is treated as transient: it is retried, and
+automatic recovery tries again later. Derive the principal from trusted application
+policy, never from a request payload. Run the package migrations; they create the
+ledger tables on the workflow storage connection.
+
+Identifiers (application, key, generation, operation key and handler version) use
+1 to 128 characters from `A-Z a-z 0-9 . _ : / -` and start with a letter or digit.
+Handler types use `a-z 0-9 . _ -`, start with a lowercase letter, and must not
+start with `dw.`, which is reserved for the engine.
 
 ## Register obligations in a workflow
 
@@ -144,17 +153,26 @@ final class StockReservation implements ScopedOperation
             return Resolution::unknown('stock-release-pending');
         }
 
-        return Resolution::verified(['stock-release:' . $context->operationId], true);
+        return Resolution::verified(['stock-release:' . $context->operationId]);
     }
 }
 ```
 
 Handlers can run more than once for the same operation, so make both methods
-idempotent by `operationId`. Return `ForwardResult::unknown()` when the provider
-outcome is uncertain. Return `Resolution::verified()` only with evidence that the
-effect is undone; a callback return, a timeout or a closed run is not that
-evidence. `Resolution::unknown()` keeps the obligation unresolved and lets native
-retries run.
+idempotent by `operationId`.
+
+- `execute()` returns `ForwardResult::observed()` with evidence, `unknown()` when the
+  provider outcome is uncertain, or `rejected()` when the provider definitely made no
+  effect. A rejected forward fails the workflow's call with `scope_forward_rejected`,
+  and its compensation needs no provider call. When
+  `$context->reconcileBeforeForward` is true, an earlier attempt may have taken
+  effect; look the operation up before issuing it again.
+- `compensate()` returns `Resolution::verified()` only with evidence that the effect
+  is undone and no late forward effect is possible. A callback return, a timeout or
+  a closed run is not that evidence. Return `unknown()` to keep the obligation
+  unresolved and let native retries run, or `failed()` when compensation definitely
+  cannot complete. When `$context->forwardOutcomeUnconfirmed` is true, the forward
+  effect was never confirmed and may still arrive late.
 
 ## Cancel and recover
 
@@ -182,11 +200,13 @@ authorized request, wakes a waiting retry immediately. A persistent failure stil
 fails the recovery run, with the obligation left unresolved.
 
 Inspect the outcome with `describe()`. It is read-only and requires `inspect`
-authorization:
+authorization. It always returns the same keys. Statuses come from the
+`ScopeStatus`, `NextAction`, `AutomaticRecovery` and `ObligationStatus` enums, and a
+refusal is a stable `code` plus the host's `message`, which is not machine-stable:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
-// scopeStatus, originStatus, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
+// scopeStatus, originStatus, recoveryRunId, recoveryStatus, automaticRecovery, refusal, nextAction, unresolved
 ```
 
 `nextAction` is `submit_fresh_authorized_request` when automatic recovery was
@@ -214,14 +234,17 @@ repository does.
 
 ## Guarantees and limits
 
-From 2.31.0, the stable APIs do not change incompatibly within 2.x. Recorded
+After promotion, the stable APIs do not change incompatibly within 2.x. Recorded
 compensation histories replay on every later 2.x release, and new behavior arrives
 only behind a recorded version marker. Ledger migrations only add.
 
 These limits are minimums that may rise but will not fall:
 
-- 256 obligations per scope, 16 child scopes per parent, one nesting level;
-- 128 requests per scope;
+- obligation input: 15,360 bytes as JSON, 500 values and depth 7; forward result
+  value: 11,264 bytes, 400 values and depth 7;
+- 256 obligations per scope, including up to 16 child participants, and one nesting
+  level;
+- 128 requests per scope, shared with the engine's child requests;
 - 32 evidence references of at most 128 bytes per outcome.
 
 Not guaranteed: watchdog timing, exact retry intervals (only that recovery outlasts
