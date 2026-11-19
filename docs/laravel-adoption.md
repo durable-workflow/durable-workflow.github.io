@@ -298,6 +298,8 @@ Run the Laravel queue worker exactly as an embedded deployment requires:
 php artisan queue:work redis --queue=orders
 ```
 
+Set this worker's job timeout as described in [Worker timeout](/docs/installation/#worker-timeout).
+
 Use the embedded fake through the same application action. It executes ready
 workflow tasks inline and records activity dispatches:
 
