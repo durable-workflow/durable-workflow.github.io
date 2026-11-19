@@ -142,6 +142,8 @@ Durable Workflow 中每个公开接口恰好具有以下一个稳定性级别。
 | `prerelease` | 功能完整的公开接口，但在对应 `1.0.0` / `2.0.0` 正式发布前仍允许变更。 | 在清晰标注的预发布版本中，并在发布说明中指出。 |
 | `experimental` | 公开但不稳定的接口。可在包括补丁版本在内的任何发布中变更。调用方必须阅读接口的实验标记并主动选择使用。 | 任何发布；发布说明指出变更。 |
 
+对于自身的 `@experimental` 类（例如业务状态机 API 和原生子工作流启动），Workflow PHP 包比这一底线更严格：它们可能在次要版本中变更，但绝不会在补丁版本中发生不兼容的变更。该包的 [API 稳定性说明](https://github.com/durable-workflow/workflow/blob/main/docs/api-stability.md#state-machines)列出了这些类。
+
 ## 公开接口族 {#public-surface-families}
 
 以下是完整公开接口族列表。新增、删除或重新分类接口族需要契约变更（在同一提交中提升 `SurfaceStabilityContract` 版本并更新本页和 JSON 镜像）。

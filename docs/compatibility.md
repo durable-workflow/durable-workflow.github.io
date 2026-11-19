@@ -226,6 +226,8 @@ not public.
 | `prerelease` | Public surface that is feature-complete but still allowed to change before the matching `1.0.0` / `2.0.0` cut. | In clearly labelled prerelease versions; called out in release notes. |
 | `experimental` | Public-but-unstable surface. May change in any release, including patch releases. Callers must opt in by reading the experimental flag on the surface. | Any release; release notes call out the change. |
 
+The Workflow PHP package is stricter than this floor for its own `@experimental` classes, such as the business state-machine API and native child start: they may change in a minor release, but never incompatibly in a patch release. The package's [API stability notes](https://github.com/durable-workflow/workflow/blob/main/docs/api-stability.md#state-machines) list them.
+
 ## Public Surface Families
 
 This is the complete list of public surface families. Adding, removing, or

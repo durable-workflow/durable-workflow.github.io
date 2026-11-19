@@ -156,6 +156,8 @@ Jede öffentliche Durable-Workflow-Schnittstelle trägt genau eine dieser Stabil
 | `prerelease` | Funktionsvollständige öffentliche Schnittstelle, die sich vor der entsprechenden Veröffentlichung `1.0.0` / `2.0.0` noch ändern darf. | In klar gekennzeichneten Vorabversionen, mit Hinweis in den Veröffentlichungshinweisen. |
 | `experimental` | Öffentliche, aber instabile Schnittstelle. Änderungen sind in jeder Veröffentlichung einschließlich Patches möglich. Aufrufer müssen über das experimentelle Kennzeichen der Schnittstelle ausdrücklich zustimmen. | In jeder Veröffentlichung, mit Hinweis in den Veröffentlichungshinweisen. |
 
+Das Workflow-PHP-Paket ist für seine eigenen `@experimental`-Klassen, etwa die API für Geschäftszustandsautomaten und den nativen Kindstart, strenger als diese Untergrenze: Sie können sich in einem Minor-Release ändern, aber nie inkompatibel in einem Patch-Release. Die [API-Stabilitätshinweise](https://github.com/durable-workflow/workflow/blob/main/docs/api-stability.md#state-machines) des Pakets listen sie auf.
+
 ## Öffentliche Schnittstellenfamilien {#public-surface-families}
 
 Dies ist die vollständige Liste öffentlicher Schnittstellenfamilien. Ergänzen, Entfernen oder Neuklassifizieren einer Familie erfordert eine Vertragsänderung: Versionserhöhung von `SurfaceStabilityContract`, diese Seite und der JSON-Spiegel im selben Commit.
