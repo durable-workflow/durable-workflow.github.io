@@ -53,3 +53,9 @@ It can't see calls made through helper or service classes, values that depend on
 First-release scope: boot-time scanning is the only blocking workflow-mode guardrail. The runtime does not rerun determinism diagnostics again at workflow-task claim time. That deferral is intentional for 2.0: boot scanning catches locally registered PHP workflows before rollout, and Waterline surfaces definition-fingerprint drift for long-lived runs without turning cross-build claims into a new source of deploy failures.
 
 Pre-fingerprint runs also follow a conservative first-release policy. If a run reaches a new `getVersion()` branch and its `WorkflowStarted` history predates the fingerprint snapshot, the runtime keeps that run on `WorkflowStub::DEFAULT_VERSION` instead of assuming the current definition is safe. See [Versioning](../features/versioning.md).
+
+### Comment and formatting edits {#comment-only-edits}
+
+From 2.34, editing only comments, docblocks or whitespace in a workflow class, its traits or parent workflow classes, or inside an `await()` condition closure doesn't change how runs started on 2.34 or later replay. Those runs record definition fingerprints of the PHP code tokens without comments and whitespace (prefix `sha256-tokens:`).
+
+Runs started on an earlier release recorded fingerprints of the raw source lines (prefix `sha256:`) and are still compared that way. For those runs a comment edit is a definition change: a missing `getVersion()` or `patched()` marker takes `WorkflowStub::DEFAULT_VERSION`, and an edited condition closure fails replay. Make such edits after those runs finish, or treat them like any other change.

@@ -53,3 +53,9 @@ Aufrufe über Hilfs- oder Service-Klassen, Werte, die vom Prozesszustand abhäng
 Im Umfang der ersten Veröffentlichung ist die Startprüfung die einzige blockierende Schutzprüfung für den Workflow-Modus. Beim Beanspruchen einer Workflow-Aufgabe führt die Laufzeitumgebung keine zusätzliche Determinismusdiagnose aus. Diese Entscheidung für 2.0 erlaubt es, lokal registrierte PHP-Workflows vor der Bereitstellung zu prüfen. Waterline zeigt abweichende Definitionsfingerprints bei lang laufenden Workflows, ohne zusätzliche Bereitstellungsfehler durch Aufgaben verschiedener Builds zu erzeugen.
 
 Auch Läufe ohne Fingerprint folgen einer vorsichtigen Regel. Erreicht ein Lauf einen neuen `getVersion()`-Zweig und stammt seine `WorkflowStarted`-Historie aus der Zeit vor dem Fingerprint-Snapshot, bleibt der Lauf auf `WorkflowStub::DEFAULT_VERSION`. Die aktuelle Definition wird nicht automatisch als sicher angenommen. Siehe [Versionierung](../features/versioning.md).
+
+### Änderungen an Kommentaren und Formatierung {#comment-only-edits}
+
+Ab 2.34 ändert das reine Bearbeiten von Kommentaren, Docblocks oder Leerraum in einer Workflow-Klasse, ihren Traits oder übergeordneten Workflow-Klassen oder innerhalb einer `await()`-Bedingungs-Closure nicht, wie Läufe, die ab 2.34 gestartet wurden, beim Replay ausgeführt werden. Diese Läufe zeichnen Definitions-Fingerprints der PHP-Code-Tokens ohne Kommentare und Leerraum auf (Präfix `sha256-tokens:`).
+
+Läufe, die mit einem früheren Release gestartet wurden, haben Fingerprints der unveränderten Quellzeilen aufgezeichnet (Präfix `sha256:`) und werden weiterhin so verglichen. Für diese Läufe ist eine Kommentaränderung eine Definitionsänderung: Ein fehlender `getVersion()`- oder `patched()`-Marker ergibt `WorkflowStub::DEFAULT_VERSION`, und eine geänderte Bedingungs-Closure lässt das Replay fehlschlagen. Nehmen Sie solche Änderungen erst vor, wenn diese Läufe beendet sind, oder behandeln Sie sie wie jede andere Änderung.

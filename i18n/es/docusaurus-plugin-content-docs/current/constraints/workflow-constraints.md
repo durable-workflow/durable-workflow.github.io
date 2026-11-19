@@ -80,3 +80,9 @@ una política conservadora. Si una ejecución llega a una nueva rama de
 `getVersion()` y su evento `WorkflowStarted` es anterior a la captura de la
 huella, el runtime mantiene esa ejecución en `WorkflowStub::DEFAULT_VERSION`.
 Consulta [Versionado](../features/versioning.md).
+
+### Cambios en comentarios y formato {#comment-only-edits}
+
+Desde 2.34, editar solo comentarios, docblocks o espacios en blanco en una clase de workflow, sus traits o sus clases de workflow padre, o dentro de una closure de condición de `await()`, no cambia el replay de las ejecuciones iniciadas en 2.34 o posteriores. Esas ejecuciones registran huellas de definición de los tokens de código PHP sin comentarios ni espacios en blanco (prefijo `sha256-tokens:`).
+
+Las ejecuciones iniciadas en una versión anterior registraron huellas de las líneas de código fuente literales (prefijo `sha256:`) y se siguen comparando así. Para esas ejecuciones, editar un comentario es un cambio de definición: un marcador `getVersion()` o `patched()` ausente toma `WorkflowStub::DEFAULT_VERSION`, y una closure de condición editada hace fallar el replay. Haga esas ediciones cuando esas ejecuciones hayan terminado, o trátelas como cualquier otro cambio.

@@ -55,3 +55,9 @@ Elle ne voit pas les appels passant par des classes d’aide ou de service, les 
 Dans le périmètre initial de 2.0, l’analyse au démarrage est le seul contrôle de déterminisme qui peut bloquer un workflow. Le runtime ne relance pas ces diagnostics lors de la prise d’une tâche de workflow. L’analyse vérifie les workflows PHP enregistrés localement avant leur déploiement. Waterline affiche les changements d’empreinte de définition des exécutions longues, sans faire de la prise de tâches entre builds une nouvelle source d’échec du déploiement.
 
 Les exécutions antérieures aux empreintes suivent aussi une politique prudente. Si une exécution atteint une nouvelle branche `getVersion()` et que son événement `WorkflowStarted` précède l’instantané d’empreinte, le runtime conserve `WorkflowStub::DEFAULT_VERSION`. Il ne suppose pas que la définition actuelle permet une relecture sûre. Consultez la [gestion des versions](../features/versioning.md).
+
+### Modifications des commentaires et de la mise en forme {#comment-only-edits}
+
+À partir de 2.34, modifier uniquement des commentaires, des docblocks ou des espaces dans une classe de workflow, ses traits ou ses classes de workflow parentes, ou dans une closure de condition `await()`, ne change pas la relecture des exécutions démarrées en 2.34 ou plus tard. Ces exécutions enregistrent des empreintes de définition calculées sur les tokens de code PHP, sans commentaires ni espaces (préfixe `sha256-tokens:`).
+
+Les exécutions démarrées avec une version antérieure ont enregistré des empreintes des lignes de source brutes (préfixe `sha256:`) et sont toujours comparées ainsi. Pour ces exécutions, modifier un commentaire est un changement de définition : un marqueur `getVersion()` ou `patched()` absent prend `WorkflowStub::DEFAULT_VERSION`, et une closure de condition modifiée fait échouer la relecture. Faites ces modifications une fois ces exécutions terminées, ou traitez-les comme tout autre changement.
