@@ -432,6 +432,8 @@ réussite/échec/usage, puis les étendent.
 | `6` | `SERVER` | Erreur serveur. Renvoyé pour HTTP `5xx`. |
 | `7` | `TIMEOUT` | Délai de requête dépassé avant la réponse du serveur. Également renvoyé pour HTTP `408`. |
 | `8` | `COMPATIBILITY` | Échec de compatibilité. La CLI et le serveur ne peuvent pas exécuter la commande en sécurité, par exemple parce que le serveur n'annonce pas une capacité nécessaire ; la commande a donc refusé avant d'envoyer la requête. |
+| `9` | `REQUEST_ID_CONFLICT` | CLI 2.11.0 et versions ultérieures. HTTP `409` avec la raison `request_id_conflict` : la valeur `--request-id` du signal ou de la mise à jour désigne déjà une commande conservée dont le nom, l'entrée ou l'exécution cible diffère. Rien n'a été enregistré. Consultez [Réessayer un signal ou une mise à jour](./cli-reference.md#retry-a-signal-or-update). |
+| `10` | `REQUEST_ID_AMBIGUOUS` | CLI 2.11.0 et versions ultérieures. HTTP `409` avec la raison `request_id_ambiguous` : la valeur `--request-id` correspond à une ancienne identité conservée que le serveur ne peut pas sélectionner. Rien n'a été enregistré et aucun reçu n'a été sélectionné. Les versions antérieures se terminent avec le code `2` pour les deux refus. |
 
 Exemple :
 

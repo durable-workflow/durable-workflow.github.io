@@ -150,24 +150,53 @@ take the key only from the JSON body's `request_id`; their `X-Request-Id` header
 is correlation context. Omitting the body key leaves an update unkeyed, even
 when requests share that header.
 
-`request_id` is not a portable, run-scoped Update-ID contract. The qualified PHP
-paths can return the first retained update when the same key is submitted with
-different arguments or update names within that instance. Reusing a key after
-continue-as-new can return a predecessor's result
-without admitting an update to the successor. A retained keyed receipt can also
-be returned after closure, while a fresh update is refused.
+A command key identifies one update on one workflow instance, across all of its
+runs. With Workflow 2.18.0 or later, attach it with `withRequestId()`. After a
+lost response, send the same update again with the same key:
 
-Use one key for one logical operation and preserve its original intent. Do not
-change the arguments, reuse it for another update name or assume it starts a new
-operation in the next run. The [published PHP qualification](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
-covers caller keys independently of proxy headers, including retained receipts
-after closure. This recovery behavior does not promise portable same-key,
-different-intent conflict detection. That broader contract is tracked in
-[shared issue 216](https://github.com/durable-workflow/.github/issues/216).
-Native Server and other SDK paths require their own qualification.
+```php
+use Workflow\V2\WorkflowStub;
 
-Receipt recovery depends on retained command, update and history records. There
-is no application-independent deduplication lifetime promised here. Review
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- A retry with the same key, update name, typed arguments and explicit run
+  target returns the original receipt, including its update ID, and records
+  nothing. After closure or continue-as-new, the retry still returns the
+  original update. It does not admit a new update in a successor run.
+- The same key with a different update name, arguments or run target is
+  refused as `rejected_request_id_conflict`. `conflict()` names the retained
+  command and the parts that differ. Nothing is recorded, and the key keeps its
+  original receipt.
+- A receipt admitted before Workflow recorded command intent reads back with
+  `retained()` true and `intentVerified()` false. That is the original
+  admission, not proof that this retry's arguments match it.
+- Keys are 1 to 255 Unicode characters and are compared exactly. An invalid key
+  throws `InvalidCommandRequestIdException` before admission.
+
+Use one key for one logical operation and never change its arguments. Use a new
+key for a new operation, including after you confirm that a keyed update was
+rejected. Releases before Workflow 2.18.0 and native Server 3.9.0 do not compare
+intent: there, a key reused with different arguments or another update name
+returns the first update's receipt.
+
+Service-mode clients send the key as the body `request_id`. Native Server 3.9.2
+and later apply the same rules and add a `request_id_ambiguous` refusal for
+some legacy keys. See
+[signal and update command keys](/docs/polyglot/server-api-reference#command-keys)
+for the HTTP contract and the PHP, Python, Rust and CLI calls.
+
+Receipt recovery depends on retained command, update and history records. When
+retention prunes a run's details, its keys go with them, and a later request
+under that key is admitted as a new command. There is no
+application-independent deduplication lifetime promised here. Review
 [history retention](../configuration/pruning-workflows.md) and keep your business ledger
 for the lifetime required by your application. Missing evidence remains an
 unknown outcome.

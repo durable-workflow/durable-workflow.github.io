@@ -166,13 +166,33 @@ This calls the Server's `POST /api/workflows/{workflowId}/signal/{signalName}` a
 
 ### Duplicate delivery and streaming limits {#duplicate-delivery-and-streaming-limits}
 
-Providers retry callbacks, and a network error can occur after signal admission. Persist your application operation/event key and exact intent, deduplicate at the callback boundary and in business processing, and retain unresolved deliveries for reconciliation. The Python handler keeps the first result per operation in this run; it is not a cross-run or once-only admission guarantee. Do not mark an uncertain forward as processed merely because the request was sent. [Shared #216](https://github.com/durable-workflow/.github/issues/216) still owns safe signal retries and retained admission identity. A provider idempotency header or one activity attempt does not by itself guarantee once-only external effects.
+Providers retry callbacks, and a network error can occur after signal admission. Persist your application operation/event key and exact intent, deduplicate at the callback boundary and in business processing, and retain unresolved deliveries for reconciliation. The Python handler keeps the first result per operation in this run; it is not a cross-run or once-only admission guarantee. Do not mark an uncertain forward as processed merely because the request was sent. On native Server 3.9.2 and later, a signal command key makes the forward itself safe to retry; see [retry a forwarded callback](#retry-a-forwarded-callback). A provider idempotency header or one activity attempt does not by itself guarantee once-only external effects.
 
 Start the workflow before this recipe submits work. Service `start(use-existing)` followed by `signal` is **two operations**, with a closure race; atomic service intake remains [shared #222](https://github.com/durable-workflow/.github/issues/222). Embedded `signalWithStart` is a separate atomic API. The debounce request [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) was superseded by that product requirement, not completed by this callback recipe.
 
 An HTTP/SSE socket held inside an activity is not durable: worker/process loss ends it, it occupies an activity slot, and reconnecting can replay or miss external events. Submission and callbacks still add activity, signal and wait history; this is not a free or unlimited execution. For durable **workflow output**, use [Workflow Streams](./workflow-streams.md) and their persisted sequence/cursor contract rather than treating a transport connection as storage.
 
 The PHP and Python code above was exercised on published **Server 2.9.7 / Core 2.7.2**, with normally installed **Python SDK 2.6.1**. Separate PostgreSQL 17.11 controls covered early and waiting callbacks, late refusal, and continue-as-new with a callback while the Python worker was absent followed by a cold reader. Embedded controls used the real webhook route. This is recipe evidence, not all-database, provider-authentication, graceful-shutdown or native-runtime qualification. [The qualification record](https://github.com/durable-workflow/durable-workflow.github.io/issues/321#issuecomment-6292485315) preserves the unsuccessful originals separately.
+
+### Retry a forwarded callback {#retry-a-forwarded-callback}
+
+Derive one command key from the provider's event, such as `job-completed:op-42`, and store it in the delivery record before forwarding. With Python SDK 2.19.1 or later on native Server 3.9.2 or later, resending the same signal with the same key, arguments and target returns the original receipt instead of recording a second signal:
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "external-job-42", "job-completed", args=["op-42", {"value": 42}],
+        request_id="job-completed:op-42",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise
+    receipt = None  # Nothing was recorded; keep the delivery for reconciliation.
+```
+
+`receipt["retained"]` is `True` when an earlier forward under this key was already admitted. `request_id_conflict` means the key already names a signal with different arguments, for example a provider that sent a different result for the same operation. `request_id_ambiguous` means the key matches a legacy identity the Server cannot select. Neither refusal records anything, so do not resend either unchanged. A receipt with `intent_verified` set to `False` is a legacy admission, not proof that this forward's arguments match it. The key covers admission only; the workflow handler above still keeps the first result per operation. See [signal and update command keys](./server-api-reference.md#command-keys) for the full contract and the PHP, Rust and CLI calls.
 
 ## Bound retries and history {#bound-retries-and-history}
 

@@ -232,9 +232,9 @@ der Laufzeitumgebung statt in der Profildatei bleiben.
 | `dw workflow:show-run <workflow-id> <run-id>` | Einen Lauf anzeigen. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Historienereignisse eines Laufs lesen. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Archivnutzlast der Laufhistorie exportieren. | `--output-file`, globale Optionen |
-| `dw workflow:signal <workflow-id> <signal-name>` | Signal senden. | `--run-id`, Eingabeoptionen, `--json` |
+| `dw workflow:signal <workflow-id> <signal-name>` | Signal senden. | `--request-id`, `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Schreibgeschützte Workflow-Abfrage ausführen. | `--run-id`, Eingabeoptionen, `--json` |
-| `dw workflow:update <workflow-id> <update-name>` | Workflow-Update übermitteln oder ausführen. | `--wait=accepted\|completed`, `--run-id`, Eingabeoptionen, `--json` |
+| `dw workflow:update <workflow-id> <update-name>` | Workflow-Update übermitteln oder ausführen. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:update-outcome <workflow-id> <update-id>` | Ein gespeichertes Update-Ergebnis lesen, ohne das Update erneut einzureichen. | `--wait=accepted\|completed`, `--wait-timeout`, `--json` |
 | `dw workflow:cancel [workflow-id]` | Einen Workflow oder ausgewählten Batch als abgebrochen schließen; keine Bereinigung durch Workflow-Code. | `--reason`, `--run-id`, `--all-matching`, `--type`, `--status`, `--limit`, `--yes`, `--json` |
 | `dw workflow:terminate <workflow-id>` | Workflow zwangsweise terminieren. | `--reason`, `--run-id`, `--json` |
@@ -259,6 +259,37 @@ dw workflow:cancel --all-matching='WorkflowType = "ImportJob"' --limit=25 --yes
 `workflow:start`, `workflow:signal`, `workflow:query` und `workflow:update`
 prüfen kanonische Anfragefelder gegen den vom Server veröffentlichten
 Anfragevertrag. Nichtkanonische alte Aliase werden vor dem Senden abgelehnt.
+
+### Ein Signal oder Update wiederholen {#retry-a-signal-or-update}
+
+`workflow:signal` und `workflow:update` senden einen Befehlsschlüssel als
+`request_id` im Body: den Wert von `--request-id` oder einen pro Aufruf
+erzeugten Schlüssel `cli-signal-…` bzw. `cli-update-…`. Die CLI sendet jeden
+Befehl einmal und sendet ihn nie erneut. Nach einer verlorenen Antwort wird der
+verwendete Schlüssel ausgegeben und steht in `request_id` des JSON-Fehlerumschlags.
+Wiederholen Sie denselben Befehl mit derselben `--request-id`, demselben Namen,
+derselben Eingabe und derselben `--run-id`:
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+Auf nativem Server 3.9.2 und neuer liefert die Wiederholung den ursprünglichen
+Beleg (`Retained: yes`) und zeichnet nichts auf. Ab CLI 2.11.0 gilt:
+
+- Derselbe Schlüssel mit anderem Namen, anderer Eingabe oder anderem Laufziel
+  endet mit Exit-Code `9` (`request_id_conflict`).
+- Ein Schlüssel, der einer mehrdeutigen Legacy-Identität entspricht, endet mit
+  Exit-Code `10` (`request_id_ambiguous`).
+- Ein Legacy-Beleg gibt `Intent Verified: no (legacy receipt; ...)` aus. Er ist
+  die ursprüngliche Annahme, kein Nachweis, dass die Eingabe der Wiederholung
+  mit ihm übereinstimmt.
+
+Keine der beiden Ablehnungen zeichnet etwas auf; wiederholen Sie sie nicht
+unverändert. CLI 2.10.0 und älter enden bei beiden Ablehnungen mit Exit-Code
+`2`. Schlüssel umfassen 1 bis 255 Unicode-Zeichen und werden exakt verglichen.
+Den Server-Vertrag beschreibt
+[Befehlsschlüssel für Signale und Updates](./server-api-reference.md#command-keys).
 
 ### Ein Update-Ergebnis lesen {#read-update-outcome}
 
@@ -620,6 +651,8 @@ dokumentierten stabilen Exit-Codes:
 | `6` | Serverseitiger `5xx`-Fehler. |
 | `7` | Timeout. |
 | `8` | Kompatibilitätsfehler: Der Befehl hat abgelehnt, bevor die Anfrage gesendet wurde. |
+| `9` | Ein Befehlsschlüssel für ein Signal oder Update benennt bereits einen anderen Befehl (`request_id_conflict`, CLI 2.11.0+). |
+| `10` | Ein Befehlsschlüssel für ein Signal oder Update entspricht einer mehrdeutigen Legacy-Identität (`request_id_ambiguous`, CLI 2.11.0+). |
 
 Sammeln Sie für Support-Pakete `dw doctor --output=json`,
 `dw server:info --output=json` und `dw debug workflow <workflow-id> --output=json`.

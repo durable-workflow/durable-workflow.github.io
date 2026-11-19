@@ -166,13 +166,33 @@ await client.signal_workflow(
 
 ### 重複配信とストリーミングの限界 {#duplicate-delivery-and-streaming-limits}
 
-プロバイダーはコールバックを再送し、シグナル受け入れ後にネットワークエラーが起きる場合もあります。アプリケーションの操作・イベントキーと正確な意図を保存し、コールバック入口と業務処理の両方で重複を排除し、結果不明の配信を照合用に保持します。Python ハンドラーが保持するのは、この run の各操作の最初の結果です。run をまたぐ重複排除や一度だけの受け入れを保証するものではありません。リクエストを送っただけで、不確かな転送を処理済みにしないでください。安全なシグナル再試行と保持される受け入れ識別情報は、引き続き[共通 Issue #216](https://github.com/durable-workflow/.github/issues/216)の対象です。冪等性ヘッダーや一回のアクティビティ試行だけで、外部副作用が一度になる保証はありません。
+プロバイダーはコールバックを再送し、シグナル受け入れ後にネットワークエラーが起きる場合もあります。アプリケーションの操作・イベントキーと正確な意図を保存し、コールバック入口と業務処理の両方で重複を排除し、結果不明の配信を照合用に保持します。Python ハンドラーが保持するのは、この run の各操作の最初の結果です。run をまたぐ重複排除や一度だけの受け入れを保証するものではありません。リクエストを送っただけで、不確かな転送を処理済みにしないでください。native Server 3.9.2 以降では、シグナルのコマンドキーによって転送そのものを安全に再試行できます。[転送したコールバックを再試行する](#retry-a-forwarded-callback)を参照してください。冪等性ヘッダーや一回のアクティビティ試行だけで、外部副作用が一度になる保証はありません。
 
 このレシピでジョブを送信する前にワークフローを開始します。サービスモードの `start(use-existing)` とその後の `signal` は、途中に終了が入り得る**二つの操作**です。アトミックな受け入れは[共通 Issue #222](https://github.com/durable-workflow/.github/issues/222)の未解決事項です。組み込みの `signalWithStart` は別のアトミック API です。デバウンス要求の [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) はその製品要件に置き換えられたものであり、このレシピで完成したわけではありません。
 
 アクティビティ内で保持する HTTP/SSE ソケットは永続的ではありません。ワーカーやプロセスを失うと終了し、アクティビティのスロットを占有し、再接続では外部イベントが重複したり欠落したりします。送信とコールバックも、アクティビティ、シグナル、待機の履歴を増やします。無料でも無制限でもありません。永続的な**ワークフローの出力**には、通信接続をストレージとみなすのではなく、永続化されたシーケンス・カーソルの契約を持つ [Workflow Streams](./workflow-streams.md) を使用します。
 
 上の PHP と Python のコードは、公開済みの **Server 2.9.7 / Core 2.7.2** と通常インストールした **Python SDK 2.6.1** で実行しました。別の PostgreSQL 17.11 の確認では、待機前・待機中のコールバック、遅い通知の拒否、Python ワーカー不在中のコールバックを含む continue-as-new とその後のコールド読み取りを検証しました。組み込み側は実際の Webhook ルートを使いました。これはレシピの根拠であり、全データベース、プロバイダー認証、正常なシャットダウン、ネイティブランタイムの認定ではありません。[検証記録](https://github.com/durable-workflow/durable-workflow.github.io/issues/321#issuecomment-6292485315)には失敗した元の試行も区別して残しています。
+
+### 転送したコールバックを再試行する {#retry-a-forwarded-callback}
+
+プロバイダーのイベントから `job-completed:op-42` のようなコマンドキーを1つ導出し、転送する前に配信記録へ保存します。Python SDK 2.19.1 以降と native Server 3.9.2 以降の組み合わせでは、同じキー、引数、対象で同じシグナルを再送すると、2つ目のシグナルを記録する代わりに元の受領記録が返ります。
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "external-job-42", "job-completed", args=["op-42", {"value": 42}],
+        request_id="job-completed:op-42",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise
+    receipt = None  # Nothing was recorded; keep the delivery for reconciliation.
+```
+
+このキーによる以前の転送がすでに受理されている場合、`receipt["retained"]` は `True` です。`request_id_conflict` は、そのキーがすでに異なる引数のシグナルを指していることを意味します。たとえば、プロバイダーが同じ操作に対して異なる結果を送った場合です。`request_id_ambiguous` は、Server が選択できないレガシー識別情報にキーが一致することを意味します。どちらの拒否でも何も記録されないため、どちらも変更せずに再送しないでください。`intent_verified` が `False` の受領記録はレガシーの受理であり、この転送の引数が一致する証明ではありません。キーが対象とするのは受理だけです。上のワークフローハンドラーは引き続き各操作の最初の結果を保持します。完全な契約と PHP、Rust、CLI の呼び出しは、[シグナルと更新のコマンドキー](./server-api-reference.md#command-keys)を参照してください。
 
 ## 再試行と履歴に上限を設ける {#bound-retries-and-history}
 

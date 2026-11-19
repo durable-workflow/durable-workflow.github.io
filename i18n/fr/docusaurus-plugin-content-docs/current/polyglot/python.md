@@ -1216,12 +1216,16 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-Gardez `business_event_id` stable entre les tentatives et respectez la limite
-de longueur des clés de commande du Server. Le Server actuellement publié ne
-conserve pas ces clés pour tous les chemins de signal. Traitez les événements
-métier de façon idempotente et réconciliez les livraisons incertaines. Consultez
+Gardez `business_event_id` stable entre les tentatives et limitez la clé
+complète à 255 caractères Unicode. Avec le Server natif 3.9.2 et les versions
+ultérieures, une nouvelle tentative avec la même clé et les mêmes arguments
+renvoie le reçu initial au lieu d’enregistrer un autre signal. La même clé avec
+d’autres arguments lève `SignalFailed` avec `reason == "request_id_conflict"`,
+et rien n’est enregistré. Les Servers plus anciens ne conservent pas ces clés
+pour tous les chemins de signal. Traitez les événements métier de façon
+idempotente et réconciliez les livraisons incertaines. Consultez
 [la référence canonique des activités](https://python.durable-workflow.com/reference/activity/)
-et [l'exigence de conservation des reçus de signal](https://github.com/durable-workflow/.github/issues/216).
+et les [clés de commande des signaux et des mises à jour](./server-api-reference.md#command-keys).
 
 ### Requêtes de heartbeat {#activity-heartbeat-requests}
 

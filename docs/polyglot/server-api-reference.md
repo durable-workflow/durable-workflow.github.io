@@ -501,6 +501,120 @@ encode them for you. A direct HTTP caller must use the official Avro encoder's
 `{codec, blob}` envelope or the runtime external reference below. The surrounding
 HTTP document is JSON; raw business JSON is not an alternative payload codec.
 
+### Signal and update command keys {#command-keys}
+
+A signal or update body's `request_id` is a command key on the workflow
+instance. Native Server 3.9.2 and later apply this contract and advertise it as
+`capabilities.command_request_keys` in `GET /api/cluster/info`. The
+`X-Request-Id` and `X-Correlation-Id` headers are correlation only. A request
+without a body `request_id` is always a new command.
+
+- **Same intent.** A retry with the same key, operation, name, typed arguments
+  and run target returns the original receipt and writes nothing. The receipt
+  keeps the original `command_id`, `run_id` and, for an update, `update_id`,
+  with `retained: true` and `intent_verified: true`. A fresh admission reports
+  `retained: false`. The Server finds the receipt before it checks the run, so
+  a retry after the run closed or continued as new still gets it. Typed values
+  are compared exactly: `1`, `1.0` and `"1"` differ, while map key order does
+  not matter.
+- **Different intent.** The same key with a different name, arguments or run
+  target is refused with `409`, `reason: "request_id_conflict"` and
+  `outcome: "rejected_request_id_conflict"`. `retained_command_id` names the
+  original command and `conflict` lists the parts that differ (`name`,
+  `arguments` or `target_or_arguments`). Nothing is written, and the key keeps
+  its original receipt. Never resend this request unchanged: send the original
+  input to read the receipt, or use a new key for new input.
+- **Ambiguous key.** A key that matches a legacy retained identity the Server
+  cannot select safely is refused with `409`, `reason: "request_id_ambiguous"`
+  and `retryable: false`. Examples are a raw legacy key that looks like
+  another key's hashed token, and keys that differ only by case on a
+  case-insensitive database. Nothing is written and no receipt is selected.
+  Inspect the original command in the workflow history before you send the
+  input under a new key.
+- **Legacy receipt.** A command admitted before the Server recorded intent
+  reads back as `retained: true` with `intent_verified: false` when the key,
+  name and any explicit run target match. That is the original admission, not
+  proof that this retry's arguments match it.
+- **Key format.** Keys are 1 to 255 Unicode characters, opaque and
+  case-sensitive, without normalization. Empty or longer keys are refused
+  without admission.
+- **Lifetime.** A refused signal, such as `run_not_active`, does not reserve
+  its key. A key lasts as long as its command is retained. When retention
+  prunes a run's details, a later request under that key is a new command.
+
+Before 3.9.0, a repeated signal key recorded a second signal, and an update
+retried with changed arguments returned the original receipt.
+
+The official clients choose or generate a key before sending, so the key
+survives a lost response:
+
+| Client | Supply a key | Refusals |
+| --- | --- | --- |
+| PHP SDK 3.17.0+ | The `requestId` argument of `Client::signalWorkflow()`, `updateWorkflow()` and `updateWorkflowReceipt()`, or of the handle's `signal()` and `update()`. Otherwise one `sdk-php-signal-…` or `sdk-php-update-…` key per call. | `SignalFailed` or `UpdateFailed`: `isRequestIdConflict()` with `conflict()` and `retainedCommandId()`; `isRequestIdAmbiguous()` from PHP SDK 3.21.0 |
+| Python SDK 2.19.1+ | `request_id=` on `Client.signal_workflow()`, `update_workflow()`, `handle.signal()` and `handle.update()`. Otherwise one `sdk-python-signal-…` or `sdk-python-update-…` key per call. | `SignalFailed` or `UpdateFailed` with `reason` `request_id_conflict` or `request_id_ambiguous`, plus `request_id` and `details` |
+| Rust SDK 4.20.0+ | `Client::signal_workflow_with_request_id()`, `update_workflow()`, `update_workflow_receipt()` and the matching `WorkflowHandle` methods. `Client::generate_signal_request_id()` and `generate_update_request_id()` return a key up front. | `Error::request_id_conflict()` and `Error::request_id_ambiguous()` |
+| CLI 2.11.0+ | `--request-id` on `workflow:signal` and `workflow:update`. Otherwise one `cli-signal-…` or `cli-update-…` key per invocation. | Exit `9` for `request_id_conflict` and `10` for `request_id_ambiguous` |
+
+PHP, Rust and the CLI send each signal or update once and never resend it by
+themselves. Python's transport retry policy resends the same key. A generated
+key exists only for that call, so save your own key when a retry must survive
+a process restart. Retry with the same key and the same input:
+
+```php
+use DurableWorkflow\Exception\SignalFailed;
+
+try {
+    $receipt = $client->signalWorkflow('order-123', 'approve', ['Grace'], requestId: 'approve-order-123');
+} catch (SignalFailed $failed) {
+    if (!$failed->isRequestIdConflict() && !$failed->isRequestIdAmbiguous()) {
+        throw $failed; // Retry a transport failure with $failed->requestId().
+    }
+    // Nothing was recorded. Don't resend unchanged.
+}
+```
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "order-123", "approve", args=["Grace"], request_id="approve-order-123",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise  # Retry a transport failure with failed.request_id.
+    # Nothing was recorded. Don't resend unchanged.
+```
+
+```rust
+let request_id = durable_workflow::Client::generate_update_request_id();
+// Save request_id with your operation record before sending.
+match client
+    .update_workflow_receipt("order-123", "mark-ready", [true], Some(request_id.as_str()))
+    .await
+{
+    Ok(receipt) if receipt["intent_verified"] == false => {
+        // A legacy receipt: the original update, not a verified match.
+    }
+    Ok(receipt) => println!("update {}", receipt["update_id"]),
+    Err(error) if error.is_request_id_conflict() || error.is_request_id_ambiguous() => {
+        // Nothing was recorded. Don't resend unchanged.
+    }
+    Err(error) => return Err(error), // Retry a transport failure with request_id.
+}
+```
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+The CLI prints `Retained: yes` for a retained receipt. From CLI 2.11.0, a
+legacy receipt prints
+`Intent Verified: no (legacy receipt; the Server did not compare this command's intent with it)`.
+A command key admits a signal or update once. It does not make the workflow's
+activity effects exactly once, so keep application idempotency for external
+effects.
+
 ### Native fired-timer redrive and replay clocks {#native-redrive-timers}
 
 :::note Available from native Server 3.11.0
@@ -987,7 +1101,7 @@ Common statuses:
 | `401` | Missing or invalid authentication. |
 | `403` | Authenticated token lacks the required role. |
 | `404` | Namespace, workflow, run, schedule, worker, or search attribute was not found. |
-| `409` | Duplicate or conflict, such as an already-started workflow or invalid run target. |
+| `409` | Duplicate or conflict, such as an already-started workflow, an invalid run target, or a reused [command key](#command-keys) (`request_id_conflict` or `request_id_ambiguous`). |
 | `422` | Validation failed; response includes field-level validation details. |
 | `429` | Admission or task queue capacity is full. |
 | `503` | The request reached a node that does not host the required topology roles. Hosted routes return `reason: "topology_role_unavailable"` plus `current_shape`, `current_process_class`, `current_roles`, `required_roles`, and `missing_roles`. The same status with `reason: "workflow_v2_blocked"` plus `blocked_by` and `remediation` covers workflow start/mutation, schedule mutation, bridge-adapter, and worker-protocol routes while workflow v2 bootstrap is blocked; schedule read routes (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`, `GET /api/schedules/{scheduleId}/history`) stay available so operators can inspect schedule state during recovery. |

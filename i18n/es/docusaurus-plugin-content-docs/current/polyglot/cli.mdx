@@ -352,6 +352,8 @@ La CLI utiliza una política estable de códigos de salida para que scripts y CI
 | `6` | `SERVER` | Error del servidor. Para HTTP `5xx`. |
 | `7` | `TIMEOUT` | La solicitud agotó su espera antes de responder el servidor. También para HTTP `408`. |
 | `8` | `COMPATIBILITY` | Fallo de compatibilidad. La CLI y el Server no pueden ejecutar el comando con seguridad, por ejemplo porque el Server no anuncia una capacidad que necesita, así que el comando se negó antes de enviar la solicitud. |
+| `9` | `REQUEST_ID_CONFLICT` | CLI 2.11.0 y posteriores. HTTP `409` con motivo `request_id_conflict`: el `--request-id` de la señal o actualización ya identifica un comando conservado con otro nombre, otra entrada u otra ejecución de destino. No se registró nada. Consulta [Reintentar una señal o actualización](./cli-reference.md#retry-a-signal-or-update). |
+| `10` | `REQUEST_ID_AMBIGUOUS` | CLI 2.11.0 y posteriores. HTTP `409` con motivo `request_id_ambiguous`: el `--request-id` coincide con una identidad conservada heredada que el Server no puede seleccionar. No se registró nada ni se seleccionó ningún recibo. Las versiones anteriores salen con `2` para ambos rechazos. |
 
 Ejemplo:
 

@@ -402,11 +402,10 @@ Fresh keyed signal and accepted update receipts in 3.9.2 echo the literal
 echo that key with `retained:true` and preserve the original command, run and
 update identities. Modern intent proof reports `intent_verified:true`;
 compatible pre-intent legacy readback reports `intent_verified:false`.
-Unkeyed and bridge receipts keep their existing behavior. The
+Unkeyed and bridge receipts keep their existing behavior. See the
 [published correction](https://github.com/durable-workflow/server/releases/tag/3.9.2#command-keys-and-receipts)
-does not establish every installed client cohort under
-[shared #216](https://github.com/durable-workflow/.github/issues/216); earlier
-3.9.1 failures must be rerun on the exact corrected tuple.
+and [signal and update command keys](./server-api-reference.md#command-keys)
+for conflict and ambiguity refusals and the client releases that support them.
 
 The currently-configured values are published under `limits` on the `GET /api/cluster/info` response, so clients can discover them at runtime:
 

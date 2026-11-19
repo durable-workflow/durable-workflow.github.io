@@ -176,29 +176,59 @@ HTTP-Updates des eigenständigen Servers lesen den Schlüssel dagegen nur aus
 Ohne Body-Schlüssel hat das Update keinen Deduplizierungsschlüssel, auch wenn
 mehrere Anfragen denselben Header verwenden.
 
-`request_id` ist kein portabler, laufbezogener Update-ID-Vertrag. Die geprüften
-PHP-Pfade können bei demselben Schlüssel mit anderen Argumenten oder
-Updatenamen innerhalb der Instanz das erste aufbewahrte Update zurückgeben.
-Das Wiederverwenden eines
-Schlüssels nach Continue-as-new kann das Ergebnis eines Vorgängers liefern,
-ohne ein Update am Nachfolger anzunehmen. Ein aufbewahrter schlüsselbezogener
-Beleg kann auch nach Abschluss zurückgegeben werden, während ein neues Update
-abgelehnt wird.
+Ein Befehlsschlüssel identifiziert ein Update auf einer Workflow-Instanz, über
+alle ihre Läufe hinweg. Ab Workflow 2.18.0 hängen Sie ihn mit `withRequestId()`
+an. Senden Sie nach einer verlorenen Antwort dasselbe Update mit demselben
+Schlüssel erneut:
 
-Verwenden Sie einen Schlüssel für eine logische Operation und erhalten Sie
-deren ursprüngliche Absicht. Ändern Sie nicht die Argumente, verwenden Sie ihn
-nicht für einen anderen Updatenamen und nehmen Sie nicht an, dass er im
-nächsten Lauf eine neue Operation startet. Die
-[Prüfung der veröffentlichten PHP-Artefakte](https://github.com/durable-workflow/server/issues/505#issuecomment-6287102328)
-belegt Aufruferschlüssel unabhängig von Proxy-Headern und aufbewahrte Belege
-nach Abschluss. Dieses Wiederherstellungsverhalten garantiert keine portable
-Konflikterkennung bei gleichem Schlüssel und anderer Absicht. Dieser umfassendere
-Vertrag wird in [Issue 216](https://github.com/durable-workflow/.github/issues/216)
-verfolgt. Native Server- und andere SDK-Pfade benötigen eine eigene Qualifikation.
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('mark-ready-order-123')
+    ->attemptUpdate('mark-ready', true);
+
+$result->retained();          // True when this call returned an earlier admission
+$result->intentVerified();    // False only for a legacy receipt
+$result->requestIdConflict(); // True when the key already names a different update
+$result->updateId();          // The original update on every matching retry
+```
+
+- Eine Wiederholung mit demselben Schlüssel, Updatenamen, denselben typisierten
+  Argumenten und demselben expliziten Laufziel gibt den ursprünglichen Beleg
+  einschließlich seiner Update-ID zurück und zeichnet nichts auf. Nach Abschluss
+  oder Continue-as-new liefert die Wiederholung weiterhin das ursprüngliche
+  Update. Sie nimmt kein neues Update in einem Nachfolgelauf an.
+- Derselbe Schlüssel mit anderem Updatenamen, anderen Argumenten oder anderem
+  Laufziel wird als `rejected_request_id_conflict` abgelehnt. `conflict()` nennt
+  den aufbewahrten Befehl und die abweichenden Teile. Nichts wird aufgezeichnet,
+  und der Schlüssel behält seinen ursprünglichen Beleg.
+- Ein Beleg, der angenommen wurde, bevor Workflow die Befehlsabsicht
+  aufzeichnete, wird mit `retained()` true und `intentVerified()` false
+  zurückgelesen. Das ist die ursprüngliche Annahme, kein Nachweis, dass die
+  Argumente dieser Wiederholung mit ihr übereinstimmen.
+- Schlüssel umfassen 1 bis 255 Unicode-Zeichen und werden exakt verglichen. Ein
+  ungültiger Schlüssel löst vor der Annahme `InvalidCommandRequestIdException`
+  aus.
+
+Verwenden Sie einen Schlüssel für eine logische Operation und ändern Sie nie
+deren Argumente. Verwenden Sie für eine neue Operation einen neuen Schlüssel,
+auch nachdem Sie bestätigt haben, dass ein Update mit Schlüssel abgelehnt wurde.
+Releases vor Workflow 2.18.0 und nativem Server 3.9.0 vergleichen die Absicht
+nicht: Dort liefert ein Schlüssel, der mit anderen Argumenten oder für einen
+anderen Updatenamen wiederverwendet wird, den Beleg des ersten Updates.
+
+Clients im Service-Modus senden den Schlüssel als `request_id` im Body. Native
+Server 3.9.2 und neuer wenden dieselben Regeln an und ergänzen für einige
+Legacy-Schlüssel eine Ablehnung `request_id_ambiguous`. Den HTTP-Vertrag und die
+Aufrufe für PHP, Python, Rust und die CLI beschreibt
+[Befehlsschlüssel für Signale und Updates](/docs/polyglot/server-api-reference#command-keys).
 
 Die Wiederherstellung von Belegen hängt von aufbewahrten Befehls-, Update- und
-Historiendatensätzen ab. Es wird hier keine anwendungsunabhängige
-Deduplizierungsdauer versprochen. Prüfen Sie die
+Historiendatensätzen ab. Wenn die Aufbewahrung die Details eines Laufs bereinigt,
+verschwinden auch seine Schlüssel, und eine spätere Anfrage unter diesem
+Schlüssel wird als neuer Befehl angenommen. Es wird hier keine
+anwendungsunabhängige Deduplizierungsdauer versprochen. Prüfen Sie die
 [Historienaufbewahrung](../configuration/pruning-workflows.md) und bewahren Sie
 Ihr Geschäftsbuch für die von Ihrer Anwendung benötigte Dauer auf. Fehlende
 Nachweise bedeuten weiterhin ein unbekanntes Ergebnis.

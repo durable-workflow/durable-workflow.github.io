@@ -458,6 +458,123 @@ Server також надає кооперативні маршрути `request-
 
 Команди передають бізнес-значення в Avro-конвертах. SDK першої сторони кодують їх автоматично. Прямий HTTP-клієнт має використовувати конверт `{codec, blob}` офіційного Avro-кодувальника або посилання runtime нижче. Зовнішній HTTP-документ є JSON; звичайний бізнес-JSON не є іншим кодеком даних.
 
+### Ключі команд signal і update {#command-keys}
+
+`request_id` у тілі запиту signal або update є ключем команди в екземплярі
+workflow. Native Server 3.9.2 і новіші застосовують цей контракт і оголошують
+його як `capabilities.command_request_keys` у `GET /api/cluster/info`. Заголовки
+`X-Request-Id` і `X-Correlation-Id` слугують лише для кореляції. Запит без
+`request_id` у тілі завжди є новою командою.
+
+- **Той самий намір.** Повтор із тим самим ключем, операцією, назвою,
+  типізованими аргументами та ціллю-запуском повертає початкову квитанцію й
+  нічого не записує. Квитанція зберігає початкові `command_id`, `run_id` і, для
+  update, `update_id`, а також містить `retained: true` та
+  `intent_verified: true`. Нове приймання повідомляє `retained: false`. Server
+  знаходить квитанцію до перевірки запуску, тому повтор після того, як запуск
+  закрився або перейшов до нового виконання через continue-as-new, усе одно її
+  отримує. Типізовані значення порівнюються точно: `1`, `1.0` і `"1"`
+  відрізняються, а порядок ключів у мапі не має значення.
+- **Інший намір.** Той самий ключ з іншою назвою, аргументами чи
+  ціллю-запуском відхиляється з `409`, `reason: "request_id_conflict"` і
+  `outcome: "rejected_request_id_conflict"`. `retained_command_id` називає
+  початкову команду, а `conflict` перелічує частини, що відрізняються (`name`,
+  `arguments` або `target_or_arguments`). Нічого не записується, і ключ зберігає
+  свою початкову квитанцію. Ніколи не надсилайте такий запит повторно без змін:
+  надішліть початкові вхідні дані, щоб прочитати квитанцію, або використайте
+  новий ключ для нових вхідних даних.
+- **Неоднозначний ключ.** Ключ, що збігається з legacy-ідентичністю збереженої
+  команди, яку Server не може безпечно вибрати, відхиляється з `409`,
+  `reason: "request_id_ambiguous"` і `retryable: false`. Приклади: сирий
+  legacy-ключ, схожий на хешований токен іншого ключа, або ключі, що
+  відрізняються лише регістром, у базі даних, нечутливій до регістру. Нічого не
+  записується, і жодну квитанцію не вибрано. Перевірте початкову команду в
+  історії workflow, перш ніж надсилати вхідні дані з новим ключем.
+- **Legacy-квитанція.** Команда, прийнята до того, як Server почав записувати
+  намір, читається як `retained: true` з `intent_verified: false`, якщо ключ,
+  назва та будь-яка явна ціль-запуск збігаються. Це початкове приймання, а не
+  доказ того, що аргументи цього повтору з ним збігаються.
+- **Формат ключа.** Ключі мають довжину від 1 до 255 символів Unicode, є
+  непрозорими й чутливими до регістру, без нормалізації. Порожні або довші
+  ключі відхиляються без приймання.
+- **Строк дії.** Відхилений signal, наприклад із `run_not_active`, не резервує
+  свій ключ. Ключ діє, доки зберігається його команда. Коли політика зберігання
+  видаляє подробиці запуску, пізніший запит із цим ключем стає новою командою.
+
+До 3.9.0 повторний ключ signal записував другий signal, а update, повторений зі
+зміненими аргументами, повертав початкову квитанцію.
+
+Офіційні клієнти вибирають або генерують ключ до надсилання, тому ключ
+переживає втрату відповіді:
+
+| Клієнт | Як передати ключ | Відмови |
+| --- | --- | --- |
+| PHP SDK 3.17.0+ | Аргумент `requestId` у `Client::signalWorkflow()`, `updateWorkflow()` і `updateWorkflowReceipt()` або в методах handle `signal()` і `update()`. Інакше — один ключ `sdk-php-signal-…` чи `sdk-php-update-…` на виклик. | `SignalFailed` або `UpdateFailed`: `isRequestIdConflict()` з `conflict()` і `retainedCommandId()`; `isRequestIdAmbiguous()` з PHP SDK 3.21.0 |
+| Python SDK 2.19.1+ | `request_id=` у `Client.signal_workflow()`, `update_workflow()`, `handle.signal()` і `handle.update()`. Інакше — один ключ `sdk-python-signal-…` чи `sdk-python-update-…` на виклик. | `SignalFailed` або `UpdateFailed` з `reason` `request_id_conflict` чи `request_id_ambiguous`, а також `request_id` і `details` |
+| Rust SDK 4.20.0+ | `Client::signal_workflow_with_request_id()`, `update_workflow()`, `update_workflow_receipt()` і відповідні методи `WorkflowHandle`. `Client::generate_signal_request_id()` і `generate_update_request_id()` повертають ключ заздалегідь. | `Error::request_id_conflict()` і `Error::request_id_ambiguous()` |
+| CLI 2.11.0+ | `--request-id` у `workflow:signal` і `workflow:update`. Інакше — один ключ `cli-signal-…` чи `cli-update-…` на виклик. | Код виходу `9` для `request_id_conflict` і `10` для `request_id_ambiguous` |
+
+PHP, Rust і CLI надсилають кожен signal або update один раз і ніколи не
+повторюють його самостійно. Політика транспортних повторів Python повторно
+надсилає той самий ключ. Згенерований ключ існує лише в межах цього виклику,
+тому зберігайте власний ключ, якщо повтор має пережити перезапуск процесу.
+Повторюйте з тим самим ключем і тими самими вхідними даними:
+
+```php
+use DurableWorkflow\Exception\SignalFailed;
+
+try {
+    $receipt = $client->signalWorkflow('order-123', 'approve', ['Grace'], requestId: 'approve-order-123');
+} catch (SignalFailed $failed) {
+    if (!$failed->isRequestIdConflict() && !$failed->isRequestIdAmbiguous()) {
+        throw $failed; // Retry a transport failure with $failed->requestId().
+    }
+    // Nothing was recorded. Don't resend unchanged.
+}
+```
+
+```python
+from durable_workflow.errors import SignalFailed
+
+try:
+    receipt = await client.signal_workflow(
+        "order-123", "approve", args=["Grace"], request_id="approve-order-123",
+    )
+except SignalFailed as failed:
+    if failed.reason not in ("request_id_conflict", "request_id_ambiguous"):
+        raise  # Retry a transport failure with failed.request_id.
+    # Nothing was recorded. Don't resend unchanged.
+```
+
+```rust
+let request_id = durable_workflow::Client::generate_update_request_id();
+// Save request_id with your operation record before sending.
+match client
+    .update_workflow_receipt("order-123", "mark-ready", [true], Some(request_id.as_str()))
+    .await
+{
+    Ok(receipt) if receipt["intent_verified"] == false => {
+        // A legacy receipt: the original update, not a verified match.
+    }
+    Ok(receipt) => println!("update {}", receipt["update_id"]),
+    Err(error) if error.is_request_id_conflict() || error.is_request_id_ambiguous() => {
+        // Nothing was recorded. Don't resend unchanged.
+    }
+    Err(error) => return Err(error), // Retry a transport failure with request_id.
+}
+```
+
+```bash
+dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-order-123
+```
+
+Для збереженої квитанції CLI виводить `Retained: yes`. Починаючи з CLI 2.11.0,
+для legacy-квитанції виводиться
+`Intent Verified: no (legacy receipt; the Server did not compare this command's intent with it)`.
+Ключ команди приймає signal або update один раз. Він не робить ефекти activity
+у workflow одноразовими, тому зберігайте ідемпотентність застосунку для
+зовнішніх ефектів.
+
 ### Native redrive спрацьованих timer і годинники replay {#native-redrive-timers}
 
 :::note Доступно з native Server 3.11.0
@@ -881,7 +998,7 @@ Prometheus. Назви й виміри метрик обмежені політ�
 | `401` | Відсутня чи неправильна автентифікація. |
 | `403` | Автентифікований token не має потрібної ролі. |
 | `404` | Namespace, workflow, виконання, schedule, worker чи атрибут пошуку не знайдено. |
-| `409` | Дублікат чи конфлікт, наприклад уже запущений workflow або неправильне цільове виконання. |
+| `409` | Дублікат чи конфлікт, наприклад уже запущений workflow, неправильне цільове виконання або повторно використаний [ключ команди](#command-keys) (`request_id_conflict` чи `request_id_ambiguous`). |
 | `422` | Перевірка не пройшла. Відповідь містить деталі полів. |
 | `429` | Місткість допуску чи черги завдань вичерпана. |
 | `503` | Запит потрапив на вузол без потрібних ролей топології. Повертає `reason: "topology_role_unavailable"` та `current_shape`, `current_process_class`, `current_roles`, `required_roles`, `missing_roles`. Той самий статус із `reason: "workflow_v2_blocked"`, `blocked_by`, `remediation` охоплює start/mutation workflow, зміни schedule, bridge-adapter і worker за блокування bootstrap v2. Читання schedule (`GET /api/schedules`, `GET /api/schedules/{scheduleId}`, `GET /api/schedules/{scheduleId}/history`) доступне для перевірки під час відновлення. |

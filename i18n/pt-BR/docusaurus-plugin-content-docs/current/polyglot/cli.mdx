@@ -421,6 +421,8 @@ estendem a partir deles.
 | `6` | `SERVER` | Erro do servidor. Retornado para HTTP `5xx`. |
 | `7` | `TIMEOUT` | A requisição expirou antes da resposta do servidor. Também retornado para HTTP `408`. |
 | `8` | `COMPATIBILITY` | Falha de compatibilidade. A CLI e o Server não conseguem executar o comando com segurança, por exemplo porque o Server não anuncia uma capacidade necessária, então o comando recusou antes de enviar a requisição. |
+| `9` | `REQUEST_ID_CONFLICT` | CLI 2.11.0 e posteriores. HTTP `409` com o motivo `request_id_conflict`: o `--request-id` do sinal ou da atualização já identifica um comando retido com nome, entrada ou destino de execução diferentes. Nada foi registrado. Consulte [Repetir um sinal ou uma atualização](./cli-reference.md#retry-a-signal-or-update). |
+| `10` | `REQUEST_ID_AMBIGUOUS` | CLI 2.11.0 e posteriores. HTTP `409` com o motivo `request_id_ambiguous`: o `--request-id` corresponde a uma identidade legada retida que o Server não consegue selecionar. Nada foi registrado e nenhum recibo foi selecionado. Versões anteriores terminam com o código `2` para ambas as recusas. |
 
 Exemplo:
 

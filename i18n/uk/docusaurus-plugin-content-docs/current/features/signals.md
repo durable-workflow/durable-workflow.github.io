@@ -176,11 +176,67 @@ $receipt = WorkflowStub::load('review-123')->attemptSignalWithArguments(
 та надсиланням workflow теж може закритися чи перейти до нового виконання.
 
 Для розслідування зберігайте початкові namespace, workflow ID, назву сигналу,
-аргументи й ключ операції застосунку. Повтор має відповідати фактичному
-контракту обробки дублікатів цільового runtime. Відмова повтору сама по собі
+аргументи й ключ операції застосунку. Відмова повтору сама по собі
 не є підставою запускати новий workflow.
 
-Дивіться [відновлення невизначеної команди](./updates.md#recover-after-an-uncertain-response)
+### Повтор із тим самим ключем команди {#retry-with-the-same-command-key}
+
+Ключ команди робить безпечним сам повтор. Виберіть один ключ для кожного
+логічного signal, наприклад `approve-order-123`, і збережіть його в записі
+операції до надсилання. У Workflow 2.18.0 і новіших версіях додайте його через
+`withRequestId()`. Після втраченої відповіді надішліть той самий signal ще раз
+із тим самим ключем, назвою, аргументами та ціллю:
+
+```php
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::load('order-123')
+    ->withRequestId('approve-order-123')
+    ->attemptSignalWithArguments('approved-by', ['approvedBy' => 'Taylor']);
+
+if ($result->requestIdConflict()) {
+    // The key already names a different signal. Nothing was recorded.
+    $retainedCommandId = $result->conflict()['retained_command_id'];
+} elseif ($result->retained() && ! $result->intentVerified()) {
+    // A legacy receipt: the original admission, not proof that this retry matches it.
+} else {
+    $result->commandId(); // The same signal command on every matching retry.
+}
+```
+
+- Повтор із тим самим ключем, назвою signal, типізованими аргументами та явною
+  ціллю-запуском повертає початкову квитанцію й нічого не записує. `retained()`
+  дорівнює true. Це працює й після того, як запуск закрився або перейшов до
+  нового виконання через continue-as-new, доки зберігається початкова команда.
+- Той самий ключ з іншою назвою, аргументами чи ціллю-запуском відхиляється:
+  `requestIdConflict()` дорівнює true, а `outcome()` —
+  `rejected_request_id_conflict`. `conflict()` називає збережену команду та
+  частини, що відрізняються. Нічого не записується, і ключ зберігає свою
+  початкову квитанцію. Надішліть початкові вхідні дані, щоб прочитати цю
+  квитанцію, або використайте новий ключ для нових вхідних даних.
+- Квитанція, прийнята до того, як Workflow почав записувати намір команди,
+  читається з `retained()` true та `intentVerified()` false. Це початкове
+  приймання, а не доказ того, що аргументи цього повтору з ним збігаються.
+  Перевірте її ідентифікатори, перш ніж вважати її своїм signal.
+- Ключі мають довжину від 1 до 255 символів Unicode і порівнюються точно, без
+  зведення регістру чи нормалізації. Порожній, задовгий або некоректний UTF-8
+  ключ спричиняє `InvalidCommandRequestIdException` ще до приймання. Signal,
+  надісланий без ключа, завжди є новим signal.
+
+Перед оновленням застосуйте міграцію Workflow `intent_digest`, а потім
+спорожніть і оновіть усі процеси, що пишуть у вбудовану базу даних, одночасно.
+Старіші релізи не порівнюють намір: повторний ключ signal там записує другий
+signal.
+
+Клієнти сервісного режиму надсилають ключ як `request_id` у тілі запиту.
+Native Server 3.9.2 і новіші застосовують ті самі правила та додають відмову
+`request_id_ambiguous` для деяких legacy-ключів. Дивіться
+[ключі команд signal і update](/docs/polyglot/server-api-reference#command-keys),
+де описано HTTP-контракт і виклики PHP, Python, Rust та CLI.
+
+Ключ команди приймає signal один раз. Він не гарантує, що activity, запущені
+цим signal, виконаються рівно один раз. Дивіться
+[відновлення невизначеної команди](./updates.md#recover-after-an-uncertain-response)
 для перевірки збережених update та звіряння стану в застосунку.
 
 ## Особа відправника та авторизація {#sender-identity-and-authorization}

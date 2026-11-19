@@ -1012,11 +1012,14 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-`business_event_id` は再試行の間で一定に保ち、Server のコマンドキーの長さ制限に
-収めてください。現在公開されている Server は、すべてのシグナル経路でこれらのキーを
-保持するわけではありません。ビジネスイベントの処理を冪等にし、配信結果が不確かな場合は
-照合してください。[アクティビティの正式なリファレンス](https://python.durable-workflow.com/reference/activity/)
-と[シグナル受領記録の保持要件](https://github.com/durable-workflow/.github/issues/216)を参照してください。
+`business_event_id` は再試行の間で一定に保ち、キー全体を 255 Unicode 文字以内に
+収めてください。native Server 3.9.2 以降では、同じキーと引数での再試行は、別のシグナルを
+記録する代わりに元の受領記録を返します。同じキーで引数が異なる場合は
+`reason == "request_id_conflict"` の `SignalFailed` が発生し、何も記録されません。
+それより古い Server は、すべてのシグナル経路でこれらのキーを保持するわけではありません。
+ビジネスイベントの処理を冪等にし、配信結果が不確かな場合は照合してください。
+[アクティビティの正式なリファレンス](https://python.durable-workflow.com/reference/activity/)
+と[シグナルと更新のコマンドキー](./server-api-reference.md#command-keys)を参照してください。
 
 ### ハートビートのリクエスト {#activity-heartbeat-requests}
 

@@ -982,11 +982,13 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
     )
 ```
 
-重试时保持 `business_event_id` 不变，并遵守 Server 命令键的长度限制。
-当前已发布的 Server 不会在所有信号路径上保留这些键。
+重试时保持 `business_event_id` 不变，并让整个键不超过 255 个 Unicode 字符。
+在原生 Server 3.9.2 及更高版本上，使用相同键和参数的重试会返回原始回执，而不是再记录一个信号。
+相同键配合不同参数会抛出 `reason == "request_id_conflict"` 的 `SignalFailed`，且不记录任何内容。
+较旧的 Server 不会在所有信号路径上保留这些键。
 业务事件处理应具有幂等性，并对结果不确定的投递进行核对。参阅
 [活动的权威参考文档](https://python.durable-workflow.com/reference/activity/)
-和[信号回执保留要求](https://github.com/durable-workflow/.github/issues/216)。
+和[信号与更新命令键](./server-api-reference.md#command-keys)。
 
 ### 心跳请求 {#activity-heartbeat-requests}
 
