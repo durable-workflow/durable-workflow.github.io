@@ -554,6 +554,83 @@ Wo das Format gilt:
   und behalten vom Server erzeugte IDs. Läufe, die frühere Server-Releases
   gestartet haben, behalten ihre erzeugten IDs.
 
+## Das Vorkommen im Workflow-Code lesen {#reading-the-occurrence-in-workflow-code}
+
+Ein Zeitplan übergibt jedem Lauf dieselben Argumente, auch nachgeholten Läufen.
+Um zu erfahren, für welches Vorkommen ein Lauf steht, rufen Sie im Workflow
+`$this->scheduleOrigin()` auf. Die Methode gibt ein
+`Workflow\V2\Support\ScheduleOrigin` zurück, oder `null` für einen Lauf, den
+kein Zeitplan gestartet hat. Sie ist ab eingebettetem Workflow
+2.30.0 verfügbar.
+
+- `scheduleId` ist die Kennung des Zeitplans.
+- `occurrenceTime` ist die vom Scheduler ausgewertete Zeit als
+  `DateTimeImmutable`. Bei einem Tick ist es die Auslösezeit mit Jitter. Beim
+  Nachholen ist es das aufgezählte vergangene Vorkommen. Bei einem manuellen
+  `trigger()`, der kein Vorkommen hat, ist es `null`.
+- `triggerNumber` gibt an, die wievielte Auslösung des Zeitplans dies war,
+  beginnend bei 1.
+
+Der Wert stammt aus dem Historienereignis `ScheduleTriggered` des Laufs selbst,
+das mit dem Start des Laufs festgeschrieben wird. Er ist ab dem ersten
+Workflow-Task verfügbar und bei jedem Replay gleich. Er ist weder die Startzeit
+des Laufs noch `Workflow::now()` und verschiebt sich daher nicht durch Jitter,
+Verzögerungen des Schedulers oder gepufferte Starts.
+
+Ein täglicher Bericht, der den Tag vor seinem Vorkommen verarbeitet:
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+Mit dem Cron `0 0 * * *` und Jitter erfasst ein Tick, der am 2026-11-18 um
+00:00:12 UTC auslöst, den Zeitraum 2026-11-17T00:00:12 bis 2026-11-18T00:00:12.
+Ein Nachholvorgang für die Mitternachtsvorkommen am 1., 2. und 3. November
+startet drei Läufe, deren Zeitfenster an diesen Mitternachtszeitpunkten enden,
+obwohl alle drei jetzt starten.
+
+Welche Läufe den Ursprung behalten:
+
+- **Continue-as-new.** Der Nachfolger gehört zur selben geplanten Ausführung. Er
+  zeichnet direkt nach seinem Start das `ScheduleTriggered` seines Vorgängers
+  auf und liest denselben Ursprung. Der native Server tut dies seit 3.5.0.
+- **Wiederholungen und Redrive.** Aktivitätswiederholungen finden innerhalb des
+  Laufs statt und sehen daher denselben Ursprung. Ein von einem Zeitplan
+  gestarteter Lauf wird nie als neuer Lauf wiederholt, und ein Redrive eines
+  fehlgeschlagenen, von einem Zeitplan gestarteten Laufs wird mit
+  `unsupported_history` abgelehnt. Kein wiederholter Lauf kann den Ursprung
+  verlieren.
+- **Spätere Auslösungen.** Jede Auslösung, ob Tick oder Nachholen, startet einen
+  eigenen Lauf mit eigenem Ursprung.
+
+Läufe, die gestartet wurden, bevor es diese API gab, haben das Ereignis bereits
+und lesen daher ebenfalls ihren Ursprung. Historien ohne das Ereignis liefern
+`null`.
+
+Worker im Service-Modus lesen denselben Wert aus ihrem Workflow-Kontext.
+Verwenden Sie sie mit nativem Server 3.13.0 oder neuer, der das von ihnen
+gelesene `ScheduleTriggered`-Ereignis aufzeichnet.
+
+- PHP-SDK 3.13.0 und neuer: `WorkflowContext::scheduleOrigin()`.
+- Python-SDK 2.19.0 und neuer: `ctx.schedule_origin`.
+- Rust-SDK 4.19.0 und neuer: `ctx.schedule_origin()`.
+
 ## Queue-Routing {#queue-routing}
 
 Ist `connection` oder `queue` am Zeitplan gesetzt, werden ausgelöste Workflows

@@ -474,6 +474,54 @@ Dónde se aplica el formato:
 - **Workflow embebido 2.15.15 y posteriores.** Un `trigger()` manual no tiene ocurrencia, así que su ID termina con el momento de la activación en milisegundos Unix en lugar de `backfill:{occurrence}`. Las ejecuciones iniciadas por versiones anteriores conservan sus IDs `schedule:{scheduleId}:{suffix}`.
 - **Server nativo 3.13.0 y posteriores.** Las activaciones manuales no tienen ocurrencia y conservan los IDs generados por el servidor. Las ejecuciones iniciadas por versiones anteriores del Server conservan sus IDs generados.
 
+## Leer la ocurrencia en el código del workflow {#reading-the-occurrence-in-workflow-code}
+
+Una programación pasa los mismos argumentos a todas las ejecuciones, incluidas las de recuperación. Para saber qué ocurrencia representa una ejecución, llama a `$this->scheduleOrigin()` en el workflow. Devuelve un `Workflow\V2\Support\ScheduleOrigin`, o `null` para una ejecución que no inició ninguna programación. Está disponible a partir de Workflow embebido 2.30.0.
+
+- `scheduleId` es el identificador de la programación.
+- `occurrenceTime` es el momento que evaluó el planificador, como `DateTimeImmutable`. En un tick es la hora de activación con el jitter aplicado. En una recuperación es la ocurrencia pasada enumerada. Es `null` en un `trigger()` manual, que no tiene ocurrencia.
+- `triggerNumber` indica qué activación de la programación fue esta, empezando por 1.
+
+El valor procede del propio evento de historial `ScheduleTriggered` de la ejecución, que se confirma junto con el inicio de la ejecución. Está disponible desde la primera tarea de workflow y es el mismo en cada replay. No es la hora de inicio de la ejecución ni `Workflow::now()`, así que no se desplaza por el jitter, los retrasos del planificador ni los inicios almacenados en búfer.
+
+Un informe diario que procesa el día anterior a su ocurrencia:
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+Con un cron `0 0 * * *` y jitter, un tick que se activa a las 00:00:12 UTC del 2026-11-18 cubre de 2026-11-17T00:00:12 a 2026-11-18T00:00:12. Una recuperación que abarca las ocurrencias de medianoche del 1, 2 y 3 de noviembre inicia tres ejecuciones cuyas ventanas terminan en esas medianoches, aunque las tres se inicien ahora.
+
+Qué ejecuciones conservan el origen:
+
+- **Continuar como nueva ejecución.** La sucesora pertenece a la misma ejecución programada. Registra el `ScheduleTriggered` de su predecesora justo después de iniciarse y lee el mismo origen. El Server nativo lo hace desde 3.5.0.
+- **Reintentos y redrive.** Los reintentos de actividad ocurren dentro de la ejecución, así que ven el mismo origen. Una ejecución iniciada por una programación nunca se reintenta como una ejecución nueva, y el redrive de una ejecución fallida iniciada por una programación se rechaza con `unsupported_history`. Ninguna ejecución reintentada puede perder el origen.
+- **Activaciones posteriores.** Cada activación, ya sea un tick o una recuperación, inicia su propia ejecución con su propio origen.
+
+Las ejecuciones iniciadas antes de que existiera esta API ya tienen el evento, así que también leen su origen. Los historiales sin el evento leen `null`.
+
+Los workers en modo de servicio leen el mismo valor desde su contexto de workflow. Úsalos con Server nativo 3.13.0 o posterior, que registra el evento `ScheduleTriggered` que leen.
+
+- SDK de PHP 3.13.0 y posteriores: `WorkflowContext::scheduleOrigin()`.
+- SDK de Python 2.19.0 y posteriores: `ctx.schedule_origin`.
+- SDK de Rust 4.19.0 y posteriores: `ctx.schedule_origin()`.
+
 ## Enrutamiento por colas {#queue-routing}
 
 Con `connection` o `queue` en la programación, los workflows usan esos valores en lugar de los predeterminados de la clase:

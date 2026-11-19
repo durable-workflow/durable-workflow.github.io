@@ -433,6 +433,54 @@ schedule.ns:{namespace hash}:{schedule ID length}:{schedule ID}:backfill:{occurr
 - **嵌入式 Workflow 2.15.15 及更高版本。** 手动 `trigger()` 没有对应的发生，因此其 ID 以触发时间的 Unix 毫秒数结尾，而不是 `backfill:{occurrence}`。早期版本启动的运行保留其 `schedule:{scheduleId}:{suffix}` 形式的 ID。
 - **原生 Server 3.13.0 及更高版本。** 手动触发没有对应的发生，保留服务器生成的 ID。早期 Server 版本启动的运行保留其已生成的 ID。
 
+## 在工作流代码中读取调度发生 {#reading-the-occurrence-in-workflow-code}
+
+调度会向每次运行传递相同的参数，回填启动的运行也不例外。要了解某次运行对应哪次发生，请在工作流中调用 `$this->scheduleOrigin()`。它返回一个 `Workflow\V2\Support\ScheduleOrigin`；对于不是由调度启动的运行，则返回 `null`。该方法自嵌入式 Workflow 2.30.0 起可用。
+
+- `scheduleId` 是调度的标识符。
+- `occurrenceTime` 是调度器评估的时间，类型为 `DateTimeImmutable`。对于 tick，它是加上抖动后的触发时间。对于回填，它是枚举出的过去发生。对于没有对应发生的手动 `trigger()`，它为 `null`。
+- `triggerNumber` 表示这是调度的第几次触发，从 1 开始。
+
+该值来自运行自身的 `ScheduleTriggered` 历史事件，该事件随运行启动一起提交。它在第一个工作流任务中即可用，并且每次重放都相同。它不是运行的启动时间，也不是 `Workflow::now()`，因此不会因抖动、调度器延迟或缓冲启动而漂移。
+
+一个处理其发生前一天数据的每日报表：
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+使用 `0 0 * * *` cron 和抖动时，在 2026-11-18 00:00:12 UTC 触发的 tick 覆盖 2026-11-17T00:00:12 到 2026-11-18T00:00:12。覆盖 11 月 1 日、2 日和 3 日午夜发生的回填会启动三个运行，其窗口分别结束于这些午夜，尽管三个运行都在现在启动。
+
+哪些运行保留来源：
+
+- **continue-as-new。** 后继运行属于同一次调度执行。它在启动后立即记录前驱运行的 `ScheduleTriggered`，并读取相同的来源。原生 Server 自 3.5.0 起即如此。
+- **重试与 redrive。** 活动重试发生在运行内部，因此看到相同的来源。由调度启动的运行永远不会作为新运行重试；对由调度启动且已失败的运行执行 redrive 会被拒绝，并返回 `unsupported_history`。任何重试的运行都不会丢失来源。
+- **后续触发。** 每次触发（无论是 tick 还是回填）都会以自己的来源启动自己的运行。
+
+在此 API 出现之前启动的运行已经拥有该事件，因此同样能读取其来源。没有该事件的历史读取到 `null`。
+
+服务模式 worker 从其工作流上下文中读取相同的值。请将它们与原生 Server 3.13.0 或更高版本配合使用，该版本会记录它们读取的 `ScheduleTriggered` 事件。
+
+- PHP SDK 3.13.0 及更高版本：`WorkflowContext::scheduleOrigin()`。
+- Python SDK 2.19.0 及更高版本：`ctx.schedule_origin`。
+- Rust SDK 4.19.0 及更高版本：`ctx.schedule_origin()`。
+
 ## 队列路由 {#queue-routing}
 
 调度设置 `connection` 或 `queue` 后，触发工作流派发到指定连接和队列，覆盖工作流类默认值：

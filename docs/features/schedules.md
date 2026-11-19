@@ -493,6 +493,76 @@ Where the format applies:
   keep server-generated IDs. Runs started by earlier Server releases keep their
   generated IDs.
 
+## Reading the occurrence in workflow code
+
+A schedule passes the same arguments to every run, including backfilled ones.
+To learn which occurrence a run stands for, call `$this->scheduleOrigin()` in
+the workflow. It returns a `Workflow\V2\Support\ScheduleOrigin`, or `null`
+for a run that no schedule started. It is available in embedded Workflow
+2.30.0 and later.
+
+- `scheduleId` is the schedule's identifier.
+- `occurrenceTime` is the time the scheduler evaluated, as a
+  `DateTimeImmutable`. For a tick it is the jittered fire time. For a backfill
+  it is the enumerated past occurrence. It is `null` for a manual `trigger()`,
+  which has no occurrence.
+- `triggerNumber` is which fire of the schedule this was, starting at 1.
+
+The value comes from the run's own `ScheduleTriggered` history event, which is
+committed with the run's start. It is available on the first workflow task and
+is the same on every replay. It is not the run's start time or `Workflow::now()`,
+so it does not drift with jitter, scheduler delays or buffered starts.
+
+A daily report that processes the day before its occurrence:
+
+```php
+use Workflow\V2\Workflow;
+
+final class DailyReportWorkflow extends Workflow
+{
+    public function handle(): mixed
+    {
+        $windowEnd = $this->scheduleOrigin()?->occurrenceTime
+            ?? throw new LogicException('Start this workflow from a schedule.');
+        $windowStart = $windowEnd->modify('-1 day');
+
+        return Workflow::activity(
+            BuildReport::class,
+            $windowStart->format(DATE_ATOM),
+            $windowEnd->format(DATE_ATOM),
+        );
+    }
+}
+```
+
+With a `0 0 * * *` cron and jitter, a tick that fires at 00:00:12 UTC on
+2026-11-18 reports 2026-11-17T00:00:12 to 2026-11-18T00:00:12. A backfill
+covering the midnight occurrences of November 1, 2 and 3 starts three runs
+whose windows end at those midnights, even though all three start now.
+
+Which runs keep the origin:
+
+- **Continue-as-new.** The successor is the same scheduled execution. It
+  records its predecessor's `ScheduleTriggered` right after its start and reads
+  the same origin. Native Server has done this since 3.5.0.
+- **Retries and redrive.** Activity retries happen inside the run, so they
+  see the same origin. A schedule-started run is never retried as a new run,
+  and redriving a failed schedule-started run is refused with
+  `unsupported_history`. No retried run can lose the origin.
+- **Later fires.** Each fire, tick or backfill, starts its own run with its own
+  origin.
+
+Runs started before this API existed already have the event, so they read their
+origin too. Histories without the event read `null`.
+
+Service-mode workers read the same value from their workflow context. Use them
+with native Server 3.13.0 or later, which records the `ScheduleTriggered` event
+they read.
+
+- PHP SDK 3.13.0 and later: `WorkflowContext::scheduleOrigin()`.
+- Python SDK 2.19.0 and later: `ctx.schedule_origin`.
+- Rust SDK 4.19.0 and later: `ctx.schedule_origin()`.
+
 ## Queue routing
 
 When `connection` or `queue` is set on a schedule, triggered workflows dispatch to that connection and queue instead of the workflow class default:
