@@ -108,6 +108,86 @@ Signal behavior:
 - Without a contract, `await('name')` returns `true` when no arguments were sent, the single argument when one was sent, or the full argument array when several were sent.
 - Unknown signal names reject as `rejected_unknown_signal`; signals against a closed or unstarted instance reject as `rejected_not_active` or `rejected_not_started`.
 
+## Start and signal in one operation {#signal-with-start}
+
+`signalWithStart()` starts the workflow or reuses its open run, and records the
+signal on that run, in one transaction. A separate `start()` followed by
+`signal()` leaves a gap in which the run can close and the signal is refused:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::make(OrderApprovalWorkflow::class, 'order-123')
+    ->signalWithStart('approved-by', ['approvedBy' => 'Taylor'], StartOptions::returnExistingActive());
+
+$result->startOutcome(); // "started_new" or "returned_existing_active"
+```
+
+When the current run has closed, embedded signal-with-start starts a new run
+after it, and the closed run keeps its outcome. Service-mode clients use the
+Server's signal-with-start, which needs native Server 3.15.0 or later and
+refuses a closed run unless the caller asks for a new one. See [signal-with-start](/docs/polyglot/workflow-signals#signal-with-start)
+for the PHP, Python and Rust SDK calls.
+
+## Signal another workflow {#signal-another-workflow}
+
+:::note Pending release
+Durable signal-external for embedded workflows is in
+[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) and has not been released. Its API is
+experimental.
+:::
+
+Workflow code can signal another workflow in its namespace with
+`signalExternalWorkflow()`. The request and its outcome are recorded once in
+this workflow's history, in the same transaction that admits the signal on the
+target, and replay returns the recorded outcome without sending again:
+
+```php
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\signalExternalWorkflow;
+
+#[Type('order-approver')]
+final class OrderApproverWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $result = signalExternalWorkflow($orderId, 'approved-by', ['Taylor']);
+
+        if (! $result->delivered()) {
+            // target_not_found, target_closed or rejected, with a reason
+            return ['skipped' => $result->outcome->value, 'reason' => $result->reason];
+        }
+
+        return ['delivered_to' => $result->targetRunId];
+    }
+}
+```
+
+- A missing, closed or refusing target is a returned `ExternalSignalResult`,
+  not an exception. The outcomes and reasons match the Server's, listed in the
+  [service-mode guide](/docs/polyglot/workflow-signals#signal-another-workflow).
+- Pass a run ID as the fourth argument to signal only that run. A child's
+  handle has `signalDurably()`, for example
+  `$this->lastChild()->signalDurably('approved-by', 'Taylor')`. The handle's
+  `signal()` still sends directly, outside the parent's history, and can send
+  again when the parent replays.
+- On the target it is an ordinary signal attributed to the sending run, keyed
+  `workflow-signal:<sender run id>:<sequence>`. Applications cannot use that
+  request-ID prefix.
+- The signal name follows the Server's rules (not blank, no control
+  characters, at most 191 characters and 255 bytes). A refused name throws
+  `InvalidExternalSignalException` in workflow code before anything is
+  recorded.
+- Changing the target, run, signal name or arguments at a recorded step blocks
+  replay as a history shape mismatch.
+
+Signals stay within the namespace. Use a
+[service operation](./service-operations.md) to reach another namespace. Use an
+activity when you need signal-with-start from workflow code, and give it a
+stable request ID so that a retried activity does not signal twice.
+
 ## Evolve a signal payload {#evolve-a-signal-payload}
 
 Use one declared map argument for an application payload that needs compatible

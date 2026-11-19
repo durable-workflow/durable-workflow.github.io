@@ -88,6 +88,60 @@ $result->instanceId();  // "order-123"
 - 契約がなければ `await('name')` は引数なしで `true`、1引数でその値、複数なら全引数の配列を返します。
 - 未知の名前は `rejected_unknown_signal`、終了済みや未開始のインスタンスへの送信は `rejected_not_active` または `rejected_not_started` で拒否します。
 
+## 1つの操作で開始とシグナル送信を行う {#signal-with-start}
+
+`signalWithStart()` は、ワークフローを開始するか開いている実行を再利用し、その実行にシグナルを記録する処理を1つのトランザクションで行います。`start()` の後に `signal()` を別々に呼ぶと、その間に実行が閉じてシグナルが拒否される隙間が生じます。
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::make(OrderApprovalWorkflow::class, 'order-123')
+    ->signalWithStart('approved-by', ['approvedBy' => 'Taylor'], StartOptions::returnExistingActive());
+
+$result->startOutcome(); // "started_new" or "returned_existing_active"
+```
+
+現在の実行が閉じている場合、組み込みの signal-with-start はその後に新しい実行を開始し、閉じた実行は結果を維持します。サービスモードのクライアントは Server の signal-with-start を使います。これにはネイティブ Server 3.15.0 以降が必要で、呼び出し元が新しい実行を求めない限り、閉じた実行への送信は拒否されます。PHP、Python、Rust SDK の呼び出しは [signal-with-start](/docs/polyglot/workflow-signals#signal-with-start) を参照してください。
+
+## 別のワークフローへシグナルを送る {#signal-another-workflow}
+
+:::note 未リリース
+組み込みワークフロー向けの永続的な signal-external は [Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) で対応中で、まだリリースされていません。API は実験的です。
+:::
+
+ワークフローコードは `signalExternalWorkflow()` で、同じ名前空間内の別のワークフローへシグナルを送れます。リクエストとその結果は、対象でシグナルを受理するのと同じトランザクションで、このワークフローの履歴に一度だけ記録されます。リプレイは再送せずに記録済みの結果を返します。
+
+```php
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\signalExternalWorkflow;
+
+#[Type('order-approver')]
+final class OrderApproverWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $result = signalExternalWorkflow($orderId, 'approved-by', ['Taylor']);
+
+        if (! $result->delivered()) {
+            // target_not_found, target_closed or rejected, with a reason
+            return ['skipped' => $result->outcome->value, 'reason' => $result->reason];
+        }
+
+        return ['delivered_to' => $result->targetRunId];
+    }
+}
+```
+
+- 対象が存在しない、閉じている、または拒否した場合は、例外ではなく `ExternalSignalResult` が返されます。結果と理由は Server と同じで、[サービスモードのガイド](/docs/polyglot/workflow-signals#signal-another-workflow)に一覧があります。
+- 4番目の引数に実行 ID を渡すと、その実行だけにシグナルを送ります。子のハンドルには `signalDurably()` があります。たとえば `$this->lastChild()->signalDurably('approved-by', 'Taylor')` です。ハンドルの `signal()` は従来どおり親の履歴の外で直接送信するため、親のリプレイ時に再送されることがあります。
+- 対象側では、送信元の実行に帰属する通常のシグナルで、キーは `workflow-signal:<sender run id>:<sequence>` です。アプリケーションはこのリクエスト ID 接頭辞を使えません。
+- シグナル名は Server の規則に従います（空でない、制御文字を含まない、最大 191 文字かつ 255 バイト）。拒否された名前は、何かが記録される前にワークフローコード内で `InvalidExternalSignalException` をスローします。
+- 記録済みのステップで対象、実行、シグナル名、引数のいずれかを変更すると、履歴の形状不一致としてリプレイがブロックされます。
+
+シグナルは名前空間内にとどまります。別の名前空間に届けるには[サービス操作](./service-operations.md)を使います。ワークフローコードから signal-with-start が必要な場合はアクティビティを使い、再試行されたアクティビティが二重にシグナルを送らないよう、安定したリクエスト ID を付けてください。
+
 ## シグナルペイロードの互換性を保って拡張する {#evolve-a-signal-payload}
 
 互換性のある追加が必要なアプリケーションペイロードには、宣言済みのマップ引数を1つ使用します。この例では、任意の参考情報 `note` を追加しても `schema_version: 1` を維持します。古い送信側はこのフィールドを省略し、新しい読み取り側は `null` を使用します。古い読み取り側は、承認判断を変えずにこれを無視できます。認可や業務上の動作を変える必要がある変更には、無視されるフィールドを使用しないでください。

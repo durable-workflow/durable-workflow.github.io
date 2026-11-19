@@ -24,6 +24,7 @@ const sidebars = {
         'polyglot/workflow-streams',
         'polyglot/service-operations',
         'polyglot/polling-patterns',
+        'polyglot/workflow-signals',
         {
           type: 'category',
           label: 'CLI',
