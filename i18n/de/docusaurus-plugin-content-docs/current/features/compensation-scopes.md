@@ -15,12 +15,12 @@ Verwenden Sie einen Bereich, wenn ein Abbruch spät eintreffen kann, etwa wenn e
 | Teil | Status |
 | --- | --- |
 | `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Geplant stabil (2.32.0 oder später) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Geplant stabil (2.32.0 oder später) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Geplant stabil (2.32.0 oder später) |
 | `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Geplant stabil (2.32.0 oder später) |
 | `DurableScope::reserveChild()` und Root-Zulassung (`RootReservationStore`) | Experimentell |
 | Mit `@internal` markierte Klassen (Aktivitäten, Persistenz, Wiederherstellungs-Engine) | Keine öffentliche API |
 
-Die Bereichs-APIs wurden erstmals in 2.29.0 als experimentell ausgeliefert. Die automatische Wiederherstellung nach dem Schließen des ursprünglichen Laufs, der Wiederholungsplan der Wiederherstellung und `describe()` kommen mit 2.31.0. Die gesamte API bleibt experimentell und kann sich in einem Minor-Release ändern, bis ein späteres Minor-Release (2.32.0 oder später, wie bei diesem Release entschieden) die als geplant stabil markierten Teile hochstuft. Nach dieser Hochstufung folgen sie der [2.x-Kompatibilitätsrichtlinie](../compatibility.md). Die anfängliche Unterstützung ist auf eingebettetes Laravel und sequenzielle Kompensation beschränkt.
+Die Bereichs-APIs wurden erstmals in 2.29.0 als experimentell ausgeliefert. Die automatische Wiederherstellung nach dem Schließen des ursprünglichen Laufs, der Wiederholungsplan der Wiederherstellung und `describe()` kommen mit 2.31.0. Die geprüften Handler-Ergebnisse (`failed()`, `rejected()` und `HandlerContractViolation`) kommen mit 2.32.0. Die gesamte API bleibt experimentell und kann sich in einem Minor-Release ändern, bis ein späteres Release (2.32.0 oder später, wie bei diesem Release entschieden) die als geplant stabil markierten Teile hochstuft. Nach dieser Hochstufung folgen sie der [2.x-Kompatibilitätsrichtlinie](../compatibility.md). Die anfängliche Unterstützung ist auf eingebettetes Laravel und sequenzielle Kompensation beschränkt.
 
 ## Funktionsweise {#how-it-works}
 
@@ -129,6 +129,8 @@ Handler können für denselben Vorgang mehr als einmal laufen; machen Sie daher 
 
 - `execute()` gibt `ForwardResult::observed()` mit Nachweisen zurück, `unknown()`, wenn das Ergebnis beim Anbieter ungewiss ist, oder `rejected()`, wenn der Anbieter mit Sicherheit keine Wirkung erzielt hat. Ein abgelehnter Vorwärtsvorgang lässt den Aufruf des Workflows mit `scope_forward_rejected` fehlschlagen, und seine Kompensation benötigt keinen Aufruf beim Anbieter. Wenn `$context->reconcileBeforeForward` true ist, hat ein früherer Versuch möglicherweise bereits Wirkung gezeigt; fragen Sie den Vorgang ab, bevor Sie ihn erneut auslösen.
 - `compensate()` gibt `Resolution::verified()` nur mit einem Nachweis zurück, dass die Wirkung rückgängig gemacht wurde und keine verspätete Vorwärtswirkung mehr möglich ist. Ein Callback-Rückgabewert, ein Timeout oder ein geschlossener Lauf ist kein solcher Nachweis. Geben Sie `unknown()` zurück, um die Verpflichtung ungelöst zu lassen und native Wiederholungen zu erlauben, oder `failed()`, wenn die Kompensation mit Sicherheit nicht abgeschlossen werden kann. Wenn `$context->forwardOutcomeUnconfirmed` true ist, wurde die Vorwärtswirkung nie bestätigt und kann noch verspätet eintreten.
+- Ein ungültiges Ergebnis, etwa `verified()` ohne Nachweis, ein ungültiger Grund oder ein Wert des Vorwärtsergebnisses über der Grenze, löst `HandlerContractViolation` aus. Die Engine zeichnet das Ergebnis als unbekannt auf, sodass die Kompensation den Vorgang trotzdem abgleicht, und lässt die Aktivität mit dem nicht wiederholbaren Fehler `scope_handler_contract_violation` fehlschlagen, gefolgt von der Meldung der Verletzung. Sie wird nicht wie ein unbekanntes Ergebnis beim Anbieter wiederholt.
+- Für 2.31.0 oder früher geschriebene Handler übergeben möglicherweise ein zweites Argument an `verified()`. `verified($evidence, true)` verifiziert weiterhin und löst einen `E_USER_DEPRECATED`-Hinweis aus; `verified($evidence, false)` gibt `unknown('late-forward-possible')` zurück. Entfernen Sie das zweite Argument.
 
 ## Abbrechen und wiederherstellen {#cancel-and-recover}
 
@@ -146,7 +148,7 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 Wiederherstellungsläufe unternehmen bis zu sechs Versuche pro Kompensation. Zwischen den Versuchen warten sie 1, 2, 5 und 10 Sekunden, danach eine Aktivitäts-Lease plus einen Task-Reparaturdurchlauf, sodass der Versuch eines abgestürzten Workers vor dem letzten Versuch zurückgewonnen wird. Die Verifizierung eines untergeordneten Bereichs oder eine neue autorisierte Anfrage weckt eine wartende Wiederholung sofort. Ein dauerhafter Fehler lässt den Wiederherstellungslauf dennoch fehlschlagen, wobei die Verpflichtung ungelöst bleibt.
 
-Prüfen Sie das Ergebnis mit `describe()`. Der Aufruf ist schreibgeschützt und erfordert die Autorisierung `inspect`. Er gibt immer dieselben Schlüssel zurück. Status stammen aus den Enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` und `ObligationStatus`, und eine Ablehnung besteht aus einem stabilen `code` plus der `message` des Hosts, die nicht maschinenstabil ist:
+Prüfen Sie das Ergebnis mit `describe()`. Der Aufruf ist schreibgeschützt und erfordert die Autorisierung `inspect`. Er gibt immer dieselben Schlüssel zurück. Status stammen aus den Enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` und `ObligationStatus`, und eine Ablehnung besteht aus einem stabilen `code` plus der `message` des Hosts, die nicht maschinenstabil ist. Diese Enums können in einem Minor-Release neue Fälle erhalten; behandeln Sie daher Werte, die Sie nicht kennen, mit einem Standardzweig:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
@@ -169,7 +171,7 @@ Nach der Hochstufung ändern sich die stabilen APIs innerhalb von 2.x nicht inko
 
 Diese Grenzen sind Mindestwerte, die steigen, aber nicht sinken können:
 
-- Eingabe einer Verpflichtung: 15.360 Bytes als JSON, 500 Werte und Tiefe 7; Wert eines Vorwärtsergebnisses: 11.264 Bytes, 400 Werte und Tiefe 7;
+- Eingabe einer Verpflichtung: 15.360 Bytes als JSON, 500 Werte und Tiefe 7; Wert eines Vorwärtsergebnisses: 11.264 Bytes, 400 Werte und Tiefe 7 (Bereiche, die vor 2.32.0 aufgezeichnet wurden, behalten für beide die frühere, größere Envelope-Grenze);
 - 256 Verpflichtungen pro Bereich, einschließlich bis zu 16 untergeordneter Teilnehmer, und eine Verschachtelungsebene;
 - 128 Anfragen pro Bereich, gemeinsam mit den untergeordneten Anfragen der Engine;
 - 32 Nachweisreferenzen von höchstens 128 Bytes pro Ergebnis.

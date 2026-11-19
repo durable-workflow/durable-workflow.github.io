@@ -15,12 +15,12 @@ description: Laravel 組み込みワークフローで、補償義務を作成�
 | 部分 | 状態 |
 | --- | --- |
 | `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 安定化予定（2.32.0 以降） |
-| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry` | 安定化予定（2.32.0 以降） |
+| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry`、`HandlerContractViolation` | 安定化予定（2.32.0 以降） |
 | `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 安定化予定（2.32.0 以降） |
 | `DurableScope::reserveChild()` とルートの受け入れ（`RootReservationStore`） | 実験的 |
 | `@internal` が付いたクラス（アクティビティ、永続化、回復エンジン） | 公開 API ではない |
 
-スコープ API は 2.29.0 で実験的機能として初めて提供されました。作成元の実行が閉じた後の自動回復、回復の再試行スケジュール、`describe()` は 2.31.0 で追加されます。後続のマイナーリリース（2.32.0 以降。どのリリースかはそのリリース時に決定されます）が安定化予定とされた部分を昇格させるまで、API 全体は実験的なままで、マイナーリリースで変更される可能性があります。昇格後は、それらの部分は [2.x 互換性ポリシー](../compatibility.md)に従います。初期サポートは Laravel 組み込みと逐次補償に限られます。
+スコープ API は 2.29.0 で実験的機能として初めて提供されました。作成元の実行が閉じた後の自動回復、回復の再試行スケジュール、`describe()` は 2.31.0 で追加されます。レビュー済みのハンドラーの結果（`failed()`、`rejected()`、`HandlerContractViolation`）は 2.32.0 で追加されます。後続のリリース（2.32.0 以降。どのリリースかはそのリリース時に決定されます）が安定化予定とされた部分を昇格させるまで、API 全体は実験的なままで、マイナーリリースで変更される可能性があります。昇格後は、それらの部分は [2.x 互換性ポリシー](../compatibility.md)に従います。初期サポートは Laravel 組み込みと逐次補償に限られます。
 
 ## 仕組み {#how-it-works}
 
@@ -129,6 +129,8 @@ final class StockReservation implements ScopedOperation
 
 - `execute()` は、証拠を伴う `ForwardResult::observed()`、プロバイダーの結果が不確かな場合は `unknown()`、プロバイダーが確実に何の効果も生じさせなかった場合は `rejected()` を返します。拒否された順方向の操作は、ワークフローの呼び出しを `scope_forward_rejected` で失敗させ、その補償にプロバイダーの呼び出しは必要ありません。`$context->reconcileBeforeForward` が true の場合、以前の試行が効果を生じている可能性があります。再度発行する前に、その操作を照会してください。
 - `compensate()` が `Resolution::verified()` を返すのは、効果が取り消され、かつ順方向の効果が遅れて生じる可能性がないという証拠がある場合だけです。コールバックの戻り値、タイムアウト、閉じた実行はその証拠になりません。義務を未解決のまま保ち、ネイティブの再試行を実行させるには `unknown()` を返し、補償を確実に完了できない場合は `failed()` を返します。`$context->forwardOutcomeUnconfirmed` が true の場合、順方向の効果は一度も確認されておらず、まだ遅れて生じる可能性があります。
+- 証拠のない `verified()`、無効な理由、制限を超える順方向の結果の値など、無効な結果は `HandlerContractViolation` をスローします。エンジンはその結果を不明として記録するため、補償は引き続きその操作を照合します。そのうえで、再試行不可のエラー `scope_handler_contract_violation`（その後に違反メッセージが続きます）でアクティビティを失敗させます。プロバイダーの不明な結果として再試行されることはありません。
+- 2.31.0 以前向けに書かれたハンドラーは、`verified()` に第 2 引数を渡している場合があります。`verified($evidence, true)` は引き続き検証済みとして扱われ、`E_USER_DEPRECATED` の通知を発生させます。`verified($evidence, false)` は `unknown('late-forward-possible')` を返します。第 2 引数は削除してください。
 
 ## キャンセルと回復 {#cancel-and-recover}
 
@@ -146,7 +148,7 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 回復実行は、補償ごとに最大 6 回試行します。試行の間には 1、2、5、10 秒待ち、その後はアクティビティのリース 1 回分とタスク修復パス 1 回分待つため、クラッシュしたワーカーの試行は最後の試行の前に回収されます。子の検証、または新しい認可済みリクエストがあると、待機中の再試行はすぐに起動します。永続的な失敗は引き続き回復実行を失敗させ、義務は未解決のまま残ります。
 
-結果は `describe()` で確認します。読み取り専用で、`inspect` の認可が必要です。常に同じキーを返します。ステータスは `ScopeStatus`、`NextAction`、`AutomaticRecovery`、`ObligationStatus` の各 enum の値です。拒否は安定した `code` とホストの `message` で表され、`message` は機械処理向けには安定していません。
+結果は `describe()` で確認します。読み取り専用で、`inspect` の認可が必要です。常に同じキーを返します。ステータスは `ScopeStatus`、`NextAction`、`AutomaticRecovery`、`ObligationStatus` の各 enum の値です。拒否は安定した `code` とホストの `message` で表され、`message` は機械処理向けには安定していません。これらの enum にはマイナーリリースでケースが追加される可能性があるため、認識できない値はデフォルトの分岐で処理してください。
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
@@ -169,7 +171,7 @@ $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
 
 次の制限は最小値であり、引き上げられることはあっても引き下げられることはありません。
 
-- 義務の入力は JSON で 15,360 バイト、500 個の値、深さ 7。順方向の結果の値は 11,264 バイト、400 個の値、深さ 7
+- 義務の入力は JSON で 15,360 バイト、500 個の値、深さ 7。順方向の結果の値は 11,264 バイト、400 個の値、深さ 7（2.32.0 より前に記録されたスコープでは、どちらにも以前のより大きなエンベロープの制限が引き続き適用されます）
 - スコープあたり 256 個の義務（最大 16 個の子の参加者を含む）、ネストは 1 段階
 - スコープあたり 128 件のリクエスト（エンジンの子リクエストと共有）
 - 結果あたり、最大 128 バイトの証拠参照を 32 個

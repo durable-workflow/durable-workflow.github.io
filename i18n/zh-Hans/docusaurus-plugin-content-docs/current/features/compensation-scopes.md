@@ -15,12 +15,12 @@ description: 在嵌入式 Laravel 工作流中，让补偿义务在创建它们�
 | 部分 | 状态 |
 | --- | --- |
 | `DurableScope`、`RegisteredObligation`、`Obligation`、`ScopeIdentity` | 计划稳定（2.32.0 或更高版本） |
-| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry` | 计划稳定（2.32.0 或更高版本） |
+| `ScopedOperation`、`OperationContext`、`ForwardResult`、`Resolution`、`HandlerRegistry`、`HandlerContractViolation` | 计划稳定（2.32.0 或更高版本） |
 | `ScopeAuthorization`、`ScopeAuthorizationRefused`、`ScopeRecovery::request()`、`ScopeRecovery::describe()`、`ScopeRetention::release()` | 计划稳定（2.32.0 或更高版本） |
 | `DurableScope::reserveChild()` 和根准入（`RootReservationStore`） | 实验性 |
 | 标记为 `@internal` 的类（活动、持久化、恢复引擎） | 非公共 API |
 
-作用域 API 最初在 2.29.0 中以实验性功能发布。来源运行关闭后的自动恢复、恢复重试计划以及 `describe()` 在 2.31.0 中提供。在后续某个次要版本（2.32.0 或更高版本，具体在该版本发布时决定）将标记为计划稳定的部分提升为稳定之前，整个 API 仍是实验性的，可能在次要版本中发生变化。提升之后，这些部分遵循 [2.x 兼容性策略](../compatibility.md)。初始支持仅限于嵌入式 Laravel 和顺序补偿。
+作用域 API 最初在 2.29.0 中以实验性功能发布。来源运行关闭后的自动恢复、恢复重试计划以及 `describe()` 在 2.31.0 中提供。经过评审的处理器结果（`failed()`、`rejected()` 和 `HandlerContractViolation`）在 2.32.0 中提供。在后续某个版本（2.32.0 或更高版本，具体在该版本发布时决定）将标记为计划稳定的部分提升为稳定之前，整个 API 仍是实验性的，可能在次要版本中发生变化。提升之后，这些部分遵循 [2.x 兼容性策略](../compatibility.md)。初始支持仅限于嵌入式 Laravel 和顺序补偿。
 
 ## 工作原理 {#how-it-works}
 
@@ -129,6 +129,8 @@ final class StockReservation implements ScopedOperation
 
 - `execute()` 在有证据时返回 `ForwardResult::observed()`，在提供方的结果不确定时返回 `unknown()`，在提供方确定没有产生任何效果时返回 `rejected()`。被拒绝的正向操作会使工作流的调用以 `scope_forward_rejected` 失败，其补偿也无需调用提供方。当 `$context->reconcileBeforeForward` 为 true 时，之前的尝试可能已经生效；请先查询该操作，再重新发起。
 - 只有在有证据表明效果已被撤销、且不可能再出现迟到的正向效果时，`compensate()` 才返回 `Resolution::verified()`。回调返回、超时或已关闭的运行都不是这种证据。返回 `unknown()` 可让义务保持未解决状态并允许原生重试运行；在补偿确定无法完成时返回 `failed()`。当 `$context->forwardOutcomeUnconfirmed` 为 true 时，正向效果从未得到确认，仍可能迟到。
+- 无效的结果（例如没有证据的 `verified()`、无效的原因，或超出限制的正向结果值）会抛出 `HandlerContractViolation`。引擎会将该结果记录为未知，因此补偿仍会对该操作进行对账；同时以不可重试的错误 `scope_handler_contract_violation`（后接违规消息）使该活动失败。它不会作为提供方的未知结果被重试。
+- 为 2.31.0 或更早版本编写的处理器可能会向 `verified()` 传入第二个参数。`verified($evidence, true)` 仍会完成验证，并触发 `E_USER_DEPRECATED` 通知；`verified($evidence, false)` 返回 `unknown('late-forward-possible')`。请删除第二个参数。
 
 ## 取消与恢复 {#cancel-and-recover}
 
@@ -146,7 +148,7 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 恢复运行对每项补偿最多尝试六次。两次尝试之间依次等待 1、2、5 和 10 秒，之后等待一个活动租约加一轮任务修复的时间，以便在最后一次尝试之前回收崩溃 worker 的尝试。子作用域完成验证或出现新的已授权请求时，会立即唤醒正在等待的重试。持续失败仍会使恢复运行失败，义务保持未解决状态。
 
-使用 `describe()` 检查结果。它是只读的，需要 `inspect` 授权。它始终返回相同的键。状态取自 `ScopeStatus`、`NextAction`、`AutomaticRecovery` 和 `ObligationStatus` 枚举；拒绝由稳定的 `code` 加上宿主的 `message` 组成，其中 `message` 不保证对机器处理保持稳定：
+使用 `describe()` 检查结果。它是只读的，需要 `inspect` 授权。它始终返回相同的键。状态取自 `ScopeStatus`、`NextAction`、`AutomaticRecovery` 和 `ObligationStatus` 枚举；拒绝由稳定的 `code` 加上宿主的 `message` 组成，其中 `message` 不保证对机器处理保持稳定。这些枚举可能会在次要版本中新增成员，因此请用默认分支处理无法识别的值：
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
@@ -169,7 +171,7 @@ $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
 
 以下限制是最小值，可能提高但不会降低：
 
-- 义务输入：以 JSON 计 15,360 字节、500 个值、深度 7；正向结果值：11,264 字节、400 个值、深度 7；
+- 义务输入：以 JSON 计 15,360 字节、500 个值、深度 7；正向结果值：11,264 字节、400 个值、深度 7（2.32.0 之前记录的作用域对两者仍沿用先前更大的信封限制）；
 - 每个作用域 256 项义务，其中最多包含 16 个子参与者，一层嵌套；
 - 每个作用域 128 个请求，与引擎的子请求共享；
 - 每个结果 32 个证据引用，每个最多 128 字节。

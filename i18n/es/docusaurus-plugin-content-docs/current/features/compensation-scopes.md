@@ -15,12 +15,12 @@ Use un ámbito cuando la cancelación pueda llegar tarde, por ejemplo cuando un 
 | Parte | Estado |
 | --- | --- |
 | `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Estabilidad prevista (2.32.0 o posterior) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Estabilidad prevista (2.32.0 o posterior) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Estabilidad prevista (2.32.0 o posterior) |
 | `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Estabilidad prevista (2.32.0 o posterior) |
 | `DurableScope::reserveChild()` y admisión raíz (`RootReservationStore`) | Experimental |
 | Clases marcadas con `@internal` (actividades, persistencia, motor de recuperación) | No es API pública |
 
-Las API de ámbitos se publicaron por primera vez como experimentales en 2.29.0. La recuperación automática después de que se cierre la ejecución de origen, el calendario de reintentos de recuperación y `describe()` llegan en 2.31.0. Toda la API sigue siendo experimental, y puede cambiar en una versión menor, hasta que una versión menor posterior (2.32.0 o posterior, según se decida en esa versión) promueva las partes marcadas con estabilidad prevista. Tras esa promoción, siguen la [política de compatibilidad de 2.x](../compatibility.md). La compatibilidad inicial se limita a Laravel integrado y a la compensación secuencial.
+Las API de ámbitos se publicaron por primera vez como experimentales en 2.29.0. La recuperación automática después de que se cierre la ejecución de origen, el calendario de reintentos de recuperación y `describe()` llegan en 2.31.0. Los resultados de manejador revisados (`failed()`, `rejected()` y `HandlerContractViolation`) llegan en 2.32.0. Toda la API sigue siendo experimental, y puede cambiar en una versión menor, hasta que una versión posterior (2.32.0 o posterior, según se decida en esa versión) promueva las partes marcadas con estabilidad prevista. Tras esa promoción, siguen la [política de compatibilidad de 2.x](../compatibility.md). La compatibilidad inicial se limita a Laravel integrado y a la compensación secuencial.
 
 ## Cómo funciona {#how-it-works}
 
@@ -129,6 +129,8 @@ Los manejadores pueden ejecutarse más de una vez para la misma operación, así
 
 - `execute()` devuelve `ForwardResult::observed()` con evidencia, `unknown()` cuando el resultado en el proveedor es incierto, o `rejected()` cuando el proveedor con certeza no produjo ningún efecto. Un avance rechazado hace fallar la llamada del workflow con `scope_forward_rejected`, y su compensación no necesita ninguna llamada al proveedor. Cuando `$context->reconcileBeforeForward` es true, es posible que un intento anterior haya surtido efecto; consulte la operación antes de emitirla de nuevo.
 - `compensate()` devuelve `Resolution::verified()` solo con evidencia de que el efecto se ha deshecho y de que no es posible ningún efecto de avance tardío. El valor devuelto por un callback, un timeout o una ejecución cerrada no constituye esa evidencia. Devuelva `unknown()` para mantener la obligación sin resolver y permitir que se ejecuten los reintentos nativos, o `failed()` cuando la compensación con certeza no puede completarse. Cuando `$context->forwardOutcomeUnconfirmed` es true, el efecto de avance nunca se confirmó y aún puede llegar tarde.
+- Un resultado no válido, como `verified()` sin evidencia, un motivo no válido o un valor del resultado de avance que supera el límite, lanza `HandlerContractViolation`. El motor registra el resultado como desconocido, de modo que la compensación sigue conciliando la operación, y hace fallar la actividad con el error no reintentable `scope_handler_contract_violation` seguido del mensaje de la infracción. No se reintenta como un resultado desconocido del proveedor.
+- Los manejadores escritos para 2.31.0 o anteriores pueden pasar un segundo argumento a `verified()`. `verified($evidence, true)` sigue verificando y emite un aviso `E_USER_DEPRECATED`; `verified($evidence, false)` devuelve `unknown('late-forward-possible')`. Elimine el segundo argumento.
 
 ## Cancelar y recuperar {#cancel-and-recover}
 
@@ -146,7 +148,7 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 Las ejecuciones de recuperación realizan hasta seis intentos por compensación. Entre intentos esperan 1, 2, 5 y 10 segundos, y después un lease de actividad más una pasada de reparación de tareas, de modo que el intento de un worker que se haya caído se recupera antes del último intento. La verificación de un hijo, o una nueva solicitud autorizada, despierta de inmediato un reintento en espera. Un fallo persistente sigue haciendo fallar la ejecución de recuperación, y la obligación queda sin resolver.
 
-Inspeccione el resultado con `describe()`. Es de solo lectura y requiere la autorización `inspect`. Siempre devuelve las mismas claves. Los estados provienen de los enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` y `ObligationStatus`, y un rechazo es un `code` estable más el `message` del host, que no es estable para su procesamiento automático:
+Inspeccione el resultado con `describe()`. Es de solo lectura y requiere la autorización `inspect`. Siempre devuelve las mismas claves. Los estados provienen de los enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` y `ObligationStatus`, y un rechazo es un `code` estable más el `message` del host, que no es estable para su procesamiento automático. Estos enums pueden incorporar nuevos casos en una versión menor, así que gestione los valores que no reconozca con una rama por defecto:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
@@ -169,7 +171,7 @@ Tras la promoción, las API estables no cambian de forma incompatible dentro de 
 
 Estos límites son mínimos que pueden aumentar, pero no disminuirán:
 
-- entrada de una obligación: 15 360 bytes como JSON, 500 valores y profundidad 7; valor del resultado de avance: 11 264 bytes, 400 valores y profundidad 7;
+- entrada de una obligación: 15 360 bytes como JSON, 500 valores y profundidad 7; valor del resultado de avance: 11 264 bytes, 400 valores y profundidad 7 (los ámbitos registrados antes de 2.32.0 conservan para ambos el límite de envoltorio anterior, más amplio);
 - 256 obligaciones por ámbito, incluidos hasta 16 participantes hijos, y un nivel de anidamiento;
 - 128 solicitudes por ámbito, compartidas con las solicitudes hijas del motor;
 - 32 referencias de evidencia de como máximo 128 bytes por resultado.

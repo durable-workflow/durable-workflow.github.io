@@ -15,12 +15,12 @@ Utilisez une portée lorsque l’annulation peut arriver tardivement, par exempl
 | Élément | Statut |
 | --- | --- |
 | `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Stabilité prévue (2.32.0 ou ultérieure) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Stabilité prévue (2.32.0 ou ultérieure) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Stabilité prévue (2.32.0 ou ultérieure) |
 | `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Stabilité prévue (2.32.0 ou ultérieure) |
 | `DurableScope::reserveChild()` et admission racine (`RootReservationStore`) | Expérimental |
 | Classes marquées `@internal` (activités, persistance, moteur de récupération) | Pas une API publique |
 
-Les API de portée ont d’abord été livrées à titre expérimental dans 2.29.0. La récupération automatique après la clôture de l’exécution d’origine, le calendrier de nouvelles tentatives de récupération et `describe()` arrivent dans 2.31.0. L’ensemble de l’API reste expérimental, et peut changer dans une version mineure, jusqu’à ce qu’une version mineure ultérieure (2.32.0 ou ultérieure, selon ce qui sera décidé lors de cette version) promeuve les parties marquées comme à stabilité prévue. Après cette promotion, elles suivent la [politique de compatibilité 2.x](../compatibility.md). La prise en charge initiale se limite à Laravel intégré et à la compensation séquentielle.
+Les API de portée ont d’abord été livrées à titre expérimental dans 2.29.0. La récupération automatique après la clôture de l’exécution d’origine, le calendrier de nouvelles tentatives de récupération et `describe()` arrivent dans 2.31.0. Les résultats de gestionnaire revus (`failed()`, `rejected()` et `HandlerContractViolation`) arrivent dans 2.32.0. L’ensemble de l’API reste expérimental, et peut changer dans une version mineure, jusqu’à ce qu’une version ultérieure (2.32.0 ou ultérieure, selon ce qui sera décidé lors de cette version) promeuve les parties marquées comme à stabilité prévue. Après cette promotion, elles suivent la [politique de compatibilité 2.x](../compatibility.md). La prise en charge initiale se limite à Laravel intégré et à la compensation séquentielle.
 
 ## Fonctionnement {#how-it-works}
 
@@ -129,6 +129,8 @@ Les gestionnaires peuvent s’exécuter plusieurs fois pour la même opération 
 
 - `execute()` renvoie `ForwardResult::observed()` avec des preuves, `unknown()` lorsque le résultat chez le fournisseur est incertain, ou `rejected()` lorsque le fournisseur n’a assurément produit aucun effet. Une opération directe rejetée fait échouer l’appel du workflow avec `scope_forward_rejected`, et sa compensation ne nécessite aucun appel au fournisseur. Lorsque `$context->reconcileBeforeForward` vaut true, une tentative antérieure a pu prendre effet ; vérifiez l’état de l’opération avant de l’émettre à nouveau.
 - `compensate()` renvoie `Resolution::verified()` uniquement avec la preuve que l’effet est annulé et qu’aucun effet direct tardif n’est possible. Une valeur de retour de callback, un délai d’expiration ou une exécution clôturée ne constitue pas une telle preuve. Renvoyez `unknown()` pour laisser l’obligation non résolue et permettre aux nouvelles tentatives natives de s’exécuter, ou `failed()` lorsque la compensation ne peut assurément pas aboutir. Lorsque `$context->forwardOutcomeUnconfirmed` vaut true, l’effet direct n’a jamais été confirmé et peut encore survenir tardivement.
+- Un résultat non valide, comme `verified()` sans preuve, un motif non valide ou une valeur de résultat direct dépassant la limite, lève `HandlerContractViolation`. Le moteur enregistre le résultat comme inconnu, de sorte que la compensation réconcilie quand même l’opération, et fait échouer l’activité avec l’erreur non réessayable `scope_handler_contract_violation` suivie du message de la violation. Elle ne fait pas l’objet de nouvelles tentatives comme un résultat inconnu chez le fournisseur.
+- Les gestionnaires écrits pour 2.31.0 ou une version antérieure peuvent passer un second argument à `verified()`. `verified($evidence, true)` vérifie toujours et émet un avis `E_USER_DEPRECATED` ; `verified($evidence, false)` renvoie `unknown('late-forward-possible')`. Supprimez le second argument.
 
 ## Annuler et récupérer {#cancel-and-recover}
 
@@ -146,7 +148,7 @@ $result = app(ScopeRecovery::class)->request($scope, 'cancel-order-42', 'order-s
 
 Les exécutions de récupération effectuent jusqu’à six tentatives par compensation. Entre les tentatives, elles attendent 1, 2, 5 et 10 secondes, puis un bail d’activité plus un passage de réparation des tâches, de sorte que la tentative d’un worker tombé en panne est récupérée avant la dernière tentative. La vérification d’un enfant, ou une nouvelle requête autorisée, réveille immédiatement une nouvelle tentative en attente. Un échec persistant fait tout de même échouer l’exécution de récupération, l’obligation restant non résolue.
 
-Inspectez le résultat avec `describe()`. Cet appel est en lecture seule et nécessite l’autorisation `inspect`. Il renvoie toujours les mêmes clés. Les statuts proviennent des enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` et `ObligationStatus`, et un refus se compose d’un `code` stable et du `message` de l’hôte, qui n’est pas stable pour un traitement automatisé :
+Inspectez le résultat avec `describe()`. Cet appel est en lecture seule et nécessite l’autorisation `inspect`. Il renvoie toujours les mêmes clés. Les statuts proviennent des enums `ScopeStatus`, `NextAction`, `AutomaticRecovery` et `ObligationStatus`, et un refus se compose d’un `code` stable et du `message` de l’hôte, qui n’est pas stable pour un traitement automatisé. Ces enums peuvent recevoir de nouveaux cas dans une version mineure ; traitez donc les valeurs que vous ne reconnaissez pas avec une branche par défaut :
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
@@ -169,7 +171,7 @@ Après la promotion, les API stables ne changent pas de manière incompatible au
 
 Ces limites sont des minimums qui peuvent augmenter mais ne diminueront pas :
 
-- entrée d’une obligation : 15 360 octets en JSON, 500 valeurs et une profondeur de 7 ; valeur du résultat direct : 11 264 octets, 400 valeurs et une profondeur de 7 ;
+- entrée d’une obligation : 15 360 octets en JSON, 500 valeurs et une profondeur de 7 ; valeur du résultat direct : 11 264 octets, 400 valeurs et une profondeur de 7 (les portées enregistrées avant 2.32.0 conservent pour les deux la limite d’enveloppe antérieure, plus élevée) ;
 - 256 obligations par portée, dont jusqu’à 16 participants enfants, et un seul niveau d’imbrication ;
 - 128 requêtes par portée, partagées avec les requêtes enfants du moteur ;
 - 32 références de preuve d’au plus 128 octets par résultat.

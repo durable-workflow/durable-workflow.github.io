@@ -21,17 +21,18 @@ operation can take effect without returning a recorded result.
 | Part | Status |
 | --- | --- |
 | `DurableScope`, `RegisteredObligation`, `Obligation`, `ScopeIdentity` | Planned stable (2.32.0 or later) |
-| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry` | Planned stable (2.32.0 or later) |
+| `ScopedOperation`, `OperationContext`, `ForwardResult`, `Resolution`, `HandlerRegistry`, `HandlerContractViolation` | Planned stable (2.32.0 or later) |
 | `ScopeAuthorization`, `ScopeAuthorizationRefused`, `ScopeRecovery::request()`, `ScopeRecovery::describe()`, `ScopeRetention::release()` | Planned stable (2.32.0 or later) |
 | `DurableScope::reserveChild()` and root admission (`RootReservationStore`) | Experimental |
 | Classes marked `@internal` (activities, persistence, recovery engine) | Not public API |
 
 The scope APIs first shipped as experimental in 2.29.0. Automatic recovery after
 the originating run closes, the recovery retry schedule, and `describe()` arrive in
-2.31.0. The whole API stays experimental, and may change in a minor release, until
-a later minor release (2.32.0 or later, as decided at that release) promotes the
-parts marked planned stable. After that promotion they follow the
-[2.x compatibility policy](../compatibility.md). Initial support is limited to
+2.31.0. The reviewed handler outcomes (`failed()`, `rejected()` and
+`HandlerContractViolation`) arrive in 2.32.0. The whole API stays experimental, and
+may change in a minor release, until a later release (2.32.0 or later, as decided
+at that release) promotes the parts marked planned stable. After that promotion
+they follow the [2.x compatibility policy](../compatibility.md). Initial support is limited to
 embedded Laravel and sequential compensation.
 
 ## How it works
@@ -173,6 +174,16 @@ idempotent by `operationId`.
   unresolved and let native retries run, or `failed()` when compensation definitely
   cannot complete. When `$context->forwardOutcomeUnconfirmed` is true, the forward
   effect was never confirmed and may still arrive late.
+- An invalid outcome, such as `verified()` without evidence, an invalid reason, or a
+  forward value over the limit, throws `HandlerContractViolation`. The engine records
+  the outcome as unknown, so compensation still reconciles the operation, and fails
+  the activity with the non-retryable error `scope_handler_contract_violation`
+  followed by the violation message. It is not retried as an unknown provider
+  outcome.
+- Handlers written for 2.31.0 or earlier may pass a second argument to `verified()`.
+  `verified($evidence, true)` still verifies and raises an `E_USER_DEPRECATED`
+  notice; `verified($evidence, false)` returns `unknown('late-forward-possible')`.
+  Remove the second argument.
 
 ## Cancel and recover
 
@@ -202,7 +213,9 @@ fails the recovery run, with the obligation left unresolved.
 Inspect the outcome with `describe()`. It is read-only and requires `inspect`
 authorization. It always returns the same keys. Statuses come from the
 `ScopeStatus`, `NextAction`, `AutomaticRecovery` and `ObligationStatus` enums, and a
-refusal is a stable `code` plus the host's `message`, which is not machine-stable:
+refusal is a stable `code` plus the host's `message`, which is not machine-stable.
+These enums may gain cases in a minor release, so handle values you do not recognize
+with a default branch:
 
 ```php
 $view = app(ScopeRecovery::class)->describe($scope, 'order-service');
@@ -241,7 +254,8 @@ only behind a recorded version marker. Ledger migrations only add.
 These limits are minimums that may rise but will not fall:
 
 - obligation input: 15,360 bytes as JSON, 500 values and depth 7; forward result
-  value: 11,264 bytes, 400 values and depth 7;
+  value: 11,264 bytes, 400 values and depth 7 (scopes recorded before 2.32.0 keep
+  the earlier, larger envelope limit for both);
 - 256 obligations per scope, including up to 16 child participants, and one nesting
   level;
 - 128 requests per scope, shared with the engine's child requests;
