@@ -7,7 +7,7 @@
     "helm-chart": "4.1.0",
     "sdk-php": "3.22.0",
     "sdk-python": "2.19.1",
-    "sdk-rust": "4.20.0",
+    "sdk-rust": "4.21.0",
     "server": "3.15.0",
     "waterline": "2.18.1",
     "workflow": "2.33.0"
