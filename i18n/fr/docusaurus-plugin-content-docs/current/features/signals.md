@@ -108,6 +108,91 @@ Comportement des signaux :
 - Sans contrat, `await('name')` renvoie `true` sans argument envoyé, l’argument unique s’il n’y en a qu’un, ou le tableau complet s’il y en a plusieurs.
 - Les noms inconnus sont rejetés avec `rejected_unknown_signal`. Les signaux vers une instance fermée ou non démarrée sont rejetés avec `rejected_not_active` ou `rejected_not_started`.
 
+## Démarrer et signaler en une seule opération {#signal-with-start}
+
+`signalWithStart()` démarre le workflow ou réutilise son exécution ouverte, et
+enregistre le signal sur cette exécution, en une seule transaction. Un
+`start()` séparé suivi de `signal()` laisse un intervalle pendant lequel
+l’exécution peut se clore et le signal être refusé :
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::make(OrderApprovalWorkflow::class, 'order-123')
+    ->signalWithStart('approved-by', ['approvedBy' => 'Taylor'], StartOptions::returnExistingActive());
+
+$result->startOutcome(); // "started_new" or "returned_existing_active"
+```
+
+Lorsque l’exécution courante est close, le signal-with-start intégré démarre
+une nouvelle exécution après elle, et l’exécution close conserve son résultat.
+Les clients en mode service utilisent le signal-with-start du Server, qui
+nécessite le Server natif 3.15.0 ou ultérieur et refuse une exécution close
+sauf si l’appelant en demande une nouvelle. Voir [signal-with-start](/docs/polyglot/workflow-signals#signal-with-start)
+pour les appels des SDK PHP, Python et Rust.
+
+## Signaler un autre workflow {#signal-another-workflow}
+
+:::note En attente de publication
+Le signal externe durable pour les workflows intégrés se trouve dans
+[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) et n’a pas encore été publié. Son API est
+expérimentale.
+:::
+
+Le code d’un workflow peut envoyer un signal à un autre workflow de son espace
+de noms avec `signalExternalWorkflow()`. La requête et son résultat sont
+enregistrés une seule fois dans l’historique de ce workflow, dans la même
+transaction qui admet le signal sur la cible, et le rejeu renvoie le résultat
+enregistré sans renvoyer le signal :
+
+```php
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\signalExternalWorkflow;
+
+#[Type('order-approver')]
+final class OrderApproverWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $result = signalExternalWorkflow($orderId, 'approved-by', ['Taylor']);
+
+        if (! $result->delivered()) {
+            // target_not_found, target_closed or rejected, with a reason
+            return ['skipped' => $result->outcome->value, 'reason' => $result->reason];
+        }
+
+        return ['delivered_to' => $result->targetRunId];
+    }
+}
+```
+
+- Une cible absente, close ou qui refuse produit un `ExternalSignalResult`
+  renvoyé, pas une exception. Les résultats et raisons correspondent à ceux du
+  Server, listés dans le
+  [guide du mode service](/docs/polyglot/workflow-signals#signal-another-workflow).
+- Passez un identifiant d’exécution en quatrième argument pour ne signaler que
+  cette exécution. Le handle d’un enfant dispose de `signalDurably()`, par
+  exemple `$this->lastChild()->signalDurably('approved-by', 'Taylor')`. Le
+  `signal()` du handle envoie toujours directement, hors de l’historique du
+  parent, et peut envoyer de nouveau lors du rejeu du parent.
+- Sur la cible, c’est un signal ordinaire attribué à l’exécution émettrice,
+  avec la clé `workflow-signal:<sender run id>:<sequence>`. Les applications ne
+  peuvent pas utiliser ce préfixe d’identifiant de requête.
+- Le nom du signal suit les règles du Server (non vide, sans caractère de
+  contrôle, au plus 191 caractères et 255 octets). Un nom refusé lève
+  `InvalidExternalSignalException` dans le code du workflow avant tout
+  enregistrement.
+- Modifier la cible, l’exécution, le nom du signal ou les arguments à une étape
+  enregistrée bloque le rejeu comme une incohérence de forme d’historique.
+
+Les signaux restent dans l’espace de noms. Utilisez une
+[opération de service](./service-operations.md) pour atteindre un autre espace
+de noms. Utilisez une activité lorsque vous avez besoin de signal-with-start
+depuis le code d’un workflow, et donnez-lui un identifiant de requête stable
+afin qu’une activité réessayée ne signale pas deux fois.
+
 ## Faire évoluer la charge utile d’un signal {#evolve-a-signal-payload}
 
 Utilisez un seul argument map déclaré pour une charge utile applicative nécessitant des ajouts compatibles. Cet exemple conserve `schema_version: 1` pour le champ `note`, facultatif et purement informatif. Un ancien émetteur l’omet ; un lecteur plus récent utilise `null`. Un ancien lecteur peut l’ignorer sans modifier la décision d’approbation. N’utilisez pas un champ ignoré pour une modification qui doit influer sur les autorisations ou le comportement métier.

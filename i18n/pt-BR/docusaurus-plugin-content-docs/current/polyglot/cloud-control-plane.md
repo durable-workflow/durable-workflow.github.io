@@ -336,124 +336,175 @@ implantação separadas.
 
 ## Benchmarks de workflow padrão {#standard-workflow-benchmarks}
 
-[DW Standard Workflow v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity)
+[DW Standard Workflow
+v1](https://github.com/durable-workflow/server/tree/main/benchmarks/capacity)
 define uma carga pequena e reproduzível: um início de workflow, uma atividade
-externa e uma conclusão, com entradas e resultados Avro definidos de 1 KiB.
-O worker do cliente executa fora da alocação do runtime gerenciado.
+externa e uma conclusão, com entradas e resultados Avro definidos de 1 KiB. O
+worker do cliente executa fora da alocação do runtime gerenciado.
 
-Cloud Dev foi medido em 18 de novembro de 2026 com o mesmo plano e o mesmo
-release do runtime provisionados pelos clientes. Os outros quatro baselines são históricos: incluem a topologia
-HA replicada, mas antecedem o release atual do runtime. Não são extrapolados
-de Dev e não qualificam a capacidade dos planos atuais com SLA.
+Cloud Dev foi medido em 19 de novembro de 2026 no runtime nativo Server 3.15.0
+que o Cloud provisiona para novos runtimes Dev. Os outros quatro baselines são
+históricos: incluem a topologia HA replicada, mas antecedem o release atual do
+runtime. Não são extrapolados de Dev e não qualificam a capacidade dos planos
+atuais com SLA.
 
 | Plano | Workflows padrão/segundo | Ações de workflow em 30 dias | Medição |
 | --- | ---: | ---: | --- |
-| Cloud Dev | 0.25 | 1,296,000 | 18 de novembro de 2026; detalhes abaixo |
+| Cloud Dev | 1.5 | 7,776,000 | 19 de novembro de 2026; detalhes abaixo |
 | Cloud Standard | 0.25 | 1,296,000 | Histórico; nova medição pendente |
 | Cloud Multi-Region | 0.10 | 518,400 | Histórico; nova medição pendente |
 | Cloud Business | 0.50 | 2,592,000 | Histórico; nova medição pendente |
 | Cloud Business Multi-Region | 0.20 | 1,036,800 | Histórico; nova medição pendente |
 
-A estimativa de 30 dias é `workflows/second x 2,592,000 seconds x 2 workflow actions`:
-um início e uma atividade nesta comparação. Pressupõe essa taxa continuamente
-por 30 dias. Não é cota de ações incluídas, unidade de cobrança ou mapeamento
-exato às definições de ações de outro motor.
+A estimativa de 30 dias é `workflows/second x 2,592,000 seconds x 2 workflow
+actions`: um início e uma atividade nesta comparação. Para o Cloud Dev, isso dá
+1.5 x 2,592,000 x 2 = 7,776,000. Pressupõe essa taxa continuamente por 30 dias.
+Não é cota de ações incluídas, unidade de cobrança ou mapeamento exato às
+definições de ações de outro motor.
 
 São baselines de carga medida, não vazão máxima nem capacidade garantida para
 toda aplicação. Payloads maiores, mais atividades, temporizadores, sinais,
-consultas, históricos com muito replay, comunicação entre regiões e latência
-do worker do cliente mudam o resultado. A tabela não declara benchmarks
-separados de temporizadores, sinais, replay ou saturação. Planeje para sua
-combinação real de workflows em vez de multiplicar os números por um tamanho arbitrário.
+consultas, históricos com muito replay, comunicação entre regiões e latência do
+worker do cliente mudam o resultado. A tabela não declara benchmarks separados
+de temporizadores, sinais, replay ou saturação. Planeje para sua combinação real
+de workflows em vez de multiplicar os números por um tamanho arbitrário.
 
 ### Medição do Cloud Dev {#cloud-dev-capacity}
 
-Cloud Dev é um runtime gerenciado isolado de host único para desenvolvimento
-e avaliação. Esta medição usou um runtime Dev provisionado normalmente, sem
-alterar CPU, memória, armazenamento, entrada ou configurações de backup:
+Cloud Dev é um runtime gerenciado isolado de host único para desenvolvimento e
+avaliação. Esta medição usou um runtime Dev provisionado normalmente, sem
+alterar CPU, memória, armazenamento, rede, entrada ou configurações de backup:
 
 | Recurso | Cloud Dev |
 | --- | --- |
 | Computação do runtime | 1 vCPU compartilhada, 1 GB RAM |
 | Armazenamento durável incluído | 5 GB |
-| Serviços do runtime | Server, worker de fila, agendador, MySQL, Redis e o conector de entrada |
+| Serviços do runtime | Server nativo, MySQL, Redis e o conector de entrada |
 | Managed Waterline | Incluído pela aplicação Cloud autenticada; não é um processo no host Dev |
 | Caminho de rede | Entrada HTTPS direta e específica do espaço |
+| Tráfego de saída do runtime | Limitado a 4 Mbit/s |
 | Workers do cliente | Executam no ambiente do cliente |
 | Disponibilidade | Sem SLA; interrupções de manutenção são permitidas |
 | Preço atual do runtime | Veja [Planos e preços](#plans-and-pricing) |
 | Mais armazenamento | Solicite um plano maior de runtime; sem adicionais de armazenamento |
 
-A execução usou a [definição pública PHP de DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/adc8e352c94528cbf59adf1b7af5a5238834c9a8/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
+A execução usou a [definição pública PHP de DW Standard Workflow
+v1](https://github.com/durable-workflow/server/blob/f16f9b7337d3d64b1ba6458ab61ba2d7ed7f334f/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
 um início de workflow, uma atividade echo externa e uma conclusão, carregando
 uma string de 1,024 bytes em Avro em cada limite de entrada e resultado de
 workflow/atividade. O runtime era o release do Server que o Cloud provisiona
-para novos runtimes Dev: Server 2.9.12, contendo Workflow 2.8.0, em PHP 8.3.36
-com MySQL 8.0.46 e Redis 7.4.11. O worker externo e os clientes usaram o SDK
-PHP 3.20.0 publicado em PHP 8.4.27, instalado nesse binding no lugar do SDK
-2.0.10 fixado nele. Eles executaram fora do host do runtime, conectados pela
-entrada HTTPS normal dele.
+para novos runtimes Dev: Server nativo 3.15.0 com MySQL 8.0.46 e Redis 7.4.11.
+Seu `/api/cluster/info` informou a implementação `rust`, a versão 3.15.0 e o
+protocolo de worker 1.20. Os workers externos e os clientes usaram o SDK PHP
+3.22.0 publicado em PHP 8.4.27, instalado nesse binding no lugar do SDK 2.0.10
+fixado nele. Eles executaram fora do host do runtime, conectados pela entrada
+HTTPS normal dele.
 
-Um worker PHP usou timeout de poll de tarefa de um segundo. Dois slots
-independentes de cliente ofereceram um workflow a cada quatro segundos após
-um aquecimento separado de 30 segundos. A janela fixa de medição foi
-**15:41:04-15:46:04 UTC em 18 de novembro de 2026**. Apenas conclusões
-observadas nesses cinco minutos contam na vazão; drenar depois não aumenta a
-taxa relatada. Cada resultado, status concluído e histórico ordenado de
-workflow/atividade foi verificado.
+A carga foi aplicada em etapas de 0.25, 0.5, 1, 1.5 e 2 workflows/segundo, e as
+etapas-limite foram repetidas. Cada etapa teve um aquecimento separado de 30
+segundos e depois uma janela fixa de cinco minutos. Apenas conclusões observadas
+dentro da janela contam na vazão; drenar depois não pode aumentar a taxa
+relatada.
 
-| Resultado medido | Valor |
+- Workers: quatro workers PHP até 1 workflow/segundo, seis a 1.5 e quatro, seis
+  ou oito a 2. Cada um usou timeout de poll de tarefa de um segundo.
+- Clientes: `max(2, 8 x rate)` slots independentes de cliente ofereceram inícios
+  em um cronograma fixo. Um início com mais de um segundo de atraso conta como
+  slot de início perdido.
+- Resultados: os clientes consultaram o resultado de cada workflow uma vez por
+  segundo. O Server nativo ainda não respeita o long polling do histórico
+  (`wait_new_event`,
+  [server#1257](https://github.com/durable-workflow/server/issues/1257)).
+- Verificações: cada resultado, status concluído e histórico ordenado de
+  workflow/atividade foi verificado.
+- Uma etapa passa sem erros, sem slots de início perdidos na janela, com todos
+  os workflows verificados, sem crescimento de backlog e sem encerramento por
+  OOM nem reinício. A taxa publicada é a etapa aprovada mais alta com CPU do
+  host em cerca de 80% ou menos.
+- A CPU do host veio de `/proc/stat` a cada cinco segundos. A memória dos
+  containers é o working set do cgroup.
+
+| Taxa oferecida (workers) | Janela, 19 de novembro (UTC) | Iniciados / oferecidos | Concluídos na janela | Perdidos / erros | p50 / p95 / p99 (s) | Não concluídos ao fim da janela | CPU do host média / pico | Resultado |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 0.25/s (4) | 22:56-23:01 | 75 / 75 | 75 | 0 / 0 | 1.24 / 1.30 / 1.42 | 0 | 29.3% / 35.2% | passou |
+| 0.5/s (4) | 23:02-23:07 | 150 / 150 | 151 | 0 / 0 | 1.25 / 1.41 / 2.61 | 0 | 38.2% / 45.5% | passou |
+| 1/s (4) | 23:08-23:13 | 300 / 300 | 300 | 0 / 0 | 1.36 / 1.57 / 1.65 | 1 | 58.8% / 64.2% | passou |
+| 1/s (4), repetição | 23:36-23:41 | 300 / 300 | 300 | 0 / 0 | 1.36 / 1.56 / 1.64 | 1 | 48.5% / 61.6% | passou |
+| 1.5/s (6) | 23:29-23:34 | 450 / 450 | 446 | 0 / 0 | 1.78 / 3.98 / 5.10 | 6 | 54.0% / 60.9% | passou |
+| 1.5/s (6), repetição | 23:43-23:48 | 450 / 450 | 446 | 0 / 0 | 1.77 / 3.71 / 4.83 | 6 | 55.8% / 61.8% | passou |
+| 2/s (4) | 23:15-23:20 | 522 / 600 | 520 | 78 / 0 | 6.49 / 9.87 / 10.58 | 16 | 50.4% / 65.5% | falhou: inícios perdidos |
+| 2/s (8) | 23:22-23:27 | 455 / 600 | 452 | 145 / 0 | 7.92 / 11.66 / 12.86 | 14 | 43.0% / 50.1% | falhou: inícios perdidos |
+| 2/s (6) | 23:49-23:54 | 496 / 600 | 487 | 104 / 1 | 6.97 / 10.43 / 11.04 | 15 | 48.6% / 56.4% | falhou: inícios perdidos, 1 workflow com falha |
+
+| Resultado medido a 1.5 workflows/segundo | Valor |
 | --- | ---: |
-| Taxa oferecida | 0.25 workflows padrão/segundo |
-| Concluídos dentro da janela | 74 de 75 iniciados (0.247/segundo) |
-| Concluídos após a drenagem | 75 de 75 |
+| Taxa oferecida | 1.5 workflows padrão/segundo |
+| Janela de medição | 23:29:52-23:34:52 UTC |
+| Concluídos dentro da janela | 446 (1.49/segundo) |
+| Concluídos após a drenagem | 450 de 450 iniciados |
 | Erros / slots de início perdidos | 0 / 0 |
-| Latência do início ao resultado, p50 | 2.33 segundos |
-| Latência do início ao resultado, p95 | 3.49 segundos |
-| Latência do início ao resultado, p99 | 4.31 segundos |
-| Workflows não concluídos na coorte medida ao fim da janela | 1 |
-| Ações de workflow em 30 dias | 1,296,000 |
+| Latência do início ao resultado, p50 | 1.78 segundo |
+| Latência do início ao resultado, p95 | 3.98 segundos |
+| Latência do início ao resultado, p99 | 5.10 segundos |
+| Workflows não concluídos na coorte medida ao fim da janela | 6 |
+| CPU do host, média / pico | 54.0% / 60.9% |
+| Ações de workflow em 30 dias | 7,776,000 |
 
-O único workflow não concluído foi iniciado dois segundos antes do fechamento
-da janela e concluído 0.39 segundo depois dele, dentro da faixa normal de
-latência. Ele não é contado na janela. No máximo dois workflows estavam abertos
-em qualquer momento durante a janela, portanto não houve crescimento de backlog.
+Os seis workflows não concluídos foram iniciados nos últimos segundos da janela
+e concluídos dentro da faixa normal de latência; eles não são contados. No
+máximo nove workflows estavam abertos ao mesmo tempo durante a janela, e a
+latência mediana no último minuto (1.87 segundo) ficou próxima à do primeiro
+minuto (1.76 segundo), portanto não houve crescimento de backlog. A etapa
+repetida de 1.5 passou com a mesma vazão, p99 de 4.83 segundos e CPU do host com
+média de 55.8%.
 
-A latência inclui rede do cliente e polling de resultado a cada 100 ms. Não
-é latência interna de agendamento de tarefas e não deve ser comparada à
-métrica interna de agendamento de outro motor.
+A latência inclui rede do cliente (cerca de 85-170 ms por ida e volta HTTPS a
+partir do host de medição) e polling de resultado a cada segundo, portanto a
+mediana não pode ficar muito abaixo de um segundo. Não é latência interna de
+agendamento de tarefas e não deve ser comparada à métrica interna de agendamento
+de outro motor.
 
-A CPU do host teve média de **60.5% ocupada**, com pico de **83.2%** em amostras
-de cinco segundos. Não houve **encerramentos por OOM nem reinícios de
-containers**. Os picos de memória observados dos containers (working set) foram
-75.68 MiB no Server, 205.95 MiB no MySQL, 41.88 MiB no worker de fila,
-45.5 MiB no agendador, 12.39 MiB no Redis e 30.62 MiB no conector de entrada.
-Esses picos individuais não representam RSS simultâneo do host inteiro; o SO e
-outros processos também consomem memória. O host tinha sua configuração normal
-de 1 GiB de swap, com até cerca de 65 MiB ocupados na medição. O backup inicial
-criptografado foi capturado e verificado cerca de nove minutos antes da janela;
-o próximo backup agendado só ocorreria horas depois, portanto nenhuma captura
-de backup a sobrepôs.
+Não houve **encerramentos por OOM nem reinícios de containers** em nenhuma
+etapa. A 1.5 workflows/segundo, os picos de memória observados dos containers
+(working set) foram 17.16 MiB no Server nativo, 244.35 MiB no MySQL, 6.29 MiB no
+Redis e 30.16 MiB no conector de entrada. Esses picos individuais não
+representam RSS simultâneo do host inteiro; o SO e outros processos do host
+também consomem memória. O host tinha sua configuração normal de 1 GiB de swap,
+com até cerca de 50 MiB ocupados. O backup inicial criptografado foi capturado e
+verificado antes da primeira janela, e nenhuma outra captura de backup se
+sobrepôs à execução.
 
-A mesma execução então ofereceu 0.5 workflows/segundo durante uma janela de
-cinco minutos. Essa etapa não passou. Com um worker, 39 de 150 slots de início
-foram perdidos, a latência p99 chegou a 32.8 segundos e a CPU do host teve
-média de 86.7%. Repetindo a etapa com dois workers, ainda foram perdidos 6 slots
-de início, com latências p95 e p99 de 8.5 e 11.8 segundos. A CPU do host então
-teve média de 95% e chegou a 100%, enquanto os processos externos de cliente e
-worker usaram menos de 15% de um núcleo. O host do runtime com uma única vCPU,
-que também atende o polling de resultado a cada 100 ms, é o limite para essa
-carga. Não houve erros, encerramentos por OOM nem reinícios em nenhuma das
-tentativas, e todos os workflows acabaram concluídos com o histórico esperado.
-Portanto, o baseline medido de Dev é de 0.25 workflows padrão/segundo; taxas
-maiores não são declaradas.
+A etapa de 2 workflows/segundo não passou. Três tentativas, com quatro, oito e
+seis workers, perderam 78, 145 e 104 de 600 slots de início, com latência p99 de
+10.6 a 12.9 segundos. A CPU do host não foi o limite: teve média de 43-50%
+nessas tentativas. O limite foi a limitação de tráfego de saída do runtime. Este
+método gerou cerca de 400 KB de tráfego de saída do runtime por workflow
+(polling de resultado, respostas de tarefas aos workers e overhead de
+transporte): 3.35 Mbit/s a 1 workflow/segundo e os 4.0 Mbit/s completos a
+1.5 e 2. Mais workers não ajudaram, porque o polling deles adiciona tráfego. Na
+tentativa com seis workers, um workflow falhou depois que sua atividade perdeu o
+lease da tarefa enquanto o tráfego de saída estava saturado. Todos os outros
+workflows de todas as etapas foram concluídos com o histórico esperado, sem
+erros e sem encerramentos por OOM nem reinícios. Portanto, o baseline medido de
+Dev é de 1.5 workflows padrão/segundo; taxas maiores não são declaradas.
 
-Este é um baseline medido de desenvolvimento, não uma conversão universal
-para todo workflow, teste de vazão máxima, teste prolongado ou SLA. Payloads
+Isto substitui o baseline de Dev de 18 de novembro de 2026, de 0.25
+workflows/segundo. Aquela execução mediu o runtime PHP Server 2.9.12 que o Dev
+provisionava na época, com um worker e polling de resultado a cada 100 ms, e sua
+única vCPU era o limite.
+
+Este foi um runtime novo medido por cerca de uma hora, não um teste prolongado.
+As varreduras de manutenção do Server 3.15.0 leem cada execução retida, portanto
+o trabalho do banco de dados cresce com o histórico retido; o Server 3.16.0
+limita essas varreduras ao trabalho aberto
+([server#1256](https://github.com/durable-workflow/server/issues/1256)). O Cloud
+Dev será medido novamente no Server 3.16.0, incluindo uma execução mais longa
+com histórico retido. Este é um baseline medido de desenvolvimento, não uma
+conversão universal para todo workflow, teste de vazão máxima ou SLA. Payloads
 maiores, atividades adicionais, temporizadores, sinais, consultas, históricos
-com muito replay e latência do worker do cliente mudam a capacidade. A
-cobrança Cloud se baseia no tempo de runtime provisionado com armazenamento
-fixo incluído, não em operações de workflow.
+com muito replay e latência do worker do cliente mudam a capacidade. A cobrança
+Cloud se baseia no tempo de runtime provisionado com armazenamento fixo
+incluído, não em operações de workflow.
 
 ## API de uso para cobrança {#billing-usage-api}
 

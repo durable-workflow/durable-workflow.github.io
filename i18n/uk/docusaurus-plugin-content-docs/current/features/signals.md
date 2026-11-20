@@ -106,6 +106,87 @@ $result->instanceId();  // "order-123"
 - Без контракту `await('name')` повертає `true`, якщо аргументів немає, єдиний аргумент, якщо передано один, або повний масив аргументів, якщо передано кілька.
 - Невідомі назви signal відхиляються як `rejected_unknown_signal`. Signal для закритого чи незапущеного екземпляра відхиляються як `rejected_not_active` або `rejected_not_started`.
 
+## Запуск і signal однією операцією {#signal-with-start}
+
+`signalWithStart()` запускає workflow або повторно використовує його відкритий
+запуск і записує signal у цей запуск в одній транзакції. Окремий `start()`, за
+яким іде `signal()`, залишає проміжок, у якому запуск може закритися, і тоді
+signal відхиляється:
+
+```php
+use Workflow\V2\StartOptions;
+use Workflow\V2\WorkflowStub;
+
+$result = WorkflowStub::make(OrderApprovalWorkflow::class, 'order-123')
+    ->signalWithStart('approved-by', ['approvedBy' => 'Taylor'], StartOptions::returnExistingActive());
+
+$result->startOutcome(); // "started_new" or "returned_existing_active"
+```
+
+Якщо поточний запуск закрився, вбудований signal-with-start запускає новий
+запуск після нього, а закритий запуск зберігає свій результат. Клієнти
+сервісного режиму використовують signal-with-start у Server, що потребує native
+Server 3.15.0 або новішого й відхиляє закритий запуск, якщо викликач не попросив
+новий. Виклики PHP, Python і Rust SDK описано в розділі [signal-with-start](/docs/polyglot/workflow-signals#signal-with-start).
+
+## Signal іншому workflow {#signal-another-workflow}
+
+:::note Очікує релізу
+Довговічний signal-external для вбудованих workflow розробляється в
+[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) і ще не випущений. Його API
+експериментальний.
+:::
+
+Код workflow може надіслати signal іншому workflow у своєму namespace через
+`signalExternalWorkflow()`. Запит і його результат записуються один раз в
+історію цього workflow в тій самій транзакції, що приймає signal у цілі, а
+replay повертає записаний результат без повторного надсилання:
+
+```php
+use Workflow\V2\Attributes\Type;
+use Workflow\V2\Workflow;
+use function Workflow\V2\signalExternalWorkflow;
+
+#[Type('order-approver')]
+final class OrderApproverWorkflow extends Workflow
+{
+    public function handle(string $orderId): array
+    {
+        $result = signalExternalWorkflow($orderId, 'approved-by', ['Taylor']);
+
+        if (! $result->delivered()) {
+            // target_not_found, target_closed or rejected, with a reason
+            return ['skipped' => $result->outcome->value, 'reason' => $result->reason];
+        }
+
+        return ['delivered_to' => $result->targetRunId];
+    }
+}
+```
+
+- Відсутня, закрита чи відмовна ціль дає повернутий `ExternalSignalResult`, а не
+  виняток. Результати й причини збігаються з тими, що повертає Server; їх
+  перелічено в [посібнику для сервісного режиму](/docs/polyglot/workflow-signals#signal-another-workflow).
+- Передайте ID запуску четвертим аргументом, щоб надіслати signal лише цьому
+  запуску. Handle дочірнього workflow має `signalDurably()`, наприклад
+  `$this->lastChild()->signalDurably('approved-by', 'Taylor')`. Метод `signal()`
+  handle і далі надсилає напряму, поза історією батьківського workflow, і може
+  надіслати повторно під час replay батьківського workflow.
+- У цілі це звичайний signal з атрибуцією запуску-відправнику та ключем
+  `workflow-signal:<sender run id>:<sequence>`. Застосунки не можуть
+  використовувати цей префікс ідентифікатора запиту.
+- Назва signal відповідає правилам Server (не порожня, без керівних символів,
+  не більше 191 символу та 255 байтів). Відхилена назва спричиняє
+  `InvalidExternalSignalException` у коді workflow ще до будь-якого запису.
+- Зміна цілі, запуску, назви signal чи аргументів на записаному кроці блокує
+  replay як невідповідність структури історії.
+
+Signal залишаються в межах namespace. Щоб звернутися до іншого namespace,
+використовуйте [сервісну операцію](./service-operations.md). Використовуйте
+activity, коли потрібен signal-with-start із коду workflow, і передавайте їй
+стабільний ідентифікатор запиту, щоб повторна спроба activity не надіслала
+signal двічі.
+
 ## Сумісна еволюція даних сигналу {#evolve-a-signal-payload}
 
 Використовуйте один оголошений аргумент-мапу для даних застосунку, які потребують сумісних доповнень. У цьому прикладі додавання необов’язкової інформаційної `note` зберігає `schema_version: 1`. Старий відправник не передає це поле, а новіший читач використовує `null`. Старий читач може його проігнорувати, не змінюючи рішення про схвалення. Не використовуйте ігнороване поле для зміни, що має впливати на авторизацію або бізнес-поведінку.
