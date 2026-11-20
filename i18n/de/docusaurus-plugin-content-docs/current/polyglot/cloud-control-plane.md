@@ -345,24 +345,25 @@ definiert eine kleine wiederholbare Last: ein Workflow-Start, eine externe
 Aktivität und ein Workflow-Abschluss mit definierten 1-KiB-Avro-Eingaben und
 -Ergebnissen. Der Kunden-Worker läuft außerhalb der verwalteten Laufzeitzuteilung.
 
-Cloud Dev wurde am 18. November 2026 mit demselben Plan und demselben
-Laufzeitrelease gemessen, die Kunden bereitstellen. Die vier anderen Basiswerte sind historisch: Sie enthalten ihre
+Cloud Dev wurde am 19. November 2026 auf der nativen Server-3.15.0-Laufzeitumgebung
+gemessen, die Cloud für neue Dev-Laufzeitumgebungen bereitstellt. Die vier anderen Basiswerte sind historisch: Sie enthalten ihre
 replizierte HA-Topologie, stammen aber von vor dem aktuellen Laufzeitrelease.
 Sie sind nicht aus Dev hochgerechnet und qualifizieren nicht die Kapazität der
 aktuellen SLA-Pläne.
 
 | Plan | Standard-Workflows/Sekunde | Workflow-Aktionen in 30 Tagen | Messung |
 | --- | ---: | ---: | --- |
-| Cloud Dev | 0.25 | 1,296,000 | 18. November 2026; Details unten |
+| Cloud Dev | 1.5 | 7,776,000 | 19. November 2026; Details unten |
 | Cloud Standard | 0.25 | 1,296,000 | Historisch; erneute Messung ausstehend |
 | Cloud Multi-Region | 0.10 | 518,400 | Historisch; erneute Messung ausstehend |
 | Cloud Business | 0.50 | 2,592,000 | Historisch; erneute Messung ausstehend |
 | Cloud Business Multi-Region | 0.20 | 1,036,800 | Historisch; erneute Messung ausstehend |
 
-Die 30-Tage-Schätzung ist `Workflows/Sekunde x 2,592,000 Sekunden x 2 Workflow-Aktionen`:
-ein Start und eine Aktivität für diesen Vergleich. Sie setzt diese Rate
-ununterbrochen über 30 Tage voraus. Sie ist weder enthaltenes Aktionskontingent
-noch Abrechnungseinheit oder exakte Zuordnung zu Aktionsdefinitionen anderer Engines.
+Die 30-Tage-Schätzung ist `workflows/second x 2,592,000 seconds x 2 workflow actions`:
+ein Start und eine Aktivität für diesen Vergleich. Für Cloud Dev ergibt das
+1.5 x 2,592,000 x 2 = 7,776,000. Sie setzt diese Rate ununterbrochen über
+30 Tage voraus. Sie ist weder enthaltenes Aktionskontingent noch
+Abrechnungseinheit oder exakte Zuordnung zu Aktionsdefinitionen anderer Engines.
 
 Dies sind gemessene Lastbasiswerte, kein Maximaldurchsatz und keine garantierte
 Kapazität für jede Anwendung. Größere Nutzlasten, mehr Aktivitäten, Timer,
@@ -377,88 +378,135 @@ Workflow-Größe zu multiplizieren.
 Cloud Dev ist eine isolierte verwaltete Einzelhost-Laufzeitumgebung für
 Entwicklung und Evaluierung. Diese Messung nutzte eine gewöhnlich bereitgestellte
 Dev-Laufzeitumgebung ohne Änderungen an CPU, Arbeitsspeicher, Speicher,
-Eingang oder Sicherungseinstellungen:
+Netzwerk, Eingang oder Sicherungseinstellungen:
 
 | Ressource | Cloud Dev |
 | --- | --- |
 | Laufzeit-Rechenleistung | 1 geteilte vCPU, 1 GB RAM |
 | Enthaltener dauerhafter Speicher | 5 GB |
-| Laufzeitdienste | Server, Warteschlangen-Worker, Scheduler, MySQL, Redis und der Eingangsconnector |
+| Laufzeitdienste | Nativer Server, MySQL, Redis und der Eingangsconnector |
 | Managed Waterline | Über die authentifizierte Cloud-Anwendung enthalten; kein Prozess auf dem Dev-Host |
 | Netzwerkpfad | Direkter, Space-spezifischer HTTPS-Eingang |
+| Ausgehender Laufzeitverkehr | Auf 4 Mbit/s begrenzt |
 | Kunden-Worker | Laufen in der Kundenumgebung |
 | Verfügbarkeit | Kein SLA; Wartungsunterbrechungen sind zulässig |
 | Aktueller Laufzeitpreis | Siehe [Pläne und Preise](#plans-and-pricing) |
 | Mehr Speicher | Größeren Laufzeitplan anfordern; keine Speichererweiterungen |
 
-Der Lauf verwendete die öffentliche [PHP-Definition von DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/adc8e352c94528cbf59adf1b7af5a5238834c9a8/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
+Der Lauf verwendete die öffentliche [PHP-Definition von DW Standard Workflow v1](https://github.com/durable-workflow/server/blob/f16f9b7337d3d64b1ba6458ab61ba2d7ed7f334f/benchmarks/capacity/v1/bindings/php/capacity_adapter.php):
 ein Workflow-Start, eine externe Echo-Aktivität und ein Abschluss mit einer
 1,024-Byte-Zeichenfolge in Avro an jeder Workflow-/Aktivitätseingabe- und
 Ergebnisgrenze. Die Laufzeitumgebung war das Server-Release, das Cloud für neue
-Dev-Laufzeitumgebungen bereitstellt: Server 2.9.12 mit Workflow 2.8.0 auf
-PHP 8.3.36 mit MySQL 8.0.46 und Redis 7.4.11. Externer Worker und Clients
-verwendeten das veröffentlichte PHP SDK 3.20.0 auf PHP 8.4.27, das in diesem
+Dev-Laufzeitumgebungen bereitstellt: nativer Server 3.15.0 mit MySQL 8.0.46 und
+Redis 7.4.11. Sein `/api/cluster/info` meldete die Implementierung `rust`,
+Version 3.15.0 und Worker-Protokoll 1.20. Externe Worker und Clients
+verwendeten das veröffentlichte PHP SDK 3.22.0 auf PHP 8.4.27, das in diesem
 Binding anstelle des dort fest vorgegebenen SDK 2.0.10 installiert wurde. Sie
 liefen außerhalb des Laufzeit-Hosts und verbanden sich über dessen normalen
 HTTPS-Eingang.
 
-Ein PHP-Worker nutzte einen Task-Abfrage-Timeout von einer Sekunde. Zwei
-unabhängige Client-Slots boten nach separater 30-sekündiger Aufwärmphase alle
-vier Sekunden einen Workflow an. Das feste Messfenster war
-**15:41:04–15:46:04 UTC am 18. November 2026**. Nur innerhalb dieser fünf
-Minuten beobachtete Abschlüsse zählen zum Durchsatz. Späteres Auslaufen erhöht
-die gemeldete Rate nicht. Jedes Ergebnis, jeder abgeschlossene Status und die
-geordnete Workflow-/Aktivitätshistorie wurden geprüft.
+Die Last wurde in Stufen von 0.25, 0.5, 1, 1.5 und 2 Workflows/Sekunde
+gesteigert, und die Grenzstufen wurden wiederholt. Jede Stufe hatte eine
+separate 30-sekündige Aufwärmphase und danach ein festes fünfminütiges Fenster.
+Nur innerhalb des Fensters beobachtete Abschlüsse zählen zum Durchsatz.
+Späteres Auslaufen erhöht die gemeldete Rate nicht.
 
-| Messergebnis | Wert |
+- Worker: vier PHP-Worker bis 1 Workflow/Sekunde, sechs bei 1.5 und vier, sechs
+  oder acht bei 2. Jeder nutzte einen Task-Abfrage-Timeout von einer Sekunde.
+- Clients: `max(2, 8 x rate)` unabhängige Client-Slots boten Starts nach einem
+  festen Zeitplan an. Ein Start, der mehr als eine Sekunde zu spät erfolgt, zählt
+  als verpasster Start-Slot.
+- Ergebnisse: Clients fragten das Ergebnis jedes Workflows einmal pro Sekunde
+  ab. Der native Server unterstützt Long Polling der Historie (`wait_new_event`,
+  [server#1257](https://github.com/durable-workflow/server/issues/1257)) noch
+  nicht.
+- Prüfungen: Jedes Ergebnis, jeder abgeschlossene Status und die geordnete
+  Workflow-/Aktivitätshistorie wurden verifiziert.
+- Eine Stufe besteht ohne Fehler, ohne verpasste Start-Slots im Fenster, mit
+  jedem verifizierten Workflow, ohne wachsenden Rückstau und ohne OOM-Kill oder
+  Neustart. Die veröffentlichte Rate ist die höchste bestandene Stufe mit einer
+  Host-CPU-Auslastung von höchstens etwa 80%.
+- Die Host-CPU stammte alle fünf Sekunden aus `/proc/stat`. Der
+  Container-Speicher ist das cgroup-Working-Set.
+
+| Angebotene Rate (Worker) | Fenster, 19. November (UTC) | Gestartet / angeboten | Im Fenster abgeschlossen | Verpasst / Fehler | p50 / p95 / p99 (s) | Unfertig am Fensterende | Host-CPU Durchschnitt / Spitze | Ergebnis |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 0.25/s (4) | 22:56-23:01 | 75 / 75 | 75 | 0 / 0 | 1.24 / 1.30 / 1.42 | 0 | 29.3% / 35.2% | bestanden |
+| 0.5/s (4) | 23:02-23:07 | 150 / 150 | 151 | 0 / 0 | 1.25 / 1.41 / 2.61 | 0 | 38.2% / 45.5% | bestanden |
+| 1/s (4) | 23:08-23:13 | 300 / 300 | 300 | 0 / 0 | 1.36 / 1.57 / 1.65 | 1 | 58.8% / 64.2% | bestanden |
+| 1/s (4), Wiederholung | 23:36-23:41 | 300 / 300 | 300 | 0 / 0 | 1.36 / 1.56 / 1.64 | 1 | 48.5% / 61.6% | bestanden |
+| 1.5/s (6) | 23:29-23:34 | 450 / 450 | 446 | 0 / 0 | 1.78 / 3.98 / 5.10 | 6 | 54.0% / 60.9% | bestanden |
+| 1.5/s (6), Wiederholung | 23:43-23:48 | 450 / 450 | 446 | 0 / 0 | 1.77 / 3.71 / 4.83 | 6 | 55.8% / 61.8% | bestanden |
+| 2/s (4) | 23:15-23:20 | 522 / 600 | 520 | 78 / 0 | 6.49 / 9.87 / 10.58 | 16 | 50.4% / 65.5% | nicht bestanden: verpasste Starts |
+| 2/s (8) | 23:22-23:27 | 455 / 600 | 452 | 145 / 0 | 7.92 / 11.66 / 12.86 | 14 | 43.0% / 50.1% | nicht bestanden: verpasste Starts |
+| 2/s (6) | 23:49-23:54 | 496 / 600 | 487 | 104 / 1 | 6.97 / 10.43 / 11.04 | 15 | 48.6% / 56.4% | nicht bestanden: verpasste Starts, 1 fehlgeschlagener Workflow |
+
+| Messergebnis bei 1.5 Workflows/Sekunde | Wert |
 | --- | ---: |
-| Angebotene Rate | 0.25 Standard-Workflows/Sekunde |
-| Innerhalb des Fensters abgeschlossen | 74 von 75 gestarteten (0.247/Sekunde) |
-| Nach dem Auslaufen abgeschlossen | 75 von 75 |
+| Angebotene Rate | 1.5 Standard-Workflows/Sekunde |
+| Messfenster | 23:29:52-23:34:52 UTC |
+| Innerhalb des Fensters abgeschlossen | 446 (1.49/Sekunde) |
+| Nach dem Auslaufen abgeschlossen | 450 von 450 gestarteten |
 | Fehler / verpasste Start-Slots | 0 / 0 |
-| Start-bis-Ergebnis-Latenz, p50 | 2.33 Sekunden |
-| Start-bis-Ergebnis-Latenz, p95 | 3.49 Sekunden |
-| Start-bis-Ergebnis-Latenz, p99 | 4.31 Sekunden |
-| Unfertige Workflows der gemessenen Kohorte am Fensterende | 1 |
-| Workflow-Aktionen in 30 Tagen | 1,296,000 |
+| Start-bis-Ergebnis-Latenz, p50 | 1.78 Sekunden |
+| Start-bis-Ergebnis-Latenz, p95 | 3.98 Sekunden |
+| Start-bis-Ergebnis-Latenz, p99 | 5.10 Sekunden |
+| Unfertige Workflows der gemessenen Kohorte am Fensterende | 6 |
+| Host-CPU, Durchschnitt / Spitze | 54.0% / 60.9% |
+| Workflow-Aktionen in 30 Tagen | 7,776,000 |
 
-Der eine unfertige Workflow wurde zwei Sekunden vor Ende des Fensters gestartet
-und 0.39 Sekunden danach abgeschlossen, innerhalb des normalen Latenzbereichs.
-Er wird im Fenster nicht gezählt. Während des Fensters waren zu keinem
-Zeitpunkt mehr als zwei Workflows offen, es gab also keinen wachsenden Rückstau.
+Die sechs unfertigen Workflows wurden in den letzten Sekunden des Fensters
+gestartet und innerhalb des normalen Latenzbereichs abgeschlossen; sie werden
+nicht gezählt. Während des Fensters waren höchstens neun Workflows gleichzeitig
+offen, und die Medianlatenz in der letzten Minute (1.87 Sekunden) blieb nahe an
+der ersten Minute (1.76 Sekunden), es gab also keinen wachsenden Rückstau. Die
+wiederholte 1.5-Stufe bestand mit demselben Durchsatz, einer p99-Latenz von
+4.83 Sekunden und einer durchschnittlichen Host-CPU-Auslastung von 55.8%.
 
-Die Latenz enthält Client-Netzwerk und Ergebnisabfragen alle 100 ms. Sie ist
-keine interne Task-Planungslatenz und sollte nicht mit einer internen
-Planungsmetrik einer Engine verglichen werden.
+Die Latenz enthält Client-Netzwerk (etwa 85-170 ms pro HTTPS-Roundtrip vom
+messenden Host) und Ergebnisabfragen im Sekundentakt, sodass der Median nicht
+wesentlich unter eine Sekunde fallen kann. Sie ist keine interne
+Task-Planungslatenz und sollte nicht mit einer internen Planungsmetrik einer
+Engine verglichen werden.
 
-Die Host-CPU war in Fünf-Sekunden-Stichproben durchschnittlich **60.5%** und
-maximal **83.2%** ausgelastet. Es gab **keine Container-OOM-Kills oder Neustarts**.
-Der beobachtete maximale Container-Speicher (Working Set) betrug 75.68 MiB für
-Server, 205.95 MiB für MySQL, 41.88 MiB für den Warteschlangen-Worker, 45.5 MiB
-für den Scheduler, 12.39 MiB für Redis und 30.62 MiB für den Eingangsconnector.
-Diese einzelnen Spitzen sind kein gleichzeitiger Gesamt-Host-RSS. Betriebssystem
-und andere Host-Prozesse verbrauchen ebenfalls Speicher. Der Host hatte seine
-normale 1-GiB-Swap-Konfiguration; während der Messung waren bis zu etwa 65 MiB
-belegt. Die erste verschlüsselte Sicherung wurde etwa neun Minuten vor dem
-Fenster erstellt und geprüft; die nächste geplante Sicherung folgte erst Stunden
-später, sodass keine Sicherungserstellung das Fenster überlappte.
+In keiner Stufe gab es **Container-OOM-Kills oder Neustarts**. Bei 1.5
+Workflows/Sekunde betrug der beobachtete maximale Container-Speicher (Working
+Set) 17.16 MiB für den nativen Server, 244.35 MiB für MySQL, 6.29 MiB für Redis
+und 30.16 MiB für den Eingangsconnector. Diese einzelnen Spitzen sind kein
+gleichzeitiger Gesamt-Host-RSS. Betriebssystem und andere Host-Prozesse
+verbrauchen ebenfalls Speicher. Der Host hatte seine normale
+1-GiB-Swap-Konfiguration, von der bis zu etwa 50 MiB belegt waren. Die erste
+verschlüsselte Sicherung wurde vor dem ersten Fenster erstellt und geprüft, und
+keine weitere Sicherungserstellung überlappte den Lauf.
 
-Derselbe Lauf bot anschließend für ein fünfminütiges Fenster 0.5 Workflows/Sekunde
-an. Diese Stufe hat nicht bestanden. Mit einem Worker wurden 39 von 150 Start-Slots
-verpasst, die p99-Latenz erreichte 32.8 Sekunden und die Host-CPU war
-durchschnittlich zu 86.7% ausgelastet. Bei der Wiederholung der Stufe mit zwei
-Workern wurden weiterhin 6 Start-Slots verpasst, bei einer p95- und p99-Latenz
-von 8.5 und 11.8 Sekunden. Die Host-CPU lag dann durchschnittlich bei 95% und
-erreichte 100%, während die externen Client- und Worker-Prozesse weniger als 15%
-eines Kerns nutzten. Der Laufzeit-Host mit einer einzigen vCPU, der auch die
-Ergebnisabfragen alle 100 ms bedient, ist die Grenze für diese Last. In keinem
-der beiden Versuche gab es Fehler, OOM-Kills oder Neustarts, und jeder Workflow
-wurde schließlich mit der erwarteten Historie abgeschlossen. Der gemessene
-Dev-Basiswert beträgt daher 0.25 Standard-Workflows/Sekunde; höhere Raten werden
-nicht beansprucht.
+Die Stufe mit 2 Workflows/Sekunde hat nicht bestanden. Drei Versuche mit vier,
+acht und sechs Workern verpassten 78, 145 und 104 von 600 Start-Slots, bei einer
+p99-Latenz von 10.6 bis 12.9 Sekunden. Die Host-CPU war nicht die Grenze: Sie
+lag in diesen Versuchen durchschnittlich bei 43-50%. Die Grenze war die
+Begrenzung des ausgehenden Verkehrs der Laufzeitumgebung. Diese Methode erzeugte
+etwa 400 KB ausgehenden Laufzeitverkehr pro Workflow (Ergebnisabfragen,
+Worker-Task-Antworten und Transport-Overhead): 3.35 Mbit/s bei 1 Workflow/Sekunde
+und die vollen 4.0 Mbit/s bei 1.5 und 2. Mehr Worker halfen nicht, weil ihre
+Abfragen zusätzlichen Verkehr erzeugen. Im Versuch mit sechs Workern schlug ein
+Workflow fehl, nachdem seine Aktivität ihre Task-Lease verloren hatte, während
+der ausgehende Verkehr gesättigt war. Jeder andere Workflow in jeder Stufe wurde
+mit der erwarteten Historie abgeschlossen, ohne Fehler und ohne OOM-Kills oder
+Neustarts. Der gemessene Dev-Basiswert beträgt daher 1.5
+Standard-Workflows/Sekunde; höhere Raten werden nicht beansprucht.
 
-Dies ist ein gemessener Entwicklungsbasiswert, keine universelle Umrechnung
-für jeden Workflow, kein Maximaldurchsatztest, kein Langzeit-Dauertest und kein
+Dies ersetzt den Dev-Basiswert vom 18. November 2026 von 0.25
+Workflows/Sekunde. Jener Lauf maß die PHP-Server-2.9.12-Laufzeitumgebung, die Dev
+damals bereitstellte, mit einem Worker und Ergebnisabfragen alle 100 ms, und
+ihre einzelne vCPU war die Grenze.
+
+Dies war eine frische Laufzeitumgebung, die über etwa eine Stunde gemessen wurde,
+kein Langzeit-Dauertest. Die Wartungsscans von Server 3.15.0 lesen jeden
+aufbewahrten Lauf, sodass die Datenbankarbeit mit der aufbewahrten Historie
+wächst; Server 3.16.0 begrenzt diese Scans auf offene Arbeit
+([server#1256](https://github.com/durable-workflow/server/issues/1256)). Cloud
+Dev wird auf Server 3.16.0 erneut gemessen, einschließlich eines längeren Laufs
+mit aufbewahrter Historie. Dies ist ein gemessener Entwicklungsbasiswert, keine
+universelle Umrechnung für jeden Workflow, kein Maximaldurchsatztest und kein
 SLA. Größere Nutzlasten, zusätzliche Aktivitäten, Timer, Signale, Abfragen,
 Replay-lastige Historien und Kunden-Worker-Latenz ändern die Kapazität.
 Cloud-Abrechnung basiert auf bereitgestellter Laufzeitdauer mit fest enthaltenem
