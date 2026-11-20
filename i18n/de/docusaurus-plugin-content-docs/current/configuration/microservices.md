@@ -138,6 +138,8 @@ php artisan queue:work shared --queue=activities
 ```
 
 Der Worker von Anwendung A spielt Workflows erneut ab und plant
-Aktivitätsaufgaben ein. Der Worker von Anwendung B übernimmt diese Aufgaben,
-führt sie aus und gibt Ergebnisse zurück. Die Engine wickelt die Übergabe
-über die gemeinsame Datenbank ab.
+Aktivitätsaufgaben ein. Legen Sie sein Job-Timeout wie unter
+[Worker-Timeout](/docs/installation/#worker-timeout) beschrieben fest. Der
+Worker von Anwendung B übernimmt diese Aufgaben, führt sie aus und gibt
+Ergebnisse zurück. Die Engine wickelt die Übergabe über die gemeinsame Datenbank
+ab.

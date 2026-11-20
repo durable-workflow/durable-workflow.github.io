@@ -268,6 +268,8 @@ final class StartOrderFulfillment
 php artisan queue:work redis --queue=orders
 ```
 
+この Worker のジョブタイムアウトは、[Worker のタイムアウト](/docs/installation/#worker-timeout)の説明に従って設定してください。
+
 同じアプリケーションアクションから組み込み fake を使います。準備済みタスクをインライン実行し、アクティビティ配送を記録します。
 
 <!-- docs-example id="laravel.adoption.v2-embedded.fake" -->

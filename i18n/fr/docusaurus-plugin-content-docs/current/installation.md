@@ -54,3 +54,43 @@ php artisan migrate
 ## Exécuter les workers {#running-workers}
 
 Durable Workflow utilise des files pour exécuter les workflows et les activités en arrière-plan. Exécutez la commande [`queue:work`](https://laravel.com/docs/12.x/queues#the-queue-work-command) ou utilisez [Horizon](https://laravel.com/docs/12.x/horizon) pour gérer vos workers de file. Sans worker, les workflows et les activités ne sont pas traités. Pour les exécuter en parallèle, il faut plusieurs workers.
+
+### Délai d’expiration du worker {#worker-timeout}
+
+Lorsque PHP dispose de l’extension `pcntl`, un worker de file tue tout job qui s’exécute au-delà de son délai d’expiration : le `--timeout` du worker, 60 secondes par défaut, sauf si le job définit le sien. Les changements d’une tâche de workflow tuée sont annulés. Elle n’est relancée qu’après l’expiration de son bail (`workflows.v2.workflow_task_lease_seconds`, 300 secondes par défaut) et est comptée comme un bail perdu, et la nouvelle tentative refait le même travail. Une tâche de workflow qui a toujours besoin de plus de temps que ce délai, par exemple une tâche qui planifie ou termine un large `all()`, ne se termine jamais.
+
+Trois réglages doivent être cohérents :
+
+- Le **délai d’expiration des workers qui exécutent les tâches de workflow** doit couvrir votre plus longue tâche de workflow. Une tâche de workflow tuée attend la fin de son bail avant d’être relancée.
+- Le **`retry_after`** de la connexion de file doit dépasser le délai d’expiration de chaque job qu’elle transporte, comme l’exige Laravel. Sinon, la file confie un job encore en cours à un second worker.
+- Les **activités** doivent garder un délai d’expiration borné, afin qu’une activité bloquée ne puisse pas occuper un worker indéfiniment. N’utilisez pas `--timeout=0`.
+
+Pour donner aux activités un délai d’expiration plus court qu’aux tâches de workflow, exécutez-les sur leur propre file avec leurs propres workers. Les activités s’exécutent sur la connexion et la file de leur workflow, sauf si la classe d’activité définit `$connection` ou `$queue`, ou si le workflow transmet des `ActivityOptions`.
+
+```php
+// config/queue.php
+'redis' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
+],
+```
+
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
+```
+
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+Dans Horizon, l’option `timeout` de chaque superviseur est le délai d’expiration du worker.
+
+Workflow 2.34.0 ajoute `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS`, non défini par défaut. Lorsqu’il est défini, chaque job de tâche de workflow porte ce délai, maintenu au moins 10 secondes sous le `retry_after` de sa connexion, et les workers l’utilisent à la place de leur propre délai pour ces jobs, si bien que tâches de workflow et activités peuvent partager les mêmes workers. À partir de cette version, un worker qui sert la file des workflows journalise un avertissement au démarrage lorsque le délai sous lequel s’exécutent ses tâches de workflow est inférieur au bail de tâche de workflow.

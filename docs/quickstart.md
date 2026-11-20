@@ -454,6 +454,8 @@ php artisan migrate
 php artisan queue:work
 ```
 
+Before running wide fan-outs, set the worker's job timeout as described in [Worker timeout](/docs/installation/#worker-timeout).
+
 When you want the operator UI inside that same Laravel application, add the
 qualified embedded Waterline Composer package:
 

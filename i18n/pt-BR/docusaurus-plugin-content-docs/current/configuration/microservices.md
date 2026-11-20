@@ -131,4 +131,4 @@ php artisan queue:work shared --queue=workflows
 php artisan queue:work shared --queue=activities
 ```
 
-O worker da aplicação A faz replay dos workflows e agenda tarefas de atividade. O worker da aplicação B recebe essas tarefas de atividade, executa-as e retorna os resultados. O mecanismo cuida da transferência pelo banco de dados compartilhado.
+O worker da aplicação A faz replay dos workflows e agenda tarefas de atividade. Configure o timeout de jobs dele como descrito em [Timeout do worker](/docs/installation/#worker-timeout). O worker da aplicação B recebe essas tarefas de atividade, executa-as e retorna os resultados. O mecanismo cuida da transferência pelo banco de dados compartilhado.

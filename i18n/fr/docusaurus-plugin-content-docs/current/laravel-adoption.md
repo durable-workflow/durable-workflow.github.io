@@ -301,6 +301,9 @@ Lancez le worker Laravel comme l'exige le déploiement embarqué :
 php artisan queue:work redis --queue=orders
 ```
 
+Réglez le délai d'expiration des jobs de ce worker comme décrit dans
+[Délai d'expiration du worker](/docs/installation/#worker-timeout).
+
 Utilisez la simulation embarquée via la même action applicative. Elle exécute
 directement les tâches prêtes et enregistre les distributions d'activité :
 

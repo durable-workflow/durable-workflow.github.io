@@ -127,6 +127,9 @@ Inicie o worker de fila. Isso habilita o processamento de workflows e atividades
 php artisan queue:work
 ```
 
+Na sua própria aplicação, configure o timeout de jobs do worker como descrito em
+[Timeout do worker](/docs/installation/#worker-timeout).
+
 Para comprovar o próprio ciclo de reparo sem esperar um worker ocupado
 chegar a outro ciclo `Looping`, execute uma varredura explícita de
 recuperação em um segundo terminal:

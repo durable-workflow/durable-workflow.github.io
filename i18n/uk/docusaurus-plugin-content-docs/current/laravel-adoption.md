@@ -304,6 +304,9 @@ final class StartOrderFulfillment
 php artisan queue:work redis --queue=orders
 ```
 
+Налаштуйте тайм-аут job для цього worker, як описано в розділі
+[Тайм-аут worker](/docs/installation/#worker-timeout).
+
 Використовуйте embedded fake через ту саму дію застосунку.
 Він безпосередньо виконує готові завдання workflow і записує відправлення activity:
 

@@ -131,4 +131,4 @@ php artisan queue:work shared --queue=workflows
 php artisan queue:work shared --queue=activities
 ```
 
-应用 A 的 Worker 重放工作流并调度活动任务。应用 B 的 Worker 获取这些活动任务、执行并返回结果。引擎通过共享数据库完成交接。
+应用 A 的 Worker 重放工作流并调度活动任务。请按照[Worker 超时](/docs/installation/#worker-timeout)中的说明设置它的作业超时。应用 B 的 Worker 获取这些活动任务、执行并返回结果。引擎通过共享数据库完成交接。

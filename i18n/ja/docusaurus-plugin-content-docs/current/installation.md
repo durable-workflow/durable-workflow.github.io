@@ -53,3 +53,43 @@ php artisan migrate
 ## Worker を実行する {#running-workers}
 
 Durable Workflow はキューを使って、ワークフローとアクティビティをバックグラウンドで実行します。[`queue:work` コマンド](https://laravel.com/docs/12.x/queues#the-queue-work-command)を実行するか、[Horizon](https://laravel.com/docs/12.x/horizon)でキュー Worker を管理してください。キュー Worker がなければ、ワークフローとアクティビティは処理されません。並列に実行するには、複数のキュー Worker が必要です。
+
+### Worker のタイムアウト {#worker-timeout}
+
+PHP に `pcntl` 拡張がある場合、キュー Worker はタイムアウトを超えて実行されたジョブを強制終了します。タイムアウトは Worker の `--timeout`（デフォルトは 60 秒）で、ジョブが独自に設定している場合はその値です。強制終了されたワークフロータスクはロールバックされます。再試行はリースの期限（`workflows.v2.workflow_task_lease_seconds`、デフォルトは 300 秒）が切れた後にしか行われず、リースの喪失として数えられます。再試行では同じ作業が繰り返されます。幅の広い `all()` をスケジュールまたは完了するタスクのように、常にタイムアウトより長い時間を必要とするワークフロータスクは、いつまでも完了しません。
+
+次の三つの設定を揃える必要があります。
+
+- **ワークフロータスクを実行する Worker のタイムアウト**は、最も長いワークフロータスクをカバーできなければなりません。強制終了されたワークフロータスクは、リースの残り時間が過ぎるのを待ってから再試行されます。
+- キュー接続の **`retry_after`** は、Laravel が求めるとおり、その接続上のすべてのジョブのタイムアウトより長くしなければなりません。そうでないと、キューはまだ実行中のジョブを別の Worker に渡してしまいます。
+- **アクティビティ**には上限のあるタイムアウトを残し、ハングしたアクティビティが Worker を永久に占有できないようにしてください。`--timeout=0` は使わないでください。
+
+アクティビティにワークフロータスクより短いタイムアウトを設定するには、アクティビティを専用のキューと専用の Worker で実行してください。アクティビティクラスが `$connection` または `$queue` を設定している場合や、ワークフローが `ActivityOptions` を渡す場合を除き、アクティビティはワークフローの接続とキューで実行されます。
+
+```php
+// config/queue.php
+'redis' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
+],
+```
+
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
+```
+
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+Horizon では、各 supervisor の `timeout` オプションが Worker のタイムアウトです。
+
+Workflow 2.34.0 では `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS` が追加されました（デフォルトでは未設定）。設定すると、すべてのワークフロータスクのジョブがそのタイムアウトを持ち（接続の `retry_after` より少なくとも 10 秒短く保たれます）、Worker はそれらのジョブに自身のタイムアウトの代わりにその値を使うため、ワークフロータスクとアクティビティで Worker を共有できます。このリリース以降、ワークフローキューを処理する Worker は、ワークフロータスクの実行時に適用されるタイムアウトがワークフロータスクのリースより短い場合、起動時に警告をログに出力します。

@@ -124,6 +124,8 @@ Inicia el worker de colas para procesar workflows y actividades.
 php artisan queue:work
 ```
 
+En tu propia aplicación, configura el tiempo límite de jobs del worker como se describe en [Tiempo límite del worker](/docs/installation/#worker-timeout).
+
 Para comprobar el propio ciclo de reparación sin esperar a que un worker ocupado llegue a otro ciclo `Looping`, ejecuta una pasada explícita de recuperación desde un segundo terminal:
 
 ```bash

@@ -70,3 +70,65 @@ plano. Execute o [comando `queue:work`](https://laravel.com/docs/12.x/queues#the
 ou use o [Horizon](https://laravel.com/docs/12.x/horizon) para operar os workers
 de fila. Sem um worker, workflows e atividades não são processados. Para
 executá-los em paralelo, você precisa de mais de um worker de fila.
+
+### Timeout do worker {#worker-timeout}
+
+Quando o PHP tem a extensão `pcntl`, um worker de fila encerra qualquer job que
+rode além do seu timeout: o `--timeout` do worker, 60 segundos por padrão, a
+menos que o job defina o próprio. Uma tarefa de workflow encerrada dessa forma
+sofre rollback. Ela só é tentada novamente depois que o seu lease expira
+(`workflows.v2.workflow_task_lease_seconds`, 300 segundos por padrão) e é
+contada como um lease perdido, e a nova tentativa repete o mesmo trabalho. Uma
+tarefa de workflow que sempre precisa de mais tempo que o timeout, como uma que
+agenda ou conclui um `all()` amplo, nunca é concluída.
+
+Três configurações precisam estar alinhadas:
+
+- O **timeout dos workers que executam tarefas de workflow** precisa cobrir sua
+  tarefa de workflow mais longa. Uma tarefa de workflow encerrada espera o
+  restante do seu lease antes de ser tentada novamente.
+- O **`retry_after`** da conexão de fila precisa exceder o timeout de todos os
+  jobs nela, como o Laravel exige. Caso contrário, a fila entrega um job ainda
+  em execução a um segundo worker.
+- As **atividades** devem manter um timeout limitado, para que uma atividade
+  travada não prenda um worker para sempre. Não use `--timeout=0`.
+
+Para dar às atividades um timeout menor que o das tarefas de workflow,
+execute-as em uma fila própria, com workers próprios. As atividades rodam na
+conexão e na fila do seu workflow, a menos que a classe da atividade defina
+`$connection` ou `$queue`, ou que o workflow passe `ActivityOptions`.
+
+```php
+// config/queue.php
+'redis' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
+],
+```
+
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
+```
+
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+No Horizon, a opção `timeout` de cada supervisor é o timeout do worker.
+
+O Workflow 2.34.0 adiciona `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS`, sem valor
+por padrão. Quando ela é definida, todo job de tarefa de workflow carrega esse
+timeout, mantido pelo menos 10 segundos abaixo do `retry_after` da sua conexão,
+e os workers o usam no lugar do próprio timeout para esses jobs, de modo que
+tarefas de workflow e atividades podem compartilhar workers. A partir dessa
+versão, um worker que atende a fila de workflows registra um aviso ao iniciar
+quando o timeout sob o qual suas tarefas de workflow rodam é menor que o lease
+da tarefa de workflow.
