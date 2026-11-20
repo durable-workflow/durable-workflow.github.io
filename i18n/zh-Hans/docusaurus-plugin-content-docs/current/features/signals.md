@@ -110,7 +110,7 @@ $result->startOutcome(); // "started_new" or "returned_existing_active"
 面向嵌入式工作流的持久 signal-external 位于 [Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247)，尚未发布。其 API 为实验性。
 :::
 
-工作流代码可以通过 `signalExternalWorkflow()` 向其命名空间内的另一个工作流发送信号。请求及其结果会在此工作流的历史中只记录一次，与在目标上接收该信号处于同一事务中；重放返回已记录的结果，不会再次发送：
+工作流代码可以通过 `signalExternalWorkflow()` 向其命名空间内的另一个工作流发送信号。此工作流只记录一次请求，然后等待。该记录提交后，运行时在目标上接收该信号，并将结果记录到此工作流的历史中；遇到数据库冲突时会重试，而不会使任一工作流失败。重放返回已记录的结果，不会再次发送：
 
 ```php
 use Workflow\V2\Attributes\Type;

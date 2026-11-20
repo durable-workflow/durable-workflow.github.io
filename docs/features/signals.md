@@ -139,9 +139,11 @@ experimental.
 :::
 
 Workflow code can signal another workflow in its namespace with
-`signalExternalWorkflow()`. The request and its outcome are recorded once in
-this workflow's history, in the same transaction that admits the signal on the
-target, and replay returns the recorded outcome without sending again:
+`signalExternalWorkflow()`. This workflow records the request once and waits.
+After that commits, the runtime admits the signal on the target and records
+the outcome in this workflow's history, retrying database conflicts instead of
+failing either workflow. Replay returns the recorded outcome without sending
+again:
 
 ```php
 use Workflow\V2\Attributes\Type;
