@@ -55,3 +55,9 @@ worker 在激活和冷替换后重建已提交的 workflow 历史，因此普通
 在初始发布范围内，启动时扫描是唯一可以阻止工作流运行的确定性检查。运行时不会在获取工作流任务时再次执行确定性诊断。这是 2.0 的明确选择：启动扫描在部署前检查本地注册的 PHP 工作流，Waterline 则展示长期运行任务的定义指纹变化，避免跨构建获取任务成为新的部署故障来源。
 
 对于早于指纹记录的运行，也采用保守策略。如果运行进入新的 `getVersion()` 分支，但其 `WorkflowStarted` 历史早于指纹快照，运行时将它保留在 `WorkflowStub::DEFAULT_VERSION`，不假定当前定义可以安全重放。参阅[版本管理](../features/versioning.md)。
+
+### 注释和格式修改 {#comment-only-edits}
+
+默认情况下，定义指纹覆盖原始源代码行。因此，只修改工作流类、其 trait 或父工作流类中的注释、docblock 或空白，或只修改 `await()` 条件 closure 中的这些内容，对进行中的运行来说都算作定义修改：历史中缺少的 `getVersion()` 或 `patched()` 标记会取 `WorkflowStub::DEFAULT_VERSION`，修改过的条件 closure 会导致重放失败。
+
+从 2.34 起，worker 可以改为记录去掉注释和空白后的 PHP 代码 token 的指纹（前缀 `sha256-tokens:`），这类修改不会改变它。请在所有 worker 都升级到 2.34 或更高版本后，通过 `DW_DEFINITION_FINGERPRINT_VERSION=v2` 启用，因为较旧的 worker 会把这样的运行视为已修改。每个运行都保留它记录的指纹版本：启用前启动的运行仍对注释修改敏感，切换回 `v1` 是安全的。
