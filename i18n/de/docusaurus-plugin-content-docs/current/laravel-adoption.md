@@ -268,6 +268,8 @@ Starten Sie den Laravel-Warteschlangen-Worker so, wie es eine eingebettete Berei
 php artisan queue:work redis --queue=orders
 ```
 
+Legen Sie das Job-Timeout dieses Workers wie unter [Worker-Timeout](/docs/installation/#worker-timeout) beschrieben fest.
+
 Verwenden Sie den eingebetteten Fake über dieselbe Anwendungsaktion. Er führt bereite Workflow-Aufgaben direkt aus und zeichnet Aktivitätszuteilungen auf:
 
 <!-- docs-example id="laravel.adoption.v2-embedded.fake" -->

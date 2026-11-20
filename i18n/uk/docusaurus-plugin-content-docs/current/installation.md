@@ -70,3 +70,66 @@ activity. Потрібно запустити
 `queue:work` або скористатися [Horizon](https://laravel.com/docs/12.x/horizon)
 для запуску worker черги. Без worker черги workflow та activity не
 оброблятимуться. Для паралельного виконання потрібно кілька worker черги.
+
+### Тайм-аут worker {#worker-timeout}
+
+Коли PHP має розширення `pcntl`, worker черги примусово завершує будь-який job,
+що виконується довше за свій тайм-аут: `--timeout` worker, типово 60 секунд,
+якщо job не задає власний. Зміни завдання workflow, завершеного в такий спосіб,
+відкочуються. Його буде повторено лише після спливання його оренди
+(`workflows.v2.workflow_task_lease_seconds`, типово 300 секунд), і це
+зараховується як втрачена оренда; повторна спроба виконає ту саму роботу ще раз.
+Завдання workflow, якому завжди потрібно більше часу, ніж дозволяє тайм-аут,
+наприклад завдання, що планує або завершує широкий `all()`, ніколи не
+завершиться.
+
+Три налаштування мають узгоджуватися:
+
+- **Тайм-аут worker, що виконують завдання workflow**, має покривати ваше
+  найдовше завдання workflow. Завершене завдання workflow чекає до кінця своєї
+  оренди, перш ніж його буде повторено.
+- **`retry_after`** з’єднання черги має перевищувати тайм-аут кожного job у
+  цьому з’єднанні, як вимагає Laravel. Інакше черга передасть job, що ще
+  виконується, другому worker.
+- **Activity** мають зберігати обмежений тайм-аут, щоб завислий activity не міг
+  утримувати worker назавжди. Не використовуйте `--timeout=0`.
+
+Щоб задати для activity коротший тайм-аут, ніж для завдань workflow, запускайте
+їх в окремій черзі з окремими worker. Activity виконуються в з’єднанні та черзі
+свого workflow, крім випадків, коли клас activity задає `$connection` або
+`$queue` чи workflow передає `ActivityOptions`.
+
+```php
+// config/queue.php
+'redis' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
+],
+```
+
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
+```
+
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+У Horizon параметр `timeout` кожного супервізора є тайм-аутом worker.
+
+Workflow 2.34.0 додає `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS`, типово не
+заданий. Якщо його задано, кожен job завдання workflow має цей тайм-аут,
+щонайменше на 10 секунд менший за `retry_after` його з’єднання, і worker
+використовують його для таких job замість власного тайм-ауту, тож завдання
+workflow та activity можуть спільно використовувати worker. Починаючи з цього
+випуску, worker, що обслуговує чергу workflow, під час запуску записує в журнал
+попередження, коли тайм-аут, з яким виконуються його завдання workflow, менший
+за оренду завдання workflow.

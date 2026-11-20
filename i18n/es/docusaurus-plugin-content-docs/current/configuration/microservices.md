@@ -131,4 +131,4 @@ php artisan queue:work shared --queue=workflows
 php artisan queue:work shared --queue=activities
 ```
 
-El worker de la aplicación A reproduce los workflows y programa tareas de actividad. El worker de la aplicación B recoge esas tareas, las ejecuta y devuelve resultados. El motor gestiona el traspaso mediante la base de datos compartida.
+El worker de la aplicación A reproduce los workflows y programa tareas de actividad. Configura su tiempo límite de jobs como se describe en [Tiempo límite del worker](/docs/installation/#worker-timeout). El worker de la aplicación B recoge esas tareas, las ejecuta y devuelve resultados. El motor gestiona el traspaso mediante la base de datos compartida.

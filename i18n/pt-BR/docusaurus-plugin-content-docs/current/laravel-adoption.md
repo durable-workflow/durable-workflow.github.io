@@ -300,6 +300,9 @@ Execute o worker de fila Laravel exatamente como uma implantação integrada exi
 php artisan queue:work redis --queue=orders
 ```
 
+Configure o timeout de jobs deste worker como descrito em
+[Timeout do worker](/docs/installation/#worker-timeout).
+
 Use o fake integrado pela mesma ação da aplicação. Ele executa tarefas prontas
 de workflow no mesmo processo e registra despachos de atividades:
 

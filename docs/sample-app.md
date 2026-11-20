@@ -124,6 +124,8 @@ Start the queue worker. This will enable the processing of workflows and activit
 php artisan queue:work
 ```
 
+In your own application, set the worker's job timeout as described in [Worker timeout](/docs/installation/#worker-timeout).
+
 When you want to prove the repair loop itself without waiting for a busy queue worker to hit another `Looping` cycle, run one explicit recovery sweep from a second terminal:
 
 ```bash

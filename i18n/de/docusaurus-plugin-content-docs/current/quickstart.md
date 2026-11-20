@@ -422,6 +422,8 @@ php artisan migrate
 php artisan queue:work
 ```
 
+Bevor Sie breite Fan-outs ausführen, legen Sie das Job-Timeout des Workers wie unter [Worker-Timeout](/docs/installation/#worker-timeout) beschrieben fest.
+
 Für die Betriebsoberfläche in derselben Laravel-Anwendung installieren Sie das qualifizierte eingebettete Waterline-Composer-Paket:
 
 ```bash

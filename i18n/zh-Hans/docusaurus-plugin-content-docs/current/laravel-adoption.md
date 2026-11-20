@@ -266,6 +266,8 @@ final class StartOrderFulfillment
 php artisan queue:work redis --queue=orders
 ```
 
+请按照[Worker 超时](/docs/installation/#worker-timeout)中的说明设置此 Worker 的作业超时。
+
 通过同一个应用操作使用嵌入式 fake。它内联执行就绪工作流任务并记录活动分发：
 
 <!-- docs-example id="laravel.adoption.v2-embedded.fake" -->

@@ -458,6 +458,10 @@ php artisan migrate
 php artisan queue:work
 ```
 
+Avant de lancer de larges fan-outs, réglez le délai d’expiration des jobs du
+worker comme décrit dans
+[Délai d’expiration du worker](/docs/installation/#worker-timeout).
+
 Pour disposer de l’interface opérateur dans cette même application Laravel,
 ajoutez le package Composer Waterline intégré qualifié :
 

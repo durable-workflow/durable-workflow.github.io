@@ -298,6 +298,9 @@ Ejecuta el worker de colas Laravel según el despliegue integrado:
 php artisan queue:work redis --queue=orders
 ```
 
+Configura el tiempo límite de jobs de este worker como se describe en
+[Tiempo límite del worker](/docs/installation/#worker-timeout).
+
 Usa la simulación integrada desde la misma acción. Ejecuta inmediatamente las
 tareas listas y registra despachos de actividad:
 

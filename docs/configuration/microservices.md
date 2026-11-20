@@ -131,4 +131,4 @@ php artisan queue:work shared --queue=workflows
 php artisan queue:work shared --queue=activities
 ```
 
-App A's worker replays workflows and schedules activity tasks. App B's worker picks up those activity tasks, executes them, and returns results. The engine handles the handoff through the shared database.
+App A's worker replays workflows and schedules activity tasks. Set its job timeout as described in [Worker timeout](/docs/installation/#worker-timeout). App B's worker picks up those activity tasks, executes them, and returns results. The engine handles the handoff through the shared database.
