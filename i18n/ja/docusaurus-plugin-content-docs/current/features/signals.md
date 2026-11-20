@@ -110,7 +110,7 @@ $result->startOutcome(); // "started_new" or "returned_existing_active"
 組み込みワークフロー向けの永続的な signal-external は [Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) で対応中で、まだリリースされていません。API は実験的です。
 :::
 
-ワークフローコードは `signalExternalWorkflow()` で、同じ名前空間内の別のワークフローへシグナルを送れます。リクエストとその結果は、対象でシグナルを受理するのと同じトランザクションで、このワークフローの履歴に一度だけ記録されます。リプレイは再送せずに記録済みの結果を返します。
+ワークフローコードは `signalExternalWorkflow()` で、同じ名前空間内の別のワークフローへシグナルを送れます。このワークフローはリクエストを一度だけ記録して待機します。その記録がコミットされた後、ランタイムが対象でシグナルを受理し、結果をこのワークフローの履歴に記録します。データベースの競合は、どちらのワークフローも失敗させずに再試行します。リプレイは再送せずに記録済みの結果を返します。
 
 ```php
 use Workflow\V2\Attributes\Type;
