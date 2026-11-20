@@ -105,6 +105,8 @@ php artisan app:init
 php artisan queue:work
 ```
 
+自分のアプリケーションでは、[Worker のタイムアウト](/docs/installation/#worker-timeout)の説明に従って Worker のジョブタイムアウトを設定してください。
+
 忙しいキュー Worker が次の `Looping` サイクルに達するのを待たず、修復ループ自体を検証したい場合は、別のターミナルから明示的な復旧スイープを一回実行します。
 
 ```bash

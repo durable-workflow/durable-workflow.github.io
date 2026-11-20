@@ -68,3 +68,68 @@ plano. Necesitas ejecutar el [comando `queue:work`](https://laravel.com/docs/12.
 o usar [Horizon](https://laravel.com/docs/12.x/horizon) para administrar los
 workers de las colas. Sin un worker, los workflows y las actividades no se
 procesan. Para ejecutarlos en paralelo, necesitas más de un worker.
+
+### Tiempo límite del worker {#worker-timeout}
+
+Cuando PHP tiene la extensión `pcntl`, un worker de colas termina cualquier job
+que se ejecute más allá de su tiempo límite: el `--timeout` del worker, 60
+segundos por defecto, salvo que el job defina el suyo. Una tarea de workflow
+terminada así se revierte. Solo se reintenta cuando vence su lease
+(`workflows.v2.workflow_task_lease_seconds`, 300 segundos por defecto) y se
+cuenta como un lease perdido, y el reintento repite el mismo trabajo. Una tarea
+de workflow que siempre necesita más tiempo que el límite, como una que programa
+o termina un `all()` amplio, nunca se completa.
+
+Tres ajustes deben encajar:
+
+- El **tiempo límite de los workers que ejecutan tareas de workflow** debe
+  cubrir tu tarea de workflow más larga. Una tarea de workflow terminada espera
+  el resto de su lease antes de reintentarse.
+- El **`retry_after`** de la conexión de cola debe superar el tiempo límite de
+  cada job que pase por ella, como exige Laravel. De lo contrario, la cola
+  entrega un job que sigue en ejecución a un segundo worker.
+- Las **actividades** deben mantener un tiempo límite acotado, para que una
+  actividad bloqueada no pueda retener un worker para siempre. No uses
+  `--timeout=0`.
+
+Para dar a las actividades un tiempo límite más corto que a las tareas de
+workflow, ejecútalas en su propia cola con sus propios workers. Las actividades
+se ejecutan en la conexión y la cola de su workflow, salvo que la clase de la
+actividad defina `$connection` o `$queue`, o que el workflow pase
+`ActivityOptions`.
+
+```php
+// config/queue.php
+'redis' => [
+    'driver' => 'redis',
+    'connection' => 'default',
+    'queue' => 'default',
+    'retry_after' => 330, // above the workflow task workers' timeout
+],
+```
+
+```php
+use Workflow\V2\Activity;
+
+final class ChargeCardActivity extends Activity
+{
+    public ?string $queue = 'activities';
+}
+```
+
+```bash
+php artisan queue:work redis --queue=default --timeout=300      # workflow tasks
+php artisan queue:work redis --queue=activities --timeout=60    # activities
+```
+
+En Horizon, la opción `timeout` de cada supervisor es el tiempo límite del
+worker.
+
+Workflow 2.34.0 añade `DW_V2_WORKFLOW_TASK_JOB_TIMEOUT_SECONDS`, sin definir por
+defecto. Cuando se define, cada job de tarea de workflow lleva ese tiempo
+límite, mantenido al menos 10 segundos por debajo del `retry_after` de su
+conexión, y los workers lo usan en lugar de su propio tiempo límite para esos
+jobs, de modo que las tareas de workflow y las actividades pueden compartir
+workers. A partir de esa versión, un worker que atiende la cola de workflows
+registra una advertencia al iniciarse cuando el tiempo límite con el que se
+ejecutan sus tareas de workflow es inferior al lease de la tarea de workflow.

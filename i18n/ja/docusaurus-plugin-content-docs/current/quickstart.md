@@ -411,6 +411,8 @@ php artisan migrate
 php artisan queue:work
 ```
 
+大規模なファンアウトを実行する前に、[Worker のタイムアウト](/docs/installation/#worker-timeout)の説明に従って Worker のジョブタイムアウトを設定してください。
+
 同じ Laravel アプリ内に運用 UI を追加したい場合は、検証済みの Waterline 組み込み Composer パッケージを追加します。
 
 ```bash

@@ -80,3 +80,9 @@ una política conservadora. Si una ejecución llega a una nueva rama de
 `getVersion()` y su evento `WorkflowStarted` es anterior a la captura de la
 huella, el runtime mantiene esa ejecución en `WorkflowStub::DEFAULT_VERSION`.
 Consulta [Versionado](../features/versioning.md).
+
+### Cambios en comentarios y formato {#comment-only-edits}
+
+De forma predeterminada, una huella de definición cubre las líneas de código fuente literales. Por eso, editar solo comentarios, docblocks o espacios en blanco en una clase de workflow, sus traits o sus clases de workflow padre, o dentro de una closure de condición de `await()`, cuenta como un cambio de definición para las ejecuciones en curso: un marcador `getVersion()` o `patched()` ausente toma `WorkflowStub::DEFAULT_VERSION`, y una closure de condición editada hace fallar el replay.
+
+Desde 2.34, los workers pueden registrar en su lugar huellas de los tokens de código PHP sin comentarios ni espacios en blanco (prefijo `sha256-tokens:`), que esas ediciones no cambian. Actívelo con `DW_DEFINITION_FINGERPRINT_VERSION=v2` cuando todos los workers estén actualizados a 2.34 o posterior, porque un worker anterior trata esa ejecución como cambiada. Cada ejecución conserva la versión de huella que registró: las ejecuciones iniciadas antes de activarlo siguen siendo sensibles a los cambios de comentarios, y volver a `v1` es seguro.
