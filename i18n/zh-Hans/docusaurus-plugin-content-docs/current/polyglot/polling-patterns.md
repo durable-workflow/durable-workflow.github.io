@@ -168,7 +168,7 @@ await client.signal_workflow(
 
 供应商会重试回调，信号接纳后也可能发生网络错误。持久化应用操作或事件键及准确意图，在回调入口与业务处理中都做去重，并保留结果不确定的投递以便核对。Python 处理器只保留本次运行中每个操作的第一个结果；这不是跨运行去重或仅接纳一次的保证。不要仅因已发出请求就把不确定的转发标记为已处理。在原生 Server 3.9.2 及更高版本上，信号命令键让转发本身可以安全重试；见[重试转发的回调](#retry-a-forwarded-callback)。幂等请求头或仅一次活动尝试，本身都不能保证外部副作用只发生一次。
 
-先启动工作流，再按此方案提交外部任务。服务模式下，`start(use-existing)` 后接 `signal` 是**两个操作**，中间可能发生关闭竞态；原子接纳仍属于[共享问题 #222](https://github.com/durable-workflow/.github/issues/222)。嵌入式 `signalWithStart` 是单独的原子 API。防抖请求 [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) 已由该产品需求替代，并非由此回调方案交付完成。
+先启动工作流，再按此方案提交外部任务。服务模式下，`start(use-existing)` 后接 `signal` 是**两个操作**，中间可能发生关闭竞态。在原生 Server 3.15.0 及更高版本上，[signal-with-start](./workflow-signals.md#signal-with-start) 会启动或复用运行，并在一个事务中记录信号。嵌入式 `signalWithStart` 是嵌入式的原子 API。防抖请求 [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) 已由该产品需求替代，并非由此回调方案交付完成。
 
 活动内保持的 HTTP/SSE 套接字并不持久：工作器或进程丢失时连接会结束，它占用活动槽位，重连还可能重复或遗漏外部事件。提交与回调仍会增加活动、信号和等待历史；执行并非免费或无限。需要持久的**工作流输出**时，请使用 [Workflow Streams](./workflow-streams.md) 及其持久化序列与游标契约，不要把传输连接当成存储。
 
