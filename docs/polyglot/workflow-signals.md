@@ -22,7 +22,7 @@ Native Server 3.15.0 adds two signal operations:
 | PHP SDK | 3.22.0 or later: `Client::signalWithStart()` | 3.22.0 or later: `WorkflowContext::signalExternalWorkflow()` |
 | Python SDK | 2.20.0 or later: `Client.signal_with_start()` | 2.20.0 or later: `ctx.signal_external_workflow()` |
 | Rust SDK | 4.21.0 or later: `Client::signal_with_start()` | 4.21.0 or later: `ctx.signal_external_workflow()` |
-| Embedded PHP (Laravel) | `WorkflowStub::signalWithStart()`, see the [signals guide](../features/signals.md#signal-with-start) | Pending release, see the [signals guide](../features/signals.md#signal-another-workflow) |
+| Embedded PHP (Laravel) | `WorkflowStub::signalWithStart()`, see the [signals guide](../features/signals.md#signal-with-start) | Workflow 2.35.0 or later (experimental): `signalExternalWorkflow()`, see the [signals guide](../features/signals.md#signal-another-workflow) |
 
 Published PHP Server 2.x supports neither operation. The SDKs check the
 connected Server before sending. Against an older Server a client call raises

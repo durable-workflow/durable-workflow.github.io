@@ -132,9 +132,8 @@ for the PHP, Python and Rust SDK calls.
 
 ## Signal another workflow {#signal-another-workflow}
 
-:::note Pending release
-Durable signal-external for embedded workflows is in
-[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) and has not been released. Its API is
+:::note Experimental
+Embedded durable signal-external first shipped in Workflow 2.35.0. Its API is
 experimental.
 :::
 

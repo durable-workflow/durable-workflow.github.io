@@ -143,10 +143,9 @@ Python- und Rust-SDKs finden Sie unter [Signal-with-start](/docs/polyglot/workfl
 
 ## Einen anderen Workflow signalisieren {#signal-another-workflow}
 
-:::note Noch nicht veröffentlicht
-Dauerhaftes Signal-external für eingebettete Workflows befindet sich in
-[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) und wurde noch nicht veröffentlicht. Seine API
-ist experimentell.
+:::note Experimentell
+Dauerhaftes Signal-external für eingebettete Workflows ist seit Workflow 2.35.0
+verfügbar. Seine API ist experimentell.
 :::
 
 Workflow-Code kann mit `signalExternalWorkflow()` einen anderen Workflow in

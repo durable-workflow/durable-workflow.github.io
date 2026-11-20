@@ -22,7 +22,7 @@ Native Server 3.15.0 додає дві операції signal:
 | PHP SDK | 3.22.0 або новіший: `Client::signalWithStart()` | 3.22.0 або новіший: `WorkflowContext::signalExternalWorkflow()` |
 | Python SDK | 2.20.0 або новіший: `Client.signal_with_start()` | 2.20.0 або новіший: `ctx.signal_external_workflow()` |
 | Rust SDK | 4.21.0 або новіший: `Client::signal_with_start()` | 4.21.0 або новіший: `ctx.signal_external_workflow()` |
-| Вбудований PHP (Laravel) | `WorkflowStub::signalWithStart()`, див. [посібник із signal](../features/signals.md#signal-with-start) | Очікує релізу, див. [посібник із signal](../features/signals.md#signal-another-workflow) |
+| Вбудований PHP (Laravel) | `WorkflowStub::signalWithStart()`, див. [посібник із signal](../features/signals.md#signal-with-start) | Workflow 2.35.0 або новіший (експериментально): `signalExternalWorkflow()`, див. [посібник із signal](../features/signals.md#signal-another-workflow) |
 
 Опублікований PHP Server 2.x не підтримує жодної з цих операцій. SDK
 перевіряють підключений Server до надсилання. Зі старішим Server виклик клієнта
