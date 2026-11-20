@@ -150,9 +150,11 @@ ist experimentell.
 :::
 
 Workflow-Code kann mit `signalExternalWorkflow()` einen anderen Workflow in
-seinem Namespace signalisieren. Die Anfrage und ihr Ergebnis werden einmal in
-der Historie dieses Workflows aufgezeichnet, in derselben Transaktion, die das
-Signal beim Ziel annimmt. Replay gibt das aufgezeichnete Ergebnis zurück, ohne
+seinem Namespace signalisieren. Dieser Workflow zeichnet die Anfrage einmal auf
+und wartet. Nachdem dies festgeschrieben ist, nimmt die Laufzeit das Signal beim
+Ziel an und zeichnet das Ergebnis in der Historie dieses Workflows auf. Dabei
+werden Datenbankkonflikte erneut versucht, statt einen der beiden Workflows
+fehlschlagen zu lassen. Replay gibt das aufgezeichnete Ergebnis zurück, ohne
 erneut zu senden:
 
 ```php

@@ -121,10 +121,11 @@ experimental.
 :::
 
 El código de un workflow puede enviar una señal a otro workflow de su espacio
-de nombres con `signalExternalWorkflow()`. La solicitud y su resultado se
-registran una sola vez en el historial de este workflow, en la misma
-transacción que admite la señal en el destino, y la reproducción devuelve el
-resultado registrado sin volver a enviar:
+de nombres con `signalExternalWorkflow()`. Este workflow registra la solicitud
+una sola vez y espera. Una vez confirmado eso, el runtime admite la señal en el
+destino y registra el resultado en el historial de este workflow, reintentando
+los conflictos de base de datos en lugar de hacer fallar a cualquiera de los dos
+workflows. La reproducción devuelve el resultado registrado sin volver a enviar:
 
 ```php
 use Workflow\V2\Attributes\Type;

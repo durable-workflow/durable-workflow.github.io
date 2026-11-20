@@ -140,9 +140,11 @@ experimental.
 :::
 
 O código do workflow pode enviar um sinal a outro workflow em seu namespace com
-`signalExternalWorkflow()`. A requisição e seu resultado são registrados uma
-única vez no histórico deste workflow, na mesma transação que admite o sinal no
-destino, e o replay retorna o resultado registrado sem enviar novamente:
+`signalExternalWorkflow()`. Este workflow registra a requisição uma única vez e
+aguarda. Depois que isso é confirmado, o runtime admite o sinal no destino e
+registra o resultado no histórico deste workflow, tentando novamente em caso de
+conflitos de banco de dados em vez de fazer qualquer um dos workflows falhar. O
+replay retorna o resultado registrado sem enviar novamente:
 
 ```php
 use Workflow\V2\Attributes\Type;
