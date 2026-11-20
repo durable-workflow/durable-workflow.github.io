@@ -23,7 +23,7 @@ El Server nativo 3.15.0 añade dos operaciones de señal:
 | PHP SDK | 3.22.0 o posterior: `Client::signalWithStart()` | 3.22.0 o posterior: `WorkflowContext::signalExternalWorkflow()` |
 | Python SDK | 2.20.0 o posterior: `Client.signal_with_start()` | 2.20.0 o posterior: `ctx.signal_external_workflow()` |
 | Rust SDK | 4.21.0 o posterior: `Client::signal_with_start()` | 4.21.0 o posterior: `ctx.signal_external_workflow()` |
-| PHP integrado (Laravel) | `WorkflowStub::signalWithStart()`, consulta la [guía de señales](../features/signals.md#signal-with-start) | Pendiente de publicación, consulta la [guía de señales](../features/signals.md#signal-another-workflow) |
+| PHP integrado (Laravel) | `WorkflowStub::signalWithStart()`, consulta la [guía de señales](../features/signals.md#signal-with-start) | Workflow 2.35.0 o posterior (experimental): `signalExternalWorkflow()`, consulta la [guía de señales](../features/signals.md#signal-another-workflow) |
 
 El PHP Server 2.x publicado no admite ninguna de las dos operaciones. Los SDK
 comprueban el Server conectado antes de enviar. Frente a un Server más antiguo,

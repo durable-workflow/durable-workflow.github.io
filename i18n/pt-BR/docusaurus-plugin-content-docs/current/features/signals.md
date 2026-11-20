@@ -133,10 +133,9 @@ para as chamadas dos SDKs PHP, Python e Rust.
 
 ## Sinalizar outro workflow {#signal-another-workflow}
 
-:::note Lançamento pendente
-O signal-external durável para workflows embarcados está em
-[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) e ainda não foi lançado. Sua API é
-experimental.
+:::note Experimental
+O signal-external durável para workflows embarcados está disponível desde o
+Workflow 2.35.0. Sua API é experimental.
 :::
 
 O código do workflow pode enviar um sinal a outro workflow em seu namespace com

@@ -131,10 +131,9 @@ Server 3.15.0 або новішого й відхиляє закритий за�
 
 ## Signal іншому workflow {#signal-another-workflow}
 
-:::note Очікує релізу
-Довговічний signal-external для вбудованих workflow розробляється в
-[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) і ще не випущений. Його API
-експериментальний.
+:::note Експериментально
+Довговічний signal-external для вбудованих workflow доступний починаючи з
+Workflow 2.35.0. Його API експериментальний.
 :::
 
 Код workflow може надіслати signal іншому workflow у своєму namespace через

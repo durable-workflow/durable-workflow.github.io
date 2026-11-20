@@ -106,8 +106,8 @@ $result->startOutcome(); // "started_new" or "returned_existing_active"
 
 ## 別のワークフローへシグナルを送る {#signal-another-workflow}
 
-:::note 未リリース
-組み込みワークフロー向けの永続的な signal-external は [Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) で対応中で、まだリリースされていません。API は実験的です。
+:::note 実験的
+組み込みワークフロー向けの永続的な signal-external は Workflow 2.35.0 で初めてリリースされました。API は実験的です。
 :::
 
 ワークフローコードは `signalExternalWorkflow()` で、同じ名前空間内の別のワークフローへシグナルを送れます。このワークフローはリクエストを一度だけ記録して待機します。その記録がコミットされた後、ランタイムが対象でシグナルを受理し、結果をこのワークフローの履歴に記録します。データベースの競合は、どちらのワークフローも失敗させずに再試行します。リプレイは再送せずに記録済みの結果を返します。

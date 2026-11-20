@@ -18,7 +18,7 @@ description: 1つの操作でワークフローを開始または再利用して
 | PHP SDK | 3.22.0 以降: `Client::signalWithStart()` | 3.22.0 以降: `WorkflowContext::signalExternalWorkflow()` |
 | Python SDK | 2.20.0 以降: `Client.signal_with_start()` | 2.20.0 以降: `ctx.signal_external_workflow()` |
 | Rust SDK | 4.21.0 以降: `Client::signal_with_start()` | 4.21.0 以降: `ctx.signal_external_workflow()` |
-| 組み込み PHP (Laravel) | `WorkflowStub::signalWithStart()`。[シグナルガイド](../features/signals.md#signal-with-start)を参照 | 未リリース。[シグナルガイド](../features/signals.md#signal-another-workflow)を参照 |
+| 組み込み PHP (Laravel) | `WorkflowStub::signalWithStart()`。[シグナルガイド](../features/signals.md#signal-with-start)を参照 | Workflow 2.35.0 以降（実験的）: `signalExternalWorkflow()`。[シグナルガイド](../features/signals.md#signal-another-workflow)を参照 |
 
 公開済みの PHP Server 2.x はどちらの操作にも対応していません。SDK は送信前に接続先の Server を確認します。古い Server に対しては、クライアント呼び出しが `ServerCapabilityUnavailable` (PHP)、`RuntimeCapabilityUnsupported` (Python)、`Error::SignalWithStartUnavailable` (Rust) を発生させ、何も送信しません。Worker は何かを送信する前に、新しいシグナルコマンドを `signal_external_workflow_unavailable` で拒否します。そのためワークフロータスクは完了せず、実行も失敗しません。
 

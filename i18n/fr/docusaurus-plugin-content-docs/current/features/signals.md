@@ -134,10 +134,9 @@ pour les appels des SDK PHP, Python et Rust.
 
 ## Signaler un autre workflow {#signal-another-workflow}
 
-:::note En attente de publication
-Le signal externe durable pour les workflows intégrés se trouve dans
-[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) et n’a pas encore été publié. Son API est
-expérimentale.
+:::note Expérimental
+Le signal externe durable pour les workflows intégrés est disponible depuis
+Workflow 2.35.0. Son API est expérimentale.
 :::
 
 Le code d’un workflow peut envoyer un signal à un autre workflow de son espace

@@ -114,10 +114,9 @@ para las llamadas de los SDK de PHP, Python y Rust.
 
 ## Enviar una señal a otro workflow {#signal-another-workflow}
 
-:::note Pendiente de publicación
-El envío duradero de señales externas para workflows embebidos está en
-[Workflow #1247](https://github.com/durable-workflow/workflow/pull/1247) y aún no se ha publicado. Su API es
-experimental.
+:::note Experimental
+El envío duradero de señales externas para workflows embebidos está disponible
+desde Workflow 2.35.0. Su API es experimental.
 :::
 
 El código de un workflow puede enviar una señal a otro workflow de su espacio

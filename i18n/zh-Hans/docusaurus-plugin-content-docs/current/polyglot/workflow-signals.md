@@ -18,7 +18,7 @@ description: 通过一次操作启动或复用工作流并向其发送信号，�
 | PHP SDK | 3.22.0 或更高版本：`Client::signalWithStart()` | 3.22.0 或更高版本：`WorkflowContext::signalExternalWorkflow()` |
 | Python SDK | 2.20.0 或更高版本：`Client.signal_with_start()` | 2.20.0 或更高版本：`ctx.signal_external_workflow()` |
 | Rust SDK | 4.21.0 或更高版本：`Client::signal_with_start()` | 4.21.0 或更高版本：`ctx.signal_external_workflow()` |
-| 嵌入式 PHP（Laravel） | `WorkflowStub::signalWithStart()`，见[信号指南](../features/signals.md#signal-with-start) | 尚未发布，见[信号指南](../features/signals.md#signal-another-workflow) |
+| 嵌入式 PHP（Laravel） | `WorkflowStub::signalWithStart()`，见[信号指南](../features/signals.md#signal-with-start) | Workflow 2.35.0 或更高版本（实验性）：`signalExternalWorkflow()`，见[信号指南](../features/signals.md#signal-another-workflow) |
 
 已发布的 PHP Server 2.x 不支持这两个操作。SDK 在发送前会检查所连接的 Server。针对较旧的 Server，客户端调用会引发 `ServerCapabilityUnavailable`（PHP）、`RuntimeCapabilityUnsupported`（Python）或 `Error::SignalWithStartUnavailable`（Rust），且不发送任何内容。Worker 会在提交任何内容之前，以 `signal_external_workflow_unavailable` 拒绝新的信号命令，因此工作流任务不会完成，运行也不会失败。
 
