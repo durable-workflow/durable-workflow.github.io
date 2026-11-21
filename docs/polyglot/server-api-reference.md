@@ -638,6 +638,29 @@ The [actual PHP/Python/Rust cold-worker cohort](https://github.com/durable-workf
 
 Installed published-SDK cold-worker receipts passed against native Server 3.11.0 for Rust SDK 4.18.0, Python SDK 2.17.2 and PHP SDK 3.18.3 ([Server #980](https://github.com/durable-workflow/server/issues/980)). The server stores these clocks at millisecond precision. [Core's precision/reference follow-through](https://github.com/durable-workflow/workflow/issues/992) remains separate under [Server #980](https://github.com/durable-workflow/server/issues/980). The change adds no ordinary-entry clock support to an SDK that does not advertise it, and unchanged SDKs need no release solely to align version numbers. Protocol, OpenAPI and catalog shapes are unchanged.
 
+## Start standalone activities {#standalone-activities}
+
+A standalone activity runs directly on an SDK worker. Native Server 3.14.0 and later accept the duplicate policies below. Start with `POST /api/activities` and a registered activity type. `GET /api/activities` lists jobs, and `GET /api/activities/{activity_id}` describes the current execution. Poll that route until the status is terminal to read the result or failure.
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+A new execution returns HTTP 201. For an active ID, the default `fail` policy returns HTTP 409 with `activity_already_started`. A retry with the same ID and `use-existing` returns HTTP 200 and the original run and execution IDs. The original input and activity type are retained. A closed ID starts a new run under either policy. Use a unique ID for each distinct job.
+
+The request limit defaults to 2 MiB. Oversized requests return HTTP 413 `payload_too_large`. Use the namespace’s external payload storage policy for large inputs. Storage admission, queue draining and the Server’s retention policy apply. An unknown activity ID returns HTTP 404. [Fields, deadlines, and retention](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## Namespace And Storage
 
 Namespace routes require operator or admin roles. Mutating namespace and

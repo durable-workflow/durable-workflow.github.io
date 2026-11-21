@@ -450,6 +450,29 @@ dw workflow:signal order-123 approve --input='["Grace"]' --request-id=approve-or
 
 使用已发布 SDK 的已安装冷 worker 回执已在原生 Server 3.11.0 上通过：Rust SDK 4.18.0、Python SDK 2.17.2 和 PHP SDK 3.18.3（[Server #980](https://github.com/durable-workflow/server/issues/980)）。Server 以毫秒精度存储这些时钟。[Core 的精度/参考后续工作](https://github.com/durable-workflow/workflow/issues/992)在 [Server #980](https://github.com/durable-workflow/server/issues/980) 下单独跟踪。该变更不会给未声明支持的 SDK 增加普通入口时钟支持；未修改的 SDK 无须仅为版本号对齐而发布。协议、OpenAPI 和目录结构不变。
 
+## 启动独立活动 {#standalone-activities}
+
+独立活动直接在 SDK Worker 上执行。原生 Server 从 3.14.0 起支持以下重复启动策略。使用 `POST /api/activities` 启动已注册类型的活动。`GET /api/activities` 列出任务，`GET /api/activities/{activity_id}` 查看当前执行。轮询此路由直到进入终止状态，即可读取结果或失败信息。
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+新建执行返回 HTTP 201。ID 仍处于活动状态时，默认的 `fail` 策略返回 HTTP 409 和 `activity_already_started`。使用同一 ID 和 `use-existing` 重试会返回 HTTP 200 及原有的运行 ID 和执行 ID。原来的输入与活动类型保持不变。对于已经结束的 ID，两种策略都会启动新的运行。每项不同的任务都应使用唯一 ID。
+
+请求大小默认上限为 2 MiB。超出上限返回 HTTP 413 `payload_too_large`。对于大输入，请使用命名空间的外部负载存储。存储准入、队列排空和 Server 保留策略仍然适用。未知的活动 ID 返回 HTTP 404。[字段、截止时间和保留规则](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## 命名空间与存储 {#namespace-and-storage}
 
 命名空间路由要求 operator 或 admin 角色。变更命名空间及外部存储的路由要求 admin 角色。

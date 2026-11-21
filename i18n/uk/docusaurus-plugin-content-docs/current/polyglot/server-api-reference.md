@@ -598,6 +598,29 @@ Native Server [3.11.0](https://github.com/durable-workflow/server/releases/tag/3
 
 Встановлені cold-worker-результати з опублікованими SDK пройшли на native Server 3.11.0 для Rust SDK 4.18.0, Python SDK 2.17.2 і PHP SDK 3.18.3 ([Server #980](https://github.com/durable-workflow/server/issues/980)). Server зберігає ці годинники з мілісекундною точністю. [Супровід точності/посилань Core](https://github.com/durable-workflow/workflow/issues/992) залишається окремим під [Server #980](https://github.com/durable-workflow/server/issues/980). Зміна не додає підтримки годинника ordinary-entry до SDK, який її не оголошує; незміненим SDK не потрібен реліз лише для вирівнювання номерів. Форми протоколу, OpenAPI й каталогу не змінюються.
 
+## Запуск автономних активностей {#standalone-activities}
+
+Автономна активність виконується безпосередньо у воркері SDK. Нативний Server підтримує ці правила дублікатів починаючи з 3.14.0. Запустіть зареєстрований тип через `POST /api/activities`. `GET /api/activities` повертає список задач, а `GET /api/activities/{activity_id}` описує поточне виконання. Опитуйте цей маршрут до кінцевого стану, щоб отримати результат або помилку.
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+Нове виконання повертає HTTP 201. Для активного ID типова політика `fail` повертає HTTP 409 з `activity_already_started`. Повтор з тим самим ID і `use-existing` повертає HTTP 200 та початкові ID запуску й виконання. Початкові тип і вхідні дані зберігаються. Закритий ID створює новий запуск за будь-якою політикою. Для кожної окремої задачі використовуйте унікальний ID.
+
+Типове обмеження розміру запиту становить 2 МіБ. Завеликі запити повертають HTTP 413 `payload_too_large`. Для великих вхідних даних використовуйте зовнішнє сховище payload відповідного простору імен. Діють правила допуску сховища, завершення роботи черги та збереження Server. Невідомий ID повертає HTTP 404. [Поля, строки та збереження](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## Namespace і сховище {#namespace-and-storage}
 
 Маршрути namespace вимагають operator чи admin. Зміни namespace та

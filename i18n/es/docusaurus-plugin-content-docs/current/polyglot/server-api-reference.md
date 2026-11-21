@@ -451,6 +451,29 @@ La [cohorte real de workers fríos PHP/Python/Rust](https://github.com/durable-w
 
 Los recibos instalados de workers en frío con SDK publicados pasaron contra Server nativo 3.11.0 para Rust SDK 4.18.0, Python SDK 2.17.2 y PHP SDK 3.18.3 ([Server #980](https://github.com/durable-workflow/server/issues/980)). El servidor almacena estos relojes con precisión de milisegundos. El [trabajo de precisión/referencia de Core](https://github.com/durable-workflow/workflow/issues/992) sigue separado bajo [Server #980](https://github.com/durable-workflow/server/issues/980). El cambio no añade relojes en la entrada ordinaria a un SDK que no los anuncia; un SDK sin cambios no requiere una versión nueva solo para alinear números. Las formas de protocolo, OpenAPI y catálogo no cambian.
 
+## Iniciar actividades independientes {#standalone-activities}
+
+Una actividad independiente se ejecuta directamente en un worker del SDK. El Server nativo acepta estas políticas de duplicados desde la versión 3.14.0. Usa `POST /api/activities` con un tipo registrado. `GET /api/activities` lista los trabajos y `GET /api/activities/{activity_id}` describe la ejecución actual. Consulta esa ruta hasta que el estado sea final para obtener el resultado o el fallo.
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+Una ejecución nueva devuelve HTTP 201. Para un ID activo, la política predeterminada `fail` devuelve HTTP 409 con `activity_already_started`. Un reintento con el mismo ID y `use-existing` devuelve HTTP 200 y los IDs originales de la ejecución y del run. Se conservan la entrada y el tipo originales. Un ID cerrado inicia un run nuevo con ambas políticas. Usa un ID único por trabajo distinto.
+
+El límite predeterminado de cada solicitud es 2 MiB. Las solicitudes demasiado grandes devuelven HTTP 413 `payload_too_large`. Para entradas grandes, usa el almacenamiento externo del namespace. Se aplican la admisión de almacenamiento, el drenaje de colas y la política de retención del Server. Un ID desconocido devuelve HTTP 404. [Campos, plazos y retención](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## Espacios de nombres y almacenamiento {#namespace-and-storage}
 
 Estas rutas requieren operator o admin. Las que modifican espacios o almacenamiento externo requieren admin.
