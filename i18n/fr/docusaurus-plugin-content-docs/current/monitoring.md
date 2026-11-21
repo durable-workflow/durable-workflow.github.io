@@ -194,6 +194,26 @@ Déclenchez une alerte quand `max_consecutive_failures` continue d’augmenter :
 
 Voir [Échecs et reprise](./failures-and-recovery.md) pour ce que fait la réparation.
 
+### Constats de débogage des exécutions sur le Server natif {#native-run-debug-findings}
+
+Ouvrez l’exécution concernée dans Waterline et repérez le dernier événement enregistré dans sa chronologie. Inspectez la même exécution avec `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Sélectionnez son espace de noms dans la CLI. `execution.liveness_state` indique les attentes normales et `findings` aide à diagnostiquer les problèmes de distribution ou de reprise. La sortie contient un échantillon limité du travail en attente.
+
+| Constat | Signification et prochaine action |
+| --- | --- |
+| `no_active_pollers` | Du travail attend sur la file de l’exécution et aucun poller n’y est actif. Vérifiez l’espace de noms et la file, puis démarrez le worker prévu. |
+| `pending_workflow_type_unsupported` | Le type de workflow en attente ne figure dans aucun enregistrement de poller actif. Vérifiez le nom exact et sa casse, puis enregistrez un worker sur la file signalée. |
+| `pending_activity_queue_without_active_pollers` | Aucun poller actif ne surveille la file propre à l’activité. Démarrez un worker d’activités sur cette file. |
+| `pending_activity_type_unsupported` | Les pollers actifs de la file de l’activité déclarent d’autres types. Enregistrez le type signalé sur cette file. |
+| `expired_leases` | La file contient des baux expirés. Vérifiez la santé des workers ainsi que les baux et les échecs des tâches concernées avant toute réparation. |
+| `task_problem` | L’exécution présente un problème actif de tâche de workflow. Examinez la tâche en attente et ses échecs récents. |
+| `task_recovery_history` | La reprise d’un ancien problème de tâche de workflow est enregistrée. Consultez cet historique et vérifiez l’état actuel. |
+| `repair_attention` | L’exécution nécessite une réparation. Examinez les tâches manquantes ou en échec et suivez la procédure de réparation ci-dessus. |
+| `workflow_replay_blocked` | Une tâche de workflow ne peut pas rejouer son historique. Rétablissez un code compatible, puis réparez l’exécution sélectionnée. |
+| `no_compatible_worker` | La tâche requiert un marqueur de compatibilité qu’aucun worker actif de la file ne déclare. Rétablissez un worker qui déclare ce marqueur. |
+| `workflow_build_draining` | La tâche exige un build qui a été retiré de la distribution. Réactivez ce build s’il doit recevoir du travail et vérifiez qu’un worker compatible interroge la file. |
+| `no_eligible_workflow_worker` | Aucun worker actif ne correspond au build et au type de la tâche. Démarrez un worker compatible et vérifiez son enregistrement et ses interrogations de la file. |
+| `workflow_definition_routing_blocked` | La tâche prête ne dispose d’aucune route de définition de workflow admissible. Vérifiez les exigences de routage et les définitions déclarées sur sa file. |
+
 ## Déploiement et accès à Waterline {#waterline-deployment-and-access}
 
 ### Laravel embarqué {#embedded-laravel}

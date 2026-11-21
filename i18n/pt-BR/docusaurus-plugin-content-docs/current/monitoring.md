@@ -195,6 +195,26 @@ Alerte quando `max_consecutive_failures` continuar subindo: uma tarefa de workfl
 
 Veja [Falhas e recuperação](./failures-and-recovery.md) para saber o que o reparo faz.
 
+### Achados de depuração de execuções no Server nativo {#native-run-debug-findings}
+
+Abra a execução afetada no Waterline e localize o último evento registrado na linha do tempo. Inspecione a mesma execução com `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Selecione o namespace dela na CLI. `execution.liveness_state` identifica esperas normais e `findings` ajuda a diagnosticar problemas de despacho ou recuperação. A saída inclui uma amostra limitada do trabalho pendente.
+
+| Achado | Significado e próxima ação |
+| --- | --- |
+| `no_active_pollers` | Há trabalho pendente e nenhum poller ativo na fila da execução. Confira o namespace e a fila, depois inicie o worker responsável. |
+| `pending_workflow_type_unsupported` | O tipo de workflow pendente está ausente dos registros dos pollers ativos. Confira o nome exato, incluindo maiúsculas e minúsculas, e registre um worker na fila indicada. |
+| `pending_activity_queue_without_active_pollers` | A fila própria da atividade está sem pollers ativos. Inicie um worker de atividades nessa fila. |
+| `pending_activity_type_unsupported` | Os pollers ativos da fila da atividade anunciam outros tipos. Registre o tipo indicado nessa fila. |
+| `expired_leases` | A fila tem leases vencidos. Confira a saúde dos workers e os leases e falhas das tarefas afetadas antes do reparo. |
+| `task_problem` | A execução tem um problema ativo em uma tarefa de workflow. Examine a tarefa pendente e suas falhas recentes. |
+| `task_recovery_history` | A recuperação de um problema anterior em uma tarefa de workflow está registrada. Consulte o histórico e confira o estado atual. |
+| `repair_attention` | A execução precisa de reparo. Examine o trabalho ausente ou com falha e siga o procedimento de reparo acima. |
+| `workflow_replay_blocked` | Uma tarefa de workflow não consegue reproduzir o histórico. Restaure código compatível e repare a execução selecionada. |
+| `no_compatible_worker` | A tarefa exige um marcador de compatibilidade ausente nos workers ativos da fila. Restaure um worker que anuncie o marcador indicado. |
+| `workflow_build_draining` | A tarefa exige um build retirado do despacho. Retome o build se ele deve receber trabalho e confirme que um worker compatível consulta a fila. |
+| `no_eligible_workflow_worker` | Nenhum worker ativo atende ao build e ao tipo da tarefa. Inicie um worker compatível e confirme o registro e as consultas à fila. |
+| `workflow_definition_routing_blocked` | A tarefa pronta está sem uma rota elegível de definição de workflow. Confira os requisitos de roteamento da execução e as definições anunciadas na fila. |
+
 ## Implantação e acesso ao Waterline {#waterline-deployment-and-access}
 
 ### Laravel embutido {#embedded-laravel}

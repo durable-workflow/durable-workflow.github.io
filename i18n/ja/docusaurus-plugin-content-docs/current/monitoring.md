@@ -153,6 +153,26 @@ Server は失敗したワークフロータスクを `GET /api/system/metrics` �
 
 修復の内容は[障害と復旧](./failures-and-recovery.md)を参照してください。
 
+### ネイティブ Server の実行デバッグ所見 {#native-run-debug-findings}
+
+Waterline で対象の実行を開き、タイムラインで最後に記録されたイベントを確認します。CLI で実行の名前空間を選択し、`dw debug workflow <workflow-id> --run-id <run-id> --output=json` で同じ実行を調べます。`execution.liveness_state` は通常の待機状態を示し、`findings` は配信や復旧の問題の診断に使います。デバッグ出力が示す保留中の処理は件数に上限があります。
+
+| 所見 | 意味と対処 |
+| --- | --- |
+| `no_active_pollers` | 処理が保留中で、実行のキューにアクティブなポーラーがありません。名前空間とキューを確認し、担当の Worker を起動します。 |
+| `pending_workflow_type_unsupported` | 保留中のワークフロー型がアクティブなポーラーの登録にありません。大文字と小文字を含めて型名を確認し、報告されたキューに対応する Worker を登録します。 |
+| `pending_activity_queue_without_active_pollers` | アクティビティ自体のキューにアクティブなポーラーがありません。そのキューにアクティビティ Worker を起動します。 |
+| `pending_activity_type_unsupported` | アクティビティのキューで稼働中のポーラーは別の型を公開しています。そのキューに報告された型を登録します。 |
+| `expired_leases` | キューに期限切れのリースがあります。修復する前に Worker の健全性、対象タスクのリースと失敗を確認します。 |
+| `task_problem` | ワークフロータスクに現在の問題があります。保留中のタスクと最近の失敗を調べます。 |
+| `task_recovery_history` | 過去のワークフロータスクの問題について復旧履歴があります。その履歴と現在の稼働状態を確認します。 |
+| `repair_attention` | 実行に修復が必要です。欠落した処理や失敗した処理を確認し、上記の修復手順に従います。 |
+| `workflow_replay_blocked` | ワークフロータスクが履歴をリプレイできません。互換性のあるコードを復元して対象の実行を修復します。 |
+| `no_compatible_worker` | キューのアクティブな Worker が示していない互換性マーカーが必要です。そのマーカーに対応する Worker を復旧します。 |
+| `workflow_build_draining` | タスクに割り当て停止中のビルドが必要です。処理を受け付ける場合はビルドを再開し、互換 Worker のポーリングを確認します。 |
+| `no_eligible_workflow_worker` | タスクのビルドと型に対応するアクティブな Worker がありません。対応する Worker を起動して登録とポーリングを確認します。 |
+| `workflow_definition_routing_blocked` | 準備済みタスクに適格なワークフロー定義の経路がありません。実行のルーティング要件とキュー上の Worker が公開する定義を確認します。 |
+
 ## Waterline のデプロイとアクセス {#waterline-deployment-and-access}
 
 ### 組み込み Laravel {#embedded-laravel}
