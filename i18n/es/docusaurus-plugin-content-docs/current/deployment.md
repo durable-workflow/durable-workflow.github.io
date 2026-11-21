@@ -856,6 +856,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 Las réplicas y los recursos son ejemplos iniciales, no garantías de capacidad. Ajústalos según la duración real de las tareas, la memoria, los límites de servicios dependientes y los [presupuestos de admisión del worker](./polyglot/task-queue-admission.md). Un Deployment disponible no demuestra que el SDK se haya registrado ni que procese trabajo útil. Comprueba registros recientes y la compilación y cola esperadas; después inicia y completa un workflow representativo. Ejecutarse en Kubernetes no proporciona automáticamente un endpoint HTTP de salud al worker del SDK. Usa una sonda de la aplicación cuando exista y no uses la salud del Server como sonda de actividad del worker.
 
+### Escalar workers del SDK desde cero {#sdk-workers-from-zero}
+
+El Server nativo 3.14.0 o posterior permite activar un Deployment de workers desde cero réplicas. Comprueba que `/api/cluster/info` anuncie `capabilities.prometheus_text_metrics`. Proporciona a Prometheus un token dedicado de solo lectura mediante `DW_METRICS_TOKEN` desde un Secret de Kubernetes. Consulta `/metrics?namespace=default` y aplica un `ScaledObject` de KEDA a tu Deployment de workers del SDK. Configura `minReplicaCount: 0`, `activationThreshold: "0"` y un umbral acorde con las ranuras de tareas por réplica. [Manifiestos para Prometheus y KEDA](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+La consulta usa un destino de recolección saludable para ese namespace y devuelve cero cuando la cola está vacía. Ajusta el namespace, la cola de tareas y el selector `up` al despliegue. Las tareas con lease mantienen activos los workers. Las actividades en pausa esperan hasta que se reanude su despacho. Revisa las tareas pendientes de cada cohorte antes de reducir un build de workers. [Guía de despliegue por build ID](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### Entregar SIGTERM y esperar la limpieza {#sdk-worker-pod-shutdown}
 
 | SDK | Cierre del proceso worker |

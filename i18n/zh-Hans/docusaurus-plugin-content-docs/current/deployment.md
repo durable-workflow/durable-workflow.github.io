@@ -611,6 +611,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 副本数和资源值只是起始示例，不保证容量。根据实际任务时长、内存使用、下游限制和 [Worker 准入预算](./polyglot/task-queue-admission.md)调整。Deployment 可用并不能证明 SDK 已注册或已完成有效工作。先验证新鲜的 Worker 注册、预期构建和队列，再启动并完成一个有代表性的工作流。仅在 Kubernetes 中运行不会自动为 SDK Worker 提供 HTTP 健康端点。如果应用有自己的探针，应使用该探针，不要把 Server 健康状态用作 Worker 存活检查。
 
+### 从零副本扩缩 SDK Worker {#sdk-workers-from-zero}
+
+原生 Server 3.14.0 及更高版本可以在 Worker Deployment 的副本数为零时唤醒 Worker。确认 `/api/cluster/info` 公布了 `capabilities.prometheus_text_metrics`。通过 Kubernetes Secret 将专用的只读抓取令牌配置为 `DW_METRICS_TOKEN`。让 Prometheus 抓取 `/metrics?namespace=default`，并应用指向 SDK Worker Deployment 的 KEDA `ScaledObject`。设置 `minReplicaCount: 0`、`activationThreshold: "0"`，并按每个副本的任务槽位数设置阈值。[Prometheus 和 KEDA 清单](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+查询为该命名空间使用一个健康的抓取目标，队列为空时返回零。根据部署调整命名空间、任务队列和 `up` 选择器。已租用的任务会让 Worker 保持运行。暂停的活动任务会等待恢复派发。缩减某个 Worker 构建的副本之前，先检查该群组的待处理任务。[构建 ID 发布指南](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### 传递 SIGTERM 并等待清理 {#sdk-worker-pod-shutdown}
 
 | SDK | Worker 进程关闭 |

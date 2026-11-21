@@ -861,6 +861,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 Кількість реплік і ресурси — початкові приклади, а не гарантії місткості. Налаштуйте їх за фактичною тривалістю завдань, використанням пам’яті, лімітами залежних сервісів і [бюджетами допуску worker](./polyglot/task-queue-admission.md). Доступність Deployment не доводить реєстрацію SDK чи корисну роботу. Перевірте свіжі реєстрації workers та очікувані збірку й чергу, потім запустіть і завершіть показовий workflow. Запуск у Kubernetes сам собою не створює HTTP endpoint здоров’я для SDK worker. Використовуйте probe застосунку, якщо він існує, і не використовуйте здоров’я сервера як liveness-перевірку worker.
 
+### Масштабування SDK workers від нуля {#sdk-workers-from-zero}
+
+Нативний Server 3.14.0 або новіший може запускати Deployment воркерів із нульової кількості реплік. Перевірте, що `/api/cluster/info` оголошує `capabilities.prometheus_text_metrics`. Надайте Prometheus окремий токен лише для читання через `DW_METRICS_TOKEN` із Kubernetes Secret. Збирайте метрики з `/metrics?namespace=default` і застосуйте `ScaledObject` KEDA до Deployment воркерів SDK. Установіть `minReplicaCount: 0`, `activationThreshold: "0"` і поріг відповідно до кількості слотів задач на репліку. [Маніфести для Prometheus і KEDA](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+Запит використовує одне справне джерело метрик для простору імен і повертає нуль, коли черга порожня. Узгодьте простір імен, чергу задач і селектор `up` із розгортанням. Задачі з активною орендою утримують воркери запущеними. Призупинені задачі активностей чекають відновлення видачі. Перевірте чергу когорти перед зменшенням кількості воркерів певної збірки. [Посібник із розгортання за build ID](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### Передавання SIGTERM і очікування очищення {#sdk-worker-pod-shutdown}
 
 | SDK | Завершення процесу worker |

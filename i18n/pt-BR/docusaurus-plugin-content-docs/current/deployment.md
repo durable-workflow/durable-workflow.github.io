@@ -883,6 +883,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 Réplicas e recursos são exemplos iniciais, não garantias de capacidade. Ajuste-os conforme a duração real das tarefas, o uso de memória, os limites dos serviços dependentes e os [orçamentos de admissão do worker](./polyglot/task-queue-admission.md). Um Deployment disponível não comprova o registro do SDK nem trabalho útil. Verifique registros recentes e a build e fila esperadas; depois inicie e conclua um workflow representativo. Executar no Kubernetes não fornece automaticamente um endpoint HTTP de saúde ao worker do SDK. Use uma probe da aplicação quando houver uma e não use a saúde do Server como liveness do worker.
 
+### Escalar workers dos SDKs a partir de zero {#sdk-workers-from-zero}
+
+O Server nativo 3.14.0 ou posterior pode ativar um Deployment de workers a partir de zero réplicas. Confira se `/api/cluster/info` anuncia `capabilities.prometheus_text_metrics`. Forneça ao Prometheus um token de coleta exclusivo de leitura por meio de `DW_METRICS_TOKEN` vindo de um Secret do Kubernetes. Colete `/metrics?namespace=default` e aplique um `ScaledObject` do KEDA ao Deployment de workers do SDK. Configure `minReplicaCount: 0`, `activationThreshold: "0"` e um limiar baseado nos slots de tarefas por réplica. [Manifestos para Prometheus e KEDA](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+A consulta usa um destino de coleta saudável para o namespace e retorna zero quando a fila está vazia. Ajuste o namespace, a fila de tarefas e o seletor `up` à implantação. Tarefas com lease mantêm os workers ativos. Atividades pausadas aguardam a retomada do despacho. Confira as tarefas pendentes da coorte antes de reduzir as réplicas de um build de workers. [Guia de rollout por build ID](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### Entregar SIGTERM e aguardar a limpeza {#sdk-worker-pod-shutdown}
 
 | SDK | Encerramento do processo worker |
