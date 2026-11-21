@@ -451,6 +451,29 @@ native Server [3.11.0](https://github.com/durable-workflow/server/releases/tag/3
 
 公開済み SDK をインストールしたコールドワーカーの記録は、native Server 3.11.0 に対して Rust SDK 4.18.0、Python SDK 2.17.2、PHP SDK 3.18.3 のすべてで成功しています（[Server #980](https://github.com/durable-workflow/server/issues/980)）。Server はこれらのクロックをミリ秒精度で保存します。[Core の精度/参照の追跡](https://github.com/durable-workflow/workflow/issues/992)は [Server #980](https://github.com/durable-workflow/server/issues/980) の下で別扱いです。この変更は通常エントリーのクロック対応を宣言しない SDK にその対応を追加しません。変更のない SDK は番号合わせだけのリリースを必要としません。プロトコル、OpenAPI、カタログの形は変わりません。
 
+## スタンドアロンアクティビティを開始する {#standalone-activities}
+
+スタンドアロンアクティビティは SDK Worker 上で直接実行されます。ネイティブ Server 3.14.0 以降は以下の重複ポリシーを受け付けます。登録済みの型を指定して `POST /api/activities` で開始します。`GET /api/activities` でジョブを一覧表示し、`GET /api/activities/{activity_id}` で現在の実行を確認できます。このルートをポーリングし、終了状態で結果または失敗を確認します。
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+新しい実行は HTTP 201 を返します。実行中の ID に対して既定の `fail` は HTTP 409 と `activity_already_started` を返します。同じ ID と `use-existing` で再試行すると HTTP 200 と既存のラン ID および実行 ID が返ります。元の入力と型が保持されます。終了済みの ID はどちらのポリシーでも新しいランを開始します。別のジョブには一意の ID を使用してください。
+
+リクエストの既定上限は 2 MiB です。上限を超えると HTTP 413 `payload_too_large` が返ります。大きな入力には名前空間の外部ペイロードストレージを使用します。ストレージの受け入れ制御、キューのドレインおよび Server の保持ポリシーが適用されます。不明な ID は HTTP 404 を返します。[フィールド、期限、保持](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## 名前空間とストレージ {#namespace-and-storage}
 
 名前空間ルートは operator または admin ロールが必要です。名前空間と外部ストレージの変更には admin ロールが必要です。

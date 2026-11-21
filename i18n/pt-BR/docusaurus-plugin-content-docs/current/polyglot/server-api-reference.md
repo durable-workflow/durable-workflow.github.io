@@ -578,6 +578,29 @@ A [coorte real de workers frios PHP/Python/Rust](https://github.com/durable-work
 
 Os recibos instalados de workers a frio com SDKs publicados passaram contra o Server nativo 3.11.0 para Rust SDK 4.18.0, Python SDK 2.17.2 e PHP SDK 3.18.3 ([Server #980](https://github.com/durable-workflow/server/issues/980)). O servidor armazena esses relógios com precisão de milissegundos. O [trabalho de precisão/referência do Core](https://github.com/durable-workflow/workflow/issues/992) continua separado sob [Server #980](https://github.com/durable-workflow/server/issues/980). A mudança não adiciona relógios de entrada comum a um SDK que não os anuncia; SDKs inalterados não precisam de versão nova só para alinhar números. As formas de protocolo, OpenAPI e catálogo permanecem iguais.
 
+## Iniciar atividades independentes {#standalone-activities}
+
+Uma atividade independente roda diretamente em um worker do SDK. O Server nativo 3.14.0 ou posterior aceita estas políticas de duplicidade. Use `POST /api/activities` com um tipo registrado. `GET /api/activities` lista os jobs e `GET /api/activities/{activity_id}` descreve a execução atual. Consulte essa rota até o estado terminal para obter o resultado ou a falha.
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+Uma execução nova retorna HTTP 201. Para um ID ativo, a política padrão `fail` retorna HTTP 409 com `activity_already_started`. Uma nova tentativa com o mesmo ID e `use-existing` retorna HTTP 200 com os IDs originais do run e da execução. O tipo e a entrada originais são preservados. Um ID encerrado inicia um run novo com qualquer política. Use um ID único por job distinto.
+
+O limite padrão de uma solicitação é de 2 MiB. Solicitações acima do limite retornam HTTP 413 `payload_too_large`. Para entradas grandes, use o armazenamento externo de payload do namespace. A admissão de armazenamento, a drenagem das filas e a política de retenção do Server se aplicam. Um ID desconhecido retorna HTTP 404. [Campos, prazos e retenção](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## Namespace e armazenamento {#namespace-and-storage}
 
 Rotas de namespace exigem operator ou admin. Rotas que alteram namespace e

@@ -584,6 +584,29 @@ Die [tatsächliche PHP/Python/Rust-Cold-Worker-Kohorte](https://github.com/durab
 
 Installierte Cold-Worker-Belege veröffentlichter SDKs sind gegen nativen Server 3.11.0 für Rust SDK 4.18.0, Python SDK 2.17.2 und PHP SDK 3.18.3 bestanden ([Server #980](https://github.com/durable-workflow/server/issues/980)). Der Server speichert diese Uhren mit Millisekundenpräzision. [Cores Präzisions-/Referenzarbeit](https://github.com/durable-workflow/workflow/issues/992) bleibt unter [Server #980](https://github.com/durable-workflow/server/issues/980) separat. Die Änderung ergänzt keine Ordinary-Entry-Uhrunterstützung in einem SDK, das sie nicht meldet; unveränderte SDKs benötigen keine bloße Versionsangleichungs-Release. Protokoll-, OpenAPI- und Katalogstrukturen bleiben unverändert.
 
+## Eigenständige Aktivitäten starten {#standalone-activities}
+
+Eine eigenständige Aktivität läuft direkt auf einem SDK-Worker. Der native Server unterstützt die folgenden Richtlinien ab Version 3.14.0. Starte einen registrierten Aktivitätstyp mit `POST /api/activities`. `GET /api/activities` listet die Jobs auf, und `GET /api/activities/{activity_id}` beschreibt die aktuelle Ausführung. Frage diese Route ab, bis der Status abgeschlossen ist und das Ergebnis oder der Fehler vorliegt.
+
+```bash
+curl -X POST "$SERVER/api/activities" \
+  -H "Authorization: Bearer $OPERATOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Namespace: default" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -d '{
+    "activity_id": "invoice-42",
+    "activity_type": "billing.send_invoice",
+    "task_queue": "billing",
+    "input": ["invoice-42"],
+    "duplicate_policy": "use-existing"
+  }'
+```
+
+Eine neue Ausführung gibt HTTP 201 zurück. Für eine aktive ID liefert die Standardrichtlinie `fail` HTTP 409 mit `activity_already_started`. Eine Wiederholung mit derselben ID und `use-existing` gibt HTTP 200 sowie die ursprüngliche Run- und Ausführungs-ID zurück. Eingabe und Aktivitätstyp bleiben erhalten. Ist die ID abgeschlossen, startet jede Richtlinie einen neuen Lauf. Verwende für jeden eigenständigen Job eine eindeutige ID.
+
+Das Standardlimit für Anfragen beträgt 2 MiB. Zu große Anfragen liefern HTTP 413 `payload_too_large`. Nutze für große Eingaben den externen Payload-Speicher des Namespace. Speicherzulassung, Queue-Drain und die Aufbewahrungsregeln des Servers gelten. Unbekannte IDs liefern HTTP 404. [Felder, Fristen und Aufbewahrung](https://github.com/durable-workflow/server/blob/3.19.0/docs/server-reference.md#standalone-activities)
+
 ## Namespace und Speicher {#namespace-and-storage}
 
 Namespace-Routen benötigen Operator- oder Admin-Rollen. Ändernde Namespace-
