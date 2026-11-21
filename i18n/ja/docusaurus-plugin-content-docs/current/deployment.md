@@ -622,6 +622,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 レプリカ数とリソース値は出発点となる例であり、処理能力の保証ではありません。実際のタスク時間、メモリー使用量、下流サービスの制限、[Worker の受け入れ予算](./polyglot/task-queue-admission.md)に合わせて調整します。Deployment が利用可能になっても、SDK の登録や有用な処理の証明にはなりません。新鮮な Worker 登録と想定するビルド、キューを確認し、代表的なワークフローを開始して完了させてください。Kubernetes で実行するだけでは、SDK Worker に HTTP ヘルスエンドポイントは追加されません。アプリケーションに probe がある場合はそれを使い、Server のヘルスを Worker の liveness 検査に使わないでください。
 
+### SDK Worker をゼロからスケールする {#sdk-workers-from-zero}
+
+ネイティブ Server 3.14.0 以降では、レプリカ数がゼロの Worker Deployment を起動できます。`/api/cluster/info` が `capabilities.prometheus_text_metrics` を公開していることを確認します。専用の読み取り専用スクレイプトークンを Kubernetes Secret に保存し、`DW_METRICS_TOKEN` として設定します。Prometheus で `/metrics?namespace=default` をスクレイプし、SDK Worker の Deployment を対象にした KEDA の `ScaledObject` を適用します。`minReplicaCount: 0` と `activationThreshold: "0"` を指定し、レプリカ当たりのタスクスロット数に合わせてしきい値を設定します。[スクレイプと KEDA のマニフェスト](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+このクエリは対象の名前空間で正常なスクレイプターゲットを一つ使い、キューが空ならゼロを返します。名前空間、タスクキュー、`up` セレクターを実際の構成に合わせます。リース中のタスクがある間は Worker が動作を続けます。一時停止中のアクティビティはディスパッチの再開を待ちます。Worker ビルドを縮小する前にコホートの待機タスクを確認してください。[ビルド ID のロールアウトガイド](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### SIGTERM を届けて後処理を待つ {#sdk-worker-pod-shutdown}
 
 | SDK | Worker プロセスの終了 |

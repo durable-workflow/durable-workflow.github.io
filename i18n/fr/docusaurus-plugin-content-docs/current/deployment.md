@@ -871,6 +871,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 Les nombres de réplicas et les ressources sont des exemples de départ, pas des garanties de capacité. Ajustez-les selon la durée réelle des tâches, la mémoire, les limites des services en aval et les [budgets d’admission des workers](./polyglot/task-queue-admission.md). La disponibilité d’un Deployment ne prouve ni l’enregistrement du SDK ni un travail utile. Vérifiez des enregistrements récents ainsi que la build et la file attendues, puis démarrez et terminez un workflow représentatif. Exécuter un worker SDK sur Kubernetes ne lui fournit pas automatiquement un endpoint HTTP de santé. Utilisez une sonde propre à l’application si elle existe et non la santé du Server comme sonde de vie du worker.
 
+### Faire démarrer les workers SDK depuis zéro réplique {#sdk-workers-from-zero}
+
+À partir du Server natif 3.14.0, un Deployment de workers peut démarrer depuis zéro réplique. Vérifiez que `/api/cluster/info` annonce `capabilities.prometheus_text_metrics`. Fournissez à Prometheus un jeton de collecte dédié en lecture seule avec `DW_METRICS_TOKEN`, issu d’un Secret Kubernetes. Collectez `/metrics?namespace=default` et appliquez un `ScaledObject` KEDA à votre Deployment de workers SDK. Configurez `minReplicaCount: 0`, `activationThreshold: "0"` et un seuil adapté au nombre de tâches simultanées par réplique. [Manifestes pour Prometheus et KEDA](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+La requête s’appuie sur une cible de collecte saine pour ce namespace et renvoie zéro lorsque la file est vide. Adaptez le namespace, la file de tâches et le sélecteur `up` au déploiement. Les tâches assorties d’un bail maintiennent les workers actifs. Les activités mises en pause attendent la reprise de la distribution. Vérifiez les tâches en attente de la cohorte avant de réduire le nombre de workers d’un build. [Guide du déploiement par build ID](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### Transmettre SIGTERM et attendre le nettoyage {#sdk-worker-pod-shutdown}
 
 | SDK | Arrêt du processus worker |

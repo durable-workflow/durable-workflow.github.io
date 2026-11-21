@@ -687,6 +687,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 Replikazahlen und Ressourcen sind Ausgangsbeispiele, keine Kapazitätsgarantien. Passen Sie sie an tatsächliche Task-Dauer, Speicherbedarf, Grenzen nachgelagerter Dienste und die [Worker-Zulassungsbudgets](./polyglot/task-queue-admission.md) an. Ein verfügbares Deployment belegt weder die SDK-Registrierung noch erfolgreiche Arbeit. Prüfen Sie aktuelle Worker-Registrierungen sowie erwarteten Build und Queue und starten und beenden Sie anschließend einen repräsentativen Workflow. Ein SDK-Worker erhält durch Kubernetes nicht automatisch einen HTTP-Health-Endpunkt. Verwenden Sie eine anwendungseigene Probe, falls vorhanden, und nicht die Server-Gesundheit als Liveness-Prüfung des Workers.
 
+### SDK-Worker von null Replikaten hochskalieren {#sdk-workers-from-zero}
+
+Mit dem nativen Server ab 3.14.0 kann ein Worker-Deployment bei null Replikaten starten. Prüfe, ob `/api/cluster/info` die Funktion `capabilities.prometheus_text_metrics` meldet. Stelle Prometheus über ein Kubernetes-Secret einen eigenen, nur lesenden Scrape-Token als `DW_METRICS_TOKEN` bereit. Erfasse `/metrics?namespace=default` und richte ein KEDA-`ScaledObject` für dein SDK-Worker-Deployment ein. Setze `minReplicaCount: 0`, `activationThreshold: "0"` und den Schwellenwert entsprechend den Task-Slots pro Replikat. [Scrape- und KEDA-Manifeste](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+Die Abfrage nutzt ein verfügbares Scrape-Ziel für den Namespace, um eine leere Queue als null zu erfassen. Passe Namespace, Task-Queue und den `up`-Selektor an dein Deployment an. Tasks mit einer Lease halten Worker aktiv. Pausierte Activity-Tasks warten, bis die Zuteilung fortgesetzt wird. Prüfe vor dem Herunterskalieren eines Worker-Builds die ausstehenden Tasks der Kohorte. [Leitfaden zum Build-ID-Rollout](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### SIGTERM zustellen und die Bereinigung abwarten {#sdk-worker-pod-shutdown}
 
 | SDK | Beenden des Worker-Prozesses |

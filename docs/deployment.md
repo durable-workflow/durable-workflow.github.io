@@ -1021,6 +1021,20 @@ kubectl -n durable-workflow rollout status deployment/orders-worker
 
 Replica and resource values are starting examples, not capacity guarantees. Tune them with actual task duration, memory use, downstream limits and [worker admission budgets](./polyglot/task-queue-admission.md). A Deployment becoming available does not prove SDK registration or useful work. Verify fresh worker registrations and the expected build/queue, then start and complete a representative workflow. An SDK worker does not acquire an HTTP health endpoint merely by running in Kubernetes. Use an application-owned probe when you have one, and do not use Server health as a worker liveness check.
 
+### Scale SDK workers from zero {#sdk-workers-from-zero}
+
+Native Server 3.14.0 and later can wake a worker Deployment from zero replicas. Check that `/api/cluster/info` advertises `capabilities.prometheus_text_metrics`. Give Prometheus a dedicated read-only scrape token using `DW_METRICS_TOKEN` from a Kubernetes Secret. Scrape `/metrics?namespace=default` and apply a KEDA `ScaledObject` targeting your SDK worker Deployment. Use `minReplicaCount: 0`, `activationThreshold: "0"` and a threshold based on the task slots per replica. [Scrape and KEDA manifests](https://github.com/durable-workflow/server/tree/3.19.0/k8s/helm/examples/autoscaling)
+
+```promql
+(
+  sum(dw_task_queue_dispatchable_tasks{namespace="default",task_queue="orders"})
+  + sum(dw_task_queue_leased_tasks{namespace="default",task_queue="orders"})
+)
+or (vector(0) and on() up{job="durable-workflow-server"} == 1)
+```
+
+This query uses one healthy scrape target for the namespace to turn an empty queue into zero. Set the namespace, task queue and `up` selector to match your deployment. Leased tasks keep workers running, and paused activity work waits for dispatch to resume. Check the cohort backlog before scaling down a worker build. [Build ID rollout guide](./polyglot/worker-build-id-rollout.md#pending-workflow-tasks-by-cohort)
+
 ### Delivering SIGTERM and waiting for cleanup {#sdk-worker-pod-shutdown}
 
 | SDK | Worker process shutdown |
