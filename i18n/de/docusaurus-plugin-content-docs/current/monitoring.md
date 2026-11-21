@@ -155,6 +155,26 @@ Alarmieren Sie, wenn `max_consecutive_failures` weiter steigt: Dann schlägt ein
 
 Was die Reparatur tut, beschreibt [Fehler und Wiederherstellung](./failures-and-recovery.md).
 
+### Debug-Befunde für Läufe auf dem nativen Server {#native-run-debug-findings}
+
+Öffne den betroffenen Lauf in Waterline und ermittle im Verlauf das letzte aufgezeichnete Ereignis. Untersuche denselben Lauf mit `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Wähle seinen Namespace in der CLI. `execution.liveness_state` zeigt reguläre Wartezustände. `findings` erläutert Zustellungs- oder Wiederherstellungsprobleme. Die Debug-Ausgabe erfasst eine begrenzte Auswahl ausstehender Arbeit.
+
+| Befund | Bedeutung und nächster Schritt |
+| --- | --- |
+| `no_active_pollers` | Arbeit steht aus, aber auf der Queue des Laufs sind keine Poller aktiv. Prüfe Namespace und Queue und starte den zuständigen Worker. |
+| `pending_workflow_type_unsupported` | Der ausstehende Workflow-Typ fehlt in den Registrierungen aktiver Poller. Prüfe die genaue Schreibweise einschließlich Groß- und Kleinschreibung und registriere einen passenden Worker für die gemeldete Queue. |
+| `pending_activity_queue_without_active_pollers` | Auf der eigenen Queue der Activity sind keine Poller aktiv. Starte dort einen Activity-Worker. |
+| `pending_activity_type_unsupported` | Die aktiven Poller der Activity-Queue melden andere Typen. Registriere den gemeldeten Activity-Typ auf dieser Queue. |
+| `expired_leases` | Auf der Queue gibt es abgelaufene Leases. Prüfe vor der Reparatur den Worker-Zustand sowie Leases und Fehler der betroffenen Tasks. |
+| `task_problem` | Der Lauf hat ein aktives Workflow-Task-Problem. Untersuche den ausstehenden Task und seine letzten Fehler. |
+| `task_recovery_history` | Die Wiederherstellung eines früheren Workflow-Task-Problems ist aufgezeichnet. Prüfe damit die frühere Unterbrechung und kontrolliere den aktuellen Zustand. |
+| `repair_attention` | Der Lauf braucht eine Reparatur. Prüfe fehlende oder fehlgeschlagene Arbeit und folge dem obigen Reparaturverfahren. |
+| `workflow_replay_blocked` | Ein Workflow-Task kann den Verlauf nicht wiedergeben. Stelle kompatiblen Workflow-Code wieder her und repariere dann den ausgewählten Lauf. |
+| `no_compatible_worker` | Der Task erfordert eine Kompatibilitätskennung, die kein aktiver Worker der Queue meldet. Stelle einen Worker für diese Kennung wieder bereit. |
+| `workflow_build_draining` | Der Workflow-Task benötigt einen aus der Zuteilung genommenen Build. Setze den Build bei Bedarf fort und prüfe, dass ein kompatibler Worker pollt. |
+| `no_eligible_workflow_worker` | Für Build und Typ des Workflow-Tasks ist kein Worker aktiv. Starte einen passenden Worker und prüfe Registrierung und Polling. |
+| `workflow_definition_routing_blocked` | Für den bereiten Task gibt es keine geeignete Workflow-Definitionsroute. Prüfe die Routing-Anforderungen des Laufs und die Definitionen der Worker seiner Queue. |
+
 ## Waterline-Bereitstellung und Zugriff {#waterline-deployment-and-access}
 
 ### Eingebettetes Laravel {#embedded-laravel}

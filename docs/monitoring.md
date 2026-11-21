@@ -194,6 +194,26 @@ Alert when `max_consecutive_failures` keeps rising: a workflow task keeps failin
 
 See [Failures and Recovery](./failures-and-recovery.md) for what repair does.
 
+### Native Server run debug findings {#native-run-debug-findings}
+
+In Waterline, open the affected run and use its timeline to identify the last recorded event. Inspect that same run with `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Select its namespace in the CLI. Use `execution.liveness_state` to identify ordinary waits and `findings` to diagnose delivery or recovery problems. Debug output covers a bounded sample of pending work.
+
+| Finding | Meaning and next action |
+| --- | --- |
+| `no_active_pollers` | Work is pending and the run's queue has no active pollers. Check the namespace and queue, then start the worker that should poll it. |
+| `pending_workflow_type_unsupported` | The pending workflow type is absent from active poller registrations. Check the exact case-sensitive type and register a worker for it on the reported queue. |
+| `pending_activity_queue_without_active_pollers` | An activity's own queue has no active pollers. Start an activity worker on that queue. |
+| `pending_activity_type_unsupported` | Active pollers on the activity's queue advertise other types. Register the reported activity type on that queue. |
+| `expired_leases` | The queue has expired leases. Check worker health and the affected tasks' lease and failure details before repair. |
+| `task_problem` | The run has an active workflow-task problem. Inspect the pending task and its recent failures to identify the cause. |
+| `task_recovery_history` | An earlier workflow-task problem has a recorded recovery history. Use it to explain a past interruption and check the current liveness state. |
+| `repair_attention` | The run needs repair attention. Inspect the missing or failed work and follow the repair procedure above. |
+| `workflow_replay_blocked` | A workflow task cannot replay its history. Restore compatible workflow code, then repair the selected run. |
+| `no_compatible_worker` | The task requires a compatibility marker absent from active workers on its queue. Restore a compatible worker for the reported marker. |
+| `workflow_build_draining` | The workflow task requires a drained build. Resume the build if it should receive work and ensure a compatible worker is polling. |
+| `no_eligible_workflow_worker` | The workflow task has no active worker for its build and type. Start a matching worker and confirm registration and polling. |
+| `workflow_definition_routing_blocked` | The ready task has no eligible workflow definition route. Check the run's routing requirements and the definitions advertised by workers on its queue. |
+
 ## Waterline deployment and access
 
 ### Embedded Laravel

@@ -151,6 +151,26 @@ Server 在 `GET /api/system/metrics` 的 `metrics.dw_workflow_task_consecutive_f
 
 修复的作用参见[故障与恢复](./failures-and-recovery.md)。
 
+### 原生 Server 的运行诊断结果 {#native-run-debug-findings}
+
+在 Waterline 中打开受影响的运行，在时间线上找到最近记录的事件。在 CLI 中选择该运行的命名空间，用 `dw debug workflow <workflow-id> --run-id <run-id> --output=json` 检查同一次运行。`execution.liveness_state` 表示正常等待的原因，`findings` 用于诊断派发或恢复问题。调试输出只包含有限数量的待处理任务。
+
+| 诊断结果 | 含义和后续操作 |
+| --- | --- |
+| `no_active_pollers` | 有任务待处理，运行所在的队列没有活跃轮询者。检查命名空间和队列，再启动负责该队列的 Worker。 |
+| `pending_workflow_type_unsupported` | 活跃轮询者的注册信息中没有待处理的工作流类型。检查区分大小写的类型名称，在报告的队列中注册相应 Worker。 |
+| `pending_activity_queue_without_active_pollers` | 活动自己的队列没有活跃轮询者。在该队列中启动活动 Worker。 |
+| `pending_activity_type_unsupported` | 活动队列的活跃轮询者公布了其他类型。在该队列中注册报告的活动类型。 |
+| `expired_leases` | 队列中有已过期的租约。修复前检查 Worker 健康状况以及相关任务的租约和失败记录。 |
+| `task_problem` | 运行存在尚未解决的工作流任务问题。检查待处理的任务和近期失败记录。 |
+| `task_recovery_history` | 历史中记录了此前工作流任务问题的恢复过程。查看该记录并检查当前运行状态。 |
+| `repair_attention` | 运行需要修复。检查缺失或失败的任务并按上面的步骤修复。 |
+| `workflow_replay_blocked` | 工作流任务无法重放其历史。恢复兼容的代码，再修复所选运行。 |
+| `no_compatible_worker` | 任务需要一个队列中的活跃 Worker 均未公布的兼容性标记。恢复公布该标记的 Worker。 |
+| `workflow_build_draining` | 工作流任务需要一个已停止派发的构建。需要处理任务时恢复该构建，并确认兼容的 Worker 正在轮询。 |
+| `no_eligible_workflow_worker` | 没有活跃 Worker 支持工作流任务的构建和类型。启动匹配的 Worker，确认注册和轮询。 |
+| `workflow_definition_routing_blocked` | 就绪任务没有符合条件的工作流定义路由。检查运行的路由要求和该队列的 Worker 公布的定义。 |
+
 ## Waterline 部署与访问 {#waterline-deployment-and-access}
 
 ### 嵌入式 Laravel {#embedded-laravel}
