@@ -195,12 +195,15 @@ Consulta [Fallos y recuperación](./failures-and-recovery.md) para saber qué ha
 
 Abre la ejecución afectada en Waterline y localiza el último evento registrado en su línea de tiempo. Inspecciona esa misma ejecución con `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Selecciona su namespace en la CLI. `execution.liveness_state` indica las esperas normales y `findings` ayuda a diagnosticar problemas de entrega o recuperación. La salida incluye una muestra limitada del trabajo pendiente.
 
+Consulta primero `diagnostic_status`. En `waiting`, revisa la espera actual y el próximo evento programado para saber si se espera una señal o un temporizador. En `pending_work`, comprueba las tareas listas o bajo lease y sus colas. En `queue_backlog`, revisa la antigüedad del trabajo y la salud de los workers. En `needs_attention`, revisa el hallazgo y los fallos recientes antes de reparar. En `running` o `terminal`, la línea de tiempo muestra el último avance o el resultado.
+
 | Hallazgo | Significado y siguiente paso |
 | --- | --- |
 | `no_active_pollers` | Hay trabajo pendiente y ningún poller activo en la cola de la ejecución. Comprueba el namespace y la cola, y arranca el worker correspondiente. |
 | `pending_workflow_type_unsupported` | El tipo de workflow pendiente no figura entre los registros de pollers activos. Comprueba el nombre exacto, incluidas mayúsculas y minúsculas, y registra un worker en la cola indicada. |
 | `pending_activity_queue_without_active_pollers` | La cola propia de la actividad carece de pollers activos. Arranca allí un worker de actividades. |
 | `pending_activity_type_unsupported` | Los pollers activos de la cola de la actividad anuncian otros tipos. Registra el tipo indicado en esa cola. |
+| `eligible_worker_slots_busy` | Todos los workers elegibles comunicaron recientemente cero slots libres para esa clase de tarea. En Waterline, abre los detalles completos y el diagnóstico de la ejecución. En la CLI, consulta la cola, el tipo y el número de workers del hallazgo. Revisa el trabajo en curso y añade un worker compatible si persiste el retraso. |
 | `expired_leases` | La cola contiene leases vencidos. Antes de reparar, comprueba la salud del worker y los leases y fallos de las tareas afectadas. |
 | `task_problem` | La ejecución tiene un problema activo con una tarea de workflow. Inspecciona la tarea pendiente y sus fallos recientes. |
 | `task_recovery_history` | Se registró la recuperación de un problema anterior con una tarea de workflow. Consulta ese historial y comprueba el estado actual. |
@@ -210,6 +213,8 @@ Abre la ejecución afectada en Waterline y localiza el último evento registrado
 | `workflow_build_draining` | La tarea requiere un build retirado del despacho. Reanuda el build si debe recibir trabajo y comprueba que un worker compatible consulte la cola. |
 | `no_eligible_workflow_worker` | Ningún worker activo atiende el build y el tipo de la tarea. Inicia un worker compatible y comprueba su registro y sus consultas a la cola. |
 | `workflow_definition_routing_blocked` | La tarea lista carece de una ruta de definición de workflow elegible. Revisa los requisitos de enrutamiento de la ejecución y las definiciones anunciadas en la cola. |
+
+El hallazgo requiere informes recientes de todos los workers elegibles. Los informes antiguos o ausentes dejan la capacidad sin confirmar. En PHP Server 2.x, usa `dw task-queue:describe <queue> --json` para identificar la admisión `throttled` y el límite agotado de leases o despachos. El Server nativo 3.x usa la concurrencia de los workers para estas tareas. [Admisión en colas](./polyglot/task-queue-admission.md)
 
 ## Despliegue y acceso a Waterline {#waterline-deployment-and-access}
 

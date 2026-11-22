@@ -198,12 +198,21 @@ See [Failures and Recovery](./failures-and-recovery.md) for what repair does.
 
 In Waterline, open the affected run and use its timeline to identify the last recorded event. Inspect that same run with `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Select its namespace in the CLI. Use `execution.liveness_state` to identify ordinary waits and `findings` to diagnose delivery or recovery problems. Debug output covers a bounded sample of pending work.
 
+| `diagnostic_status` | What to inspect |
+| --- | --- |
+| `waiting` | Read the current wait and its next scheduled event. A signal or timer can leave a run idle until the expected trigger. |
+| `pending_work` | Inspect ready or leased tasks and their queues. Use the findings to distinguish a worker, routing, or capacity problem. |
+| `queue_backlog` | Check queue backlog age and worker health. Backlog by itself cannot identify why this run is idle. |
+| `needs_attention` | Inspect the finding and recent failure before attempting a repair. |
+| `running`, `terminal` | Check the timeline for recent progress or for the final outcome. |
+
 | Finding | Meaning and next action |
 | --- | --- |
 | `no_active_pollers` | Work is pending and the run's queue has no active pollers. Check the namespace and queue, then start the worker that should poll it. |
 | `pending_workflow_type_unsupported` | The pending workflow type is absent from active poller registrations. Check the exact case-sensitive type and register a worker for it on the reported queue. |
 | `pending_activity_queue_without_active_pollers` | An activity's own queue has no active pollers. Start an activity worker on that queue. |
 | `pending_activity_type_unsupported` | Active pollers on the activity's queue advertise other types. Register the reported activity type on that queue. |
+| `eligible_worker_slots_busy` | Every eligible worker for a ready task recently reported zero free slots for that task kind. Inspect **Run diagnostics** under **Inspect full details** in Waterline, or the finding's task queue, type, and worker count in the CLI. Check in-flight work and add a compatible worker if the backlog persists. |
 | `expired_leases` | The queue has expired leases. Check worker health and the affected tasks' lease and failure details before repair. |
 | `task_problem` | The run has an active workflow-task problem. Inspect the pending task and its recent failures to identify the cause. |
 | `task_recovery_history` | An earlier workflow-task problem has a recorded recovery history. Use it to explain a past interruption and check the current liveness state. |
@@ -213,6 +222,8 @@ In Waterline, open the affected run and use its timeline to identify the last re
 | `workflow_build_draining` | The workflow task requires a drained build. Resume the build if it should receive work and ensure a compatible worker is polling. |
 | `no_eligible_workflow_worker` | The workflow task has no active worker for its build and type. Start a matching worker and confirm registration and polling. |
 | `workflow_definition_routing_blocked` | The ready task has no eligible workflow definition route. Check the run's routing requirements and the definitions advertised by workers on its queue. |
+
+The busy-slots finding requires a fresh slot report from every eligible worker. An old or missing report leaves capacity unknown. To check a server-side dispatch cap on PHP Server 2.x, run `dw task-queue:describe <queue> --json` and look for `throttled` admission and the exhausted lease or dispatch limit. Native Server 3.x uses worker concurrency for these task kinds. [Task queue admission](./polyglot/task-queue-admission.md)
 
 ## Waterline deployment and access
 

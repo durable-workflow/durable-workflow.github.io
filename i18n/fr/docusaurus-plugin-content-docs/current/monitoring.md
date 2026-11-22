@@ -198,12 +198,15 @@ Voir [Échecs et reprise](./failures-and-recovery.md) pour ce que fait la répar
 
 Ouvrez l’exécution concernée dans Waterline et repérez le dernier événement enregistré dans sa chronologie. Inspectez la même exécution avec `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Sélectionnez son espace de noms dans la CLI. `execution.liveness_state` indique les attentes normales et `findings` aide à diagnostiquer les problèmes de distribution ou de reprise. La sortie contient un échantillon limité du travail en attente.
 
+Consultez d’abord `diagnostic_status`. Pour `waiting`, l’attente actuelle et le prochain événement planifié indiquent si un signal ou un minuteur est attendu. Pour `pending_work`, examinez les tâches prêtes ou sous bail et leurs files. Pour `queue_backlog`, vérifiez l’ancienneté du retard et la santé des workers. Pour `needs_attention`, examinez le constat et les échecs récents avant de réparer. Pour `running` ou `terminal`, la chronologie indique la dernière avancée ou l’issue.
+
 | Constat | Signification et prochaine action |
 | --- | --- |
 | `no_active_pollers` | Du travail attend sur la file de l’exécution et aucun poller n’y est actif. Vérifiez l’espace de noms et la file, puis démarrez le worker prévu. |
 | `pending_workflow_type_unsupported` | Le type de workflow en attente ne figure dans aucun enregistrement de poller actif. Vérifiez le nom exact et sa casse, puis enregistrez un worker sur la file signalée. |
 | `pending_activity_queue_without_active_pollers` | Aucun poller actif ne surveille la file propre à l’activité. Démarrez un worker d’activités sur cette file. |
 | `pending_activity_type_unsupported` | Les pollers actifs de la file de l’activité déclarent d’autres types. Enregistrez le type signalé sur cette file. |
+| `eligible_worker_slots_busy` | Tous les workers admissibles ont récemment signalé zéro emplacement libre pour cette catégorie de tâche. Dans Waterline, ouvrez les détails complets, puis le diagnostic de l’exécution. Dans la CLI, consultez la file, le type et le nombre de workers du constat. Examinez le travail en cours et ajoutez un worker compatible si le retard persiste. |
 | `expired_leases` | La file contient des baux expirés. Vérifiez la santé des workers ainsi que les baux et les échecs des tâches concernées avant toute réparation. |
 | `task_problem` | L’exécution présente un problème actif de tâche de workflow. Examinez la tâche en attente et ses échecs récents. |
 | `task_recovery_history` | La reprise d’un ancien problème de tâche de workflow est enregistrée. Consultez cet historique et vérifiez l’état actuel. |
@@ -213,6 +216,8 @@ Ouvrez l’exécution concernée dans Waterline et repérez le dernier événeme
 | `workflow_build_draining` | La tâche exige un build qui a été retiré de la distribution. Réactivez ce build s’il doit recevoir du travail et vérifiez qu’un worker compatible interroge la file. |
 | `no_eligible_workflow_worker` | Aucun worker actif ne correspond au build et au type de la tâche. Démarrez un worker compatible et vérifiez son enregistrement et ses interrogations de la file. |
 | `workflow_definition_routing_blocked` | La tâche prête ne dispose d’aucune route de définition de workflow admissible. Vérifiez les exigences de routage et les définitions déclarées sur sa file. |
+
+Le constat exige une mesure récente de chaque worker admissible. En l’absence de mesure récente, la capacité reste inconnue. Sur PHP Server 2.x, `dw task-queue:describe <queue> --json` indique l’admission `throttled` et la limite de baux ou de distribution atteinte. Le Server natif 3.x utilise la concurrence des workers pour ces tâches. [Admission des files](./polyglot/task-queue-admission.md)
 
 ## Déploiement et accès à Waterline {#waterline-deployment-and-access}
 

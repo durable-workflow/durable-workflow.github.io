@@ -159,12 +159,15 @@ Was die Reparatur tut, beschreibt [Fehler und Wiederherstellung](./failures-and-
 
 Öffne den betroffenen Lauf in Waterline und ermittle im Verlauf das letzte aufgezeichnete Ereignis. Untersuche denselben Lauf mit `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Wähle seinen Namespace in der CLI. `execution.liveness_state` zeigt reguläre Wartezustände. `findings` erläutert Zustellungs- oder Wiederherstellungsprobleme. Die Debug-Ausgabe erfasst eine begrenzte Auswahl ausstehender Arbeit.
 
+Prüfe zuerst `diagnostic_status`. Bei `waiting` zeigen der aktuelle Wartezustand und das nächste geplante Ereignis, ob ein Signal oder Timer erwartet wird. Bei `pending_work` prüfst du bereite und geleaste Tasks sowie deren Queues. `queue_backlog` verweist auf Rückstand und Worker-Zustand. Bei `needs_attention` prüfst du den Befund und die letzten Fehler vor einer Reparatur. Bei `running` oder `terminal` zeigt der Verlauf den letzten Fortschritt oder das Ergebnis.
+
 | Befund | Bedeutung und nächster Schritt |
 | --- | --- |
 | `no_active_pollers` | Arbeit steht aus, aber auf der Queue des Laufs sind keine Poller aktiv. Prüfe Namespace und Queue und starte den zuständigen Worker. |
 | `pending_workflow_type_unsupported` | Der ausstehende Workflow-Typ fehlt in den Registrierungen aktiver Poller. Prüfe die genaue Schreibweise einschließlich Groß- und Kleinschreibung und registriere einen passenden Worker für die gemeldete Queue. |
 | `pending_activity_queue_without_active_pollers` | Auf der eigenen Queue der Activity sind keine Poller aktiv. Starte dort einen Activity-Worker. |
 | `pending_activity_type_unsupported` | Die aktiven Poller der Activity-Queue melden andere Typen. Registriere den gemeldeten Activity-Typ auf dieser Queue. |
+| `eligible_worker_slots_busy` | Alle geeigneten Worker melden in aktuellen Berichten null freie Slots für diese Task-Art. Öffne in Waterline die vollständigen Details und die Laufdiagnose oder prüfe Queue, Typ und Worker-Anzahl im CLI-Befund. Prüfe laufende Arbeit und starte bei anhaltendem Rückstand einen kompatiblen Worker. |
 | `expired_leases` | Auf der Queue gibt es abgelaufene Leases. Prüfe vor der Reparatur den Worker-Zustand sowie Leases und Fehler der betroffenen Tasks. |
 | `task_problem` | Der Lauf hat ein aktives Workflow-Task-Problem. Untersuche den ausstehenden Task und seine letzten Fehler. |
 | `task_recovery_history` | Die Wiederherstellung eines früheren Workflow-Task-Problems ist aufgezeichnet. Prüfe damit die frühere Unterbrechung und kontrolliere den aktuellen Zustand. |
@@ -174,6 +177,8 @@ Was die Reparatur tut, beschreibt [Fehler und Wiederherstellung](./failures-and-
 | `workflow_build_draining` | Der Workflow-Task benötigt einen aus der Zuteilung genommenen Build. Setze den Build bei Bedarf fort und prüfe, dass ein kompatibler Worker pollt. |
 | `no_eligible_workflow_worker` | Für Build und Typ des Workflow-Tasks ist kein Worker aktiv. Starte einen passenden Worker und prüfe Registrierung und Polling. |
 | `workflow_definition_routing_blocked` | Für den bereiten Task gibt es keine geeignete Workflow-Definitionsroute. Prüfe die Routing-Anforderungen des Laufs und die Definitionen der Worker seiner Queue. |
+
+Der Befund setzt aktuelle Slot-Berichte aller geeigneten Worker voraus. Bei fehlenden oder alten Angaben bleibt die Kapazität unbekannt. Prüfe serverseitige Dispatch-Grenzen in PHP Server 2.x mit `dw task-queue:describe <queue> --json`. `throttled` kennzeichnet eine erschöpfte Lease- oder Dispatch-Grenze. Native Server 3.x steuert diese Task-Arten über die Worker-Parallelität. [Queue-Zulassung](./polyglot/task-queue-admission.md)
 
 ## Waterline-Bereitstellung und Zugriff {#waterline-deployment-and-access}
 

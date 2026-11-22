@@ -155,12 +155,15 @@ Server 在 `GET /api/system/metrics` 的 `metrics.dw_workflow_task_consecutive_f
 
 在 Waterline 中打开受影响的运行，在时间线上找到最近记录的事件。在 CLI 中选择该运行的命名空间，用 `dw debug workflow <workflow-id> --run-id <run-id> --output=json` 检查同一次运行。`execution.liveness_state` 表示正常等待的原因，`findings` 用于诊断派发或恢复问题。调试输出只包含有限数量的待处理任务。
 
+先查看 `diagnostic_status`。`waiting` 时查看当前的等待原因和下一项计划事件，确认是否在等待信号或计时器。`pending_work` 时检查就绪或已租用的任务及其队列。`queue_backlog` 时检查积压时长和 Worker 健康状况。`needs_attention` 时先查看诊断结果和近期失败，再尝试修复。`running` 或 `terminal` 时可在时间线上查看最近进展或最终结果。
+
 | 诊断结果 | 含义和后续操作 |
 | --- | --- |
 | `no_active_pollers` | 有任务待处理，运行所在的队列没有活跃轮询者。检查命名空间和队列，再启动负责该队列的 Worker。 |
 | `pending_workflow_type_unsupported` | 活跃轮询者的注册信息中没有待处理的工作流类型。检查区分大小写的类型名称，在报告的队列中注册相应 Worker。 |
 | `pending_activity_queue_without_active_pollers` | 活动自己的队列没有活跃轮询者。在该队列中启动活动 Worker。 |
 | `pending_activity_type_unsupported` | 活动队列的活跃轮询者公布了其他类型。在该队列中注册报告的活动类型。 |
+| `eligible_worker_slots_busy` | 所有能够处理该任务的 Worker 最近都报告该类任务的空闲槽位为零。在 Waterline 中打开完整详情，查看运行诊断。在 CLI 中查看诊断结果中的队列、任务类型和 Worker 数量。检查正在执行的任务，若积压持续，可增加兼容的 Worker。 |
 | `expired_leases` | 队列中有已过期的租约。修复前检查 Worker 健康状况以及相关任务的租约和失败记录。 |
 | `task_problem` | 运行存在尚未解决的工作流任务问题。检查待处理的任务和近期失败记录。 |
 | `task_recovery_history` | 历史中记录了此前工作流任务问题的恢复过程。查看该记录并检查当前运行状态。 |
@@ -170,6 +173,8 @@ Server 在 `GET /api/system/metrics` 的 `metrics.dw_workflow_task_consecutive_f
 | `workflow_build_draining` | 工作流任务需要一个已停止派发的构建。需要处理任务时恢复该构建，并确认兼容的 Worker 正在轮询。 |
 | `no_eligible_workflow_worker` | 没有活跃 Worker 支持工作流任务的构建和类型。启动匹配的 Worker，确认注册和轮询。 |
 | `workflow_definition_routing_blocked` | 就绪任务没有符合条件的工作流定义路由。检查运行的路由要求和该队列的 Worker 公布的定义。 |
+
+只有所有符合条件的 Worker 都提供近期的槽位报告时，才会出现这一诊断结果。报告缺失或过时表示容量未知。在 PHP Server 2.x 上，运行 `dw task-queue:describe <queue> --json`，查看 `throttled` 状态以及已达到上限的租约数或派发数。原生 Server 3.x 通过 Worker 并发数控制这些任务。[任务队列准入](./polyglot/task-queue-admission.md)
 
 ## Waterline 部署与访问 {#waterline-deployment-and-access}
 
