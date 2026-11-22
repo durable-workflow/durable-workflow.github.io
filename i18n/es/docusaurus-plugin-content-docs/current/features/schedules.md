@@ -601,7 +601,38 @@ Las claves de ambas tablas se declaran en `Workflow\V2\Support\HistoryEventPaylo
 
 ### Retención {#retention}
 
-El flujo de auditoría se conserva durante la vida de la fila de programación. El borrado lógico escribe un último `ScheduleDeleted`; las filas de auditoría no se eliminan en cascada al borrar la programación. Si purgas programaciones históricas, elige una estrategia explícita de retención: el paquete no incluye TTL para auditoría.
+En Laravel embebido, Workflow 2.29.0 y versiones posteriores conservan de forma predeterminada hasta
+1.000 instantáneas de auditoría por programación. El primer evento, normalmente `ScheduleCreated`, y
+los más recientes conservan sus números de secuencia originales. Para cambiar el límite, asigna un
+entero de al menos 2 a `DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` o
+`workflows.v2.schedules.audit_history_limit`.
+
+Cada nuevo evento de auditoría elimina hasta 100 instantáneas antiguas. Para reducir manualmente el
+historial de una programación existente, repite este comando hasta que `retained_events` sea menor o
+igual a `configured_limit`.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+Al borrar una programación mediante la API, se registra `ScheduleDeleted` y se conservan el
+historial retenido y los registros de disparo. Cuando elimines físicamente la fila de la
+programación, limpia sus registros huérfanos en ese espacio de nombres exacto.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+El límite de limpieza se aplica al total de eventos de auditoría y registros de disparo. Repite el
+comando hasta que `audit_events_deleted` y `occurrences_deleted` sean cero. Usa `--null-namespace`
+en lugar de `--namespace` para filas antiguas cuyo espacio de nombres sea `NULL` de SQL.
+
+Antes de activar el límite, ejecuta la migración de ocurrencias de programación y detén los
+planificadores antiguos y los procesos que escriben programaciones. En una actualización escalonada,
+asigna el valor `null` de PHP a `workflows.v2.schedules.audit_history_limit` hasta detener esos
+procesos. Los registros de disparo se conservan al eliminar instantáneas y siguen evitando inicios
+duplicados. [Instrucciones de
+actualización](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### Visibilidad {#visibility}
 

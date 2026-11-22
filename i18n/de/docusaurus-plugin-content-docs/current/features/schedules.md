@@ -735,12 +735,38 @@ Regeln für Historienereignisänderungen im
 
 ### Aufbewahrung {#retention}
 
-Der Auditstrom wird für die Lebensdauer der Zeitplanzeile aufbewahrt.
-Zeitplanlöschung ist eine logische Löschung mit abschließendem Ereignis
-`ScheduleDeleted`. Auditzeilen werden beim Entfernen einer Zeitplanzeile nicht
-kaskadierend gelöscht. Betreiber, die historische Zeitpläne endgültig entfernen,
-müssen eine explizite Aufbewahrungsstrategie für ihre Bereitstellung wählen.
-Das Paket enthält keine eingebaute TTL für Auditereignisse.
+In eingebetteten Laravel-Anwendungen behält Workflow ab Version 2.29.0 standardmäßig bis zu 1.000
+Audit-Snapshots pro Zeitplan. Das erste Ereignis, gewöhnlich `ScheduleCreated`, und die neuesten
+Ereignisse behalten ihre ursprünglichen Sequenznummern. Für eine andere Obergrenze setzen Sie
+`DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` oder `workflows.v2.schedules.audit_history_limit` auf eine
+ganze Zahl ab 2.
+
+Beim Anhängen eines Auditereignisses werden bis zu 100 alte Snapshots entfernt. Um den Verlauf eines
+bestehenden Zeitplans manuell zu kürzen, wiederholen Sie diesen Befehl, bis `retained_events` den
+Wert von `configured_limit` erreicht oder unterschreitet.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+Wenn Sie einen Zeitplan über die API löschen, wird `ScheduleDeleted` aufgezeichnet. Der aufbewahrte
+Auditverlauf und die Ausführungsbelege bleiben erhalten. Sobald der Zeitplandatensatz physisch
+gelöscht ist, können Sie seine verwaisten Einträge im betreffenden Namespace entfernen.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+Das Limit gilt für Auditereignisse und Ausführungsbelege zusammen. Wiederholen Sie den Befehl, bis
+sowohl `audit_events_deleted` als auch `occurrences_deleted` den Wert 0 haben. Für Altdaten mit
+SQL-`NULL` als Namespace verwenden Sie `--null-namespace` anstelle von `--namespace`.
+
+Führen Sie vor dem Aktivieren der Obergrenze die Migration für Zeitplanvorkommen aus und stoppen Sie
+ältere Scheduler und Prozesse, die Zeitpläne schreiben. Setzen Sie bei einer schrittweisen
+Aktualisierung `workflows.v2.schedules.audit_history_limit` auf PHP-`null`, bis diese Prozesse
+beendet sind. Beim Kürzen des Verlaufs bleiben Ausführungsbelege erhalten und verhindern doppelte
+Starts. [Anleitung zur
+Aktualisierung](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### Sichtbarkeit {#visibility}
 

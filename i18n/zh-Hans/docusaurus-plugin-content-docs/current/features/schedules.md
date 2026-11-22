@@ -560,7 +560,27 @@ $schedule = ScheduleManager::create(
 
 ### 保留 {#retention}
 
-审计流在调度行生命周期内保留。删除调度是软删除，会写入最终 `ScheduleDeleted` 事件；移除调度行时，审计行本身不会级联删除。清理历史调度的运维人员必须为部署选择明确的保留策略，包没有提供审计事件的内置 TTL。
+在嵌入式 Laravel 中，Workflow 2.29.0 及更高版本默认每个调度最多保留 1,000 条审计快照。首条事件通常是
+`ScheduleCreated`，它和最新的事件都会保留原有的序列号。可以将 `DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` 或
+`workflows.v2.schedules.audit_history_limit` 设置为不小于 2 的整数来调整上限。
+
+每次追加审计事件时，最多清理 100 条旧快照。要手动缩减现有调度的历史记录，请重复运行以下命令，直到 `retained_events` 不大于 `configured_limit`。
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+通过 API 删除调度会记录 `ScheduleDeleted`，并保留剩余的审计历史和触发凭据。物理删除调度行后，请在其所属的确切命名空间内清理孤立记录。
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+清理上限适用于审计事件和触发凭据的总数。请重复运行命令，直到 `audit_events_deleted` 和 `occurrences_deleted` 均为零。对于命名空间为 SQL `NULL`
+的旧记录，请用 `--null-namespace` 代替 `--namespace`。
+
+启用上限前，请执行调度触发记录的迁移，并停止旧版调度器及写入调度的进程。分阶段升级时，应将 `workflows.v2.schedules.audit_history_limit` 设为 PHP 的
+`null`，直到这些进程全部停止。清理快照后仍会保留触发凭据，以防止重复启动。[升级说明](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### 可见性 {#visibility}
 

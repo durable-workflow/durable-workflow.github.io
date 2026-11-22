@@ -563,7 +563,30 @@ $schedule = ScheduleManager::create(
 
 ### 保持 {#retention}
 
-監査はスケジュール行の存続中保持します。削除は最後の `ScheduleDeleted` を書く論理削除で、スケジュール行を除去しても監査行は連鎖削除しません。過去の予定を消去する運用者は明示的な保持方針を選ぶ必要があります。監査イベント用の組み込み TTL はありません。
+Laravel 組み込みモードでは、Workflow 2.29.0 以降、既定でスケジュールごとに最大 1,000 件の監査スナップショットを保持します。最初のイベント（通常は
+`ScheduleCreated`）と最新のイベントは元のシーケンス番号を保持します。上限を変更するには、`DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` または
+`workflows.v2.schedules.audit_history_limit` に 2 以上の整数を設定します。
+
+監査イベントを追加するたびに、古いスナップショットを最大 100 件削除します。既存のスケジュールの履歴を手動で整理するには、`retained_events` が
+`configured_limit` 以下になるまで次のコマンドを繰り返します。
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+API でスケジュールを削除すると `ScheduleDeleted`
+が記録され、保持対象の監査履歴と起動記録は残ります。スケジュールの行を物理削除した後は、同じ名前空間を明示して孤立したレコードを整理します。
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+整理の上限は監査イベントと起動記録の合計に適用されます。`audit_events_deleted` と `occurrences_deleted` が両方とも 0
+になるまでコマンドを繰り返します。名前空間が SQL の `NULL` である古い行には、`--namespace` の代わりに `--null-namespace` を使います。
+
+上限を有効にする前に、スケジュール実行時刻のマイグレーションを実行し、旧バージョンのスケジューラーとスケジュールを書き込むプロセスを停止します。段階的にアップグレードする場合は、これらのプロセスが停止するまで
+`workflows.v2.schedules.audit_history_limit` を PHP の `null`
+に設定します。スナップショットを削除しても起動記録は残るため、同じ実行時刻の二重起動を防げます。[アップグレード手順](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### 可視化 {#visibility}
 
