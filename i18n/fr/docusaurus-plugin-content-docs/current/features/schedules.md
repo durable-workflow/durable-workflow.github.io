@@ -599,12 +599,39 @@ des événements d’historique du
 
 ### Rétention {#retention}
 
-Le flux d’audit est conservé pendant la vie de la ligne de planification.
-La suppression est logique et écrit un dernier `ScheduleDeleted`. Les lignes
-d’audit ne sont pas supprimées en cascade lors du retrait d’une planification.
-Les opérateurs purgeant les anciennes planifications doivent choisir une
-stratégie explicite de rétention. Le package ne fournit pas de durée de vie
-automatique pour les événements d’audit.
+Dans une application Laravel embarquée, Workflow conserve par défaut jusqu’à 1 000 instantanés
+d’audit par planification à partir de la version 2.29.0. Le premier événement, généralement
+`ScheduleCreated`, et les événements les plus récents gardent leurs numéros de séquence. Pour
+modifier le plafond, définissez `DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` ou
+`workflows.v2.schedules.audit_history_limit` sur un entier supérieur ou égal à 2.
+
+Chaque ajout à l’audit supprime jusqu’à 100 anciens instantanés. Pour réduire manuellement
+l’historique d’une planification existante, répétez cette commande jusqu’à ce que `retained_events`
+soit inférieur ou égal à `configured_limit`.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+La suppression d’une planification par l’API enregistre `ScheduleDeleted` et préserve l’historique
+d’audit conservé ainsi que les preuves de déclenchement. Une fois la ligne de planification
+supprimée physiquement, nettoyez ses enregistrements orphelins dans cet espace de noms exact.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+La limite de nettoyage porte sur le total des événements d’audit et des preuves de déclenchement.
+Répétez la commande jusqu’à ce que `audit_events_deleted` et `occurrences_deleted` soient tous deux
+à zéro. Utilisez `--null-namespace` à la place de `--namespace` pour les anciennes lignes dont
+l’espace de noms vaut `NULL` en SQL.
+
+Avant d’activer le plafond, appliquez la migration des occurrences de planification et arrêtez les
+anciens planificateurs et processus qui écrivent les planifications. Pour une mise à niveau
+progressive, donnez à `workflows.v2.schedules.audit_history_limit` la valeur PHP `null` jusqu’à
+l’arrêt de ces processus. Les preuves de déclenchement restent disponibles après la suppression
+d’instantanés et continuent d’empêcher les démarrages en double. [Instructions de mise à
+niveau](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### Visibilité {#visibility}
 

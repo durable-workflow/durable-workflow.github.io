@@ -669,12 +669,35 @@ history-event change rules in the
 
 ### Retention
 
-The audit stream is retained for the life of the schedule row. Schedule
-deletion is a soft delete that writes a final `ScheduleDeleted` event;
-the audit rows themselves are not cascaded when a schedule row is
-removed. Operators that purge historical schedules must choose an
-explicit retention strategy for their deployment — the package ships no
-built-in TTL for audit events.
+In embedded Laravel, Workflow 2.29.0 and later keep up to 1,000 audit snapshots per schedule by
+default. The first event, usually `ScheduleCreated`, and the newest events keep their original
+sequence numbers. Set `DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` or
+`workflows.v2.schedules.audit_history_limit` to an integer of at least 2 to change the cap.
+
+Each audit append prunes up to 100 old snapshots. To reduce an existing schedule's history manually,
+run the following command repeatedly until `retained_events` is at or below `configured_limit`.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+Deleting a schedule through the API records `ScheduleDeleted` and keeps its retained audit history
+and firing receipts. After physically removing the schedule row, clean up its orphaned records in
+that exact namespace.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+The cleanup limit applies to audit events and firing receipts combined. Repeat until both
+`audit_events_deleted` and `occurrences_deleted` are zero. Use `--null-namespace` in place of
+`--namespace` for legacy rows whose namespace is SQL `NULL`.
+
+Before enabling the cap, run the schedule occurrence migration and stop older scheduler processes
+and schedule writers. For a staged upgrade, set `workflows.v2.schedules.audit_history_limit` to PHP
+`null` until those processes have stopped. Firing receipts survive snapshot pruning and continue to
+prevent duplicate starts. [Upgrade
+instructions](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### Visibility
 

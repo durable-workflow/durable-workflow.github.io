@@ -637,12 +637,38 @@ segue as regras de alteração de eventos de histórico do
 
 ### Retenção {#retention}
 
-O fluxo de auditoria é retido durante toda a vida da linha do agendamento.
-A exclusão do agendamento é lógica e grava um evento final `ScheduleDeleted`.
-As próprias linhas de auditoria não são excluídas em cascata quando uma linha
-de agendamento é removida. Operadores que removem agendamentos históricos
-devem escolher uma estratégia explícita de retenção para sua implantação.
-O pacote não inclui um TTL para eventos de auditoria.
+No Laravel embarcado, o Workflow a partir da versão 2.29.0 mantém por padrão até 1.000 instantâneos
+de auditoria por agendamento. O primeiro evento, normalmente `ScheduleCreated`, e os mais recentes
+mantêm seus números de sequência originais. Defina `DW_V2_SCHEDULE_AUDIT_HISTORY_LIMIT` ou
+`workflows.v2.schedules.audit_history_limit` como um inteiro maior ou igual a 2 para alterar o
+limite.
+
+Cada novo evento de auditoria remove até 100 instantâneos antigos. Para reduzir manualmente o
+histórico de um agendamento existente, repita o comando a seguir até `retained_events` ficar menor
+ou igual a `configured_limit`.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --schedule=daily-invoices
+```
+
+A exclusão de um agendamento pela API registra `ScheduleDeleted` e preserva o histórico de auditoria
+retido e os registros de disparo. Após excluir fisicamente a linha do agendamento, limpe seus
+registros órfãos no espaço de nomes exato.
+
+```sh
+php artisan workflow:v2:schedule-audit-prune --namespace=orders --limit=500
+```
+
+O limite da limpeza se aplica à soma dos eventos de auditoria e dos registros de disparo. Repita o
+comando até `audit_events_deleted` e `occurrences_deleted` chegarem a zero. Use `--null-namespace`
+no lugar de `--namespace` para linhas antigas cujo espaço de nomes seja `NULL` no SQL.
+
+Antes de ativar o limite, execute a migração de ocorrências de agendamento e encerre os agendadores
+antigos e os processos que gravam agendamentos. Em uma atualização por etapas, defina
+`workflows.v2.schedules.audit_history_limit` como `null` do PHP até que esses processos parem. Os
+registros de disparo permanecem após a remoção de instantâneos e continuam evitando inícios
+duplicados. [Instruções de
+atualização](https://github.com/durable-workflow/workflow/releases/tag/2.29.0)
 
 ### Visibilidade {#visibility}
 
