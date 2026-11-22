@@ -199,12 +199,15 @@ Veja [Falhas e recuperação](./failures-and-recovery.md) para saber o que o rep
 
 Abra a execução afetada no Waterline e localize o último evento registrado na linha do tempo. Inspecione a mesma execução com `dw debug workflow <workflow-id> --run-id <run-id> --output=json`. Selecione o namespace dela na CLI. `execution.liveness_state` identifica esperas normais e `findings` ajuda a diagnosticar problemas de despacho ou recuperação. A saída inclui uma amostra limitada do trabalho pendente.
 
+Consulte primeiro `diagnostic_status`. Em `waiting`, veja a espera atual e o próximo evento agendado para identificar um sinal ou temporizador aguardado. Em `pending_work`, confira tarefas prontas ou com lease e suas filas. Em `queue_backlog`, confira há quanto tempo o trabalho aguarda e a saúde dos workers. Em `needs_attention`, veja o achado e as falhas recentes antes de reparar. Em `running` ou `terminal`, a linha do tempo mostra o último avanço ou o desfecho.
+
 | Achado | Significado e próxima ação |
 | --- | --- |
 | `no_active_pollers` | Há trabalho pendente e nenhum poller ativo na fila da execução. Confira o namespace e a fila, depois inicie o worker responsável. |
 | `pending_workflow_type_unsupported` | O tipo de workflow pendente está ausente dos registros dos pollers ativos. Confira o nome exato, incluindo maiúsculas e minúsculas, e registre um worker na fila indicada. |
 | `pending_activity_queue_without_active_pollers` | A fila própria da atividade está sem pollers ativos. Inicie um worker de atividades nessa fila. |
 | `pending_activity_type_unsupported` | Os pollers ativos da fila da atividade anunciam outros tipos. Registre o tipo indicado nessa fila. |
+| `eligible_worker_slots_busy` | Todos os workers elegíveis informaram recentemente zero slots livres para essa categoria de tarefa. No Waterline, abra os detalhes completos e veja o diagnóstico da execução. Na CLI, confira a fila, o tipo e a contagem de workers do achado. Revise o trabalho em andamento e acrescente um worker compatível se o acúmulo persistir. |
 | `expired_leases` | A fila tem leases vencidos. Confira a saúde dos workers e os leases e falhas das tarefas afetadas antes do reparo. |
 | `task_problem` | A execução tem um problema ativo em uma tarefa de workflow. Examine a tarefa pendente e suas falhas recentes. |
 | `task_recovery_history` | A recuperação de um problema anterior em uma tarefa de workflow está registrada. Consulte o histórico e confira o estado atual. |
@@ -214,6 +217,8 @@ Abra a execução afetada no Waterline e localize o último evento registrado na
 | `workflow_build_draining` | A tarefa exige um build retirado do despacho. Retome o build se ele deve receber trabalho e confirme que um worker compatível consulta a fila. |
 | `no_eligible_workflow_worker` | Nenhum worker ativo atende ao build e ao tipo da tarefa. Inicie um worker compatível e confirme o registro e as consultas à fila. |
 | `workflow_definition_routing_blocked` | A tarefa pronta está sem uma rota elegível de definição de workflow. Confira os requisitos de roteamento da execução e as definições anunciadas na fila. |
+
+O achado exige uma medição recente de cada worker elegível. Com medições antigas ou ausentes, a capacidade fica desconhecida. No PHP Server 2.x, use `dw task-queue:describe <queue> --json` para localizar a admissão `throttled` e o limite atingido de leases ou despachos. O Server nativo 3.x usa a concorrência dos workers para essas tarefas. [Admissão de filas](./polyglot/task-queue-admission.md)
 
 ## Implantação e acesso ao Waterline {#waterline-deployment-and-access}
 

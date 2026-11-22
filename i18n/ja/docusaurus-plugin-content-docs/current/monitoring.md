@@ -157,12 +157,15 @@ Server は失敗したワークフロータスクを `GET /api/system/metrics` �
 
 Waterline で対象の実行を開き、タイムラインで最後に記録されたイベントを確認します。CLI で実行の名前空間を選択し、`dw debug workflow <workflow-id> --run-id <run-id> --output=json` で同じ実行を調べます。`execution.liveness_state` は通常の待機状態を示し、`findings` は配信や復旧の問題の診断に使います。デバッグ出力が示す保留中の処理は件数に上限があります。
 
+まず `diagnostic_status` を確認します。`waiting` では現在の待機と次の予定イベントを見て、シグナルやタイマーを待っているか確認します。`pending_work` では準備済みまたはリース済みのタスクとそのキューを確認します。`queue_backlog` では滞留時間と Worker の状態を確認します。`needs_attention` では修復の前に所見と直近の失敗を確認します。`running` または `terminal` ではタイムラインで直近の進捗または結果を確認します。
+
 | 所見 | 意味と対処 |
 | --- | --- |
 | `no_active_pollers` | 処理が保留中で、実行のキューにアクティブなポーラーがありません。名前空間とキューを確認し、担当の Worker を起動します。 |
 | `pending_workflow_type_unsupported` | 保留中のワークフロー型がアクティブなポーラーの登録にありません。大文字と小文字を含めて型名を確認し、報告されたキューに対応する Worker を登録します。 |
 | `pending_activity_queue_without_active_pollers` | アクティビティ自体のキューにアクティブなポーラーがありません。そのキューにアクティビティ Worker を起動します。 |
 | `pending_activity_type_unsupported` | アクティビティのキューで稼働中のポーラーは別の型を公開しています。そのキューに報告された型を登録します。 |
+| `eligible_worker_slots_busy` | 対象タスクを処理できる全 Worker が、このタスク種別の空きスロットはゼロだと直近に報告しました。Waterline では詳細を開いて実行の診断を確認します。CLI では所見のキュー、型、Worker 数を確認します。処理中のタスクを調べ、滞留が続く場合は互換性のある Worker を追加します。 |
 | `expired_leases` | キューに期限切れのリースがあります。修復する前に Worker の健全性、対象タスクのリースと失敗を確認します。 |
 | `task_problem` | ワークフロータスクに現在の問題があります。保留中のタスクと最近の失敗を調べます。 |
 | `task_recovery_history` | 過去のワークフロータスクの問題について復旧履歴があります。その履歴と現在の稼働状態を確認します。 |
@@ -172,6 +175,8 @@ Waterline で対象の実行を開き、タイムラインで最後に記録さ�
 | `workflow_build_draining` | タスクに割り当て停止中のビルドが必要です。処理を受け付ける場合はビルドを再開し、互換 Worker のポーリングを確認します。 |
 | `no_eligible_workflow_worker` | タスクのビルドと型に対応するアクティブな Worker がありません。対応する Worker を起動して登録とポーリングを確認します。 |
 | `workflow_definition_routing_blocked` | 準備済みタスクに適格なワークフロー定義の経路がありません。実行のルーティング要件とキュー上の Worker が公開する定義を確認します。 |
+
+この所見には適格な全 Worker の最新のスロット報告が必要です。報告が古い場合や欠けている場合、空き容量は不明です。PHP Server 2.x では `dw task-queue:describe <queue> --json` で `throttled` と上限に達したリース数または配信数を確認します。ネイティブ Server 3.x ではこれらのタスクを Worker の並行処理数で制御します。[キューの受付制御](./polyglot/task-queue-admission.md)
 
 ## Waterline のデプロイとアクセス {#waterline-deployment-and-access}
 
