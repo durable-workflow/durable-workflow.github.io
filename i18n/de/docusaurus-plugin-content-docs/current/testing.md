@@ -30,6 +30,12 @@ php artisan workflow:v2:replay-simulate replay-bundles \
   --json --output=replay-report.json
 ```
 
+Seit Workflow 2.36.1 kann eine Replay-Abweichung die Methode im Workflow, den Dateinamen und die Zeilennummer enthalten. Lesen Sie die Aufrufstelle aus dem Bericht für den einzelnen Lauf aus.
+
+```bash
+jq '.replay_diff.divergence.workflow_source' replay-one.json
+```
+
 Ein Rückgabecode ungleich null blockiert die Promotion. Auch bei null kann eine Prüfung nötig sein. Speichern Sie diese Prüfung des Sammelberichts als `gate-replay.php` und führen Sie `php gate-replay.php replay-report.json` in CI aus:
 
 ```php
@@ -52,9 +58,15 @@ Server-Images, deren enthaltene CLI und HTTP-Exporte von `dw`/SDK hängen vom ta
 
 **PHP:** verwenden Sie `DurableWorkflow\Worker\Replayer::replay()` mit dem Codec der Anwendung, der aufrufbaren Funktion, Ereignisliste, ursprünglichen Eingabe, Queue und aufgezeichneten Task-Identität. Lassen Sie `NonDeterministicWorkflow` den Test fehlschlagen und prüfen Sie erwartete Befehle und Ergebnisse. Siehe [PHP-Replay-Tests](https://php.durable-workflow.com/build/testing/).
 
+Seit PHP SDK 3.24.2 liefert `NonDeterministicWorkflow::workflowSource()` die Funktion oder Methode im Workflow, den Dateinamen und die Zeilennummer.
+
 **Python:** verwenden Sie `Replayer.replay()` oder `verify_replay()` mit registrierten Kandidaten-Workflows und prüfen Sie das erwartete Ergebnis. Ein zurückgegebenes Objekt allein ist kein erfolgreicher Test. Übergeben Sie die ursprüngliche dekodierte `start_input`, wenn Ereignisse sie nicht enthalten: Core-Exporte speichern sie unter `payloads.arguments`. Behalten Sie aufgezeichneten Typ, IDs und Codec bei. Siehe [Python-Replay-APIs](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` prüft Integrität und keinen Kandidatencode. Die aktuelle Kompatibilität mit Schema 2 wird in [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) verfolgt. Schreiben Sie weder Version noch Prüfsumme um, um eine Ablehnung zu umgehen.
 
+Ab SDK 2.22.1 liefert `report.to_dict()["divergence"]["workflow_source"]` die Funktion im Workflow, den Dateinamen und die Zeilennummer, wenn der ausgegebene Schritt von der Historie abweicht und seine Aufrufstelle verfügbar ist.
+
 **Rust:** SDK **4.5.0 oder neuer** bietet `testing::WorkflowEnvironment` und `WorkflowHistory` für Activity-/Workflow-Tests ohne Server sowie Replay vollständiger Exporte. Übernehmen Sie Kandidatenregistrierungen, bewahren Sie ursprüngliche Eingabe/alle Historienseiten und prüfen Sie Abschluss oder den erwarteten wartenden Präfix. Abweichungen liefern typisiertes `Error::NonDeterministicReplay` mit dauerhafter Sequenz und erwarteten/tatsächlichen Befehlen. Neue Select-Rennen und andere nicht unterstützte Ausführungspfade brauchen Integrationstests. Siehe [Rust-Tests, Determinismusregeln und Replay-Beispiele](./polyglot/rust.md#offline-testing-and-replay).
+
+Seit SDK 4.22.1 gibt `ReplayFailure.message` auch den Dateinamen und die Zeilennummer an, an der ein Future für eine direkte Activity, eine lokale Activity oder einen Timer erstellt wurde.
 
 ## Tests mit Verzögerungen schnell halten {#keeping-delay-tests-fast}
 

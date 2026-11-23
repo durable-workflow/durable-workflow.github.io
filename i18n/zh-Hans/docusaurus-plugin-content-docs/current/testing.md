@@ -30,6 +30,12 @@ php artisan workflow:v2:replay-simulate replay-bundles \
   --json --output=replay-report.json
 ```
 
+从 Workflow 2.36.1 起，重放不一致报告可能包含工作流中的方法名、文件名和行号。可以从单次运行的报告读取该位置。
+
+```bash
+jq '.replay_diff.divergence.workflow_source' replay-one.json
+```
+
 非零退出码会阻止晋升；退出码为零仍可能需要审核。将以下批量报告检查保存为 `gate-replay.php`，并在 CI 中运行 `php gate-replay.php replay-report.json`：
 
 ```php
@@ -52,9 +58,15 @@ Server 镜像、镜像内的 CLI 及 `dw`/SDK HTTP 导出依赖实际的 Server 
 
 **PHP：** 使用 `DurableWorkflow\Worker\Replayer::replay()`，提供应用的编解码器、可调用对象、事件列表、原始输入、队列和记录的任务标识。让 `NonDeterministicWorkflow` 使测试失败，并断言预期命令和结果。请参阅 [PHP 重放测试](https://php.durable-workflow.com/build/testing/)。
 
+从 PHP SDK 3.24.2 起，可以使用 `NonDeterministicWorkflow::workflowSource()` 获取工作流的函数名或方法名、文件名和行号。
+
 **Python：** 对已注册的候选工作流使用 `Replayer.replay()` 或 `verify_replay()`，并断言预期结果。仅返回一个对象不代表断言通过。若事件中省略了输入，应提供原始解码后的 `start_input`：Core 导出将其存储在 `payloads.arguments` 中。保留记录的类型、ID 和编解码器。请参阅 [Python 重放 API](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories)。`--simulate-bundles` 检查完整性，而不执行候选代码；当前与 schema 2 的兼容性由 [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) 跟踪。不要通过改写版本或校验和来绕过拒绝。
 
+在 SDK 2.22.1 及更高版本中，如果生成的步骤与历史记录不一致，且可以确定调用位置，`report.to_dict()["divergence"]["workflow_source"]` 会提供工作流的函数名、文件名和行号。
+
 **Rust：** SDK **4.5.0 或更新版本**提供 `testing::WorkflowEnvironment` 和 `WorkflowHistory`，用于无需 Server 的活动/工作流测试和自包含导出的重放。复用候选注册，保留原始输入/全部历史分页，并断言完成状态或预期的等待前缀。偏差返回类型化的 `Error::NonDeterministicReplay`，带有持久序列及预期/实际命令。新的 select 竞争和其他不支持的执行路径仍需集成测试。参见 [Rust 测试、确定性规则和重放示例](./polyglot/rust.md#offline-testing-and-replay)。
+
+从 SDK 4.22.1 起，`ReplayFailure.message` 还会提供直接调用活动、本地活动或计时器时创建 Future 所在的文件名和行号。
 
 ## 加快含延迟的测试 {#keeping-delay-tests-fast}
 

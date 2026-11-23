@@ -30,6 +30,12 @@ php artisan workflow:v2:replay-simulate replay-bundles \
   --json --output=replay-report.json
 ```
 
+A partir de Workflow 2.36.1, una divergencia de reproducción puede incluir el método del workflow, el nombre del archivo y la línea. Consulte la ubicación en el informe de una sola ejecución.
+
+```bash
+jq '.replay_diff.divergence.workflow_source' replay-one.json
+```
+
 Un código de salida distinto de cero bloquea la promoción. Un cero todavía puede exigir revisión. Guarde esta comprobación del informe de lote como `gate-replay.php` y ejecute `php gate-replay.php replay-report.json` en CI:
 
 ```php
@@ -52,9 +58,15 @@ Las imágenes Server, su CLI incluido y las exportaciones HTTP de `dw`/SDK depen
 
 **PHP:** use `DurableWorkflow\Worker\Replayer::replay()` con el codec de la aplicación, el callable, la lista de eventos, la entrada original, la cola y la identidad registrada de la tarea. Deje que `NonDeterministicWorkflow` haga fallar la prueba y compruebe comandos y resultados esperados. Consulte las [pruebas de replay de PHP](https://php.durable-workflow.com/build/testing/).
 
+A partir del SDK de PHP 3.24.2, use `NonDeterministicWorkflow::workflowSource()` para obtener la función o el método del workflow, el nombre del archivo y la línea.
+
 **Python:** use `Replayer.replay()` o `verify_replay()` con los workflows candidatos registrados y compruebe el resultado esperado. Recibir un objeto no es, por sí solo, una aserción satisfactoria. Proporcione el `start_input` original decodificado cuando los eventos no lo incluyan: Core lo almacena en `payloads.arguments`. Conserve el tipo, los ID y el codec registrados. Consulte las [API de replay de Python](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` comprueba integridad, no código candidato; la compatibilidad actual con el esquema 2 se sigue en [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). No reescriba la versión ni la suma de comprobación para evitar un rechazo.
 
+En el SDK 2.22.1 o posterior, `report.to_dict()["divergence"]["workflow_source"]` indica la función del workflow, el nombre del archivo y la línea cuando el paso emitido difiere del historial y se dispone de su ubicación.
+
 **Rust:** el SDK **4.5.0 o posterior** proporciona `testing::WorkflowEnvironment` y `WorkflowHistory` para pruebas de actividades/workflows sin Server y reproducción de exportaciones completas. Reutilice los registros candidatos, conserve la entrada original/todas las páginas y compruebe la finalización o el prefijo pendiente esperado. Una divergencia devuelve `Error::NonDeterministicReplay` tipado con la secuencia duradera y los comandos esperados/reales. Las carreras select nuevas y otros caminos no soportados necesitan integración. Consulte las [pruebas, reglas de determinismo y ejemplos de reproducción de Rust](./polyglot/rust.md#offline-testing-and-replay).
+
+A partir del SDK 4.22.1, `ReplayFailure.message` también indica el nombre del archivo y la línea donde se creó el futuro de una llamada directa a una actividad, una actividad local o un temporizador.
 
 ## Pruebas rápidas con retrasos {#keeping-delay-tests-fast}
 

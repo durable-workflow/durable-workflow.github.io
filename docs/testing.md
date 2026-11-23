@@ -30,6 +30,12 @@ php artisan workflow:v2:replay-simulate replay-bundles \
   --json --output=replay-report.json
 ```
 
+Starting in Workflow 2.36.1, a replay mismatch can include the authored method, filename and line. Read the location from the single-run report:
+
+```bash
+jq '.replay_diff.divergence.workflow_source' replay-one.json
+```
+
 A nonzero exit blocks promotion. An exit of zero can still require review. Save this batch-report gate as `gate-replay.php` and run `php gate-replay.php replay-report.json` in CI:
 
 ```php
@@ -50,11 +56,11 @@ exit($allowed ? 0 : 1);
 
 Server images, their bundled CLI and `dw`/SDK HTTP exports depend on the actual Server producer. The Core 2.11.4 release alone does not upgrade or qualify those artifacts. Follow the separate [Server #692 package-pin, image and installed-transport qualification](https://github.com/durable-workflow/server/issues/692); do not infer an HTTP fix from the Core tag. Keep refusing invalid bundles.
 
-**PHP:** use `DurableWorkflow\Worker\Replayer::replay()` with the application's codec, callable, event list, original input, queue and recorded task identity. Let `NonDeterministicWorkflow` fail the test and assert the expected commands/result. See [PHP replay testing](https://php.durable-workflow.com/build/testing/).
+**PHP:** use `DurableWorkflow\Worker\Replayer::replay()` with the application's codec, callable, event list, original input, queue and recorded task identity. Let `NonDeterministicWorkflow` fail the test and assert the expected commands/result. Starting in PHP SDK 3.24.2, use `NonDeterministicWorkflow::workflowSource()` to retrieve the authored function or method, filename and line. See [PHP replay testing](https://php.durable-workflow.com/build/testing/).
 
-**Python:** use `Replayer.replay()` or `verify_replay()` against registered candidate workflows and assert the expected outcome. A returned object alone is not a passing assertion. Supply the original decoded `start_input` when events omit it: Core exports store it under `payloads.arguments`. Preserve recorded type, IDs and codec. See [Python replay APIs](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` checks integrity, not candidate code; current schema-2 compatibility is tracked in [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Do not rewrite a version or checksum to bypass refusal.
+**Python:** use `Replayer.replay()` or `verify_replay()` against registered candidate workflows and assert the expected outcome. A returned object alone is not a passing assertion. In SDK 2.22.1 and later, `report.to_dict()["divergence"]["workflow_source"]` gives the authored function, filename and line when a yielded step disagrees with history and its source is available. Supply the original decoded `start_input` when events omit it: Core exports store it under `payloads.arguments`. Preserve recorded type, IDs and codec. See [Python replay APIs](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` checks integrity, not candidate code; current schema-2 compatibility is tracked in [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Do not rewrite a version or checksum to bypass refusal.
 
-**Rust:** SDK **4.5.0 or newer** provides `testing::WorkflowEnvironment` and `WorkflowHistory` for Server-free activity/workflow tests and replay of self-contained exports. Reuse candidate registrations, preserve original input/all history pages, and assert completion or the expected pending prefix. Divergence returns typed `Error::NonDeterministicReplay` with its durable sequence and expected/actual commands. New select races and other unsupported execution paths still need integration tests. See the [Rust tests, determinism rules and replay examples](./polyglot/rust.md#offline-testing-and-replay).
+**Rust:** SDK **4.5.0 or newer** provides `testing::WorkflowEnvironment` and `WorkflowHistory` for Server-free activity/workflow tests and replay of self-contained exports. Reuse candidate registrations, preserve original input/all history pages, and assert completion or the expected pending prefix. Divergence returns typed `Error::NonDeterministicReplay` with its durable sequence and expected/actual commands. Starting in SDK 4.22.1, `ReplayFailure.message` also reports the filename and line where a direct activity, local activity or timer future was created. New select races and other unsupported execution paths still need integration tests. See the [Rust tests, determinism rules and replay examples](./polyglot/rust.md#offline-testing-and-replay).
 
 ## Keeping delay tests fast
 
