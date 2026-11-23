@@ -30,6 +30,12 @@ php artisan workflow:v2:replay-simulate replay-bundles \
   --json --output=replay-report.json
 ```
 
+Workflow 2.36.1 以降では、リプレイに不一致がある場合に、ワークフローのメソッド名、ファイル名、行番号が報告されることがあります。単一実行のレポートから呼び出し位置を確認できます。
+
+```bash
+jq '.replay_diff.divergence.workflow_source' replay-one.json
+```
+
 終了コードがゼロ以外なら昇格をブロックします。ゼロでもレビューが必要な場合があります。次の一括レポート用の判定を `gate-replay.php` として保存し、CI で `php gate-replay.php replay-report.json` を実行します。
 
 ```php
@@ -52,9 +58,15 @@ Server イメージ、内蔵 CLI、`dw`/SDK の HTTP エクスポートは、実
 
 **PHP:** アプリケーションのコーデック、呼び出し可能オブジェクト、イベント一覧、元の入力、キュー、記録されたタスク ID を指定して `DurableWorkflow\Worker\Replayer::replay()` を使います。`NonDeterministicWorkflow` でテストを失敗させ、期待するコマンドと結果を検証してください。[PHP のリプレイテスト](https://php.durable-workflow.com/build/testing/)を参照してください。
 
+PHP SDK 3.24.2 以降では、`NonDeterministicWorkflow::workflowSource()` でワークフローの関数名またはメソッド名、ファイル名、行番号を取得できます。
+
 **Python:** 登録した候補ワークフローに対して `Replayer.replay()` または `verify_replay()` を使い、期待する結果を検証します。オブジェクトが返るだけではテストの成功になりません。イベントに入力が含まれない場合は、デコードした元の `start_input` を渡してください。Core のエクスポートでは `payloads.arguments` に保存されます。記録された型、ID、コーデックを維持します。[Python のリプレイ API](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories)を参照してください。`--simulate-bundles` が確認するのは整合性であり、候補コードではありません。現行スキーマ 2 との互換性は [Python #173](https://github.com/durable-workflow/sdk-python/issues/173) で管理しています。拒否を回避するためにバージョンやチェックサムを書き換えないでください。
 
+SDK 2.22.1 以降では、生成したステップが履歴と一致せず、呼び出し位置を特定できる場合、`report.to_dict()["divergence"]["workflow_source"]` でワークフローの関数名、ファイル名、行番号を確認できます。
+
 **Rust:** SDK **4.5.0 以降**の `testing::WorkflowEnvironment` と `WorkflowHistory` で、Server 不要のアクティビティ/ワークフローテストと自己完結したエクスポートのリプレイができます。候補の登録を再利用し、元の入力/全履歴ページを保持して、完了または期待する待機プレフィックスをアサートしてください。不一致は永続シーケンスと期待/実際のコマンドを持つ型付き `Error::NonDeterministicReplay` になります。新しい select 競合など未対応の実行経路には統合テストが必要です。[Rust テスト、決定性ルール、リプレイ例](./polyglot/rust.md#offline-testing-and-replay)を参照してください。
+
+SDK 4.22.1 以降では、`ReplayFailure.message` に、アクティビティ、ローカルアクティビティ、またはタイマーを直接呼び出して Future を作成したファイル名と行番号も表示されます。
 
 ## 遅延を含むテストを高速に保つ {#keeping-delay-tests-fast}
 

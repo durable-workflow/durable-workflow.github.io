@@ -30,6 +30,12 @@ php artisan workflow:v2:replay-simulate replay-bundles \
   --json --output=replay-report.json
 ```
 
+A partir do Workflow 2.36.1, uma divergência de replay pode incluir o método do workflow, o nome do arquivo e o número da linha. Consulte o local no relatório de uma única execução.
+
+```bash
+jq '.replay_diff.divergence.workflow_source' replay-one.json
+```
+
 Um código de saída diferente de zero bloqueia a promoção. Zero ainda pode exigir revisão. Salve esta verificação do relatório em lote como `gate-replay.php` e execute `php gate-replay.php replay-report.json` na CI:
 
 ```php
@@ -52,9 +58,15 @@ Imagens Server, seu CLI incluído e exportações HTTP de `dw`/SDK dependem do p
 
 **PHP:** use `DurableWorkflow\Worker\Replayer::replay()` com o codec da aplicação, o callable, a lista de eventos, a entrada original, a fila e a identidade registrada da tarefa. Deixe `NonDeterministicWorkflow` reprovar o teste e confira os comandos e resultados esperados. Consulte os [testes de replay em PHP](https://php.durable-workflow.com/build/testing/).
 
+A partir do SDK PHP 3.24.2, use `NonDeterministicWorkflow::workflowSource()` para obter a função ou o método do workflow, o nome do arquivo e o número da linha.
+
 **Python:** use `Replayer.replay()` ou `verify_replay()` com os workflows candidatos registrados e confira o resultado esperado. Receber um objeto, por si só, não é uma asserção aprovada. Forneça o `start_input` original decodificado quando os eventos o omitirem: o Core o armazena em `payloads.arguments`. Preserve o tipo, os IDs e o codec registrados. Consulte as [APIs de replay em Python](https://python.durable-workflow.com/sdk-reference/#replay-captured-histories). `--simulate-bundles` verifica integridade, não código candidato; a compatibilidade atual com o esquema 2 está em [Python #173](https://github.com/durable-workflow/sdk-python/issues/173). Não reescreva a versão nem o checksum para contornar uma recusa.
 
+No SDK 2.22.1 ou posterior, `report.to_dict()["divergence"]["workflow_source"]` informa a função do workflow, o nome do arquivo e a linha quando a etapa emitida diverge do histórico e seu local está disponível.
+
 **Rust:** o SDK **4.5.0 ou mais recente** oferece `testing::WorkflowEnvironment` e `WorkflowHistory` para testes de atividades/workflows sem Server e replay de exportações completas. Reutilize os registros candidatos, preserve a entrada original/todas as páginas e verifique a conclusão ou o prefixo pendente esperado. Divergências retornam `Error::NonDeterministicReplay` tipado com sequência durável e comandos esperados/reais. Novas disputas select e outros caminhos não suportados precisam de integração. Consulte os [testes, regras de determinismo e exemplos de replay do Rust](./polyglot/rust.md#offline-testing-and-replay).
+
+A partir do SDK 4.22.1, `ReplayFailure.message` também informa o nome do arquivo e a linha onde o future de uma chamada direta de atividade, atividade local ou timer foi criado.
 
 ## Testes rápidos com atrasos {#keeping-delay-tests-fast}
 
