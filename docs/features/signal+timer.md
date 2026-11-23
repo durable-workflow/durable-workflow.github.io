@@ -69,6 +69,8 @@ The same rule applies when a condition inside `select()` races its timeout. A na
 
 For named signals, `await('name', timeout: minutes(5))` returns the signal payload when the signal arrives and `null` when the timeout wins. `null` is reserved for timeout: no-argument signals resolve to `true`, one argument resolves to that value, and multiple arguments resolve to an array. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.
 
+For service-mode ordering, see [timed conditions on Native Server](../polyglot/workflow-signals.md#timed-condition-order).
+
 ## `awaitWithTimeout()` Helper
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` is a sugar wrapper for `await($condition, timeout: $timeout, conditionKey: $conditionKey)`. The argument order puts the deadline first to make the timeout intent obvious at the call site.

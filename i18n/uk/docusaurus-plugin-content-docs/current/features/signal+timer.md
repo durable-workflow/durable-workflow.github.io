@@ -69,6 +69,8 @@ $workflow->markReady();
 
 Для іменованих signal `await('name', timeout: minutes(5))` повертає дані signal після надходження та `null`, якщо перемагає тайм-аут. `null` зарезервовано для тайм-ауту: signal без аргументів повертає `true`, з одним аргументом — це значення, з кількома — масив. `Workflow\V2` не використовує застарілі методи зміни стану `#[SignalMethod]`.
 
+Про порядок у service mode див. [умови з обмеженням часу в Native Server](../polyglot/workflow-signals.md#timed-condition-order).
+
 ## Допоміжна функція `awaitWithTimeout()` {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` — зручна оболонка для `await($condition, timeout: $timeout, conditionKey: $conditionKey)`. Крайній строк стоїть першим аргументом, щоб намір обмежити очікування був очевидним у місці виклику.

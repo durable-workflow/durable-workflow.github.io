@@ -69,6 +69,8 @@ La misma regla se aplica cuando una condición de `select()` compite con su plaz
 
 Para señales con nombre, `await('name', timeout: minutes(5))` devuelve la carga de la señal al llegar y `null` si vence el plazo. `null` se reserva para el vencimiento: una señal sin argumentos produce `true`, con un argumento produce ese valor y con varios produce un array. `Workflow\V2` no usa los métodos mutadores heredados `#[SignalMethod]` para cambiar el estado.
 
+Para el orden en modo servicio, consulta [condiciones con plazo en Native Server](../polyglot/workflow-signals.md#timed-condition-order).
+
 ## Función auxiliar `awaitWithTimeout()` {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` abrevia `await($condition, timeout: $timeout, conditionKey: $conditionKey)`. Coloca el plazo primero para que su intención sea visible en la llamada.

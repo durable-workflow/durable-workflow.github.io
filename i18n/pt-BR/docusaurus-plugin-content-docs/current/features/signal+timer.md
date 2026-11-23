@@ -69,6 +69,8 @@ A mesma regra vale quando uma condição em `select()` compete com seu prazo. Um
 
 Para sinais nomeados, `await('name', timeout: minutes(5))` retorna o payload do sinal quando ele chega e `null` quando o tempo limite vence. `null` é reservado ao tempo limite: sinais sem argumentos resolvem para `true`, com um argumento resolvem para esse valor e com vários argumentos resolvem para um array. `Workflow\V2` não usa os métodos mutadores legados `#[SignalMethod]` para alterar o estado do workflow.
 
+Para a ordem no modo de serviço, consulte [condições com prazo no Native Server](../polyglot/workflow-signals.md#timed-condition-order).
+
 ## Helper `awaitWithTimeout()` {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` é um atalho para `await($condition, timeout: $timeout, conditionKey: $conditionKey)`. A ordem dos argumentos coloca o prazo primeiro para deixar clara a intenção de limitar o tempo no local da chamada.
