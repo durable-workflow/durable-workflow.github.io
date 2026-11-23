@@ -79,6 +79,34 @@ Long-lived loops can shed history without inventing a new public workflow id eve
 
 From Workflow 2.28, activities and timers the closing run never awaited are cancelled when it continues as new; children are handed to the continued run instead. See [Losers when the run closes](./concurrency.md#selection-losers-at-close).
 
+## Continue on a promoted build {#continue-on-a-promoted-build}
+
+Use `continueAsNewWithTarget('promoted', ...)` at a point where the next run
+can start on the promoted build. Its history starts fresh. Pass the state it
+needs as arguments and keep those arguments compatible with the promoted
+build's workflow signature and payload codec. Use `continueAsNew()` to keep
+the current run's compatibility marker.
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+After upgrading and running the package migrations, set
+`DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true` and set
+`DW_V2_PROMOTED_COMPATIBILITY` to the chosen marker on every embedded worker,
+including workers still processing the old build's runs. Configure each
+worker's served namespaces and declare the workflow type in
+`workflows.v2.types.workflows`. A Laravel queue worker on the promoted build
+must have a fresh heartbeat for the exact namespace, queue and workflow type.
+
+If no worker qualifies, admission leaves the current run open and creates
+no successor. The worker records `promoted_build_unavailable` and retries under
+the original workflow task's retry policy. Waterline shows the current refusal
+and any scheduled retry. After admission succeeds, both run histories and
+Waterline's lineage show the recorded source and destination markers.
+
 ## History Budget {#history-budget}
 
 Workflow code can observe its current history length and a continue-as-new suggestion flag through explicit runtime context. This lets long-lived loops hand off deliberately before they hit history-budget cliffs.
@@ -143,7 +171,7 @@ When a workflow continues as new, the new run inherits the previous run's metada
 | Memo | Full merged map carries forward, including mid-run upserts |
 | Visibility labels | Carried forward as-is (set once at start time) |
 | Business key | Carried forward as-is |
-| Compatibility marker | Carried forward so the new run targets the same worker build |
+| Compatibility marker | Inherited by default. A [promoted-build continuation](#continue-on-a-promoted-build) selects the successor's marker at admission. |
 | Message cursor position | Carried forward so the new run knows which inbound messages were already consumed through [Message Streams](./message-streams.md) |
 
 The new run starts with the inherited metadata and can continue upserting search attributes and memo from there. This means a long-lived polling workflow can accumulate metadata across generations without losing state when it sheds history.

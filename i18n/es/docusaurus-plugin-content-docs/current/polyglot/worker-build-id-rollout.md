@@ -101,6 +101,14 @@ El servidor no ofrece reparto porcentual entre cohortes. Los nuevos inicios sele
 
 Añadir workers cambia la capacidad, no la política de selección promovida. Para aislar un canary, usa una cola separada y dirige explícitamente a ella algunos inicios de la aplicación. Al promover en la cola original, conserva workers antiguos para las ejecuciones ya fijadas.
 
+## Migrar una cadena en su próxima continuación {#move-a-chain-at-its-next-continuation}
+
+Si el Server y el SDK negocian `continue_as_new_target_build` mediante el protocolo de worker 1.21, puedes elegir la compilación promovida al continuar como nueva. La ejecución sucesora empieza con un historial nuevo y recibe los argumentos que le pases. Usa esta opción cuando la compilación promovida pueda decodificar y aceptar esos argumentos. El continue-as-new habitual conserva la fijación de la ejecución anterior.
+
+Al cerrar la ejecución anterior, el Server selecciona la promoción persistida para el espacio de nombres, la cola y el tipo de workflow exactos de la sucesora. La compilación de destino puede tener cero workers si el Server conserva evidencia de que atiende ese tipo. Si no hay ninguna promoción válida, el Server rechaza la transición y mantiene abierta la ejecución actual. El worker informa de `promoted_build_unavailable` mediante los reintentos habituales de la tarea de workflow. Waterline muestra el rechazo y la hora del próximo reintento si está programado. Una transición correcta registra ambas fijaciones en los historiales de las ejecuciones vinculadas.
+
+Mantén disponibles los workers de la compilación anterior mientras las ejecuciones abiertas los necesiten. Cada cadena migra cuando se confirma su propia continuación con esta opción. Las ejecuciones hijas abiertas conservan sus propias fijaciones.
+
 ## Drenar una compilación antigua {#drain-an-older-build}
 
 El drenaje impide que los polls de workflow, actividad y query de la cohorte reclamen trabajo nuevo; no traslada tareas. Un poll de un worker drenado recibe HTTP409 con `poll_status: "draining"` y `reason: "worker_draining"`. Las concesiones existentes conservan su autoridad original.
@@ -121,7 +129,7 @@ Drenar o detener todos los workers no demuestra que se pueda eliminar el artefac
 
 Restaura workers conocidos como correctos, reanuda su cohorte si hace falta y promueve esa compilación para futuros inicios. Después revierte el despliegue defectuoso. La reversión no reescribe fijaciones ni entrega su trabajo restante a otra compilación. Conserva workers compatibles o toma una decisión explícita de recuperación en la aplicación.
 
-Los reintentos, hijos y continue-as-new heredan la fijación original. Una cadena continuada indefinidamente no migra a la compilación recién promovida. Usa una identidad estable para despliegues compatibles con replay, o termina la cadena antigua y crea una instancia realmente nueva bajo la nueva selección. No edites campos persistidos de compatibilidad para forzar la migración.
+Los reintentos, las ejecuciones hijas y el continue-as-new habitual heredan la fijación original. Usa una identidad de compilación estable en despliegues compatibles con replay. Las cadenas de larga duración pueden [elegir la compilación promovida](#move-a-chain-at-its-next-continuation) al continuar. Conserva los campos de compatibilidad almacenados durante la recuperación.
 
 ## Referencia de endpoints y comandos {#endpoints-and-commands-reference}
 

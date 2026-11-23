@@ -141,6 +141,26 @@ For an isolated canary, choose a separate queue and explicitly route selected
 application starts there. Keep old-build workers for old pinned runs when
 promoting the new build on the original queue.
 
+## Move a chain at its next continuation {#move-a-chain-at-its-next-continuation}
+
+With a Server and SDK that negotiate `continue_as_new_target_build` on worker
+protocol 1.21, opt into the promoted build at a continue-as-new boundary. The
+successor starts a fresh history with the arguments you pass it. Use this option
+when the promoted build can decode and accept those arguments. Plain
+continue-as-new keeps the predecessor's build pin.
+
+Server selects the durable promotion for the successor's exact namespace, queue
+and workflow type when it closes the predecessor. The destination can be scaled
+to zero if Server already has durable evidence that the build serves that type.
+If no promotion is eligible, Server refuses admission and leaves the current run
+open. The worker reports `promoted_build_unavailable` through the workflow task's
+normal retry path. Waterline shows the refusal and any scheduled retry. A
+successful transition records both build pins in the linked runs' histories.
+
+Keep old-build workers available while open runs still need that build. Each
+chain moves when its own opted-in continuation commits. Open child runs keep
+their own build pins.
+
 ## Drain An Older Build {#drain-an-older-build}
 
 Draining prevents that cohort's workflow, activity and query polls from claiming
@@ -171,11 +191,10 @@ build. Rollback does not rewrite existing run pins or deliver their remaining
 work to a different build. Preserve compatible workers for those runs or make
 an explicit application recovery decision.
 
-Retries, children and continue-as-new inherit the original compatibility pin.
-An indefinitely continued chain does not migrate to the newly promoted build.
-Use a stable build identity for replay-compatible deployments, or finish the
-old chain and start a genuinely new instance under the new-start policy. Do
-not edit stored compatibility fields to force a migration.
+Retries, children and plain continue-as-new inherit the original compatibility
+pin. Use a stable build identity for replay-compatible deployments. Long-lived
+chains can [opt into the promoted build](#move-a-chain-at-its-next-continuation)
+when they continue. Keep stored compatibility fields intact during recovery.
 
 ## Endpoints And Commands Reference {#endpoints-and-commands-reference}
 

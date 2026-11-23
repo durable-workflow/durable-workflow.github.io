@@ -101,6 +101,14 @@ Der Server verteilt keinen prozentualen Traffic zwischen Build-Kohorten. Für ne
 
 Mehr Worker ändern Kapazität, nicht die promotete Startauswahl. Verwenden Sie für einen isolierten Canary eine separate Queue und leiten Sie ausgewählte Anwendungsstarts ausdrücklich dorthin. Bei einer Promotion auf der ursprünglichen Queue bleiben alte Worker für alte gepinnte Läufe notwendig.
 
+## Eine Kette bei der nächsten Fortsetzung umstellen {#move-a-chain-at-its-next-continuation}
+
+Wenn Server und SDK `continue_as_new_target_build` über das Worker-Protokoll 1.21 aushandeln, kann der Workflow beim Continue-as-new den promoteten Build wählen. Der Nachfolgelauf beginnt eine neue Historie mit den übergebenen Argumenten. Verwenden Sie diese Option, wenn der promotete Build die Argumente dekodieren und entgegennehmen kann. Ein gewöhnliches Continue-as-new übernimmt die Build-Bindung des vorherigen Laufs.
+
+Beim Schließen des vorherigen Laufs wählt der Server die dauerhaft gespeicherte Promotion für den genauen Namespace, die Queue und den Workflow-Typ des Nachfolgers. Der Ziel-Build kann auf null Worker skaliert sein, sofern dem Server ein dauerhafter Nachweis vorliegt, dass der Build diesen Typ bedient. Ohne geeignete Promotion lehnt der Server den Übergang ab und lässt den aktuellen Lauf offen. Der Worker meldet `promoted_build_unavailable` über die normale Wiederholungsverarbeitung der Workflow-Aufgabe. Waterline zeigt die Ablehnung und den Zeitpunkt eines geplanten Wiederholungsversuchs an. Bei erfolgreichem Übergang werden beide Build-Bindungen in den Historien der verknüpften Läufe erfasst.
+
+Halten Sie Worker des alten Builds vor, solange offene Läufe sie benötigen. Jede Kette wechselt, sobald ihre eigene Fortsetzung mit dieser Option gespeichert ist. Offene untergeordnete Läufe behalten ihre eigenen Build-Bindungen.
+
 ## Älteren Build drainen {#drain-an-older-build}
 
 Drain verhindert neue Claims durch Workflow-, Aktivitäts- und Query-Polls dieser Kohorte; es verschiebt keine Tasks. Ein Poll eines drainenden Workers erhält HTTP409 mit `poll_status: "draining"` und `reason: "worker_draining"`. Bestehende Leases behalten ihre ursprüngliche Autorität.
@@ -121,7 +129,7 @@ Drain oder das Stoppen aller Worker beweist nicht, dass das Build-Artefakt gelö
 
 Stellen Sie bekannte funktionierende Worker wieder her, setzen Sie deren Kohorte bei Bedarf fort und promoten Sie diesen Build für zukünftige Starts. Rollen Sie danach das fehlerhafte Deployment zurück. Rollback schreibt keine Pins um und liefert verbleibende Arbeit nicht an einen anderen Build. Erhalten Sie kompatible Worker für diese Läufe oder treffen Sie eine ausdrückliche Wiederherstellungsentscheidung auf Anwendungsebene.
 
-Wiederholungen, Kinder und Continue-as-new erben den ursprünglichen Pin. Eine unbegrenzt fortgesetzte Kette wechselt nicht zum neu promoteten Build. Nutzen Sie für replaykompatible Deployments eine stabile Build-Identität oder beenden Sie die alte Kette und starten Sie unter der neuen Auswahl eine wirklich neue Instanz. Erzwingen Sie keine Migration durch Änderungen gespeicherter Kompatibilitätsfelder.
+Wiederholungsversuche, untergeordnete Läufe und gewöhnliches Continue-as-new übernehmen die ursprüngliche Build-Bindung. Verwenden Sie für Replay-kompatible Deployments eine stabile Build-Identität. Langlebige Ketten können bei der Fortsetzung [den promoteten Build wählen](#move-a-chain-at-its-next-continuation). Lassen Sie gespeicherte Kompatibilitätsfelder bei der Wiederherstellung unverändert.
 
 ## Endpunkte und Befehle {#endpoints-and-commands-reference}
 

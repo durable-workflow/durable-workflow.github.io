@@ -83,6 +83,20 @@ Laufwechsel eine neue öffentliche Workflow-ID zu erfinden.
 
 Ab Workflow 2.28 werden Aktivitäten und Timer, auf die der schließende Lauf nie gewartet hat, bei Continue-as-new abgebrochen; untergeordnete Workflows werden stattdessen an den fortgesetzten Lauf übergeben. Siehe [Verlierer beim Schließen des Laufs](./concurrency.md#selection-losers-at-close).
 
+## Auf einem promoteten Build fortsetzen {#continue-on-a-promoted-build}
+
+Verwenden Sie `continueAsNewWithTarget('promoted', ...)`, wenn der nächste Lauf auf dem promoteten Build starten kann. Dieser Lauf beginnt mit einer neuen Historie. Übergeben Sie den benötigten Zustand als Argumente und stellen Sie sicher, dass Codec und Workflow-Signatur des promoteten Builds diese Argumente verarbeiten können. Mit `continueAsNew()` übernimmt der nächste Lauf den Kompatibilitätsmarker des aktuellen Laufs.
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+Aktualisieren Sie das Paket und führen Sie die Migrationen aus. Setzen Sie `DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true` und tragen Sie den gewählten Marker in `DW_V2_PROMOTED_COMPATIBILITY` auf allen eingebetteten Workern ein, einschließlich der Worker, die noch Läufe des alten Builds bearbeiten. Konfigurieren Sie die Namespaces, die jeder Worker bedient, und deklarieren Sie den Workflow-Typ in `workflows.v2.types.workflows`. Ein Laravel-Queue-Worker auf dem promoteten Build muss einen aktuellen Heartbeat für genau diesen Namespace, diese Queue und diesen Workflow-Typ haben.
+
+Steht kein geeigneter Worker bereit, bleibt der bestehende Lauf offen und es wird kein Nachfolger angelegt. Der Worker erfasst `promoted_build_unavailable` und wiederholt den Versuch gemäß der Richtlinie der ursprünglichen Workflow-Aufgabe. Waterline zeigt die aktuelle Ablehnung und den Zeitpunkt eines geplanten Wiederholungsversuchs an. Nach erfolgreicher Übernahme zeigen die Historien beider Läufe und die Laufverknüpfung in Waterline die aufgezeichneten Marker des Quell- und Ziel-Builds.
+
 ## Historienbudget {#history-budget}
 
 Workflow-Code kann über expliziten Laufzeitkontext seine aktuelle
@@ -161,7 +175,7 @@ Bei Continue-as-new erbt der neue Lauf automatisch die Metadaten des vorherigen:
 | Memo | Die vollständig zusammengeführte Zuordnung wird übernommen, einschließlich Upserts während des Laufs |
 | Sichtbarkeitslabels | Unverändert übernommen, einmalig beim Start gesetzt |
 | Geschäftsschlüssel | Unverändert übernommen |
-| Kompatibilitätsmarker | Übernommen, damit der neue Lauf denselben Worker-Build adressiert |
+| Kompatibilitätsmarker | Wird standardmäßig übernommen. Bei [Fortsetzung auf einem promoteten Build](#continue-on-a-promoted-build) wird der Marker des Nachfolgelaufs bei Annahme des Übergangs bestimmt. |
 | Nachrichten-Cursor-Position | Übernommen, damit der neue Lauf weiß, welche eingehenden Nachrichten über [Nachrichtenströme](./message-streams.md) bereits verbraucht wurden |
 
 Der neue Lauf startet mit den geerbten Metadaten und kann Suchattribute und

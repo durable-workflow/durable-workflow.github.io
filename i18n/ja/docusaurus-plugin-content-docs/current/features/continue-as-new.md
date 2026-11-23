@@ -68,6 +68,20 @@ Core 2.7.0 と互換 Server は、実行のコマンド契約にハンドラー�
 
 Workflow 2.28 以降、閉じる実行が待たなかったアクティビティとタイマーは continue-as-new の時点でキャンセルされます。子ワークフローは代わりに継続後の実行に引き渡されます。[実行が閉じるときの敗者](./concurrency.md#selection-losers-at-close)を参照してください。
 
+## 昇格したビルドで続行する {#continue-on-a-promoted-build}
+
+次の実行を昇格したビルドで開始できるタイミングで、`continueAsNewWithTarget('promoted', ...)` を呼び出します。次の実行では新しい履歴が始まります。必要な状態を引数として渡し、昇格したビルドのワークフローのシグネチャとペイロードコーデックで処理できることを確認してください。現在の実行の互換性マーカーを引き継ぐには `continueAsNew()` を使います。
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+パッケージを更新してマイグレーションを実行した後、すべての組み込みモードの Worker で `DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true` を設定し、`DW_V2_PROMOTED_COMPATIBILITY` に選んだマーカーを指定します。旧ビルドの実行を処理中の Worker にも設定してください。各 Worker が担当する名前空間を設定し、`workflows.v2.types.workflows` にワークフロー型を宣言します。昇格したビルドの Laravel キュー Worker は、対象の名前空間、キュー、ワークフロー型に一致する有効なハートビートを送っている必要があります。
+
+条件を満たす Worker がいない場合、現在の実行は開いたままで、後続の実行は作成されません。Worker は `promoted_build_unavailable` を記録し、元のワークフロータスクのポリシーに従って再試行します。Waterline には現在の拒否と、予定されている場合は次の再試行時刻が表示されます。切り替えが確定すると、両方の実行履歴と Waterline の実行のつながりに、移行元と移行先のマーカーが表示されます。
+
 ## 履歴の使用量上限 {#history-budget}
 
 ワークフローコードは明示的なランタイムコンテキストから現在の履歴長と継続推奨フラグを参照できます。長期ループが履歴の使用量上限に達する前に、計画的に引き継げます。
@@ -132,7 +146,7 @@ class PollingWorkflow extends Workflow
 | メモ | 実行中の upsert を含む結合済みマップ全体 |
 | 可視化ラベル | そのまま（開始時に1度設定） |
 | ビジネスキー | そのまま |
-| 互換性マーカー | 同じ Worker ビルドを対象にするよう引き継ぐ |
+| 互換性マーカー | 既定で引き継ぎます。[昇格したビルドで続行する](#continue-on-a-promoted-build)場合は、切り替えを受理するときに後続の実行のマーカーを決定します。 |
 | メッセージカーソル位置 | [メッセージストリーム](./message-streams.md)で消費済みの受信メッセージを把握できるよう引き継ぐ |
 
 新しい実行は継承したメタデータから開始し、検索属性とメモの upsert を続けられます。長期のポーリングワークフローも、履歴を減らす際に状態を失わず世代をまたいでメタデータを蓄積できます。

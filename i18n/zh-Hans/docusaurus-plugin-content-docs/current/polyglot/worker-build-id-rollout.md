@@ -101,6 +101,14 @@ async with Client("https://durable-workflow.example", token=operator_token,
 
 增加 Worker 改变的是容量，不是提升后的新启动策略。若需隔离金丝雀，使用独立队列，并将选定的应用新启动显式路由到该队列。在原队列提升新构建时，仍须为旧固定运行保留旧 Worker。
 
+## 在链的下一次延续时切换构建 {#move-a-chain-at-its-next-continuation}
+
+当 Server 与 SDK 使用 Worker 协议 1.21 协商出 `continue_as_new_target_build` 后，可在 continue-as-new 时选择已提升的构建。后续运行使用传入的参数并开始记录新的历史。请在已提升的构建能够解码并接受这些参数时使用此选项。普通的 continue-as-new 保留前一次运行绑定的构建。
+
+Server 在关闭前一次运行时，按后续运行的确切命名空间、队列和工作流类型选择已持久化的提升目标。如果 Server 已有该构建服务此类型的持久证据，目标构建可缩容至零个 Worker。如果没有符合条件的提升目标，Server 拒绝转换并保持当前运行开放。Worker 通过工作流任务的常规重试流程报告 `promoted_build_unavailable`。Waterline 显示拒绝及已安排的重试时间。转换成功后，相互关联的运行历史会记录两个运行绑定的构建。
+
+只要还有开放运行需要旧构建，就保留该构建的 Worker。每条链在自己选用此功能的延续提交时切换。仍开放的子运行保留各自绑定的构建。
+
 ## 排空旧构建 {#drain-an-older-build}
 
 排空会阻止该群组的工作流、活动和查询 poll 领取新工作，但不会转移任务。排空中 Worker 的 poll 返回 HTTP409，包含 `poll_status: "draining"` 和 `reason: "worker_draining"`。已有租约保留原有权限。
@@ -121,7 +129,7 @@ dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v
 
 恢复已知正常的 Worker，必要时恢复其群组，并为未来启动提升该构建。随后对问题部署执行回滚。回滚不会改写已有固定关系，也不会把剩余工作交给其他构建。应保留兼容 Worker，或在应用层作出明确的恢复决定。
 
-重试、子工作流和 continue-as-new 继承原始固定关系。无限延续的链不会迁移到刚提升的构建。对可兼容回放的部署使用稳定构建身份，或结束旧链，再按新启动策略创建真正的新实例。不要修改已存储的兼容性字段来强制迁移。
+重试、子工作流和普通的 continue-as-new 继承原先绑定的构建。部署与重放兼容的代码时，请使用稳定的构建标识。长时间运行的链可在延续时[选择已提升的构建](#move-a-chain-at-its-next-continuation)。恢复时保留已存储的兼容性字段。
 
 ## 端点和命令参考 {#endpoints-and-commands-reference}
 
