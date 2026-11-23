@@ -63,7 +63,9 @@ $workflow = WorkflowStub::load('approval-with-timeout');
 $workflow->markReady();
 ```
 
-条件在超时任务触发前变为真时，返回 `true`；超时先发生时，返回 `false`。
+嵌入式 Laravel 模式按运行历史中的事件顺序判定。在该等待对应的 `TimerFired` 事件之前接受的更新，即使在定时器触发后才由 Worker 应用，也可以使条件成立。以第一个满足条件的状态为准。失败的更新以及在 `TimerFired` 之后接受的更新都不能使这次等待的条件成立。事件时间戳相同时，按它们在历史中的位置判定先后。等待结束后，重放使用已记录的结果。
+
+`select()` 内的条件与其超时之间也适用同一规则。具名信号在对应的 `TimerFired` 事件之前收到时，可以结束等待。
 
 对于具名信号，`await('name', timeout: minutes(5))` 在信号到达时返回信号载荷，超时先发生时返回 `null`。`null` 专用于超时：无参数信号解析为 `true`，一个参数解析为该值，多个参数解析为数组。`Workflow\V2` 不使用旧版 `#[SignalMethod]` 状态修改方法来更改工作流状态。
 
