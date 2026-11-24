@@ -68,6 +68,20 @@ Core 2.7.0 和兼容 Server 会保留已收到、由运行命令契约声明处�
 
 从 Workflow 2.28 起，正在关闭的运行从未等待的活动和计时器会在 continue-as-new 时被取消；子工作流则会移交给继续后的运行。参见[运行关闭时的落选成员](./concurrency.md#selection-losers-at-close)。
 
+## 在已提升的构建上继续 {#continue-on-a-promoted-build}
+
+当下一次运行可以在已提升的构建上启动时，调用 `continueAsNewWithTarget('promoted', ...)`。后续运行会开始记录新的历史。请通过参数传递所需状态，确保已提升的构建能用其数据编解码器解码这些参数，且参数符合该构建的工作流签名。调用 `continueAsNew()` 可保留当前运行的兼容性标记。
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+升级软件包并执行迁移后，在全部嵌入式 Worker 上设置 `DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true`，并将 `DW_V2_PROMOTED_COMPATIBILITY` 设为选定的标记。仍在处理旧构建运行的 Worker 也需要这些设置。配置各 Worker 服务的命名空间，并在 `workflows.v2.types.workflows` 中声明工作流类型。已提升构建上的 Laravel 队列 Worker 必须针对同一命名空间、队列和工作流类型提供有效的近期心跳。
+
+如果没有符合条件的 Worker，当前运行仍保持开放，且不会创建后续运行。Worker 记录 `promoted_build_unavailable`，并按原工作流任务的策略重试。Waterline 显示当前拒绝及已安排的重试时间。转换成功后，两次运行的历史及 Waterline 中的运行关系均显示记录的来源和目标标记。
+
 ## 历史预算 {#history-budget}
 
 工作流代码可通过显式运行时上下文读取当前历史长度和继续为新运行的建议标记，让长期循环在触及历史预算边界之前主动交接。
@@ -132,7 +146,7 @@ class PollingWorkflow extends Workflow
 | memo | 继承完整合并映射，包括运行中插入或更新的内容 |
 | 可见性标签 | 原样继承，启动时仅设置一次 |
 | 业务键 | 原样继承 |
-| 兼容性标记 | 继承，以便新运行面向相同 Worker 构建 |
+| 兼容性标记 | 默认继承。[在已提升的构建上继续](#continue-on-a-promoted-build)时，在接受转换的同时确定后续运行的标记。 |
 | 消息游标位置 | 继承，使新运行知道通过[消息流](./message-streams.md)消费过哪些入站消息 |
 
 新运行以继承的元数据开始，并可继续插入或更新搜索属性和 memo。因此，长期轮询工作流可跨执行代累积元数据，而不会在释放历史时丢失状态。

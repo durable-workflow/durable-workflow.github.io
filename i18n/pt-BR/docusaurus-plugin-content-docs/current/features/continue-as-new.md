@@ -80,6 +80,20 @@ Loops de longa duração podem limitar o histórico por execução sem inventar 
 
 A partir do Workflow 2.28, atividades e timers que a execução que está sendo encerrada nunca aguardou são cancelados quando ela continua como nova; os filhos, por outro lado, são transferidos para a nova execução. Veja [Perdedores quando a execução é encerrada](./concurrency.md#selection-losers-at-close).
 
+## Continuar em um build promovido {#continue-on-a-promoted-build}
+
+Use `continueAsNewWithTarget('promoted', ...)` quando a próxima execução puder começar no build promovido. Ela começa com um histórico novo. Passe o estado necessário como argumentos e verifique se o codec de dados e a assinatura do workflow no build promovido aceitam esses argumentos. Use `continueAsNew()` para manter o marcador de compatibilidade da execução atual.
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+Depois de atualizar o pacote e executar as migrações, defina `DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true` e configure `DW_V2_PROMOTED_COMPATIBILITY` com o marcador escolhido em todos os workers do modo integrado, inclusive os que ainda processam execuções do build anterior. Configure os namespaces atendidos por cada worker e declare o tipo de workflow em `workflows.v2.types.workflows`. Um worker de fila do Laravel no build promovido deve ter um heartbeat recente para o namespace, a fila e o tipo de workflow correspondentes.
+
+Se nenhum worker atender a esses requisitos, a execução atual continua aberta e nenhuma sucessora é criada. O worker registra `promoted_build_unavailable` e tenta novamente de acordo com a política da tarefa de workflow original. O Waterline exibe a recusa atual e o horário da próxima tentativa, quando programada. Depois que a transição é aceita, o histórico das duas execuções e a linhagem no Waterline mostram os marcadores de origem e de destino registrados.
+
 ## Limites do histórico {#history-budget}
 
 O código do workflow pode observar o tamanho atual do histórico e um indicador de sugestão de continuar como novo por meio do contexto explícito do runtime. Isso permite que loops de longa duração façam a transferência deliberadamente antes de atingir os limites do histórico.
@@ -144,7 +158,7 @@ Quando um workflow continua como novo, a nova execução herda automaticamente o
 | Memo | O mapa mesclado completo é transferido, incluindo inserções e atualizações feitas durante a execução |
 | Rótulos de visibilidade | Transferidos sem alterações (definidos uma vez no início) |
 | Chave de negócio | Transferida sem alterações |
-| Marcador de compatibilidade | Transferido para que a nova execução direcione o mesmo build de worker |
+| Marcador de compatibilidade | Herdado por padrão. A [continuação em um build promovido](#continue-on-a-promoted-build) seleciona o marcador da sucessora quando a transição é aceita. |
 | Posição do cursor de mensagens | Transferida para que a nova execução saiba quais mensagens de entrada já foram consumidas por [Fluxos de mensagens](./message-streams.md) |
 
 A nova execução inicia com os metadados herdados e pode continuar inserindo e atualizando atributos de busca e memo a partir deles. Assim, um workflow de polling de longa duração pode acumular metadados entre gerações sem perder estado ao passar para uma nova execução com histórico menor.

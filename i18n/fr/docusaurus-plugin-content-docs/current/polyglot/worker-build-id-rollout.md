@@ -101,6 +101,14 @@ Le serveur ne répartit pas les cohortes selon un pourcentage. Il choisit, pour 
 
 Ajouter des workers change la capacité, pas la politique des démarrages promus. Pour isoler un canary, utilisez une autre file et routez-y explicitement certains démarrages applicatifs. Conservez les anciens workers pour les exécutions déjà épinglées lors d'une promotion sur la file d'origine.
 
+## Déplacer une chaîne à sa prochaine poursuite {#move-a-chain-at-its-next-continuation}
+
+Lorsque le Server et le SDK négocient `continue_as_new_target_build` avec le protocole worker 1.21, vous pouvez choisir le build promu au point de continue-as-new. L’exécution suivante crée un nouvel historique avec les arguments transmis. Utilisez cette option quand le build promu peut décoder et accepter ces arguments. Un continue-as-new ordinaire conserve le build épinglé de l’exécution précédente.
+
+Quand il ferme l’exécution précédente, le Server sélectionne la promotion persistée pour l’espace de noms, la file et le type de workflow exacts de l’exécution suivante. Le build de destination peut être à zéro worker si le Server dispose déjà d’une preuve persistée qu’il prend en charge ce type. En l’absence de promotion admissible, le Server refuse la transition et laisse l’exécution actuelle ouverte. Le worker signale `promoted_build_unavailable` via le mécanisme habituel de réessai de la tâche de workflow. Waterline affiche le refus et l’heure du prochain essai s’il est planifié. Une transition réussie enregistre les deux builds épinglés dans les historiques des exécutions liées.
+
+Gardez les workers de l’ancien build disponibles tant que des exécutions ouvertes en ont besoin. Chaque chaîne change de build à la validation de sa propre poursuite avec cette option. Les exécutions enfants ouvertes conservent leurs builds épinglés.
+
 ## Drainer un ancien build {#drain-an-older-build}
 
 Le drainage empêche les polls de workflow, d'activité et de query de cette cohorte de prendre de nouvelles tâches ; il ne déplace pas ces tâches. Le poll d'un worker drainé reçoit HTTP409 avec `poll_status: "draining"` et `reason: "worker_draining"`. Les baux existants conservent leur autorité d'origine.
@@ -121,7 +129,7 @@ Drainer ou arrêter tous les workers ne prouve pas que l'artefact est supprimabl
 
 Restaurez les workers connus comme fonctionnels, reprenez leur cohorte si nécessaire et promouvez ce build pour les futurs démarrages. Appliquez ensuite le rollback au mauvais déploiement. Le rollback ne réécrit pas les épinglages et ne remet pas leur travail restant à un autre build. Gardez des workers compatibles ou prenez une décision explicite de récupération applicative.
 
-Les reprises, enfants et continue-as-new héritent du pin d'origine. Une chaîne poursuivie indéfiniment ne migre pas vers le build nouvellement promu. Gardez une identité stable pour les déploiements compatibles au replay, ou terminez la chaîne puis créez une véritable nouvelle instance sous la nouvelle politique. Ne forcez pas une migration en modifiant les champs persistés de compatibilité.
+Les réessais, les exécutions enfants et le continue-as-new ordinaire héritent de l’épinglage initial. Gardez une identité de build stable pour les déploiements compatibles avec la relecture. Les chaînes de longue durée peuvent [choisir le build promu](#move-a-chain-at-its-next-continuation) lors de la poursuite. Préservez les champs de compatibilité enregistrés lors de la récupération.
 
 ## Référence des endpoints et commandes {#endpoints-and-commands-reference}
 
