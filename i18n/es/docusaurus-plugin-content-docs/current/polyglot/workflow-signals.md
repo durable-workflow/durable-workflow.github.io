@@ -238,6 +238,8 @@ señales.
 
 Con Native Server 3.27.0 o posterior, un worker compatible y la creación de esperas ordenadas habilitada, una condición con plazo puede usar las señales y las actualizaciones aplicadas correctamente que se recibieron antes de su evento `TimerFired` original. Esto se cumple incluso si el worker evalúa la condición después de que se dispare el temporizador. El orden de recepción determina qué estado permitido satisface primero el predicado. Una señal con nombre usa el mismo límite.
 
+Para ordenar los efectos de las señales, usa el [SDK de PHP 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) o posterior. Los efectos ordenados de las actualizaciones requieren que el worker que las procesa sea compatible.
+
 En un `select()` compatible, la condición gana frente a un workflow hijo si ese primer estado que cumple el predicado precede en el historial a la finalización o al fallo del hijo. Una vez resuelta la espera, la reproducción usa el resultado registrado.
 
 La creación de esperas ordenadas está deshabilitada de forma predeterminada. Si administras tu propio Server, consulta la [guía de despliegue y reversión](https://github.com/durable-workflow/server/blob/3.27.0/rust/README.md#rolling-out-durable-input-ordering-for-timed-waits) antes de habilitarla.

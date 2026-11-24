@@ -179,6 +179,8 @@ worker.register_workflow("orders.approver", |ctx, input| async move {
 
 Native Server 3.27.0 以降と対応するワーカーを使用し、順序付き待機の作成を有効にすると、タイムアウト付き条件待機では、元の `TimerFired` イベントより前に受信したシグナルと、正常に適用された更新を評価できます。ワーカーがタイマー発火後に条件を評価する場合も同じです。対象となる状態のうち、どれが最初に条件を満たしたかは受信順で決まります。名前付きシグナルにも同じタイマー境界が適用されます。
 
+シグナルの効果を受信順に適用するには、[PHP SDK 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) 以降を使用してください。更新の効果を受信順に扱うには、その更新を処理するワーカーが対応している必要があります。
+
 対応する `select()` では、最初に条件を満たした状態が履歴上で子ワークフローの完了または失敗より前にあれば、条件待機が選ばれます。待機が解決した後は、リプレイで記録済みの結果が使われます。
 
 順序付き待機の作成はデフォルトで無効です。セルフホストの Server では、有効にする前に[ロールアウトとロールバックの手順](https://github.com/durable-workflow/server/blob/3.27.0/rust/README.md#rolling-out-durable-input-ordering-for-timed-waits)に従ってください。

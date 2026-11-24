@@ -230,6 +230,8 @@ workflow that other workflows' code must not signal in a separate namespace.
 
 With Native Server 3.27.0 or later, a compatible worker and ordered wait authoring enabled, a timed condition can use signals and successfully applied updates received before its original `TimerFired` event. This holds even if the worker evaluates the condition after the timer fires. Receipt order decides which eligible state satisfies the predicate first. A named signal uses the same timer boundary.
 
+Use [PHP SDK 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) or later for ordered signal effects. Ordered update effects require support from the worker handling the update.
+
 In a supported `select()`, the condition wins against a child workflow if that first qualifying state precedes the child’s completion or failure in history. Replay uses the recorded outcome once the wait resolves.
 
 Ordered wait authoring starts disabled. For self-hosted Server, follow the [rollout and rollback runbook](https://github.com/durable-workflow/server/blob/3.27.0/rust/README.md#rolling-out-durable-input-ordering-for-timed-waits) before enabling it.

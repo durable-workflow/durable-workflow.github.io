@@ -237,6 +237,8 @@ código de outros workflows não deva sinalizar.
 
 Com Native Server 3.27.0 ou posterior, um worker compatível e a criação de esperas ordenadas ativada, uma condição com prazo pode usar sinais e atualizações aplicadas com sucesso que tenham sido recebidos antes do evento `TimerFired` original. Isso vale mesmo quando o worker avalia a condição depois de o temporizador disparar. A ordem de recebimento determina qual estado elegível satisfaz primeiro o predicado. Um sinal nomeado segue o mesmo limite.
 
+Para ordenar os efeitos dos sinais, use o [SDK PHP 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) ou posterior. Os efeitos ordenados das atualizações dependem do suporte do worker que as processa.
+
 Em um `select()` compatível, a condição vence um workflow filho se esse primeiro estado que satisfaz o predicado preceder, no histórico, a conclusão ou a falha do filho. Depois que a espera é resolvida, a reprodução usa o resultado registrado.
 
 A criação de esperas ordenadas fica desativada por padrão. Para um Server auto-hospedado, siga o [guia de implantação e reversão](https://github.com/durable-workflow/server/blob/3.27.0/rust/README.md#rolling-out-durable-input-ordering-for-timed-waits) antes de ativá-la.

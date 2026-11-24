@@ -242,6 +242,8 @@ einen separaten Namespace.
 
 Mit Native Server ab 3.27.0, einem kompatiblen Worker und aktivierter Erzeugung geordneter Warteoperationen kann eine Bedingung mit Zeitlimit Signale und erfolgreich angewendete Updates berücksichtigen, die vor ihrem ursprünglichen `TimerFired`-Ereignis eingingen. Das gilt auch, wenn der Worker die Bedingung erst nach Auslösen des Timers prüft. Die Eingangsreihenfolge bestimmt, welcher zulässige Zustand die Bedingung zuerst erfüllt. Für ein benanntes Signal gilt dieselbe Zeitgrenze.
 
+Für geordnete Signalwirkungen verwenden Sie [PHP SDK 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) oder neuer. Geordnete Update-Wirkungen setzen voraus, dass der zuständige Worker sie unterstützt.
+
 In einem unterstützten `select()` gewinnt die Bedingung gegen einen Kind-Workflow, wenn dieser erste passende Zustand in der Historie vor dessen Abschluss oder Fehlschlag liegt. Nach Abschluss der Warteoperation verwendet Replay das gespeicherte Ergebnis.
 
 Das Erzeugen geordneter Warteoperationen ist standardmäßig deaktiviert. Folgen Sie bei einem selbst betriebenen Server vor der Aktivierung der [Anleitung für Rollout und Rollback](https://github.com/durable-workflow/server/blob/3.27.0/rust/README.md#rolling-out-durable-input-ordering-for-timed-waits).
