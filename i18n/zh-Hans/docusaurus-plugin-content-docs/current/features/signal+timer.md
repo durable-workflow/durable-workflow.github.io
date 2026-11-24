@@ -69,6 +69,8 @@ $workflow->markReady();
 
 对于具名信号，`await('name', timeout: minutes(5))` 在信号到达时返回信号载荷，超时先发生时返回 `null`。`null` 专用于超时：无参数信号解析为 `true`，一个参数解析为该值，多个参数解析为数组。`Workflow\V2` 不使用旧版 `#[SignalMethod]` 状态修改方法来更改工作流状态。
 
+有关服务模式中的顺序，请参阅[Native Server 上带超时的条件等待](../polyglot/workflow-signals.md#timed-condition-order)。
+
 ## `awaitWithTimeout()` 辅助函数 {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` 是 `await($condition, timeout: $timeout, conditionKey: $conditionKey)` 的简写封装。参数顺序将截止时间放在前面，使调用处的超时意图清晰可见。

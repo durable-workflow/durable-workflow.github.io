@@ -69,6 +69,8 @@ La même règle s’applique à une condition de `select()` face à sa propre é
 
 Pour les signaux nommés, `await('name', timeout: minutes(5))` renvoie les données du signal à son arrivée et `null` si l’expiration arrive en premier. `null` est réservé à l’expiration : un signal sans argument donne `true`, un seul argument donne sa valeur et plusieurs arguments donnent un tableau. `Workflow\V2` n’utilise pas les anciennes méthodes de mutation `#[SignalMethod]` pour changer l’état du workflow.
 
+Pour l’ordre en mode service, consultez les [conditions avec échéance sur Native Server](../polyglot/workflow-signals.md#timed-condition-order).
+
 ## Fonction de commodité `awaitWithTimeout()` {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` est un raccourci pour `await($condition, timeout: $timeout, conditionKey: $conditionKey)`. L’ordre des arguments place l’échéance en premier pour rendre l’intention d’expiration claire au point d’appel.

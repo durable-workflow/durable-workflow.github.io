@@ -84,6 +84,8 @@ ein Argument ergibt diesen Wert und mehrere Argumente ergeben ein Array.
 `Workflow\V2` verwendet keine älteren `#[SignalMethod]`-Mutatormethoden, um
 Workflow-Zustand umzuschalten.
 
+Die Reihenfolge im Service-Modus beschreibt der Abschnitt [Bedingungen mit Zeitlimit auf Native Server](../polyglot/workflow-signals.md#timed-condition-order).
+
 ## Helfer `awaitWithTimeout()` {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` ist

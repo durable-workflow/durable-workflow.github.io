@@ -69,6 +69,8 @@ Laravel 組み込みモードでは、実行履歴のイベント順序に従い
 
 名前付きシグナルでは `await('name', timeout: minutes(5))` は到着時にペイロードを、タイムアウト時に `null` を返します。`null` はタイムアウト専用です。引数なしなら `true`、1引数ならその値、複数なら配列になります。`Workflow\V2` は状態変更に旧 `#[SignalMethod]` メソッドを使いません。
 
+サービスモードの順序については、[Native Server のタイムアウト付き条件待機](../polyglot/workflow-signals.md#timed-condition-order)を参照してください。
+
 ## `awaitWithTimeout()` ヘルパー {#awaitwithtimeout-helper}
 
 `Workflow::awaitWithTimeout($timeout, $condition, $conditionKey = null)` は `await($condition, timeout: $timeout, conditionKey: $conditionKey)` の短縮形です。期限を先に置き、呼び出し箇所でタイムアウトの意図を明確にします。
