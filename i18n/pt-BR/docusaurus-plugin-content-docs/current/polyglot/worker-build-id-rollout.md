@@ -101,6 +101,14 @@ O servidor não divide tráfego por porcentagens entre coortes. Para novas inici
 
 Adicionar workers muda capacidade, não a política promovida de seleção. Para um canário isolado, use outra fila e direcione explicitamente algumas inicializações da aplicação a ela. Ao promover na fila original, mantenha workers antigos para execuções já fixadas.
 
+## Mover uma cadeia na próxima continuação {#move-a-chain-at-its-next-continuation}
+
+Quando o Server e o SDK negociam `continue_as_new_target_build` com o protocolo de worker 1.21, você pode optar pelo build promovido ao continuar como novo. A execução sucessora começa um histórico novo com os argumentos que você passar. Use essa opção quando o build promovido puder decodificar e aceitar esses argumentos. O continue-as-new comum mantém a fixação da execução anterior.
+
+Ao fechar a execução anterior, o Server seleciona a promoção persistida para o namespace, a fila e o tipo de workflow exatos da sucessora. O build de destino pode estar com zero workers se o Server já tiver evidência persistida de que ele atende ao tipo. Sem uma promoção elegível, o Server recusa a transição e mantém a execução atual aberta. O worker informa `promoted_build_unavailable` pelo fluxo normal de novas tentativas da tarefa de workflow. O Waterline mostra a recusa e o horário da próxima tentativa, quando programada. Uma transição bem-sucedida registra as duas fixações nos históricos das execuções vinculadas.
+
+Mantenha os workers do build anterior disponíveis enquanto as execuções abertas precisarem deles. Cada cadeia muda de build quando sua própria continuação com essa opção é confirmada. As execuções filhas abertas mantêm suas fixações.
+
 ## Drenar um build antigo {#drain-an-older-build}
 
 A drenagem impede que polls de workflow, atividade e query dessa coorte reivindiquem novas tarefas; não transfere tarefas. O poll de um worker em drenagem recebe HTTP409 com `poll_status: "draining"` e `reason: "worker_draining"`. As concessões existentes mantêm sua autoridade original.
@@ -121,7 +129,7 @@ Drenar ou parar todos os workers não comprova que o artefato pode ser excluído
 
 Restaure workers conhecidos como corretos, retome sua coorte se necessário e promova esse build para futuras inicializações. Depois reverta a implantação defeituosa. A reversão não reescreve fixações nem entrega o trabalho restante a outro build. Preserve workers compatíveis ou tome uma decisão explícita de recuperação na aplicação.
 
-Novas tentativas, filhos e continue-as-new herdam a fixação original. Uma cadeia continuada indefinidamente não migra ao build recém-promovido. Use identidade estável para implantações compatíveis com replay ou termine a cadeia antiga e inicie uma instância realmente nova sob a nova seleção. Não force migração editando campos persistidos de compatibilidade.
+Novas tentativas, execuções filhas e o continue-as-new comum herdam a fixação original. Use uma identidade de build estável para implantações compatíveis com replay. Cadeias de longa duração podem [optar pelo build promovido](#move-a-chain-at-its-next-continuation) ao continuar. Preserve os campos de compatibilidade armazenados durante a recuperação.
 
 ## Referência de endpoints e comandos {#endpoints-and-commands-reference}
 

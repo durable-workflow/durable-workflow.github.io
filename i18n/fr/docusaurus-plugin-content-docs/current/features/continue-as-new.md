@@ -80,6 +80,20 @@ Les boucles longues peuvent réduire leur historique sans inventer un nouvel ide
 
 Depuis Workflow 2.28, les activités et minuteurs que l’exécution qui se clôt n’a jamais attendus sont annulés lorsqu’elle continue dans une nouvelle exécution ; les enfants sont en revanche transmis à l’exécution suivante. Voir [Perdants à la clôture de l’exécution](./concurrency.md#selection-losers-at-close).
 
+## Poursuivre sur un build promu {#continue-on-a-promoted-build}
+
+Appelez `continueAsNewWithTarget('promoted', ...)` à un point où l’exécution suivante peut démarrer sur le build promu. Elle démarre avec un nouvel historique. Passez l’état nécessaire en arguments et vérifiez que la signature du workflow et le codec de données du build promu acceptent ces arguments. Utilisez `continueAsNew()` pour conserver le marqueur de compatibilité de l’exécution actuelle.
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+Après avoir mis à jour le paquet et exécuté les migrations, activez `DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true` et renseignez `DW_V2_PROMOTED_COMPATIBILITY` avec le marqueur choisi sur tous les workers en mode embarqué, y compris ceux qui traitent encore les exécutions de l’ancien build. Configurez les espaces de noms desservis par chaque worker et déclarez le type de workflow dans `workflows.v2.types.workflows`. Un worker de file Laravel sur le build promu doit avoir émis un signal de présence récent pour cet espace de noms, cette file et ce type de workflow.
+
+Si aucun worker ne remplit ces conditions, l’exécution actuelle reste ouverte et aucune exécution suivante n’est créée. Le worker enregistre `promoted_build_unavailable` et réessaie selon la politique de la tâche de workflow d’origine. Waterline affiche le refus actuel et l’heure du prochain essai s’il est planifié. Une fois la transition acceptée, les historiques des deux exécutions et leur filiation dans Waterline affichent les marqueurs d’origine et de destination enregistrés.
+
 ## Budget d’historique {#history-budget}
 
 Le code du workflow peut consulter la longueur courante de l’historique et un indicateur de recommandation de continuation via un contexte explicite du runtime. Les boucles longues peuvent ainsi passer le relais volontairement avant d’atteindre des limites de budget d’historique.
@@ -144,7 +158,7 @@ Lors d’une continuation, la nouvelle exécution hérite automatiquement des m�
 | Mémo | Table fusionnée complète transmise, y compris les insertions ou mises à jour pendant l’exécution |
 | Étiquettes de visibilité | Transmises telles quelles (définies une seule fois au démarrage) |
 | Clé métier | Transmise telle quelle |
-| Marqueur de compatibilité | Transmis pour que la nouvelle exécution cible la même version de worker |
+| Marqueur de compatibilité | Hérité par défaut. La [poursuite sur un build promu](#continue-on-a-promoted-build) sélectionne le marqueur de l’exécution suivante à l’admission de la transition. |
 | Position du curseur de messages | Transmise pour connaître les messages entrants déjà consommés via les [Flux de messages](./message-streams.md) |
 
 La nouvelle exécution démarre avec les métadonnées héritées et peut continuer à insérer ou mettre à jour les attributs de recherche et le mémo. Un workflow d’interrogation longue durée peut ainsi accumuler des métadonnées entre générations sans perdre son état lorsqu’il réduit son historique.

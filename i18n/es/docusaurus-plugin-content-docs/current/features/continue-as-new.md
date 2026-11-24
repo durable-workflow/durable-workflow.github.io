@@ -68,6 +68,20 @@ Los bucles prolongados pueden desprenderse del historial sin inventar otro id p�
 
 Desde Workflow 2.28, las actividades y los temporizadores que la ejecución que se cierra nunca esperó se cancelan al continuar como nueva ejecución; los hijos, en cambio, se entregan a la ejecución continuada. Consulte [Perdedores cuando se cierra la ejecución](./concurrency.md#selection-losers-at-close).
 
+## Continuar en una compilación promovida {#continue-on-a-promoted-build}
+
+Usa `continueAsNewWithTarget('promoted', ...)` en un punto en el que la siguiente ejecución pueda empezar en la compilación promovida. La ejecución comienza con un historial nuevo. Pasa el estado necesario como argumentos y asegúrate de que sean compatibles con la firma del workflow y el códec de datos de la compilación promovida. Usa `continueAsNew()` para conservar el marcador de compatibilidad de la ejecución actual.
+
+```php
+use function Workflow\V2\continueAsNewWithTarget;
+
+return continueAsNewWithTarget('promoted', $nextState);
+```
+
+Tras actualizar el paquete y ejecutar las migraciones, establece `DW_V2_CONTINUE_AS_NEW_TARGET_BUILD=true` y asigna a `DW_V2_PROMOTED_COMPATIBILITY` el marcador elegido en todos los workers del modo integrado, incluidos los que siguen procesando ejecuciones de la compilación anterior. Configura los espacios de nombres que atiende cada worker y declara el tipo de workflow en `workflows.v2.types.workflows`. Un worker de cola de Laravel de la compilación promovida debe tener un heartbeat reciente para ese espacio de nombres, esa cola y ese tipo de workflow.
+
+Si ningún worker cumple esos requisitos, la ejecución actual sigue abierta y no se crea una sucesora. El worker registra `promoted_build_unavailable` y reintenta según la política de la tarea de workflow original. Waterline muestra el rechazo actual y la hora del próximo reintento si está programado. Tras aceptar la transición, los historiales de ambas ejecuciones y su linaje en Waterline muestran los marcadores de origen y destino registrados.
+
 ## Presupuesto de historial {#history-budget}
 
 El código puede observar la longitud actual del historial y una sugerencia de continuación mediante contexto explícito del runtime. Así puede traspasar deliberadamente antes de alcanzar límites costosos.
@@ -132,7 +146,7 @@ Al continuar, la nueva ejecución hereda automáticamente los metadatos de la an
 | Memo | Se conserva el mapa combinado completo, incluidas las inserciones/actualizaciones durante la ejecución |
 | Etiquetas de visibilidad | Se conservan sin cambios (se fijan una vez al iniciar) |
 | Clave de negocio | Se conserva sin cambios |
-| Marcador de compatibilidad | Se conserva para dirigir la nueva ejecución a la misma compilación de worker |
+| Marcador de compatibilidad | Se hereda de forma predeterminada. Al [continuar en una compilación promovida](#continue-on-a-promoted-build), se selecciona el marcador de la ejecución sucesora en el momento de aceptar la transición. |
 | Posición del cursor de mensajes | Se conserva para saber qué mensajes entrantes ya se consumieron mediante [Flujos de mensajes](./message-streams.md) |
 
 La nueva ejecución comienza con esos metadatos y puede seguir actualizando atributos de búsqueda y memo. Así, un workflow de sondeo prolongado acumula metadatos entre generaciones sin perder estado al desprenderse del historial.
