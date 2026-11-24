@@ -73,8 +73,9 @@ $workflow = WorkflowStub::load('approval-with-timeout');
 $workflow->markReady();
 ```
 
-Der Rückgabewert ist `true`, wenn die Bedingung vor Auslösen der Timeout-Aufgabe
-wahr wird, und `false`, wenn der Timeout gewinnt.
+Im eingebetteten Laravel-Modus zählt die Reihenfolge der Ereignisse in der Historie des Laufs. Ein Update, das vor dem `TimerFired`-Ereignis der Warteoperation angenommen wurde, kann die Bedingung erfüllen, auch wenn der Worker es erst nach dem Timer anwendet. Der erste Zustand, der die Bedingung erfüllt, entscheidet. Fehlgeschlagene Updates und Updates, die erst nach `TimerFired` angenommen wurden, können diese Bedingung nicht erfüllen. Bei gleichen Zeitstempeln entscheidet die Position der Ereignisse in der Historie. Nach Abschluss der Warteoperation verwendet Replay das gespeicherte Ergebnis.
+
+Tritt eine Bedingung in `select()` gegen ihren Timeout an, gilt dieselbe Regel. Ein benanntes Signal kann die Warteoperation auflösen, wenn sein Empfang vor dem zugehörigen `TimerFired`-Ereignis liegt.
 
 Bei benannten Signalen gibt `await('name', timeout: minutes(5))` bei Eintreffen
 des Signals dessen Payload zurück und bei gewonnenem Timeout `null`.
@@ -82,6 +83,8 @@ des Signals dessen Payload zurück und bei gewonnenem Timeout `null`.
 ein Argument ergibt diesen Wert und mehrere Argumente ergeben ein Array.
 `Workflow\V2` verwendet keine älteren `#[SignalMethod]`-Mutatormethoden, um
 Workflow-Zustand umzuschalten.
+
+Die Reihenfolge im Service-Modus beschreibt der Abschnitt [Bedingungen mit Zeitlimit auf Native Server](../polyglot/workflow-signals.md#timed-condition-order).
 
 ## Helfer `awaitWithTimeout()` {#awaitwithtimeout-helper}
 

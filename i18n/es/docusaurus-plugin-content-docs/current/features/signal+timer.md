@@ -63,9 +63,13 @@ $workflow = WorkflowStub::load('approval-with-timeout');
 $workflow->markReady();
 ```
 
-Devuelve `true` si se cumple la condición antes de dispararse la tarea de vencimiento y `false` si vence primero el plazo.
+El modo integrado de Laravel usa el orden de los eventos en el historial de la ejecución. Una actualización aceptada antes del evento `TimerFired` de la espera puede cumplir la condición aunque el worker la aplique después de que se dispare el temporizador. Prevalece el primer estado que cumple la condición. Las actualizaciones fallidas y las aceptadas después de `TimerFired` no pueden cumplir esa condición. Si los eventos comparten una marca de tiempo, su posición en el historial determina el orden. Una vez resuelta la espera, la reproducción usa el resultado registrado.
+
+La misma regla se aplica cuando una condición de `select()` compite con su plazo. Una señal con nombre puede resolver la espera si su recepción precede al evento `TimerFired` correspondiente.
 
 Para señales con nombre, `await('name', timeout: minutes(5))` devuelve la carga de la señal al llegar y `null` si vence el plazo. `null` se reserva para el vencimiento: una señal sin argumentos produce `true`, con un argumento produce ese valor y con varios produce un array. `Workflow\V2` no usa los métodos mutadores heredados `#[SignalMethod]` para cambiar el estado.
+
+Para el orden en modo servicio, consulta [condiciones con plazo en Native Server](../polyglot/workflow-signals.md#timed-condition-order).
 
 ## Función auxiliar `awaitWithTimeout()` {#awaitwithtimeout-helper}
 

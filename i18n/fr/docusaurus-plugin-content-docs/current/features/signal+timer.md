@@ -63,9 +63,13 @@ $workflow = WorkflowStub::load('approval-with-timeout');
 $workflow->markReady();
 ```
 
-La valeur renvoyée est `true` si la condition devient vraie avant le déclenchement de la tâche d’expiration, et `false` si l’expiration arrive en premier.
+Le mode Laravel embarqué suit l’ordre des événements dans l’historique de l’exécution. Une mise à jour acceptée avant l’événement `TimerFired` de l’attente peut satisfaire la condition, même si le worker l’applique après le déclenchement du temporisateur. Le premier état qui satisfait la condition l’emporte. Les mises à jour en échec et celles acceptées après `TimerFired` ne peuvent pas satisfaire cette condition. Si des événements partagent le même horodatage, leur position dans l’historique fixe leur ordre. Une fois l’attente résolue, la relecture utilise le résultat enregistré.
+
+La même règle s’applique à une condition de `select()` face à sa propre échéance. Un signal nommé peut résoudre l’attente si sa réception précède l’événement `TimerFired` correspondant.
 
 Pour les signaux nommés, `await('name', timeout: minutes(5))` renvoie les données du signal à son arrivée et `null` si l’expiration arrive en premier. `null` est réservé à l’expiration : un signal sans argument donne `true`, un seul argument donne sa valeur et plusieurs arguments donnent un tableau. `Workflow\V2` n’utilise pas les anciennes méthodes de mutation `#[SignalMethod]` pour changer l’état du workflow.
+
+Pour l’ordre en mode service, consultez les [conditions avec échéance sur Native Server](../polyglot/workflow-signals.md#timed-condition-order).
 
 ## Fonction de commodité `awaitWithTimeout()` {#awaitwithtimeout-helper}
 

@@ -175,6 +175,16 @@ worker.register_workflow("orders.approver", |ctx, input| async move {
 
 请单独运行该命令。它不能作为并行组或持久选择的成员。持有工作流任务的 Worker 可以向该任务命名空间内的任何工作流发送信号，而无需 HTTP 信号所需的操作员角色。不应接收其他工作流代码所发信号的工作流，请放在单独的命名空间中。
 
+## 带超时的条件等待如何排序 {#timed-condition-order}
+
+使用 Native Server 3.27.0 或更高版本及兼容的 worker，并启用创建有序等待后，带超时的条件可以使用在原始 `TimerFired` 事件之前收到的信号和成功应用的更新。即使 worker 在计时器触发后才评估条件，这一规则也适用。接收顺序决定哪个符合范围的状态最先满足条件。命名信号使用相同的计时器边界。
+
+如需按接收顺序处理信号的效果，请使用 [PHP SDK 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) 或更高版本。更新的效果能否按接收顺序处理，取决于处理该更新的 worker 是否支持此功能。
+
+在受支持的 `select()` 中，如果历史记录中第一次满足条件的状态早于子工作流完成或失败的事件，则选择条件分支。等待结束后，回放会使用已记录的结果。
+
+默认情况下，创建有序等待处于禁用状态。自行部署 Server 时，请先按照[部署与回滚指南](https://github.com/durable-workflow/server/blob/3.27.0/rust/README.md#rolling-out-durable-input-ordering-for-timed-waits)操作，再启用该功能。
+
 ## 仍需要活动的情况 {#when-an-activity-is-still-needed}
 
 当工作流命令不适用时，请使用调用客户端的活动：

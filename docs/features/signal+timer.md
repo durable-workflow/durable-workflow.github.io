@@ -63,9 +63,13 @@ $workflow = WorkflowStub::load('approval-with-timeout');
 $workflow->markReady();
 ```
 
-The return value is `true` when the condition becomes true before the timeout task fires and `false` when the timeout wins.
+Embedded Laravel uses the order of events in the run history. An update accepted before the wait's `TimerFired` event can satisfy the condition even if the worker applies it after the timer fires. The first state that satisfies the condition wins. Failed updates and updates accepted after `TimerFired` cannot satisfy that wait. If events share a timestamp, their positions in history determine the order. Replay uses the recorded outcome once the wait resolves.
+
+The same rule applies when a condition inside `select()` races its timeout. A named signal is eligible when its receipt precedes the wait's `TimerFired` event.
 
 For named signals, `await('name', timeout: minutes(5))` returns the signal payload when the signal arrives and `null` when the timeout wins. `null` is reserved for timeout: no-argument signals resolve to `true`, one argument resolves to that value, and multiple arguments resolve to an array. `Workflow\V2` does not use legacy `#[SignalMethod]` mutator methods to flip workflow state.
+
+For service-mode ordering, see [timed conditions on Native Server](../polyglot/workflow-signals.md#timed-condition-order).
 
 ## `awaitWithTimeout()` Helper
 
