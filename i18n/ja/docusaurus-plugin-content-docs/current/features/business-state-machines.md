@@ -8,7 +8,7 @@ description: 組み込み Laravel ワークフローで、共有の業務状態�
 
 :::warning 実験的
 
-`Workflow\V2\StateMachine` API と、それが使用する確認付きの子開始（`Workflow::startChild()`）および `DurableScope::reserveChild()` は実験的です。これらは Workflow 2.29.0 から実験的に提供され、パッケージの安定性保証の対象外であり、マイナーリリースで変更される可能性があります。[安定性レベル](../compatibility.md#stability-levels)における `experimental` のサーフェスです。それが使用する保持型補償スコープ API のその他の部分は、Workflow 2.33.0 から安定版です。 子バインディングのカタログ、遷移の説明、`MachineInspection` は Workflow 2.41.0 で追加されました。
+`Workflow\V2\StateMachine` API と、それが使用する確認付きの子開始（`Workflow::startChild()`）および `DurableScope::reserveChild()` は実験的です。これらは Workflow 2.29.0 から実験的に提供され、パッケージの安定性保証の対象外であり、マイナーリリースで変更される可能性があります。[安定性レベル](../compatibility.md#stability-levels)における `experimental` のサーフェスです。それが使用する保持型補償スコープ API のその他の部分は、Workflow 2.33.0 から安定版です。子バインディングのカタログ、遷移の説明、`MachineInspection` は Workflow 2.41.0 で追加されました。
 
 このページの例は、合成プロバイダーを使用するリポジトリのソース例です。インストール済みパッケージや実際のプロバイダーでの適格性確認ではありません。このページのいかなる内容も、次のことを意味しません。
 
@@ -167,25 +167,6 @@ $permission = $registry->evaluateCondition($profile->condition($transition->key 
 
 親の定義内の `ChildSlot` は、スロット、それをホストする状態、子マシンと定義のバージョン、必要な業務結果を指定します。`MachineDefinition::assertBinding()` は、その宣言に照らしてバインディングを確認します。検索、認可、受け入れは行いません。
 
-### 子バインディングのカタログ {#child-binding-catalog}
-
-Workflow 2.41.0 以降、`MachineCatalog` は互いをホストできる定義を登録します。構築時に各スロットを登録済みの `machine@version` に解決し、バインディングが使用する前に無効なグラフを拒否します。
-
-```php
-$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
-
-$catalog->child($orders, 'shipment');
-$catalog->assertBinding($parentProfile, $binding, $childProfile);
-```
-
-- 重複したマシンバージョン、未登録の子を指すスロット、再帰的または循環的なバインディングは `InvalidMachineCatalog` を送出します。その `reason` は `state_machine_definition_duplicate`、`state_machine_child_definition_unregistered`、`state_machine_child_binding_cycle` のいずれかです。直接、他のマシン経由、または別のバージョンで自分自身をホストするマシンは循環です。
-- `InvalidMachineCatalog::$path` は経路を列挙します。例: `orders@1 -> shipment:shipments@1 -> parent:orders@1`。
-- 省略可能な `maxChildDepth` は、最も深いスロット経路がそれより長い場合に、次元 `child_depth` の `ResourceLimitExceeded` を送出します。`observed` はその深さを報告します。保持された補償がサポートする子の階層は 1 段なので、子が保持スコープに参加する場合は `maxChildDepth: 1` を使用してください。
-- 複数の親またはホスト状態が 1 つの子定義を共有できます。
-- `$catalog->assertBinding()` は、両方のプロファイルがフィンガープリントで比較して登録済みの定義そのものを使用していることも要求します。
-
-カタログはオプトインです。ネイティブの子の開始、予約、`MachineDefinition::assertBinding()` はカタログを参照しないため、設定済みの例と同様に、ホストのバインディング認可で `$catalog->assertBinding()` を呼び出してください。カタログは設定です。各実行は引き続き自身のフィンガープリントを固定し、カタログを置き換えても何も移行されません。
-
 `BindingIdentity` は、元の親の実行、名前空間、親のインスタンスと実行、スロット、**世代**、ホストする状態、子ワークフローの型、子のポリシーのフィンガープリント、必要な結果、入力のフィンガープリント、子のオプションを固定します。世代は1回の状態への進入を識別します。親が状態を変更したり、状態に再進入したりした後も、古い世代に対する要求が新しい子にリダイレクトされることはありません。
 
 子の開始と待機は別々の遷移です。
@@ -238,6 +219,25 @@ if ($key === 'begin') {
 ```
 
 予約なしの場合、`Workflow::startChild()` は、後のステップで `await()` できる `StartedChildWorkflow` レシートを返します。親は子の業務結果を検証する必要があります。技術的な子の完了、受理されたシグナル、タイムアウトだけでは不十分です。`Workflow::startChild()` は組み込み専用であり、Worker プロトコルの実行ではこれを拒否します。
+
+### 子バインディングのカタログ {#child-binding-catalog}
+
+Workflow 2.41.0 以降、`MachineCatalog` は互いをホストできる定義を登録します。構築時に各スロットを登録済みの `machine@version` に解決し、バインディングが使用する前に無効なグラフを拒否します。
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- 重複したマシンバージョン、未登録の子を指すスロット、再帰的または循環的なバインディングは `InvalidMachineCatalog` を送出します。その `reason` は `state_machine_definition_duplicate`、`state_machine_child_definition_unregistered`、`state_machine_child_binding_cycle` のいずれかです。直接、他のマシン経由、または別のバージョンで自分自身をホストするマシンは循環です。
+- `InvalidMachineCatalog::$path` は経路を列挙し、メッセージでは次のように表示されます: `orders@1 -> shipment:shipments@1 -> parent:orders@1`。
+- 省略可能な `maxChildDepth` は、最も深いスロット経路がそれより長い場合に、次元 `child_depth` の `ResourceLimitExceeded` を送出します。`observed` はその深さを報告します。保持された補償がサポートする子の階層は 1 段なので、子が保持スコープに参加する場合は `maxChildDepth: 1` を使用してください。
+- 複数の親またはホスト状態が 1 つの子定義を共有できます。
+- `$catalog->assertBinding()` は、両方のプロファイルがフィンガープリントで比較して登録済みの定義そのものを使用していることも要求します。
+
+カタログはオプトインです。ネイティブの子の開始、予約、`MachineDefinition::assertBinding()` はカタログを参照しないため、設定済みの例と同様に、ホストのバインディング認可で `$catalog->assertBinding()` を呼び出してください。カタログは設定です。各実行は引き続き自身のフィンガープリントを固定し、カタログを置き換えても何も移行されません。
 
 ## 補償と保持型スコープ {#compensation-and-retained-scopes}
 
@@ -293,7 +293,7 @@ public function compensate(TransitionContext $context, ExecutionReference $origi
 | `budget` | `blocked` | 前進用の予算が次のコマンドを拒否しました。スナップショットはありません。 |
 | `commit` | `committed`, `conflict`, `cancellation_requested` | 保護されたコミットが決定を確認しました。 |
 
-`invariant`、`target`、`permission` の各ステージでは、スナップショット ID を使って、ホストがそのスナップショットについて保持している `ConditionEvaluation` を見つけられます。`admission` と `commit` では、理由は記録されたアドミッションまたはコミットに由来し、スナップショットは使用された証拠を識別するだけです。作業後の拒否では `after` スナップショットが示されます。
+`invariant`、`target`、`permission` の各ステージでは、スナップショット ID を使って、ホストがそのスナップショットについて保持している `ConditionEvaluation` を見つけられます。`admission` と `commit` では、理由は記録されたアドミッションまたはコミットに由来し、スナップショットは使用された証拠を識別するだけです。作業後の拒否では `after` スナップショットが示されます。アプリケーションコードがステージなしで構築した結果では、`stage` と `snapshot` は null のままです。
 
 `MachineInspection` は、運用ツールに業務主体のバージョン付きビューを提供します。ホストは、すでに認可した値からワークフローコードの外で構築します。
 
@@ -306,8 +306,8 @@ $inspection = new MachineInspection(
 $view = $inspection->toArray();
 ```
 
-- `machine` には、固定されたマシン、定義、プロファイルのバージョンとそのフィンガープリントが含まれます。`business` はアプリケーションのストアにある現在の状態とリビジョンで、ワークフロー実行のステータスとは別物です。`transition` は実行の `explain()` です。
-- `children` はバインディング世代ごとに 1 件なので、渡したリストより短くなることがあります。各エントリには `status`（`admitted`、`never_admitted`、`reserved`）、バインディングキー、スロット、世代、ホスト状態、必要な結果、バインディングを作成した実行、子のインスタンスと実行、クローズ ID が含まれます。アドミットされた子は、その業務結果の証拠ではありません。
+- `machine` には、固定されたマシン、定義、プロファイルのバージョンとそのフィンガープリントが含まれます。`business` はアプリケーションのストアにある現在の状態とリビジョンで、ワークフロー実行のステータスとは別物です。`transition` は検査対象の実行の `TransitionResult` の `explain()` で、渡されない場合は null です。
+- `children` はバインディング世代ごとに 1 件なので、渡したリストより短くなることがあります。各エントリには `status`（`admitted`、`never_admitted`、`reserved`）、バインディングキー、スロット、世代、ホスト状態、子ワークフローの型、必要な結果、バインディングを作成した親の実行、子のインスタンスと実行、クローズ ID が含まれます。アドミットされた子は、その業務結果の証拠ではありません。
 - `participation` は、子を保持された親スコープと子スコープの ID および義務キーに関連付けます。これらは `compensation` エントリの `scopeId` と結合できます。アドミットされた子の `ChildReservation` は、その `ChildBinding` と一緒に渡してください。`participation` が null の場合、その子に保持された参加がないか、予約が渡されていません。
 - `compensation` は、各スコープの ID と識別情報を `ScopeRecovery::describe()` のキーとともに列挙します。
 

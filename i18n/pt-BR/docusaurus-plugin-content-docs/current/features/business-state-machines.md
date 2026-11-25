@@ -167,25 +167,6 @@ Ela retorna um `CommitResult` com `committed`, `conflict` ou `cancellation_reque
 
 Um `ChildSlot` na definição do pai nomeia o slot, seus estados hospedeiros, a máquina filha e a versão da definição, e o resultado de negócio exigido. `MachineDefinition::assertBinding()` verifica um vínculo em relação a essa declaração. Ele não faz consulta, autorização nem admissão.
 
-### Catálogo de vinculações de filhos {#child-binding-catalog}
-
-A partir do Workflow 2.41.0, um `MachineCatalog` registra as definições que podem hospedar umas às outras. A construção resolve cada slot para uma `machine@version` registrada e recusa um grafo inválido antes que qualquer vinculação o use:
-
-```php
-$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
-
-$catalog->child($orders, 'shipment');
-$catalog->assertBinding($parentProfile, $binding, $childProfile);
-```
-
-- Uma versão de máquina duplicada, um slot que nomeia um filho não registrado e uma vinculação recursiva ou cíclica lançam `InvalidMachineCatalog`. Seu `reason` é `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` ou `state_machine_child_binding_cycle`. Uma máquina que hospeda a si mesma, diretamente, por meio de outras máquinas ou em outra versão, é um ciclo.
-- `InvalidMachineCatalog::$path` lista a rota, por exemplo `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
-- O `maxChildDepth` opcional lança `ResourceLimitExceeded` com a dimensão `child_depth` quando a rota de slots mais profunda é maior; `observed` informa essa profundidade. A compensação retida oferece suporte a um nível de filhos, então use `maxChildDepth: 1` quando filhos participarem de escopos retidos.
-- Vários pais ou estados hospedeiros podem compartilhar uma definição de filho.
-- `$catalog->assertBinding()` também exige que os dois perfis usem exatamente as definições registradas, comparadas por impressão digital.
-
-O catálogo é opcional. O início nativo de filhos, as reservas e `MachineDefinition::assertBinding()` não o consultam, então chame `$catalog->assertBinding()` na autorização de vinculação do host, como faz o exemplo configurado. Um catálogo é configuração: cada execução continua fixando suas próprias impressões digitais, e substituir o catálogo não migra nada.
-
 Um `BindingIdentity` fixa a execução pai original, o namespace, a instância e a execução do pai, o slot, a **geração**, o estado hospedeiro, o tipo de workflow filho, o fingerprint da política do filho, o resultado exigido, o fingerprint da entrada e as opções do filho. A geração identifica uma entrada em um estado. Solicitações para uma geração antiga nunca são redirecionadas para um filho mais novo depois que o pai muda de estado ou reentra em um estado.
 
 Iniciar e aguardar um filho são transições separadas:
@@ -238,6 +219,25 @@ if ($key === 'begin') {
 ```
 
 Sem uma reserva, `Workflow::startChild()` retorna um recibo `StartedChildWorkflow` que uma etapa posterior pode aguardar com `await()`. O pai deve verificar o resultado de negócio do filho; a conclusão técnica do filho, um sinal aceito ou um tempo limite não bastam. `Workflow::startChild()` é exclusivo do modo incorporado; a execução pelo protocolo de workers o recusa.
+
+### Catálogo de vinculações de filhos {#child-binding-catalog}
+
+A partir do Workflow 2.41.0, um `MachineCatalog` registra as definições que podem hospedar umas às outras. A construção resolve cada slot para uma `machine@version` registrada e recusa um grafo inválido antes que qualquer vinculação o use:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- Uma versão de máquina duplicada, um slot que nomeia um filho não registrado e uma vinculação recursiva ou cíclica lançam `InvalidMachineCatalog`. Seu `reason` é `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` ou `state_machine_child_binding_cycle`. Uma máquina que hospeda a si mesma, diretamente, por meio de outras máquinas ou em outra versão, é um ciclo.
+- `InvalidMachineCatalog::$path` lista a rota, que a mensagem imprime como `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- O `maxChildDepth` opcional lança `ResourceLimitExceeded` com a dimensão `child_depth` quando a rota de slots mais profunda é maior; `observed` informa essa profundidade. A compensação retida oferece suporte a um nível de filhos, então use `maxChildDepth: 1` quando filhos participarem de escopos retidos.
+- Vários pais ou estados hospedeiros podem compartilhar uma definição de filho.
+- `$catalog->assertBinding()` também exige que os dois perfis usem exatamente as definições registradas, comparadas por impressão digital.
+
+O catálogo é opcional. O início nativo de filhos, as reservas e `MachineDefinition::assertBinding()` não o consultam, então chame `$catalog->assertBinding()` na autorização de vinculação do host, como faz o exemplo configurado. Um catálogo é configuração: cada execução continua fixando suas próprias impressões digitais, e substituir o catálogo não migra nada.
 
 ## Compensação e escopos retidos {#compensation-and-retained-scopes}
 
@@ -293,7 +293,7 @@ O estágio distingue resultados com o mesmo status:
 | `budget` | `blocked` | Um orçamento de avanço recusou o próximo comando. Sem snapshot. |
 | `commit` | `committed`, `conflict`, `cancellation_requested` | O commit protegido confirmou a decisão. |
 
-Para os estágios `invariant`, `target` e `permission`, o ID do snapshot encontra a `ConditionEvaluation` que o host reteve para esse snapshot. Para `admission` e `commit`, o motivo vem da admissão ou do commit registrados, e o snapshot apenas identifica a evidência usada. Uma recusa depois do trabalho nomeia o snapshot `after`.
+Para os estágios `invariant`, `target` e `permission`, o ID do snapshot encontra a `ConditionEvaluation` que o host reteve para esse snapshot. Para `admission` e `commit`, o motivo vem da admissão ou do commit registrados, e o snapshot apenas identifica a evidência usada. Uma recusa depois do trabalho nomeia o snapshot `after`. Resultados que o código da aplicação constrói sem estágio mantêm `stage` e `snapshot` como null.
 
 `MachineInspection` oferece às ferramentas de operação uma visão versionada de um sujeito de negócio. O host a constrói fora do código do workflow a partir de valores que já autorizou:
 
@@ -306,8 +306,8 @@ $inspection = new MachineInspection(
 $view = $inspection->toArray();
 ```
 
-- `machine` contém as versões fixadas da máquina, da definição e do perfil com suas impressões digitais. `business` é o estado e a revisão atuais do armazenamento da aplicação, distintos do status da execução do workflow. `transition` é o `explain()` da execução.
-- `children` tem uma entrada por geração de vinculação, então pode ser mais curta do que a lista passada. Cada entrada tem um `status` (`admitted`, `never_admitted` ou `reserved`), a chave de vinculação, o slot, a geração, o estado hospedeiro, o resultado exigido, a execução que criou a vinculação, a instância e a execução filhas e um ID de fechamento. Um filho admitido não é evidência do seu resultado de negócio.
+- `machine` contém as versões fixadas da máquina, da definição e do perfil com suas impressões digitais. `business` é o estado e a revisão atuais do armazenamento da aplicação, distintos do status da execução do workflow. `transition` é o `explain()` do `TransitionResult` da execução inspecionada, ou null quando nenhum é passado.
+- `children` tem uma entrada por geração de vinculação, então pode ser mais curta do que a lista passada. Cada entrada tem um `status` (`admitted`, `never_admitted` ou `reserved`), a chave de vinculação, o slot, a geração, o estado hospedeiro, o tipo de workflow filho, o resultado exigido, a execução pai que criou a vinculação, a instância e a execução filhas e um ID de fechamento. Um filho admitido não é evidência do seu resultado de negócio.
 - `participation` liga um filho aos IDs dos seus escopos pai e filho retidos e à chave da obrigação, que se juntam ao `scopeId` das entradas de `compensation`. Passe a `ChildReservation` de um filho admitido ao lado do seu `ChildBinding`. Um `participation` nulo significa que o filho não tem participação retida ou que nenhuma reserva foi passada.
 - `compensation` lista a identidade e o ID de cada escopo com as chaves de `ScopeRecovery::describe()`.
 

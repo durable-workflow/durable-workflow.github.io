@@ -280,41 +280,6 @@ child machine and definition version, and the required business outcome.
 `MachineDefinition::assertBinding()` checks a binding against that declaration.
 It performs no lookup, authorization or admission.
 
-### Child binding catalog
-
-From Workflow 2.41.0, a `MachineCatalog` registers the definitions that may host
-each other. Construction resolves every slot to a registered `machine@version`
-and refuses an invalid graph before any binding uses it:
-
-```php
-$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
-
-$catalog->child($orders, 'shipment');
-$catalog->assertBinding($parentProfile, $binding, $childProfile);
-```
-
-- A duplicate machine version, a slot that names an unregistered child, and a
-  recursive or cyclic binding raise `InvalidMachineCatalog`. Its `reason` is
-  `state_machine_definition_duplicate`,
-  `state_machine_child_definition_unregistered` or
-  `state_machine_child_binding_cycle`. A machine hosting itself, directly,
-  through other machines or under another version, is a cycle.
-- `InvalidMachineCatalog::$path` lists the route, for example
-  `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
-- The optional `maxChildDepth` raises `ResourceLimitExceeded` with the
-  `child_depth` dimension when the deepest slot route is longer; `observed`
-  reports that depth. Retained compensation supports one child level, so use
-  `maxChildDepth: 1` when children participate in retained scopes.
-- Several parents or hosting states can share one child definition.
-- `$catalog->assertBinding()` also requires both profiles to use the exact
-  registered definitions, compared by fingerprint.
-
-The catalog is opt-in. Native child start, reservations and
-`MachineDefinition::assertBinding()` do not consult it, so call
-`$catalog->assertBinding()` in the host's binding authorization, as the
-configured example does. A catalog is configuration: each execution still pins
-its own fingerprints, and replacing the catalog migrates nothing.
-
 A `BindingIdentity` pins the original parent execution, namespace, parent
 instance and run, slot, **generation**, hosting state, child workflow type, child
 policy fingerprint, required outcome, input fingerprint and child options. The
@@ -382,6 +347,41 @@ receipt that a later step can `await()`. The parent must verify the child's
 business outcome; technical child completion, an accepted signal or a timeout is
 not enough. `Workflow::startChild()` is embedded-only; worker-protocol
 execution refuses it.
+
+### Child binding catalog
+
+From Workflow 2.41.0, a `MachineCatalog` registers the definitions that may host
+each other. Construction resolves every slot to a registered `machine@version`
+and refuses an invalid graph before any binding uses it:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- A duplicate machine version, a slot that names an unregistered child, and a
+  recursive or cyclic binding raise `InvalidMachineCatalog`. Its `reason` is
+  `state_machine_definition_duplicate`,
+  `state_machine_child_definition_unregistered` or
+  `state_machine_child_binding_cycle`. A machine hosting itself, directly,
+  through other machines or under another version, is a cycle.
+- `InvalidMachineCatalog::$path` lists the route, which the message prints as
+  `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- The optional `maxChildDepth` raises `ResourceLimitExceeded` with the
+  `child_depth` dimension when the deepest slot route is longer; `observed`
+  reports that depth. Retained compensation supports one child level, so use
+  `maxChildDepth: 1` when children participate in retained scopes.
+- Several parents or hosting states can share one child definition.
+- `$catalog->assertBinding()` also requires both profiles to use the exact
+  registered definitions, compared by fingerprint.
+
+The catalog is opt-in. Native child start, reservations and
+`MachineDefinition::assertBinding()` do not consult it, so call
+`$catalog->assertBinding()` in the host's binding authorization, as the
+configured example does. A catalog is configuration: each execution still pins
+its own fingerprints, and replacing the catalog migrates nothing.
 
 ## Compensation and retained scopes
 
@@ -478,7 +478,8 @@ For the `invariant`, `target` and `permission` stages, the snapshot ID finds the
 `ConditionEvaluation` the host retained for that snapshot. For `admission` and
 `commit`, the reason comes from the recorded admission or commit, and the
 snapshot only identifies the evidence it used. A refusal after work names the
-`after` snapshot.
+`after` snapshot. Results that application code builds without a stage keep
+`stage` and `snapshot` null.
 
 `MachineInspection` gives operator tooling one versioned view of a business
 subject. The host builds it outside workflow code from values it has already
@@ -495,12 +496,14 @@ $view = $inspection->toArray();
 
 - `machine` holds the pinned machine, definition and profile versions with
   their fingerprints. `business` is the current state and revision from the
-  application's store, distinct from workflow-run status. `transition` is the
-  execution's `explain()`.
+  application's store, distinct from workflow-run status. `transition` is
+  `explain()` of the inspected execution's `TransitionResult`, or null when none
+  is passed.
 - `children` has one entry per binding generation, so it can be shorter than
   the list passed in. Each entry has a `status` (`admitted`, `never_admitted` or
-  `reserved`), the binding key, slot, generation, hosting state, required
-  outcome, the binding execution, the child instance and run, and a closure ID.
+  `reserved`), the binding key, slot, generation, hosting state, child workflow
+  type, required outcome, the parent execution that bound it, the child instance
+  and run, and a closure ID.
   An admitted child is not evidence of its business outcome.
 - `participation` links a child to its retained parent and child scope IDs and
   obligation key, which join the `scopeId` of the `compensation` entries. Pass

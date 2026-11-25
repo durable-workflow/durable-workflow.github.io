@@ -167,25 +167,6 @@ Devuelve un `CommitResult` con `committed`, `conflict` o `cancellation_requested
 
 Un `ChildSlot` en la definición del padre nombra la ranura, sus estados anfitriones, la máquina hija y la versión de su definición, y el resultado de negocio requerido. `MachineDefinition::assertBinding()` comprueba un vínculo frente a esa declaración. No realiza ninguna búsqueda, autorización ni admisión.
 
-### Catálogo de vinculaciones de hijos {#child-binding-catalog}
-
-Desde Workflow 2.41.0, un `MachineCatalog` registra las definiciones que pueden alojarse entre sí. Al construirlo, cada ranura se resuelve a una `machine@version` registrada y se rechaza un grafo no válido antes de que una vinculación lo use:
-
-```php
-$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
-
-$catalog->child($orders, 'shipment');
-$catalog->assertBinding($parentProfile, $binding, $childProfile);
-```
-
-- Una versión de máquina duplicada, una ranura que nombra un hijo no registrado y una vinculación recursiva o cíclica lanzan `InvalidMachineCatalog`. Su `reason` es `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` o `state_machine_child_binding_cycle`. Una máquina que se aloja a sí misma, directamente, a través de otras máquinas o con otra versión, es un ciclo.
-- `InvalidMachineCatalog::$path` enumera la ruta, por ejemplo `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
-- El parámetro opcional `maxChildDepth` lanza `ResourceLimitExceeded` con la dimensión `child_depth` cuando la ruta de ranuras más profunda es más larga; `observed` informa de esa profundidad. La compensación retenida admite un solo nivel de hijos, así que use `maxChildDepth: 1` cuando los hijos participen en ámbitos retenidos.
-- Varios padres o estados anfitriones pueden compartir una misma definición de hijo.
-- `$catalog->assertBinding()` también exige que ambos perfiles usen exactamente las definiciones registradas, comparadas por huella.
-
-El catálogo es opcional. El inicio nativo de hijos, las reservas y `MachineDefinition::assertBinding()` no lo consultan, así que llame a `$catalog->assertBinding()` en la autorización de vinculaciones del anfitrión, como hace el ejemplo configurado. Un catálogo es configuración: cada ejecución sigue fijando sus propias huellas, y sustituir el catálogo no migra nada.
-
 Un `BindingIdentity` fija la ejecución original del padre, el espacio de nombres, la instancia y la ejecución (run) del padre, la ranura, la **generación**, el estado anfitrión, el tipo de workflow hijo, la huella de la política del hijo, el resultado requerido, la huella de la entrada y las opciones del hijo. La generación identifica una entrada en un estado. Las solicitudes para una generación antigua nunca se redirigen a un hijo más reciente después de que el padre cambie de estado o vuelva a entrar en uno.
 
 Iniciar y esperar un hijo son transiciones separadas:
@@ -238,6 +219,25 @@ if ($key === 'begin') {
 ```
 
 Sin una reserva, `Workflow::startChild()` devuelve un recibo `StartedChildWorkflow` que un paso posterior puede esperar con `await()`. El padre debe verificar el resultado de negocio del hijo; la finalización técnica del hijo, una señal aceptada o un tiempo de espera no bastan. `Workflow::startChild()` solo está disponible en modo embebido; la ejecución mediante el protocolo de workers lo rechaza.
+
+### Catálogo de vinculaciones de hijos {#child-binding-catalog}
+
+Desde Workflow 2.41.0, un `MachineCatalog` registra las definiciones que pueden alojarse entre sí. Al construirlo, cada ranura se resuelve a una `machine@version` registrada y se rechaza un grafo no válido antes de que una vinculación lo use:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- Una versión de máquina duplicada, una ranura que nombra un hijo no registrado y una vinculación recursiva o cíclica lanzan `InvalidMachineCatalog`. Su `reason` es `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` o `state_machine_child_binding_cycle`. Una máquina que se aloja a sí misma, directamente, a través de otras máquinas o con otra versión, es un ciclo.
+- `InvalidMachineCatalog::$path` enumera la ruta, que el mensaje imprime como `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- El parámetro opcional `maxChildDepth` lanza `ResourceLimitExceeded` con la dimensión `child_depth` cuando la ruta de ranuras más profunda es más larga; `observed` informa de esa profundidad. La compensación retenida admite un solo nivel de hijos, así que use `maxChildDepth: 1` cuando los hijos participen en ámbitos retenidos.
+- Varios padres o estados anfitriones pueden compartir una misma definición de hijo.
+- `$catalog->assertBinding()` también exige que ambos perfiles usen exactamente las definiciones registradas, comparadas por huella.
+
+El catálogo es opcional. El inicio nativo de hijos, las reservas y `MachineDefinition::assertBinding()` no lo consultan, así que llame a `$catalog->assertBinding()` en la autorización de vinculaciones del anfitrión, como hace el ejemplo configurado. Un catálogo es configuración: cada ejecución sigue fijando sus propias huellas, y sustituir el catálogo no migra nada.
 
 ## Compensación y ámbitos retenidos {#compensation-and-retained-scopes}
 
@@ -293,7 +293,7 @@ La etapa distingue resultados con el mismo estado:
 | `budget` | `blocked` | Un presupuesto de avance rechazó el siguiente comando. Sin instantánea. |
 | `commit` | `committed`, `conflict`, `cancellation_requested` | El commit protegido confirmó la decisión. |
 
-Para las etapas `invariant`, `target` y `permission`, el ID de instantánea localiza la `ConditionEvaluation` que el anfitrión conservó para esa instantánea. Para `admission` y `commit`, el motivo procede de la admisión o del commit registrados, y la instantánea solo identifica la evidencia utilizada. Un rechazo después del trabajo nombra la instantánea `after`.
+Para las etapas `invariant`, `target` y `permission`, el ID de instantánea localiza la `ConditionEvaluation` que el anfitrión conservó para esa instantánea. Para `admission` y `commit`, el motivo procede de la admisión o del commit registrados, y la instantánea solo identifica la evidencia utilizada. Un rechazo después del trabajo nombra la instantánea `after`. Los resultados que el código de la aplicación construye sin etapa mantienen `stage` y `snapshot` en null.
 
 `MachineInspection` ofrece a las herramientas de operación una vista versionada de un sujeto de negocio. El anfitrión la construye fuera del código del workflow a partir de valores que ya ha autorizado:
 
@@ -306,8 +306,8 @@ $inspection = new MachineInspection(
 $view = $inspection->toArray();
 ```
 
-- `machine` contiene las versiones fijadas de la máquina, la definición y el perfil con sus huellas. `business` es el estado y la revisión actuales del almacén de la aplicación, distintos del estado de la ejecución del workflow. `transition` es el `explain()` de la ejecución.
-- `children` tiene una entrada por generación de vinculación, así que puede ser más corta que la lista pasada. Cada entrada tiene un `status` (`admitted`, `never_admitted` o `reserved`), la clave de vinculación, la ranura, la generación, el estado anfitrión, el resultado requerido, la ejecución que creó la vinculación, la instancia y la ejecución hijas y un ID de cierre. Un hijo admitido no es evidencia de su resultado de negocio.
+- `machine` contiene las versiones fijadas de la máquina, la definición y el perfil con sus huellas. `business` es el estado y la revisión actuales del almacén de la aplicación, distintos del estado de la ejecución del workflow. `transition` es el `explain()` del `TransitionResult` de la ejecución inspeccionada, o null si no se pasa ninguno.
+- `children` tiene una entrada por generación de vinculación, así que puede ser más corta que la lista pasada. Cada entrada tiene un `status` (`admitted`, `never_admitted` o `reserved`), la clave de vinculación, la ranura, la generación, el estado anfitrión, el tipo de workflow hijo, el resultado requerido, la ejecución padre que creó la vinculación, la instancia y la ejecución hijas y un ID de cierre. Un hijo admitido no es evidencia de su resultado de negocio.
 - `participation` enlaza un hijo con los ID de sus ámbitos padre e hijo retenidos y con la clave de obligación, que se unen con el `scopeId` de las entradas de `compensation`. Pase la `ChildReservation` de un hijo admitido junto a su `ChildBinding`. Un `participation` nulo significa que el hijo no tiene participación retenida o que no se pasó ninguna reserva.
 - `compensation` enumera la identidad y el ID de cada ámbito con las claves de `ScopeRecovery::describe()`.
 

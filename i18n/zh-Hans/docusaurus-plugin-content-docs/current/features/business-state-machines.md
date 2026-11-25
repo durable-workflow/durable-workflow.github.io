@@ -8,7 +8,7 @@ description: 嵌入式 Laravel 工作流中的实验性转换协议，用于共�
 
 :::warning 实验性
 
-`Workflow\V2\StateMachine` API，以及它所使用的已确认的子工作流启动（`Workflow::startChild()`）和 `DurableScope::reserveChild()`，均为实验性功能。它们从 Workflow 2.29.0 起以实验性方式提供，不受本包稳定性保证的覆盖，并且可能在次要版本中发生变化。按照[稳定性级别](../compatibility.md#stability-levels)，它们属于 `experimental` 接口。它所使用的保留式补偿作用域 API 的其余部分自 Workflow 2.33.0 起为稳定版。 子绑定目录、转换说明和 `MachineInspection` 于 Workflow 2.41.0 加入。
+`Workflow\V2\StateMachine` API，以及它所使用的已确认的子工作流启动（`Workflow::startChild()`）和 `DurableScope::reserveChild()`，均为实验性功能。它们从 Workflow 2.29.0 起以实验性方式提供，不受本包稳定性保证的覆盖，并且可能在次要版本中发生变化。按照[稳定性级别](../compatibility.md#stability-levels)，它们属于 `experimental` 接口。它所使用的保留式补偿作用域 API 的其余部分自 Workflow 2.33.0 起为稳定版。子绑定目录、转换说明和 `MachineInspection` 于 Workflow 2.41.0 加入。
 
 本页示例是使用合成提供方的仓库源码示例，并非针对已安装包或真实提供方的资格验证。本页内容不意味着以下任何一项：
 
@@ -167,25 +167,6 @@ $permission = $registry->evaluateCondition($profile->condition($transition->key 
 
 父定义中的 `ChildSlot` 指定槽位名称、其承载状态、子状态机及其定义版本，以及所需的业务结果。`MachineDefinition::assertBinding()` 根据该声明检查绑定。它不执行任何查找、授权或准入。
 
-### 子绑定目录 {#child-binding-catalog}
-
-从 Workflow 2.41.0 起，`MachineCatalog` 登记可以相互承载的定义。构造时会把每个槽位解析为一个已登记的 `machine@version`，并在任何绑定使用之前拒绝无效的图：
-
-```php
-$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
-
-$catalog->child($orders, 'shipment');
-$catalog->assertBinding($parentProfile, $binding, $childProfile);
-```
-
-- 重复的状态机版本、指向未登记子状态机的槽位，以及递归或循环绑定，都会抛出 `InvalidMachineCatalog`。其 `reason` 为 `state_machine_definition_duplicate`、`state_machine_child_definition_unregistered` 或 `state_machine_child_binding_cycle`。状态机承载自身，无论是直接、经由其他状态机，还是以另一个版本，都算作循环。
-- `InvalidMachineCatalog::$path` 列出路径，例如 `orders@1 -> shipment:shipments@1 -> parent:orders@1`。
-- 可选的 `maxChildDepth` 在最深的槽位路径更长时抛出维度为 `child_depth` 的 `ResourceLimitExceeded`；`observed` 报告该深度。保留补偿只支持一层子状态机，因此当子状态机参与保留作用域时，请使用 `maxChildDepth: 1`。
-- 多个父状态机或承载状态可以共享同一个子定义。
-- `$catalog->assertBinding()` 还要求两个配置文件都使用按指纹比较的、完全一致的已登记定义。
-
-目录是可选的。原生子工作流启动、预留和 `MachineDefinition::assertBinding()` 都不会查询它，因此请像配置示例那样，在宿主的绑定授权中调用 `$catalog->assertBinding()`。目录属于配置：每次执行仍然固定自己的指纹，替换目录不会迁移任何内容。
-
 `BindingIdentity` 固定原始的父执行、命名空间、父实例和运行、槽位、**代次**、承载状态、子工作流类型、子策略指纹、所需结果、输入指纹和子选项。代次标识一次状态进入。在父状态机变更状态或重新进入某个状态后，针对旧代次的请求绝不会重定向到较新的子状态机。
 
 启动子状态机和等待子状态机是两个独立的转换：
@@ -238,6 +219,25 @@ if ($key === 'begin') {
 ```
 
 在没有预留的情况下，`Workflow::startChild()` 返回一个 `StartedChildWorkflow` 回执，后续步骤可以对其调用 `await()`。父级必须验证子级的业务结果；子工作流在技术上完成、已接受的信号或超时都不足以证明这一点。`Workflow::startChild()` 仅限嵌入式使用；Worker 协议执行会拒绝它。
+
+### 子绑定目录 {#child-binding-catalog}
+
+从 Workflow 2.41.0 起，`MachineCatalog` 登记可以相互承载的定义。构造时会把每个槽位解析为一个已登记的 `machine@version`，并在任何绑定使用之前拒绝无效的图：
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- 重复的状态机版本、指向未登记子状态机的槽位，以及递归或循环绑定，都会抛出 `InvalidMachineCatalog`。其 `reason` 为 `state_machine_definition_duplicate`、`state_machine_child_definition_unregistered` 或 `state_machine_child_binding_cycle`。状态机承载自身，无论是直接、经由其他状态机，还是以另一个版本，都算作循环。
+- `InvalidMachineCatalog::$path` 列出路径，异常消息将其打印为 `orders@1 -> shipment:shipments@1 -> parent:orders@1`。
+- 可选的 `maxChildDepth` 在最深的槽位路径更长时抛出维度为 `child_depth` 的 `ResourceLimitExceeded`；`observed` 报告该深度。保留补偿只支持一层子状态机，因此当子状态机参与保留作用域时，请使用 `maxChildDepth: 1`。
+- 多个父状态机或承载状态可以共享同一个子定义。
+- `$catalog->assertBinding()` 还要求两个配置档都使用按指纹比较的、完全一致的已登记定义。
+
+目录是可选的。原生子工作流启动、预留和 `MachineDefinition::assertBinding()` 都不会查询它，因此请像配置示例那样，在宿主的绑定授权中调用 `$catalog->assertBinding()`。目录属于配置：每次执行仍然固定自己的指纹，替换目录不会迁移任何内容。
 
 ## 补偿与保留作用域 {#compensation-and-retained-scopes}
 
@@ -293,7 +293,7 @@ public function compensate(TransitionContext $context, ExecutionReference $origi
 | `budget` | `blocked` | 前进预算拒绝了下一条命令。没有快照。 |
 | `commit` | `committed`, `conflict`, `cancellation_requested` | 受保护的提交确认了该决定。 |
 
-对于 `invariant`、`target` 和 `permission` 阶段，可以用快照 ID 找到宿主为该快照保留的 `ConditionEvaluation`。对于 `admission` 和 `commit`，原因来自已记录的准入或提交，快照只标识所用的证据。工作之后的拒绝会给出 `after` 快照。
+对于 `invariant`、`target` 和 `permission` 阶段，可以用快照 ID 找到宿主为该快照保留的 `ConditionEvaluation`。对于 `admission` 和 `commit`，原因来自已记录的准入或提交，快照只标识所用的证据。工作之后的拒绝会给出 `after` 快照。应用代码在没有阶段的情况下构建的结果，其 `stage` 和 `snapshot` 保持为 null。
 
 `MachineInspection` 为运维工具提供一个业务主体的版本化视图。宿主在工作流代码之外，用已经授权的值构建它：
 
@@ -306,12 +306,12 @@ $inspection = new MachineInspection(
 $view = $inspection->toArray();
 ```
 
-- `machine` 包含固定的状态机、定义和配置文件版本及其指纹。`business` 是来自应用存储的当前状态和修订，与工作流运行状态不同。`transition` 是该执行的 `explain()`。
-- `children` 每个绑定代各有一条记录，因此可能比传入的列表短。每条记录包含 `status`（`admitted`、`never_admitted` 或 `reserved`）、绑定键、槽位、代、承载状态、所需结果、创建绑定的执行、子实例和运行，以及关闭 ID。已准入的子状态机并不能证明其业务结果。
+- `machine` 包含固定的状态机、定义和配置档版本及其指纹。`business` 是来自应用存储的当前状态和修订，与工作流运行状态不同。`transition` 是被检查执行的 `TransitionResult` 的 `explain()`，未传入时为 null。
+- `children` 每个绑定代各有一条记录，因此可能比传入的列表短。每条记录包含 `status`（`admitted`、`never_admitted` 或 `reserved`）、绑定键、槽位、代、承载状态、子工作流类型、所需结果、创建绑定的父执行、子实例和运行，以及关闭 ID。已准入的子状态机并不能证明其业务结果。
 - `participation` 把子状态机与其保留的父作用域和子作用域 ID 以及义务键关联起来，可与 `compensation` 记录的 `scopeId` 连接。请把已准入子状态机的 `ChildReservation` 与其 `ChildBinding` 一起传入。`participation` 为 null 表示该子状态机没有保留参与，或未传入预留。
 - `compensation` 列出每个作用域的标识和 ID，以及 `ScopeRecovery::describe()` 的键。
 
-构造会拒绝未声明的状态、使用其他配置文件的执行、其他执行的转换、属于其他主体或配置文件的子工作、矛盾或重复的代、重复的作用域，以及格式错误的作用域描述。它不执行任何 I/O，也不授权任何内容。作用域键由应用定义，因此由宿主把根作用域与主体配对。
+构造会拒绝未声明的状态、使用其他配置档的执行、其他执行的转换、属于其他主体或配置档的子工作、矛盾或重复的代、重复的作用域，以及格式错误的作用域描述。它不执行任何 I/O，也不授权任何内容。作用域键由应用定义，因此由宿主把根作用域与主体配对。
 
 ## 可运行示例 {#runnable-examples}
 

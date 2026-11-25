@@ -167,25 +167,6 @@ Elle renvoie un `CommitResult` avec `committed`, `conflict` ou `cancellation_req
 
 Un `ChildSlot` dans la définition parente nomme l’emplacement, ses états hôtes, la machine enfant et la version de sa définition, ainsi que le résultat métier requis. `MachineDefinition::assertBinding()` vérifie une liaison par rapport à cette déclaration. Elle n’effectue ni recherche, ni autorisation, ni admission.
 
-### Catalogue de liaisons enfants {#child-binding-catalog}
-
-À partir de Workflow 2.41.0, un `MachineCatalog` enregistre les définitions qui peuvent s’héberger mutuellement. Sa construction résout chaque emplacement vers une `machine@version` enregistrée et refuse un graphe invalide avant qu’une liaison ne l’utilise :
-
-```php
-$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
-
-$catalog->child($orders, 'shipment');
-$catalog->assertBinding($parentProfile, $binding, $childProfile);
-```
-
-- Une version de machine en double, un emplacement qui nomme un enfant non enregistré et une liaison récursive ou cyclique lèvent `InvalidMachineCatalog`. Son `reason` vaut `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` ou `state_machine_child_binding_cycle`. Une machine qui s’héberge elle-même, directement, via d’autres machines ou sous une autre version, forme un cycle.
-- `InvalidMachineCatalog::$path` liste le chemin, par exemple `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
-- Le paramètre facultatif `maxChildDepth` lève `ResourceLimitExceeded` avec la dimension `child_depth` lorsque le chemin d’emplacements le plus profond est plus long ; `observed` indique cette profondeur. La compensation conservée prend en charge un seul niveau d’enfant : utilisez donc `maxChildDepth: 1` lorsque des enfants participent à des portées conservées.
-- Plusieurs parents ou états hôtes peuvent partager une même définition enfant.
-- `$catalog->assertBinding()` exige aussi que les deux profils utilisent exactement les définitions enregistrées, comparées par empreinte.
-
-Le catalogue est facultatif. Le démarrage natif d’enfant, les réservations et `MachineDefinition::assertBinding()` ne le consultent pas : appelez donc `$catalog->assertBinding()` dans l’autorisation de liaison de l’hôte, comme le fait l’exemple configuré. Un catalogue est de la configuration : chaque exécution épingle toujours ses propres empreintes, et remplacer le catalogue ne migre rien.
-
 Une `BindingIdentity` épingle l’exécution parente d’origine, l’espace de noms, l’instance et l’exécution (run) du parent, l’emplacement, la **génération**, l’état hôte, le type de workflow enfant, l’empreinte de politique de l’enfant, le résultat requis, l’empreinte d’entrée et les options de l’enfant. La génération identifie une entrée dans un état. Les demandes visant une ancienne génération ne sont jamais redirigées vers un enfant plus récent après que le parent a changé d’état ou est entré de nouveau dans un état.
 
 Démarrer un enfant et l’attendre sont deux transitions distinctes :
@@ -238,6 +219,25 @@ if ($key === 'begin') {
 ```
 
 Sans réservation, `Workflow::startChild()` renvoie un reçu `StartedChildWorkflow` qu’une étape ultérieure peut attendre avec `await()`. Le parent doit vérifier le résultat métier de l’enfant ; l’achèvement technique de l’enfant, un signal accepté ou un délai expiré ne suffisent pas. `Workflow::startChild()` est réservé au mode intégré ; l’exécution par le protocole worker le refuse.
+
+### Catalogue de liaisons enfants {#child-binding-catalog}
+
+À partir de Workflow 2.41.0, un `MachineCatalog` enregistre les définitions qui peuvent s’héberger mutuellement. Sa construction résout chaque emplacement vers une `machine@version` enregistrée et refuse un graphe invalide avant qu’une liaison ne l’utilise :
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- Une version de machine en double, un emplacement qui nomme un enfant non enregistré et une liaison récursive ou cyclique lèvent `InvalidMachineCatalog`. Son `reason` vaut `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` ou `state_machine_child_binding_cycle`. Une machine qui s’héberge elle-même, directement, via d’autres machines ou sous une autre version, forme un cycle.
+- `InvalidMachineCatalog::$path` liste le chemin, que le message affiche ainsi : `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- Le paramètre facultatif `maxChildDepth` lève `ResourceLimitExceeded` avec la dimension `child_depth` lorsque le chemin d’emplacements le plus profond est plus long ; `observed` indique cette profondeur. La compensation conservée prend en charge un seul niveau d’enfant : utilisez donc `maxChildDepth: 1` lorsque des enfants participent à des portées conservées.
+- Plusieurs parents ou états hôtes peuvent partager une même définition enfant.
+- `$catalog->assertBinding()` exige aussi que les deux profils utilisent exactement les définitions enregistrées, comparées par empreinte.
+
+Le catalogue est facultatif. Le démarrage natif d’enfant, les réservations et `MachineDefinition::assertBinding()` ne le consultent pas : appelez donc `$catalog->assertBinding()` dans l’autorisation de liaison de l’hôte, comme le fait l’exemple configuré. Un catalogue est de la configuration : chaque exécution épingle toujours ses propres empreintes, et remplacer le catalogue ne migre rien.
 
 ## Compensation et portées conservées {#compensation-and-retained-scopes}
 
@@ -293,7 +293,7 @@ L’étape distingue des résultats qui ont le même statut :
 | `budget` | `blocked` | Un budget d’avancement a refusé la commande suivante. Aucun instantané. |
 | `commit` | `committed`, `conflict`, `cancellation_requested` | Le commit protégé a accusé réception de la décision. |
 
-Pour les étapes `invariant`, `target` et `permission`, l’identifiant d’instantané permet de retrouver la `ConditionEvaluation` que l’hôte a conservée pour cet instantané. Pour `admission` et `commit`, la raison provient de l’admission ou du commit enregistrés, et l’instantané identifie seulement les preuves utilisées. Un refus après le travail nomme l’instantané `after`.
+Pour les étapes `invariant`, `target` et `permission`, l’identifiant d’instantané permet de retrouver la `ConditionEvaluation` que l’hôte a conservée pour cet instantané. Pour `admission` et `commit`, la raison provient de l’admission ou du commit enregistrés, et l’instantané identifie seulement les preuves utilisées. Un refus après le travail nomme l’instantané `after`. Les résultats construits par le code applicatif sans étape gardent `stage` et `snapshot` à null.
 
 `MachineInspection` donne aux outils d’exploitation une vue versionnée d’un sujet métier. L’hôte la construit hors du code de workflow, à partir de valeurs qu’il a déjà autorisées :
 
@@ -306,8 +306,8 @@ $inspection = new MachineInspection(
 $view = $inspection->toArray();
 ```
 
-- `machine` contient les versions épinglées de la machine, de la définition et du profil avec leurs empreintes. `business` est l’état et la révision actuels issus du stockage de l’application, distincts du statut de l’exécution du workflow. `transition` est le `explain()` de l’exécution.
-- `children` contient une entrée par génération de liaison ; la liste peut donc être plus courte que celle transmise. Chaque entrée comporte un `status` (`admitted`, `never_admitted` ou `reserved`), la clé de liaison, l’emplacement, la génération, l’état hôte, le résultat requis, l’exécution qui a créé la liaison, l’instance et l’exécution enfants, et un identifiant de clôture. Un enfant admis ne prouve pas son résultat métier.
+- `machine` contient les versions épinglées de la machine, de la définition et du profil avec leurs empreintes. `business` est l’état et la révision actuels issus du stockage de l’application, distincts du statut de l’exécution du workflow. `transition` est le `explain()` du `TransitionResult` de l’exécution inspectée, ou null si aucun n’est transmis.
+- `children` contient une entrée par génération de liaison ; la liste peut donc être plus courte que celle transmise. Chaque entrée comporte un `status` (`admitted`, `never_admitted` ou `reserved`), la clé de liaison, l’emplacement, la génération, l’état hôte, le type de workflow enfant, le résultat requis, l’exécution parente qui a créé la liaison, l’instance et l’exécution enfants, et un identifiant de clôture. Un enfant admis ne prouve pas son résultat métier.
 - `participation` relie un enfant aux identifiants de ses portées parente et enfant conservées et à la clé d’obligation, qui se joignent au `scopeId` des entrées `compensation`. Transmettez la `ChildReservation` d’un enfant admis à côté de son `ChildBinding`. Un `participation` nul signifie que l’enfant n’a pas de participation conservée ou qu’aucune réservation n’a été transmise.
 - `compensation` liste l’identité et l’identifiant de chaque portée avec les clés de `ScopeRecovery::describe()`.
 
