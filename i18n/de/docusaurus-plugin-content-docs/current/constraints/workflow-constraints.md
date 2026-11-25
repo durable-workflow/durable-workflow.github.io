@@ -15,7 +15,31 @@ Beispiele für Operationen, die nicht in den Workflow-Code gehören:
 
 ## Logging aus Workflow-Code {#workflow-logging}
 
-Ein Worker rekonstruiert nach Aktivierungen und kaltem Austausch den persistierten Workflow-Verlauf. Gewöhnliches Anwendungslogging kann deshalb frühere Meldungen wiederholen. Verwenden Sie den für Ihr Binding dokumentierten replay-bewussten Logger, sofern verfügbar. Rust Service Mode bietet den [Workflow-Logger des Rust SDK 4.17](../polyglot/rust.md#workflow-logging); andere Bindings behalten ihre gesondert dokumentierten Verträge.
+Die Engine spielt einen Workflow bei jedem Aufwachen aus seinem Verlauf erneut ab, daher wird ein gewöhnlicher Log-Aufruf im Workflow-Code für jeden abgeschlossenen Schritt erneut geschrieben. Ein Workflow mit 50 Schritten protokolliert seine erste Zeile 50-mal. Verwenden Sie stattdessen den replay-bewussten Logger. Er schreibt nur, wenn der Code zum ersten Mal ausgeführt wird, und ergänzt jede Zeile um die Identität des Laufs:
+
+- Eingebettete Workflows (Workflow 2.42.0 oder neuer): `$this->logger()` liefert einen PSR-3-Logger, der über den Laravel-Logger oder über den übergebenen Kanal schreibt, etwa `$this->logger('workflow')`. Jede Zeile enthält `workflow_instance_id`, `workflow_run_id`, `workflow_type` und `namespace`. `$this->replayState()` liefert `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` oder `Unavailable`), und `$this->isReplaying()` ist die boolesche Form.
+- PHP SDK: `$context->logger()` schreibt über den PSR-3-Logger des `Worker`. Siehe den [PHP-SDK-Leitfaden](../polyglot/php.md#workflow-logging).
+- Rust SDK: `ctx.logger()`. Siehe den [Workflow-Logger des Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
+- Python SDK: `ctx.logger`.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Abfragen und Update-Validatoren protokollieren nie, weil sie immer ein Replay sind.
 
 Logging ist eine Prozessbeobachtung. Halten Sie dauerhafte Workflow-Befehle unabhängig von Replay-Zustand und Log-Zustellung. Auch ein replay-bewusster Logger kann eine Meldung aus einem nicht persistierten Versuch nach Absturz oder Retry wiederholen; er ist keine Outbox mit Exactly-once-Garantie. Host-Handler müssen begrenzt und nicht blockierend bleiben, damit Logging den Worker nicht aufhält. Dauerhafte Geschäftseffekte gehören stattdessen in eine passende Activity oder aufgezeichnete Workflow-Operation.
 

@@ -17,7 +17,31 @@ Evite estas operações dentro de uma classe de workflow:
 
 ## Logging no código do workflow {#workflow-logging}
 
-Um worker reconstrói o histórico confirmado após ativações e substituição a frio, por isso o logging comum da aplicação pode repetir mensagens anteriores. Use o logger consciente de replay documentado para seu binding quando disponível. O modo serviço Rust oferece o [logger de workflow do Rust SDK 4.17](../polyglot/rust.md#workflow-logging); outros bindings mantêm seus contratos documentados separadamente.
+O motor faz o replay de um workflow a partir do histórico toda vez que ele acorda, então uma chamada de log comum no código do workflow é gravada novamente a cada passo concluído. Um workflow com 50 passos registra sua primeira linha 50 vezes. Use, em vez disso, o logger ciente do replay. Ele só grava quando o código é executado pela primeira vez e acrescenta a identidade da execução a cada linha:
+
+- Workflows embarcados (Workflow 2.42.0 ou posterior): `$this->logger()` retorna um logger PSR-3 que grava pelo logger do Laravel, ou pelo canal que você informar, como em `$this->logger('workflow')`. Cada linha traz `workflow_instance_id`, `workflow_run_id`, `workflow_type` e `namespace`. `$this->replayState()` retorna `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` ou `Unavailable`), e `$this->isReplaying()` é sua forma booleana.
+- PHP SDK: `$context->logger()` grava pelo logger PSR-3 do `Worker`. Veja o [guia do PHP SDK](../polyglot/php.md#workflow-logging).
+- Rust SDK: `ctx.logger()`. Veja o [logger de workflow do Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
+- Python SDK: `ctx.logger`.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Consultas e validadores de atualização nunca registram logs, porque são sempre um replay.
 
 Logging é uma observação do processo. Mantenha os comandos duráveis independentes das observações de replay e da entrega dos logs. Mesmo um logger consciente de replay pode repetir uma mensagem de tentativa não confirmada após falha ou retry; ele não é um outbox exatamente uma vez. Os handlers do host devem ser limitados e não bloqueantes para não parar o worker. Coloque efeitos duráveis de negócio na atividade ou operação registrada do workflow apropriada.
 

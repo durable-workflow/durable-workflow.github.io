@@ -756,6 +756,29 @@ Rust はアプリケーションクライアント、選択ハンドル、Worker
 
 Worker は `Worker::register_update` で名前付きハンドラーを登録します。Avro 値を直接受け取り返すハンドラーには `register_update_avro_value` を使います。更新は永続的で結果を伴うワークフロー変更です。送信後に結果を待たないシグナルや、読み取り専用でリプレイされるクエリとは別です。
 
+### 更新バリデーター {#update-validators}
+
+Rust SDK 4.25.0 以降では、Worker は更新を受理前に拒否できます。同じ名前の更新ハンドラーの後で、`Worker::register_update_validator` によりバリデーターを登録します。
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` は Avro 値を受け取ります。リプレイ済み状態のバリデーター `register_replayed_update_validator::<S>` は、ワークフローのリプレイ済み状態の切り離されたコピーを読みます。リプレイされるワークフローと同じ状態型を使う必要があります。Worker はバリデーターを通知し、Server が同期的な更新検証を通知しない場合は登録を拒否し、ワークフロータスクと更新検証タスクをまとめてポーリングします。各検証タスクでは、バリデーターだけを実行します。
+
+- `Ok(())` は更新を承認し、Server がそれを受理します。
+- `UpdateRejection` は `update_validator_rejected`、メッセージ、型、検証エラーで更新を拒否します。更新は受理されず、ハンドラーも実行されません。Server は拒否を監査イベント `UpdateRejected` としてだけ記録します。
+- ワークフローコマンドを追加するバリデーターは `UpdateValidatorCommandRefused` で拒否され、panic やリプレイの失敗は `update_validation_worker_failed` を報告します。
+
+クライアントでは、`Error::update_validator_rejection()` が拒否のメッセージ、検証エラー、ID を返し、`Error::is_update_validation_failed()` がタイムアウトと Worker の失敗を扱います。通常の失敗した更新はどちらにも該当しません。バリデーターはリプレイ中に実行されず、更新検証タスクは Worker のインターセプターを通りません。
+
 ## ペイロードエンベロープ {#payload-envelope}
 
 ワークフロー入力、シグナル、アクティビティ、クエリ、結果は、`codec` とエンコード済み `blob` から成る公開 `PayloadEnvelope` 契約を使います。SDK の既定の `avro` 経路は、宣言した `apache-avro` 依存関係とプラットフォームの固定バージョン付き Value スキーマを使います。blob を独自実装したり、実装固有のレコードでエンベロープを置き換えたりしないでください。

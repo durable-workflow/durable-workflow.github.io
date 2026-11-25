@@ -974,6 +974,45 @@ Workers реєструють іменовані обробники через `W
 з результатом. Він відрізняється від signals без очікування відповіді
 та read-only queries із replay.
 
+### Валідатори update {#update-validators}
+
+Починаючи з Rust SDK 4.25.0, worker може відхилити update ще до його прийняття.
+Зареєструйте валідатор через `Worker::register_update_validator` після
+обробника update з тим самим іменем:
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` приймає значення Avro. Валідатор із
+відновленим станом, `register_replayed_update_validator::<S>`, читає від'єднану
+копію відновленого стану workflow; він має використовувати той самий тип стану,
+що й відновлений workflow. Worker оголошує валідатор, відхиляє реєстрацію, якщо
+Server не оголошує синхронну валідацію update, і опитує задачі workflow та
+валідації update разом. Для кожної задачі валідації він виконує лише валідатор:
+
+- `Ok(())` схвалює update, і Server його приймає.
+- `UpdateRejection` відхиляє його з `update_validator_rejected`, повідомленням,
+  типом і помилками валідації. Update ніколи не приймається, і його обробник
+  ніколи не виконується. Server записує відхилення лише як аудиторську подію
+  `UpdateRejected`.
+- Валідатор, що додає команду workflow, відхиляється з
+  `UpdateValidatorCommandRefused`, а panic чи збій replay повідомляє
+  `update_validation_worker_failed`.
+
+На клієнті `Error::update_validator_rejection()` повертає повідомлення, помилки
+валідації та ідентифікатори відхилення, а `Error::is_update_validation_failed()`
+охоплює тайм-аути та збої worker. Звичайний невдалий update не відповідає жодному
+з них. Валідатори ніколи не виконуються під час replay, а задачі валідації update
+не проходять через interceptor-и worker.
+
 ## Оболонка payload {#payload-envelope}
 
 Вхідні дані workflow, signals, activities, queries та результати

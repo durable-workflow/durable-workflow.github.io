@@ -17,7 +17,31 @@ Dans le corps d’un workflow :
 
 ## Journaliser depuis le code de workflow {#workflow-logging}
 
-Un worker reconstruit l’historique validé du workflow après les activations et remplacements à froid ; la journalisation ordinaire de l’application peut donc répéter les messages précédents. Utilisez le logger conscient du replay documenté pour votre binding lorsqu’il existe. Le mode service Rust fournit le [logger de workflow de Rust SDK 4.17](../polyglot/rust.md#workflow-logging) ; les autres bindings conservent leurs contrats documentés séparément.
+Le moteur relit un workflow à partir de son historique à chaque réveil ; un appel de journalisation ordinaire dans le code du workflow est donc réécrit pour chaque étape terminée. Un workflow de 50 étapes journalise sa première ligne 50 fois. Utilisez plutôt le logger conscient de la relecture. Il n’écrit que lorsque le code s’exécute pour la première fois et ajoute l’identité de l’exécution à chaque ligne :
+
+- Workflows embarqués (Workflow 2.42.0 ou ultérieur) : `$this->logger()` retourne un logger PSR-3 qui écrit via le logger Laravel, ou via le canal que vous passez, comme dans `$this->logger('workflow')`. Chaque ligne contient `workflow_instance_id`, `workflow_run_id`, `workflow_type` et `namespace`. `$this->replayState()` retourne `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` ou `Unavailable`), et `$this->isReplaying()` en est la forme booléenne.
+- PHP SDK : `$context->logger()` écrit via le logger PSR-3 du `Worker`. Voir le [guide du PHP SDK](../polyglot/php.md#workflow-logging).
+- Rust SDK : `ctx.logger()`. Voir le [logger de workflow du Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
+- Python SDK : `ctx.logger`.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Les requêtes de lecture et les validateurs de mise à jour ne journalisent jamais, car ils sont toujours une relecture.
 
 La journalisation est une observation du processus. Gardez les commandes durables indépendantes des observations du replay et de la livraison des logs. Même un logger conscient du replay peut répéter un message d’une tentative non validée après un crash ou un retry ; ce n’est pas une outbox garantissant exactement une fois. Les handlers hôtes doivent rester bornés et non bloquants pour ne pas immobiliser le worker. Placez les effets métier durables dans l’activité ou l’opération de workflow enregistrée appropriée.
 

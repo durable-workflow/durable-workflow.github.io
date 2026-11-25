@@ -748,6 +748,29 @@ Rust 在应用客户端、选定句柄及 Worker 编写角色中均支持持久�
 
 Worker 用 `Worker::register_update` 注册具名处理器；处理器直接消费和返回 Avro 值时，使用 `register_update_avro_value`。更新是持久的、带结果的工作流变更，区别于发送后无需等待的信号和只读的经重放查询。
 
+### 更新验证器 {#update-validators}
+
+从 Rust SDK 4.25.0 起，Worker 可以在接受更新之前拒绝它。在同名的更新处理程序之后，使用 `Worker::register_update_validator` 注册验证器：
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` 接收 Avro 值。基于重放状态的验证器 `register_replayed_update_validator::<S>` 读取工作流重放状态的一份分离副本；它必须使用与被重放工作流相同的状态类型。Worker 会声明验证器，在 Server 未声明同步更新验证时拒绝注册，并同时轮询工作流任务和更新验证任务。对每个验证任务，它只运行验证器：
+
+- `Ok(())` 批准更新，Server 随后接受它。
+- `UpdateRejection` 以 `update_validator_rejected`、消息、类型和验证错误拒绝更新。更新永远不会被接受，其处理程序也永远不会运行。Server 只把拒绝记录为审计事件 `UpdateRejected`。
+- 添加工作流命令的验证器会被 `UpdateValidatorCommandRefused` 拒绝；panic 或重放失败会报告 `update_validation_worker_failed`。
+
+在客户端，`Error::update_validator_rejection()` 返回拒绝的消息、验证错误和 ID，`Error::is_update_validation_failed()` 涵盖超时和 Worker 失败。普通的失败更新不匹配这两者中的任何一个。验证器从不在重放期间运行，更新验证任务也不经过 Worker 拦截器。
+
 ## 负载封装 {#payload-envelope}
 
 工作流输入、信号、活动、查询及结果使用已发布的 `PayloadEnvelope` 契约：`codec` 加编码后的 `blob`。SDK 默认的 `avro` 路径使用其声明的 `apache-avro` 依赖及平台固定的带版本 Value 模式；不要手工拼装 blob，也不要用实现专有记录替换封装。

@@ -17,7 +17,31 @@ description: リプレイの決定性を保ち、起動時に安全でない呼�
 
 ## ワークフローコードからのロギング {#workflow-logging}
 
-worker は起動ごとの再開やコールド置換後に確定済みワークフロー履歴を再構築するため、通常のアプリケーションログは以前のメッセージを繰り返し得ます。利用可能なら、その binding で文書化されたリプレイ対応ロガーを使ってください。Rust サービスモードには [Rust SDK 4.17 のワークフローロガー](../polyglot/rust.md#workflow-logging)があります。他の binding はそれぞれの文書化された契約に従います。
+エンジンはワークフローが起動するたびに履歴からリプレイするため、ワークフローコード内の通常のログ呼び出しは完了したステップごとに書き直されます。50 ステップのワークフローは最初の行を 50 回記録します。代わりにリプレイ対応ロガーを使ってください。コードが初めて実行されるときだけ書き込み、各行に実行の識別情報を付けます。
+
+- 組み込みワークフロー（Workflow 2.42.0 以降）: `$this->logger()` は PSR-3 ロガーを返し、Laravel のロガー、または `$this->logger('workflow')` のように渡したチャネルを通じて書き込みます。各行には `workflow_instance_id`、`workflow_run_id`、`workflow_type`、`namespace` が含まれます。`$this->replayState()` は `Workflow\V2\Enums\WorkflowReplayState`（`Replaying`、`Executing`、`Unavailable`）を返し、`$this->isReplaying()` はその真偽値版です。
+- PHP SDK: `$context->logger()` は `Worker` の PSR-3 ロガーを通じて書き込みます。[PHP SDK ガイド](../polyglot/php.md#workflow-logging)を参照してください。
+- Rust SDK: `ctx.logger()`。[Rust SDK 4.17 のワークフローロガー](../polyglot/rust.md#workflow-logging)を参照してください。
+- Python SDK: `ctx.logger`。
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+クエリと更新バリデーターは常にリプレイなので、ログを書きません。
 
 ロギングはプロセスの観測です。永続ワークフローコマンドを、replay state の観測やログ配送に依存させないでください。リプレイ対応ロガーでも、未確定試行のメッセージはクラッシュや retry 後に重複し得ます。exactly-once outbox ではありません。ホスト handler は有界かつ非ブロッキングにし、worker を停止させないようにしてください。永続的な業務効果は、適切な activity または記録されるワークフロー操作に置いてください。
 

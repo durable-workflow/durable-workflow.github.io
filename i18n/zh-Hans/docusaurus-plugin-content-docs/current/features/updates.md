@@ -14,6 +14,7 @@ sidebar_position: 3
 - 在命令历史和 Webhook 路由中使用声明的持久更新名称。`#[UpdateMethod('mark-approved')]` 使公开可调用名称在 PHP 方法重命名后仍保持稳定。
 - 拒绝针对历史运行或已关闭运行的请求，不会悄然修改当前运行。
 - 在处理器运行前，将未声明方法名以 `rejected_unknown_update` 拒绝，将不符合契约的参数以 `rejected_invalid_arguments` 拒绝，并提供机器可读的 `validation_errors`。
+- 在接受之前，把被你的[更新验证器](#validate-updates-before-acceptance)拒绝的请求作为 `update_validator_rejected` 拒绝。
 
 更新与查询一样，先重放已提交历史。与查询不同，更新允许修改可安全重放的工作流状态，并返回一个值。
 
@@ -110,6 +111,52 @@ $latest->closedAt();     // null until the lifecycle closes
 ```
 
 `inspectUpdate()` 不等待工作流执行。它重新加载已存储的持久生命周期，并返回当前 `UpdateResult`。
+
+## 在接受之前验证更新 {#validate-updates-before-acceptance}
+
+如果没有验证器，违反业务规则的更新会先被接受，然后才失败。它会被记录为失败的更新，调用方无法区分错误的请求和失败的操作。声明一个验证器，即可在接受之前拒绝该请求。验证器需要 Workflow 2.42.0 或更高版本。
+
+```php
+use RuntimeException;
+use Workflow\UpdateMethod;
+use Workflow\UpdateValidator;
+use Workflow\V2\Workflow;
+
+final class CartWorkflow extends Workflow
+{
+    private array $items = [];
+
+    #[UpdateMethod('add-item')]
+    public function addItem(string $item): array
+    {
+        $this->items[] = $item;
+
+        return $this->items;
+    }
+
+    #[UpdateValidator('add-item')]
+    public function validateAddItem(string $item): void
+    {
+        if (count($this->items) >= 10) {
+            throw new RuntimeException('The cart is full.');
+        }
+    }
+}
+```
+
+`#[UpdateValidator]` 通过持久名称指定更新；如果更新没有别名，则使用其方法名。验证器接收与更新相同的参数。在接受更新之前，引擎会从历史中重建运行的状态，并且只调用验证器：
+
+- 正常返回时，更新会照常被接受并应用。
+- 抛出异常或返回 `false` 时，更新会以原因 `update_validator_rejected` 和结果 `rejected_invalid_arguments` 被拒绝。`rejectedByValidator()` 为 true，`rejectionMessage()` 返回异常消息，`validationErrors()` 返回 Laravel `ValidationException` 的错误。`update()` 会抛出包含这两者的 `LogicException`。
+- 被拒绝的更新永远不会被接受，其处理程序永远不会运行，工作流也不会被唤醒。与其他拒绝一样，它只被记录为审计事件 `UpdateRejected`，重放会忽略该事件。
+
+验证器是只读的。它们可以读取重建后的工作流状态，但任何持久调用（活动、定时器、子工作流、信号、side effect、`await`、continue-as-new，或 memo、搜索属性的 upsert）都会抛出 `UpdateValidatorCommandException` 并拒绝更新。验证器对重建状态所做的修改会被丢弃。生成器形式的验证器会被拒绝，因为它的函数体永远不会执行。
+
+验证器不会记录到历史中，也不会在重放时运行，因此不影响确定性。它们看到的是已提交历史中的状态：已接受但尚未应用的更新对它们不可见。重放和验证器会在更新准入持有运行锁期间执行，因此请让验证器保持快速。
+
+如果无法重建状态，或验证器遇到数据库错误，会抛出 `UpdateValidationFailedException`，并且不会记录任何内容。更新的 webhook 路由会以可重试的 `503` 和 `update_validation_failed` 响应。请使用同一个请求 ID 重试。
+
+对被拒绝的更新使用相同键重试时，会返回保留的拒绝结果，而不会再次运行验证器。
 
 ## 响应不确定后的恢复 {#recover-after-an-uncertain-response}
 

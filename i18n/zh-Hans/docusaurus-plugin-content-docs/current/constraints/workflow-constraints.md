@@ -17,7 +17,31 @@ description: 保持重放的确定性，并在应用启动时发现不安全的�
 
 ## 从 workflow 代码记录日志 {#workflow-logging}
 
-worker 在激活和冷替换后重建已提交的 workflow 历史，因此普通应用日志可能重复先前的消息。若对应 binding 提供了已文档化的重放感知 logger，请使用该接口。Rust 服务模式提供 [Rust SDK 4.17 workflow logger](../polyglot/rust.md#workflow-logging)；其他 binding 保留各自文档中的契约。
+引擎每次唤醒工作流时都会从历史中重放它，因此工作流代码中的普通日志调用会在每个已完成的步骤中再次写入。一个有 50 个步骤的工作流会把第一行日志写 50 次。请改用感知重放的日志记录器。它只在代码首次运行时写入，并在每一行中加入运行的标识：
+
+- 嵌入式工作流（Workflow 2.42.0 或更高版本）：`$this->logger()` 返回一个 PSR-3 日志记录器，它通过 Laravel 日志记录器或你传入的通道写入，例如 `$this->logger('workflow')`。每一行都包含 `workflow_instance_id`、`workflow_run_id`、`workflow_type` 和 `namespace`。`$this->replayState()` 返回 `Workflow\V2\Enums\WorkflowReplayState`（`Replaying`、`Executing` 或 `Unavailable`），`$this->isReplaying()` 是其布尔形式。
+- PHP SDK：`$context->logger()` 通过 `Worker` 的 PSR-3 日志记录器写入。参见 [PHP SDK 指南](../polyglot/php.md#workflow-logging)。
+- Rust SDK：`ctx.logger()`。参见 [Rust SDK 4.17 工作流日志记录器](../polyglot/rust.md#workflow-logging)。
+- Python SDK：`ctx.logger`。
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+查询和更新验证器从不写日志，因为它们始终是重放。
 
 日志是进程观测。持久 workflow 命令应独立于重放状态观测和日志投递。即使使用重放感知 logger，未提交尝试的消息也可能在崩溃或 retry 后重复；它不是 exactly-once outbox。主机 handler 应有界且非阻塞，避免日志阻塞 worker。应通过合适的 activity 或有记录的 workflow 操作执行持久业务效果。
 
