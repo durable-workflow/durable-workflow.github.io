@@ -1,5 +1,82 @@
 # Documentation response-header design
 
+## Current path: one ruleset for all five hostnames
+
+[`zone-rules.json`](zone-rules.json) is the response-header ruleset for
+durable-workflow.com, www, python, rust and php. It is the body for the
+Cloudflare zone's `http_response_headers_transform` phase entrypoint. It
+replaces the Rust-only candidate below, which must not be applied with it,
+because both set `Content-Security-Policy`.
+
+GitHub Pages cannot set response headers, and an HTML meta tag cannot carry
+HSTS, `frame-ancestors` or a Report-Only policy. The headers therefore need the
+Cloudflare proxy in front of Pages. As of November 25, 2026 all five DNS
+records are DNS-only and resolve to GitHub Pages, so nothing in this file is
+live yet.
+
+The first rule sets these headers on all five hostnames:
+
+| Header | Value |
+| --- | --- |
+| `Strict-Transport-Security` | `max-age=300`, no `includeSubDomains`, no preload |
+| `Content-Security-Policy` | `frame-ancestors 'none'` (enforced) |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | disables accelerometer, camera, geolocation, gyroscope, magnetometer, microphone, payment and USB |
+
+The other four rules each set one site's resource policy as
+`Content-Security-Policy-Report-Only`. Each policy starts from
+`default-src 'self'` and allows only what that site's build output and scripts
+load:
+
+- **All sites:** the Cloudflare Web Analytics beacon, plus requests to
+  cloudflareinsights.com, the cloud.durable-workflow.com promotion endpoint
+  and the status.durable-workflow.com status widget.
+- **durable-workflow.com:** `'unsafe-inline'` scripts and styles. The build has
+  about 1,700 client-redirect pages, each with its own inline script, and
+  roughly 227,000 inline style attributes, so hashes cannot cover it. Images
+  from GitHub, mermaid.ink and miro.medium.com.
+- **python:** five inline-script hashes from mkdocs-material, and api.github.com
+  for the repository widget.
+- **rust:** four inline-script hashes, and README badge images.
+- **php:** one inline-script hash, and the phpDocumentor Prism, Fuse and
+  css-vars-ponyfill files on cdn.jsdelivr.net, scoped to their paths.
+
+### Rollout
+
+1. Turn on the proxy for the five records with SSL mode Full. Confirm that the
+   Pages custom domains, the www redirect and the certificates still work.
+2. Read the zone's current `http_response_headers_transform` entrypoint. A PUT
+   replaces every rule in that phase, so merge any existing rules first. Then
+   apply `zone-rules.json`.
+3. Record evidence from all five hostnames:
+   `node scripts/docs-security-headers.js check-live --json`. The command
+   exits non-zero until every header matches.
+4. Browse navigation, versioned pages, search, code samples and fonts on each
+   site with the browser console open. Report-Only violations appear there.
+   Once a site is clean, change its rule's header to
+   `content-security-policy` with the same value. That value already includes
+   `frame-ancestors 'none'`, so it replaces the first rule's frame-only policy
+   for that host.
+5. Raise the HSTS max-age in steps, for example a day, then a week, then a
+   year. Add `includeSubDomains` only after every subdomain and rollback path
+   has been verified.
+
+`node scripts/docs-security-headers.js validate` and the unit tests in
+`scripts/docs-security-headers.test.js` keep these invariants. After a site's
+generator or theme changes, rerun
+`node scripts/docs-security-headers.js inventory --root <built site> --origin https://<host>`
+and update that site's hashes and origins.
+
+The policies were checked on November 25, 2026 against the current Pages
+builds (docs and php artifacts, python and rust mirrors). Headless Chromium
+158 loaded 83 sample pages under each host's real origin with the Report-Only
+header, including home, versioned, localized, search, help, settings, API and
+mermaid pages, and recorded no violations.
+
+## Earlier Rust-only design
+
 This is the source-only design for [organization issue 268](https://github.com/durable-workflow/.github/issues/268).
 General selected the existing Cloudflare response-header path. General owns a later
 rollout decision, following Security review. Nothing in this directory applies a
