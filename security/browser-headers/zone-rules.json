@@ -1,0 +1,100 @@
+{
+  "description": "Documentation response security headers (durable-workflow/.github#268)",
+  "rules": [
+    {
+      "ref": "docs-security-headers-v1",
+      "description": "Documentation security headers for all five hostnames (organization issue 268)",
+      "expression": "(http.request.scheme eq \"https\" and http.host in {\"durable-workflow.com\" \"www.durable-workflow.com\" \"python.durable-workflow.com\" \"rust.durable-workflow.com\" \"php.durable-workflow.com\"})",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "strict-transport-security": {
+            "operation": "set",
+            "value": "max-age=300"
+          },
+          "content-security-policy": {
+            "operation": "set",
+            "value": "frame-ancestors 'none'"
+          },
+          "x-content-type-options": {
+            "operation": "set",
+            "value": "nosniff"
+          },
+          "referrer-policy": {
+            "operation": "set",
+            "value": "strict-origin-when-cross-origin"
+          },
+          "permissions-policy": {
+            "operation": "set",
+            "value": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+          },
+          "x-frame-options": {
+            "operation": "set",
+            "value": "DENY"
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "ref": "docs-csp-report-only-apex-v1",
+      "description": "durable-workflow.com and www documentation resource policy, Report-Only until browsing checks pass",
+      "expression": "(http.request.scheme eq \"https\" and http.host in {\"durable-workflow.com\" \"www.durable-workflow.com\"})",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "content-security-policy-report-only": {
+            "operation": "set",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://github.com https://*.githubusercontent.com https://mermaid.ink https://miro.medium.com; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com https://cloud.durable-workflow.com https://status.durable-workflow.com; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "ref": "docs-csp-report-only-python-v1",
+      "description": "Python documentation resource policy, Report-Only until browsing checks pass",
+      "expression": "(http.request.scheme eq \"https\" and http.host eq \"python.durable-workflow.com\")",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "content-security-policy-report-only": {
+            "operation": "set",
+            "value": "default-src 'self'; script-src 'self' 'sha256-/8wPdzX9q0NNJXyA5lzsLojXFpkeaXVxhbfkUOQaWy8=' 'sha256-DrEMJJ29sL7vIloQzly+VUGMxKcBTMII+OfW7Y8AkG4=' 'sha256-/nhm8p50KJxvwWLggwJ1OF8Xgq5W/b3iKECITLASfOg=' 'sha256-/K9p2JtEqCycL2fSbEonMakkteWpAHv57x2wndLqMNo=' 'sha256-apoQPHefCNWjxbCm+HzVDOAW4CSVWhY7VylQjgOFyfk=' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com https://cloud.durable-workflow.com https://status.durable-workflow.com https://api.github.com; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "ref": "docs-csp-report-only-rust-v1",
+      "description": "Rust documentation resource policy, Report-Only until browsing checks pass",
+      "expression": "(http.request.scheme eq \"https\" and http.host eq \"rust.durable-workflow.com\")",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "content-security-policy-report-only": {
+            "operation": "set",
+            "value": "default-src 'self'; script-src 'self' 'sha256-+ebVpyrVTh0uPCg5ooCzuSzQ/TWuQhK4ND+2KFGm8GQ=' 'sha256-7rtt7qG9XaPj7eGVfa9i/Z7ZqdTTUCSe4NZM81gJJoE=' 'sha256-RslAMi/Kn+9u+7ovAFjDuwAxL6KiLfN/7jKYNmvTkO8=' 'sha256-Fa1zAfWkjUSl3LQwa44BjrN0tMsx+j9NZRYAau0rNVw=' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data: https://github.com https://img.shields.io https://sonarcloud.io; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com https://cloud.durable-workflow.com https://status.durable-workflow.com; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "ref": "docs-csp-report-only-php-v1",
+      "description": "PHP documentation resource policy, Report-Only until browsing checks pass",
+      "expression": "(http.request.scheme eq \"https\" and http.host eq \"php.durable-workflow.com\")",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "content-security-policy-report-only": {
+            "operation": "set",
+            "value": "default-src 'self'; script-src 'self' 'sha256-t8JvE6NMHfLGHH8u6U4YU35LX3uEeuM8pN5f3zihRCU=' https://static.cloudflareinsights.com https://cdn.jsdelivr.net/npm/fuse.js@3.4.6 https://cdn.jsdelivr.net/npm/prismjs@1.23.0/ https://cdn.jsdelivr.net/npm/css-vars-ponyfill@2; style-src 'self' https://cdn.jsdelivr.net/npm/prismjs@1.23.0/; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com https://cloud.durable-workflow.com https://status.durable-workflow.com; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          }
+        }
+      },
+      "enabled": true
+    }
+  ]
+}
