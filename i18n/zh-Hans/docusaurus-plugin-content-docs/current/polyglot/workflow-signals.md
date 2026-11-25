@@ -179,7 +179,7 @@ worker.register_workflow("orders.approver", |ctx, input| async move {
 
 使用 Native Server 3.27.0 或更高版本及兼容的 worker，并启用创建有序等待后，带超时的条件可以使用在原始 `TimerFired` 事件之前收到的信号和成功应用的更新。即使 worker 在计时器触发后才评估条件，这一规则也适用。接收顺序决定哪个符合范围的状态最先满足条件。命名信号使用相同的计时器边界。
 
-如需按接收顺序处理信号的效果，请使用 [PHP SDK 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) 或更高版本。更新的效果能否按接收顺序处理，取决于处理该更新的 worker 是否支持此功能。
+如需按接收顺序处理信号的效果，请使用 [PHP SDK 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0)、[Python SDK 2.23.1](https://github.com/durable-workflow/sdk-python/releases/tag/2.23.1) 或 [Rust SDK 4.24.0](https://github.com/durable-workflow/sdk-rust/releases/tag/4.24.0) 或更高版本。更新的效果能否按接收顺序处理，取决于处理该更新的 worker 是否支持此功能。上述 Python 和 Rust 版本支持对成功应用的更新按接收顺序处理。
 
 在受支持的 `select()` 中，如果历史记录中第一次满足条件的状态早于子工作流完成或失败的事件，则选择条件分支。等待结束后，回放会使用已记录的结果。
 

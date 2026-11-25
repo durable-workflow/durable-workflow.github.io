@@ -241,7 +241,7 @@ un workflow que le code d’autres workflows ne doit pas signaler.
 
 Avec Native Server 3.27.0 ou ultérieur, un worker compatible et la création d’attentes ordonnées activée, une condition avec échéance peut tenir compte des signaux et des mises à jour appliquées avec succès qui ont été reçus avant son événement `TimerFired` d’origine. Cette règle vaut même si le worker évalue la condition après le déclenchement du temporisateur. L’ordre de réception détermine le premier état admissible qui satisfait le prédicat. La même limite s’applique à un signal nommé.
 
-Pour appliquer les effets des signaux dans cet ordre, utilisez le [SDK PHP 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0) ou une version ultérieure. Le worker qui traite les mises à jour doit prendre en charge cet ordre pour leurs effets.
+Pour appliquer les effets des signaux dans cet ordre, utilisez le [SDK PHP 3.29.0](https://github.com/durable-workflow/sdk-php/releases/tag/3.29.0), le [SDK Python 2.23.1](https://github.com/durable-workflow/sdk-python/releases/tag/2.23.1) ou le [SDK Rust 4.24.0](https://github.com/durable-workflow/sdk-rust/releases/tag/4.24.0), ou une version ultérieure. Le worker qui traite les mises à jour doit prendre en charge cet ordre pour leurs effets. Les versions Python et Rust ci-dessus le prennent en charge pour les mises à jour appliquées avec succès.
 
 Dans un `select()` compatible, la condition l’emporte sur un workflow enfant si le premier état qui satisfait le prédicat précède la fin ou l’échec de l’enfant dans l’historique. Une fois l’attente résolue, la relecture utilise le résultat enregistré.
 
