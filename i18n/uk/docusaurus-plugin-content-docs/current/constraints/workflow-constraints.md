@@ -28,12 +28,12 @@ sidebar_position: 2
 
 ## Журналювання з коду workflow {#workflow-logging}
 
-Рушій відтворює workflow з його історії щоразу, коли той пробуджується, тож звичайний виклик логування в коді workflow записується повторно для кожного завершеного кроку. Workflow із 50 кроками записує свій перший рядок 50 разів. Натомість використовуйте логер, що враховує replay. Він пише лише тоді, коли код виконується вперше, і додає до кожного рядка ідентичність запуску:
+Рушій відтворює workflow з його історії щоразу, коли той пробуджується, тож звичайний виклик логування в коді workflow записується повторно для кожного завершеного кроку. Workflow із 50 кроками записує свій перший рядок 50 разів. Натомість використовуйте логер, що враховує replay. Він пише лише тоді, коли код виконується вперше. Логери вбудованих workflow, PHP SDK і Rust також додають до кожного рядка ідентичність запуску:
 
 - Вбудовані workflow (Workflow 2.42.0 або новіший): `$this->logger()` повертає PSR-3 логер, що пише через логер Laravel або через переданий канал, як-от `$this->logger('workflow')`. Кожен рядок містить `workflow_instance_id`, `workflow_run_id`, `workflow_type` і `namespace`. `$this->replayState()` повертає `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` або `Unavailable`), а `$this->isReplaying()` — його булеву форму.
 - PHP SDK: `$context->logger()` пише через PSR-3 логер `Worker`. Див. [посібник PHP SDK](../polyglot/php.md#workflow-logging).
 - Rust SDK: `ctx.logger()`. Див. [логер workflow у Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
-- Python SDK: `ctx.logger`.
+- Python SDK: `ctx.logger`, який мовчить під час replay, але не додає ідентичності запуску.
 
 ```php
 use function Workflow\V2\activity;

@@ -17,12 +17,12 @@ description: 保持重放的确定性，并在应用启动时发现不安全的�
 
 ## 从 workflow 代码记录日志 {#workflow-logging}
 
-引擎每次唤醒工作流时都会从历史中重放它，因此工作流代码中的普通日志调用会在每个已完成的步骤中再次写入。一个有 50 个步骤的工作流会把第一行日志写 50 次。请改用感知重放的日志记录器。它只在代码首次运行时写入，并在每一行中加入运行的标识：
+引擎每次唤醒工作流时都会从历史中重放它，因此工作流代码中的普通日志调用会在每个已完成的步骤中再次写入。一个有 50 个步骤的工作流会把第一行日志写 50 次。请改用感知重放的日志记录器。它只在代码首次运行时写入。嵌入式工作流、PHP SDK 和 Rust 的日志记录器还会在每一行中加入运行的标识：
 
 - 嵌入式工作流（Workflow 2.42.0 或更高版本）：`$this->logger()` 返回一个 PSR-3 日志记录器，它通过 Laravel 日志记录器或你传入的通道写入，例如 `$this->logger('workflow')`。每一行都包含 `workflow_instance_id`、`workflow_run_id`、`workflow_type` 和 `namespace`。`$this->replayState()` 返回 `Workflow\V2\Enums\WorkflowReplayState`（`Replaying`、`Executing` 或 `Unavailable`），`$this->isReplaying()` 是其布尔形式。
 - PHP SDK：`$context->logger()` 通过 `Worker` 的 PSR-3 日志记录器写入。参见 [PHP SDK 指南](../polyglot/php.md#workflow-logging)。
 - Rust SDK：`ctx.logger()`。参见 [Rust SDK 4.17 工作流日志记录器](../polyglot/rust.md#workflow-logging)。
-- Python SDK：`ctx.logger`。
+- Python SDK：`ctx.logger`，它在重放期间保持静默，但不会加入运行的标识。
 
 ```php
 use function Workflow\V2\activity;

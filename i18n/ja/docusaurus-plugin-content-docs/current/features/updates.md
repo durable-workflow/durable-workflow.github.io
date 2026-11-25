@@ -117,7 +117,6 @@ $latest->closedAt();     // null until the lifecycle closes
 バリデーターがない場合、業務ルールに反する更新はいったん受理されてから失敗します。失敗した更新として記録され、呼び出し側は不正なリクエストと失敗した操作を区別できません。バリデーターを宣言すると、受理前にリクエストを拒否できます。バリデーターには Workflow 2.42.0 以降が必要です。
 
 ```php
-use RuntimeException;
 use Workflow\UpdateMethod;
 use Workflow\UpdateValidator;
 use Workflow\V2\Workflow;
@@ -138,7 +137,7 @@ final class CartWorkflow extends Workflow
     public function validateAddItem(string $item): void
     {
         if (count($this->items) >= 10) {
-            throw new RuntimeException('The cart is full.');
+            throw new \RuntimeException('The cart is full.');
         }
     }
 }
@@ -147,10 +146,10 @@ final class CartWorkflow extends Workflow
 `#[UpdateValidator]` は、更新を永続名で指定します。更新にエイリアスがない場合はメソッド名で指定します。バリデーターは更新と同じ引数を受け取ります。更新を受理する前に、エンジンは履歴から実行の状態を再構築し、バリデーターだけを呼び出します。
 
 - 通常どおり戻った場合、更新はいつもどおり受理・適用されます。
-- 例外を投げるか `false` を返した場合、更新は理由 `update_validator_rejected`、結果 `rejected_invalid_arguments` で拒否されます。`rejectedByValidator()` は true になり、`rejectionMessage()` は例外メッセージを、`validationErrors()` は Laravel の `ValidationException` のエラーを返します。`update()` は両方を含む `LogicException` を投げます。
+- 例外を投げるか `false` を返した場合、更新は理由 `update_validator_rejected`、結果 `rejected_invalid_arguments` で拒否されます。`rejectedByValidator()` は true になり、`rejectionMessage()` は例外メッセージを、`validationErrors()` は Laravel の `ValidationException` のエラーを返します。`update()` は理由とバリデーターのメッセージを含む `LogicException` を投げます。
 - 拒否された更新は受理されず、ハンドラーも実行されず、ワークフローも起こされません。ほかの拒否と同様に、記録されるのは監査イベント `UpdateRejected` だけで、リプレイはこれを無視します。
 
-バリデーターは読み取り専用です。再構築されたワークフロー状態は読めますが、永続的な呼び出し（アクティビティ、タイマー、子ワークフロー、シグナル、side effect、`await`、continue-as-new、memo または検索属性の upsert）はすべて `UpdateValidatorCommandException` を投げ、更新を拒否します。バリデーターが再構築された状態に加えた変更は破棄されます。ジェネレーターのバリデーターは本体が実行されないため、拒否されます。
+バリデーターは読み取り専用です。再構築されたワークフロー状態は読めますが、永続的な呼び出し（アクティビティ、タイマー、子ワークフロー、シグナル、side effect、`await`、`getVersion()`、`patched()`、continue-as-new、memo または検索属性の upsert）はすべて `UpdateValidatorCommandException` を投げ、更新を拒否します。バリデーターが再構築された状態に加えた変更は破棄されます。ジェネレーターのバリデーターは本体が実行されないため、拒否されます。
 
 バリデーターは履歴に記録されず、リプレイ中にも実行されないため、決定性に影響しません。バリデーターが見るのは確定済み履歴の状態です。受理済みでまだ適用されていない更新は見えません。リプレイとバリデーターは、更新の受理処理が実行のロックを保持している間に動くため、バリデーターは高速に保ってください。
 

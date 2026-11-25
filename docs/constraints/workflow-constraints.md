@@ -15,12 +15,12 @@ Here are some examples of things you shouldn't do inside of a workflow class:
 
 ## Logging from workflow code {#workflow-logging}
 
-The engine replays a workflow from its history every time it wakes up, so an ordinary log call in workflow code is written again for every completed step. A workflow with 50 steps logs its opening line 50 times. Use the replay-aware logger instead. It writes only when the code runs for the first time, and adds the run's identity to each line:
+The engine replays a workflow from its history every time it wakes up, so an ordinary log call in workflow code is written again for every completed step. A workflow with 50 steps logs its opening line 50 times. Use the replay-aware logger instead. It writes only when the code runs for the first time. The embedded, PHP SDK and Rust loggers also add the run's identity to each line:
 
 - Embedded workflows (Workflow 2.42.0 or later): `$this->logger()` returns a PSR-3 logger that writes through the Laravel logger, or through the channel you pass, as in `$this->logger('workflow')`. Each line carries `workflow_instance_id`, `workflow_run_id`, `workflow_type` and `namespace`. `$this->replayState()` returns `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` or `Unavailable`), and `$this->isReplaying()` is its boolean form.
 - PHP SDK: `$context->logger()` writes through the `Worker`'s PSR-3 logger. See the [PHP SDK guide](../polyglot/php.md#workflow-logging).
 - Rust SDK: `ctx.logger()`. See the [Rust SDK 4.17 workflow logger](../polyglot/rust.md#workflow-logging).
-- Python SDK: `ctx.logger`.
+- Python SDK: `ctx.logger`, which is silent during replay but adds no run identity.
 
 ```php
 use function Workflow\V2\activity;

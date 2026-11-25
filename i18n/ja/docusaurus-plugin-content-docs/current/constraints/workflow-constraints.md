@@ -17,12 +17,12 @@ description: リプレイの決定性を保ち、起動時に安全でない呼�
 
 ## ワークフローコードからのロギング {#workflow-logging}
 
-エンジンはワークフローが起動するたびに履歴からリプレイするため、ワークフローコード内の通常のログ呼び出しは完了したステップごとに書き直されます。50 ステップのワークフローは最初の行を 50 回記録します。代わりにリプレイ対応ロガーを使ってください。コードが初めて実行されるときだけ書き込み、各行に実行の識別情報を付けます。
+エンジンはワークフローが起動するたびに履歴からリプレイするため、ワークフローコード内の通常のログ呼び出しは完了したステップごとに書き直されます。50 ステップのワークフローは最初の行を 50 回記録します。代わりにリプレイ対応ロガーを使ってください。コードが初めて実行されるときだけ書き込みます。組み込みワークフロー、PHP SDK、Rust のロガーは、各行に実行の識別情報も付けます。
 
 - 組み込みワークフロー（Workflow 2.42.0 以降）: `$this->logger()` は PSR-3 ロガーを返し、Laravel のロガー、または `$this->logger('workflow')` のように渡したチャネルを通じて書き込みます。各行には `workflow_instance_id`、`workflow_run_id`、`workflow_type`、`namespace` が含まれます。`$this->replayState()` は `Workflow\V2\Enums\WorkflowReplayState`（`Replaying`、`Executing`、`Unavailable`）を返し、`$this->isReplaying()` はその真偽値版です。
 - PHP SDK: `$context->logger()` は `Worker` の PSR-3 ロガーを通じて書き込みます。[PHP SDK ガイド](../polyglot/php.md#workflow-logging)を参照してください。
 - Rust SDK: `ctx.logger()`。[Rust SDK 4.17 のワークフローロガー](../polyglot/rust.md#workflow-logging)を参照してください。
-- Python SDK: `ctx.logger`。
+- Python SDK: `ctx.logger`。リプレイ中は何も書き込みませんが、実行の識別情報は付けません。
 
 ```php
 use function Workflow\V2\activity;

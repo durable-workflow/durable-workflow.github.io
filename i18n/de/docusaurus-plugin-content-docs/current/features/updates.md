@@ -138,7 +138,6 @@ gespeicherten dauerhaften Lebenszyklus neu und gibt das aktuelle
 Ohne Validator wird ein Update, das gegen eine Geschäftsregel verstößt, zuerst angenommen und schlägt dann fehl. Es wird als fehlgeschlagenes Update aufgezeichnet, und der Aufrufer kann eine fehlerhafte Anfrage nicht von einer fehlgeschlagenen Operation unterscheiden. Deklarieren Sie einen Validator, um die Anfrage vor der Annahme abzulehnen. Validatoren erfordern Workflow 2.42.0 oder neuer.
 
 ```php
-use RuntimeException;
 use Workflow\UpdateMethod;
 use Workflow\UpdateValidator;
 use Workflow\V2\Workflow;
@@ -159,7 +158,7 @@ final class CartWorkflow extends Workflow
     public function validateAddItem(string $item): void
     {
         if (count($this->items) >= 10) {
-            throw new RuntimeException('The cart is full.');
+            throw new \RuntimeException('The cart is full.');
         }
     }
 }
@@ -168,10 +167,10 @@ final class CartWorkflow extends Workflow
 `#[UpdateValidator]` benennt das Update über seinen dauerhaften Namen oder, wenn das Update keinen Alias hat, über seinen Methodennamen. Der Validator erhält dieselben Argumente wie das Update. Bevor das Update angenommen wird, rekonstruiert die Engine den Zustand des Laufs aus seinem Verlauf und ruft nur den Validator auf:
 
 - Kehrt er normal zurück, wird das Update wie gewohnt angenommen und angewendet.
-- Wirft er eine Exception oder gibt `false` zurück, wird das Update mit dem Grund `update_validator_rejected` und dem Ergebnis `rejected_invalid_arguments` abgelehnt. `rejectedByValidator()` ist dann wahr, `rejectionMessage()` liefert die Exception-Meldung, und `validationErrors()` liefert die Fehler einer Laravel-`ValidationException`. `update()` wirft eine `LogicException`, die beides enthält.
+- Wirft er eine Exception oder gibt `false` zurück, wird das Update mit dem Grund `update_validator_rejected` und dem Ergebnis `rejected_invalid_arguments` abgelehnt. `rejectedByValidator()` ist dann wahr, `rejectionMessage()` liefert die Exception-Meldung, und `validationErrors()` liefert die Fehler einer Laravel-`ValidationException`. `update()` wirft eine `LogicException`, die den Grund und die Meldung des Validators enthält.
 - Ein abgelehntes Update wird nie angenommen, sein Handler läuft nie, und der Workflow wird nicht geweckt. Wie jede andere Ablehnung wird es nur als Audit-Ereignis `UpdateRejected` aufgezeichnet, das der Replay ignoriert.
 
-Validatoren sind schreibgeschützt. Sie können den wiederhergestellten Workflow-Zustand lesen, aber jeder dauerhafte Aufruf (eine Aktivität, ein Timer, ein Child-Workflow, ein Signal, ein Side Effect, `await`, Continue-as-New oder ein Upsert von Memo oder Suchattributen) wirft `UpdateValidatorCommandException` und lehnt das Update ab. Änderungen, die ein Validator am wiederhergestellten Zustand vornimmt, werden verworfen. Ein Generator-Validator wird abgelehnt, weil sein Rumpf nie ausgeführt wird.
+Validatoren sind schreibgeschützt. Sie können den wiederhergestellten Workflow-Zustand lesen, aber jeder dauerhafte Aufruf (eine Aktivität, ein Timer, ein Child-Workflow, ein Signal, ein Side Effect, `await`, `getVersion()`, `patched()`, Continue-as-New oder ein Upsert von Memo oder Suchattributen) wirft `UpdateValidatorCommandException` und lehnt das Update ab. Änderungen, die ein Validator am wiederhergestellten Zustand vornimmt, werden verworfen. Ein Generator-Validator wird abgelehnt, weil sein Rumpf nie ausgeführt wird.
 
 Validatoren werden nicht im Verlauf aufgezeichnet und laufen nie während eines Replays, daher beeinflussen sie den Determinismus nicht. Sie sehen den Zustand aus dem persistierten Verlauf: Ein Update, das angenommen, aber noch nicht angewendet wurde, ist für sie nicht sichtbar. Replay und Validator laufen, während die Annahme des Updates die Sperren des Laufs hält; halten Sie Validatoren deshalb schnell.
 

@@ -117,7 +117,6 @@ $latest->closedAt();     // null until the lifecycle closes
 Without a validator, an update that breaks a business rule is accepted and then fails. It is recorded as a failed update, and the caller can't tell a bad request from a failed operation. Declare a validator to refuse the request before it is accepted. Validators require Workflow 2.42.0 or later.
 
 ```php
-use RuntimeException;
 use Workflow\UpdateMethod;
 use Workflow\UpdateValidator;
 use Workflow\V2\Workflow;
@@ -138,7 +137,7 @@ final class CartWorkflow extends Workflow
     public function validateAddItem(string $item): void
     {
         if (count($this->items) >= 10) {
-            throw new RuntimeException('The cart is full.');
+            throw new \RuntimeException('The cart is full.');
         }
     }
 }
@@ -147,10 +146,10 @@ final class CartWorkflow extends Workflow
 `#[UpdateValidator]` names the update by its durable name, or by its method name when the update has no alias. The validator takes the same arguments as the update. Before the update is accepted, the engine rebuilds the run's state from its history and calls only the validator:
 
 - Returning normally lets the update be accepted and applied as usual.
-- Throwing, or returning `false`, rejects the update with the reason `update_validator_rejected` and the outcome `rejected_invalid_arguments`. `rejectedByValidator()` is true, `rejectionMessage()` returns the exception message, and `validationErrors()` returns the errors of a Laravel `ValidationException`. `update()` throws a `LogicException` that includes both.
+- Throwing, or returning `false`, rejects the update with the reason `update_validator_rejected` and the outcome `rejected_invalid_arguments`. `rejectedByValidator()` is true, `rejectionMessage()` returns the exception message, and `validationErrors()` returns the errors of a Laravel `ValidationException`. `update()` throws a `LogicException` that includes the reason and the validator's message.
 - A rejected update is never accepted, its handler never runs and the workflow isn't woken. Like every other rejection, it is recorded only as an `UpdateRejected` audit event, which replay ignores.
 
-Validators are read-only. They can read the replayed workflow state, but any durable call (an activity, timer, child workflow, signal, side effect, `await`, continue-as-new, or memo or search-attribute upsert) throws `UpdateValidatorCommandException` and rejects the update. Changes a validator makes to the replayed state are discarded. A generator validator is rejected, because its body never runs.
+Validators are read-only. They can read the replayed workflow state, but any durable call (an activity, timer, child workflow, signal, side effect, `await`, `getVersion()`, `patched()`, continue-as-new, or memo or search-attribute upsert) throws `UpdateValidatorCommandException` and rejects the update. Changes a validator makes to the replayed state are discarded. A generator validator is rejected, because its body never runs.
 
 Validators aren't recorded in history and never run during replay, so they don't affect determinism. They see the state from committed history: an update that was accepted but not yet applied isn't visible to them. The replay and the validator run while the update's admission holds the run's locks, so keep validators fast.
 

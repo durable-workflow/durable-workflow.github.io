@@ -15,12 +15,12 @@ Beispiele für Operationen, die nicht in den Workflow-Code gehören:
 
 ## Logging aus Workflow-Code {#workflow-logging}
 
-Die Engine spielt einen Workflow bei jedem Aufwachen aus seinem Verlauf erneut ab, daher wird ein gewöhnlicher Log-Aufruf im Workflow-Code für jeden abgeschlossenen Schritt erneut geschrieben. Ein Workflow mit 50 Schritten protokolliert seine erste Zeile 50-mal. Verwenden Sie stattdessen den replay-bewussten Logger. Er schreibt nur, wenn der Code zum ersten Mal ausgeführt wird, und ergänzt jede Zeile um die Identität des Laufs:
+Die Engine spielt einen Workflow bei jedem Aufwachen aus seinem Verlauf erneut ab, daher wird ein gewöhnlicher Log-Aufruf im Workflow-Code für jeden abgeschlossenen Schritt erneut geschrieben. Ein Workflow mit 50 Schritten protokolliert seine erste Zeile 50-mal. Verwenden Sie stattdessen den replay-bewussten Logger. Er schreibt nur, wenn der Code zum ersten Mal ausgeführt wird. Die Logger für eingebettete Workflows, das PHP SDK und Rust ergänzen jede Zeile zusätzlich um die Identität des Laufs:
 
 - Eingebettete Workflows (Workflow 2.42.0 oder neuer): `$this->logger()` liefert einen PSR-3-Logger, der über den Laravel-Logger oder über den übergebenen Kanal schreibt, etwa `$this->logger('workflow')`. Jede Zeile enthält `workflow_instance_id`, `workflow_run_id`, `workflow_type` und `namespace`. `$this->replayState()` liefert `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` oder `Unavailable`), und `$this->isReplaying()` ist die boolesche Form.
 - PHP SDK: `$context->logger()` schreibt über den PSR-3-Logger des `Worker`. Siehe den [PHP-SDK-Leitfaden](../polyglot/php.md#workflow-logging).
 - Rust SDK: `ctx.logger()`. Siehe den [Workflow-Logger des Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
-- Python SDK: `ctx.logger`.
+- Python SDK: `ctx.logger`, der während eines Replays schweigt, aber keine Identität des Laufs ergänzt.
 
 ```php
 use function Workflow\V2\activity;

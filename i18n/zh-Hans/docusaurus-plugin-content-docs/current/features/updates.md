@@ -117,7 +117,6 @@ $latest->closedAt();     // null until the lifecycle closes
 如果没有验证器，违反业务规则的更新会先被接受，然后才失败。它会被记录为失败的更新，调用方无法区分错误的请求和失败的操作。声明一个验证器，即可在接受之前拒绝该请求。验证器需要 Workflow 2.42.0 或更高版本。
 
 ```php
-use RuntimeException;
 use Workflow\UpdateMethod;
 use Workflow\UpdateValidator;
 use Workflow\V2\Workflow;
@@ -138,7 +137,7 @@ final class CartWorkflow extends Workflow
     public function validateAddItem(string $item): void
     {
         if (count($this->items) >= 10) {
-            throw new RuntimeException('The cart is full.');
+            throw new \RuntimeException('The cart is full.');
         }
     }
 }
@@ -147,10 +146,10 @@ final class CartWorkflow extends Workflow
 `#[UpdateValidator]` 通过持久名称指定更新；如果更新没有别名，则使用其方法名。验证器接收与更新相同的参数。在接受更新之前，引擎会从历史中重建运行的状态，并且只调用验证器：
 
 - 正常返回时，更新会照常被接受并应用。
-- 抛出异常或返回 `false` 时，更新会以原因 `update_validator_rejected` 和结果 `rejected_invalid_arguments` 被拒绝。`rejectedByValidator()` 为 true，`rejectionMessage()` 返回异常消息，`validationErrors()` 返回 Laravel `ValidationException` 的错误。`update()` 会抛出包含这两者的 `LogicException`。
+- 抛出异常或返回 `false` 时，更新会以原因 `update_validator_rejected` 和结果 `rejected_invalid_arguments` 被拒绝。`rejectedByValidator()` 为 true，`rejectionMessage()` 返回异常消息，`validationErrors()` 返回 Laravel `ValidationException` 的错误。`update()` 会抛出包含原因和验证器消息的 `LogicException`。
 - 被拒绝的更新永远不会被接受，其处理程序永远不会运行，工作流也不会被唤醒。与其他拒绝一样，它只被记录为审计事件 `UpdateRejected`，重放会忽略该事件。
 
-验证器是只读的。它们可以读取重建后的工作流状态，但任何持久调用（活动、定时器、子工作流、信号、side effect、`await`、continue-as-new，或 memo、搜索属性的 upsert）都会抛出 `UpdateValidatorCommandException` 并拒绝更新。验证器对重建状态所做的修改会被丢弃。生成器形式的验证器会被拒绝，因为它的函数体永远不会执行。
+验证器是只读的。它们可以读取重建后的工作流状态，但任何持久调用（活动、定时器、子工作流、信号、side effect、`await`、`getVersion()`、`patched()`、continue-as-new，或 memo、搜索属性的 upsert）都会抛出 `UpdateValidatorCommandException` 并拒绝更新。验证器对重建状态所做的修改会被丢弃。生成器形式的验证器会被拒绝，因为它的函数体永远不会执行。
 
 验证器不会记录到历史中，也不会在重放时运行，因此不影响确定性。它们看到的是已提交历史中的状态：已接受但尚未应用的更新对它们不可见。重放和验证器会在更新准入持有运行锁期间执行，因此请让验证器保持快速。
 

@@ -17,12 +17,12 @@ Evite estas operações dentro de uma classe de workflow:
 
 ## Logging no código do workflow {#workflow-logging}
 
-O motor faz o replay de um workflow a partir do histórico toda vez que ele acorda, então uma chamada de log comum no código do workflow é gravada novamente a cada passo concluído. Um workflow com 50 passos registra sua primeira linha 50 vezes. Use, em vez disso, o logger ciente do replay. Ele só grava quando o código é executado pela primeira vez e acrescenta a identidade da execução a cada linha:
+O motor faz o replay de um workflow a partir do histórico toda vez que ele acorda, então uma chamada de log comum no código do workflow é gravada novamente a cada passo concluído. Um workflow com 50 passos registra sua primeira linha 50 vezes. Use, em vez disso, o logger ciente do replay. Ele só grava quando o código é executado pela primeira vez. Os loggers de workflows embarcados, do PHP SDK e do Rust também acrescentam a identidade da execução a cada linha:
 
 - Workflows embarcados (Workflow 2.42.0 ou posterior): `$this->logger()` retorna um logger PSR-3 que grava pelo logger do Laravel, ou pelo canal que você informar, como em `$this->logger('workflow')`. Cada linha traz `workflow_instance_id`, `workflow_run_id`, `workflow_type` e `namespace`. `$this->replayState()` retorna `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` ou `Unavailable`), e `$this->isReplaying()` é sua forma booleana.
 - PHP SDK: `$context->logger()` grava pelo logger PSR-3 do `Worker`. Veja o [guia do PHP SDK](../polyglot/php.md#workflow-logging).
 - Rust SDK: `ctx.logger()`. Veja o [logger de workflow do Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
-- Python SDK: `ctx.logger`.
+- Python SDK: `ctx.logger`, que fica em silêncio durante o replay, mas não acrescenta a identidade da execução.
 
 ```php
 use function Workflow\V2\activity;
