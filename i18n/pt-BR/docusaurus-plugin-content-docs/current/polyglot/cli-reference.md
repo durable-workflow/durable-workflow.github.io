@@ -417,6 +417,8 @@ Os tokens pertencem ao namespace e à seleção de filtros. Reinicie sem token a
 | `dw task-queue:build-ids <queue>` | Inspeciona estado das coortes por build id e status de rollout de uma fila. | `--json` |
 | `dw task-queue:drain <queue>` | Marca uma coorte como drenando para parar de reservar novas tarefas. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Limpa uma drenagem anterior para voltar a reservar trabalho. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | Mostra o que ainda impede a retirada de uma coorte de build ou da fila inteira, com contagens, amostras e passos de recuperação. Somente leitura. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | Retira uma coorte de build ou a fila inteira somente quando nada depende dela; uma recusa não altera nada. | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | Retém o despacho de novas atividades em uma fila de tarefas até que seja retomado. | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | Retoma o despacho de atividades em uma fila de tarefas pausada. | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | Mostra se o despacho de atividades está pausado, e quem o pausou ou retomou, quando e por quê. | `--json` |
@@ -433,6 +435,15 @@ para uma coorte específica ou `--unversioned` para workers registrados sem
 `build_id`. Combinar ambos falha rapidamente com erro de opção inválida.
 Ambos são idempotentes: drenagens repetidas não alteram `drained_at`, e
 retomar uma coorte já ativa não faz nada.
+
+`dw task-queue:retirement` e `dw task-queue:retire` (CLI 2.12.0 e posteriores) inspecionam e retiram uma coorte de build (`--build-id <value>` ou `--unversioned`) ou, sem nenhuma das duas opções, todas as coortes da fila:
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+A inspeção é somente leitura. Quando o alvo pode ser retirado, ela imprime o comando `dw task-queue:retire` correspondente, vinculado à revisão de inventário inspecionada. O servidor repete a verificação ao retirar. Uma retirada recusada é HTTP 409 e não altera nada: o `dw` mostra cada bloqueio com seu passo de recuperação e termina com o código `2`. Os dois comandos precisam de um servidor que anuncie `capabilities.worker_build_retirement` (servidor nativo 3.14.0 ou posterior); com qualquer outro servidor, o `dw` termina com o código `8` antes de enviar a requisição. Veja [Retirar um build ou uma fila](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) para o fluxo completo.
 
 `dw task-queue:pause-activities`, `dw task-queue:resume-activities` e
 `dw task-queue:activity-dispatch` (CLI 2.7.0 e posteriores) pausam, retomam e

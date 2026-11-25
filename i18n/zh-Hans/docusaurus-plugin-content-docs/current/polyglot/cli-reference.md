@@ -297,6 +297,8 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 | `dw task-queue:build-ids <queue>` | 检查一个队列各构建 ID 群组状态及发布状态。 | `--json` |
 | `dw task-queue:drain <queue>` | 将构建 ID 群组标记为排空，使其停止认领新任务。 | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | 清除之前的排空，使群组能再次认领新任务。 | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | 显示仍在阻止退役某个构建群组或整个队列的内容，包括数量、示例和恢复步骤。只读。 | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | 仅当没有任何内容依赖它时，才退役某个构建群组或整个队列；被拒绝时不会做任何更改。 | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | 在一个任务队列上暂停新的活动派发，直到恢复。 | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | 恢复已暂停任务队列上的活动派发。 | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | 显示活动派发是否已暂停，以及由谁、在何时、因何暂停或恢复。 | `--json` |
@@ -304,6 +306,15 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 任务队列命令是诊断限流、容量和缺少 Worker 的首选运维视图。这些字段背后的 Server 策略见[任务队列准入](/docs/polyglot/task-queue-admission)，完整的无版本到有版本切换、金丝雀、排空和回滚生命周期见 [Worker 构建 ID 发布](/docs/polyglot/worker-build-id-rollout)。
 
 `dw task-queue:drain` 和 `dw task-queue:resume` 都要求用 `--build-id <value>` 定位特定构建群组，或用 `--unversioned` 定位未注册 `build_id` 的 Worker 群组。组合两者会立即返回无效选项错误。两个命令都幂等：重复排空不会移动已记录的 `drained_at` 时间戳，恢复已活动群组则无操作。
+
+`dw task-queue:retirement` 和 `dw task-queue:retire`（CLI 2.12.0 及更高版本）检查并退役一个构建群组（`--build-id <value>` 或 `--unversioned`），两个选项都不带时则作用于队列上的所有群组：
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+检查是只读的。目标可退役时，它会打印对应的 `dw task-queue:retire` 命令，并绑定到所检查的清单修订版本。服务器在退役时会重复这项检查。被拒绝的退役返回 HTTP 409，且不做任何更改：`dw` 会列出每个阻碍项及其恢复步骤，并以代码 `2` 退出。两个命令都需要通告 `capabilities.worker_build_retirement` 的服务器（原生 Server 3.14.0 或更高版本）；对于其他任何服务器，`dw` 会在发送请求前以代码 `8` 退出。完整流程请参见[退役构建或队列](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue)。
 
 `dw task-queue:pause-activities`、`dw task-queue:resume-activities` 和 `dw task-queue:activity-dispatch`（CLI 2.7.0 及以后）用于暂停、恢复和查看所选 namespace 中一个任务队列的活动派发，例如在下游服务故障期间：
 

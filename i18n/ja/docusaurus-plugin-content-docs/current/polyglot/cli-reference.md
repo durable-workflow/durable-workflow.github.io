@@ -297,6 +297,8 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 | `dw task-queue:build-ids <queue>` | 1キューの build-id 別コホートとロールアウト状態を検査。 | `--json` |
 | `dw task-queue:drain <queue>` | コホートをドレイン中として新規クレームを止める。 | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | 以前のドレインを消去して再び新規クレームを可能にする。 | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | 1つのビルドコホートまたはキュー全体の廃止をまだ妨げているものを、件数・サンプル・復旧手順とともに表示する。読み取り専用。 | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | 依存するものが何もないときにだけ、1つのビルドコホートまたはキュー全体を廃止する。拒否された場合は何も変更しない。 | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | 1 つのタスクキューで、再開するまで新しいアクティビティのディスパッチを保留する。 | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | 一時停止中のタスクキューでアクティビティのディスパッチを再開する。 | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | アクティビティのディスパッチが一時停止中かどうかと、誰がいつ、なぜ一時停止または再開したかを表示する。 | `--json` |
@@ -304,6 +306,15 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 タスクキューコマンドは、スロットリング、容量、Worker 不在を診断する推奨運用ビューです。Server 側のフィールドのポリシーは[タスクキューの受け入れ](/docs/polyglot/task-queue-admission)、バージョンなしからバージョン付きへの切り替え、カナリア、ドレイン、ロールバックの全手順は [Worker Build-Id のロールアウト](/docs/polyglot/worker-build-id-rollout)を参照してください。
 
 `dw task-queue:drain` と `dw task-queue:resume` は両方とも、特定ビルドコホートを対象とする `--build-id <value>`、または `build_id` なしで登録した Worker コホートを対象とする `--unversioned` のどちらかが必要です。併用すると不正オプションで早期に失敗します。両コマンドは冪等です。ドレインを繰り返しても `drained_at` はずれず、有効なコホートの再開は何もしません。
+
+`dw task-queue:retirement` と `dw task-queue:retire`（CLI 2.12.0 以降）は、1つのビルドコホート（`--build-id <value>` または `--unversioned`）を、どちらのオプションもなければキュー上の全コホートを調査・廃止します。
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+調査は読み取り専用です。対象が廃止可能な場合は、調査したインベントリリビジョンに結び付いた対応する `dw task-queue:retire` コマンドを表示します。サーバーは廃止時にチェックを繰り返します。拒否された廃止は HTTP 409 で、何も変更しません。`dw` は各ブロッカーと復旧手順を表示し、コード `2` で終了します。両コマンドには `capabilities.worker_build_retirement` を通知するサーバー（ネイティブ Server 3.14.0 以降）が必要です。それ以外のサーバーでは、`dw` はリクエストを送信する前にコード `8` で終了します。全体の流れは[ビルドまたはキューを廃止する](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue)を参照してください。
 
 `dw task-queue:pause-activities`、`dw task-queue:resume-activities`、`dw task-queue:activity-dispatch`（CLI 2.7.0 以降）は、選択した namespace の 1 つのタスクキューで、アクティビティのディスパッチを一時停止、再開、表示します。たとえば下流サービスの障害中に使います。
 
