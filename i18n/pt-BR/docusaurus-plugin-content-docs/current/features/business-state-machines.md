@@ -8,7 +8,7 @@ description: Protocolo experimental de transições para estados de negócio com
 
 :::warning Experimental
 
-A API `Workflow\V2\StateMachine`, assim como o início confirmado de filho (`Workflow::startChild()`) e `DurableScope::reserveChild()` que ela usa, são experimentais. Eles são disponibilizados de forma experimental a partir do Workflow 2.29.0, não estão cobertos pelas garantias de estabilidade do pacote e podem mudar em um release secundário. Eles são uma superfície `experimental` segundo os [níveis de estabilidade](../compatibility.md#stability-levels). O restante da API de escopos de compensação retidos que ela usa é estável desde o Workflow 2.33.0.
+A API `Workflow\V2\StateMachine`, assim como o início confirmado de filho (`Workflow::startChild()`) e `DurableScope::reserveChild()` que ela usa, são experimentais. Eles são disponibilizados de forma experimental a partir do Workflow 2.29.0, não estão cobertos pelas garantias de estabilidade do pacote e podem mudar em um release secundário. Eles são uma superfície `experimental` segundo os [níveis de estabilidade](../compatibility.md#stability-levels). O restante da API de escopos de compensação retidos que ela usa é estável desde o Workflow 2.33.0. O catálogo de vinculações de filhos, as explicações de transição e `MachineInspection` foram adicionados no Workflow 2.41.0.
 
 Os exemplos desta página são exemplos de código-fonte do repositório com provedores sintéticos. Eles não constituem qualificação de pacote instalado nem de provedor real. Nada nesta página implica:
 
@@ -167,6 +167,25 @@ Ela retorna um `CommitResult` com `committed`, `conflict` ou `cancellation_reque
 
 Um `ChildSlot` na definição do pai nomeia o slot, seus estados hospedeiros, a máquina filha e a versão da definição, e o resultado de negócio exigido. `MachineDefinition::assertBinding()` verifica um vínculo em relação a essa declaração. Ele não faz consulta, autorização nem admissão.
 
+### Catálogo de vinculações de filhos {#child-binding-catalog}
+
+A partir do Workflow 2.41.0, um `MachineCatalog` registra as definições que podem hospedar umas às outras. A construção resolve cada slot para uma `machine@version` registrada e recusa um grafo inválido antes que qualquer vinculação o use:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- Uma versão de máquina duplicada, um slot que nomeia um filho não registrado e uma vinculação recursiva ou cíclica lançam `InvalidMachineCatalog`. Seu `reason` é `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` ou `state_machine_child_binding_cycle`. Uma máquina que hospeda a si mesma, diretamente, por meio de outras máquinas ou em outra versão, é um ciclo.
+- `InvalidMachineCatalog::$path` lista a rota, por exemplo `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- O `maxChildDepth` opcional lança `ResourceLimitExceeded` com a dimensão `child_depth` quando a rota de slots mais profunda é maior; `observed` informa essa profundidade. A compensação retida oferece suporte a um nível de filhos, então use `maxChildDepth: 1` quando filhos participarem de escopos retidos.
+- Vários pais ou estados hospedeiros podem compartilhar uma definição de filho.
+- `$catalog->assertBinding()` também exige que os dois perfis usem exatamente as definições registradas, comparadas por impressão digital.
+
+O catálogo é opcional. O início nativo de filhos, as reservas e `MachineDefinition::assertBinding()` não o consultam, então chame `$catalog->assertBinding()` na autorização de vinculação do host, como faz o exemplo configurado. Um catálogo é configuração: cada execução continua fixando suas próprias impressões digitais, e substituir o catálogo não migra nada.
+
 Um `BindingIdentity` fixa a execução pai original, o namespace, a instância e a execução do pai, o slot, a **geração**, o estado hospedeiro, o tipo de workflow filho, o fingerprint da política do filho, o resultado exigido, o fingerprint da entrada e as opções do filho. A geração identifica uma entrada em um estado. Solicitações para uma geração antiga nunca são redirecionadas para um filho mais novo depois que o pai muda de estado ou reentra em um estado.
 
 Iniciar e aguardar um filho são transições separadas:
@@ -255,10 +274,44 @@ Um orçamento atingido durante a execução retorna `TransitionStatus::Blocked` 
 ## Diagnóstico {#diagnostics}
 
 - `TransitionResult::toArray()` retorna a execução, o status, o motivo, a avaliação e a chave da transição.
+- A partir do 2.41.0, `TransitionResult::explain()` também nomeia a `TransitionStage` que produziu o resultado e o snapshot registrado e a fase que essa verificação avaliou. `toArray()` não muda.
 - `ConditionEvaluation::toArray()` mantém o fingerprint da estrutura, o ID do snapshot, as versões das regras, os motivos, as referências de evidência e os fatos ausentes.
 - `MachineAssessment::toArray()` registra a decisão da invariante vinculada à definição e ao snapshot.
 - `ResourceLimitExceeded` expõe `dimension`, `observed` e `limit`.
 - `ScopeRecovery::describe()` informa o estado de um escopo retido, incluindo quando é necessária uma nova solicitação de cancelamento autorizada.
+
+O estágio distingue resultados com o mesmo status:
+
+| Estágio | Status | Significado |
+| --- | --- | --- |
+| `selection` | `unavailable`, `ambiguous` | Não há uma aresta única para o evento e a origem. Sem snapshot. |
+| `source` | `conflict` | O estado ou a revisão do snapshot difere da origem esperada. |
+| `invariant` | `blocked`, `unknown` | O invariante compartilhado recusou, antes ou depois do trabalho. |
+| `target` | `pending`, `unknown` | O alvo era desconhecido, não tinha trabalho declarado ou continuou insatisfeito depois do trabalho. |
+| `permission` | `blocked`, `unknown` | A guarda de execução recusou. |
+| `admission` | `blocked`, `unknown` | A admissão ao vivo registrada recusou. |
+| `budget` | `blocked` | Um orçamento de avanço recusou o próximo comando. Sem snapshot. |
+| `commit` | `committed`, `conflict`, `cancellation_requested` | O commit protegido confirmou a decisão. |
+
+Para os estágios `invariant`, `target` e `permission`, o ID do snapshot encontra a `ConditionEvaluation` que o host reteve para esse snapshot. Para `admission` e `commit`, o motivo vem da admissão ou do commit registrados, e o snapshot apenas identifica a evidência usada. Uma recusa depois do trabalho nomeia o snapshot `after`.
+
+`MachineInspection` oferece às ferramentas de operação uma visão versionada de um sujeito de negócio. O host a constrói fora do código do workflow a partir de valores que já autorizou:
+
+```php
+$inspection = new MachineInspection(
+    $profile, $state, $revision, $execution, $result,
+    [$childBinding, $childReservation, $neverAdmittedChild],
+    [['scope' => $scopeIdentity, 'description' => $scopeRecovery->describe($scopeIdentity, $principal)]],
+);
+$view = $inspection->toArray();
+```
+
+- `machine` contém as versões fixadas da máquina, da definição e do perfil com suas impressões digitais. `business` é o estado e a revisão atuais do armazenamento da aplicação, distintos do status da execução do workflow. `transition` é o `explain()` da execução.
+- `children` tem uma entrada por geração de vinculação, então pode ser mais curta do que a lista passada. Cada entrada tem um `status` (`admitted`, `never_admitted` ou `reserved`), a chave de vinculação, o slot, a geração, o estado hospedeiro, o resultado exigido, a execução que criou a vinculação, a instância e a execução filhas e um ID de fechamento. Um filho admitido não é evidência do seu resultado de negócio.
+- `participation` liga um filho aos IDs dos seus escopos pai e filho retidos e à chave da obrigação, que se juntam ao `scopeId` das entradas de `compensation`. Passe a `ChildReservation` de um filho admitido ao lado do seu `ChildBinding`. Um `participation` nulo significa que o filho não tem participação retida ou que nenhuma reserva foi passada.
+- `compensation` lista a identidade e o ID de cada escopo com as chaves de `ScopeRecovery::describe()`.
+
+A construção recusa um estado não declarado, uma execução com outro perfil, uma transição de outra execução, trabalho de filhos de outro sujeito ou perfil, gerações contraditórias ou repetidas, escopos repetidos e descrições de escopo malformadas. Ela não faz E/S e não autoriza nada. As chaves de escopo são definidas pela aplicação, então o host associa os escopos raiz ao sujeito.
 
 ## Exemplos executáveis {#runnable-examples}
 

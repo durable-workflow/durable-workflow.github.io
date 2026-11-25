@@ -8,7 +8,7 @@ description: Experimentelles Übergangsprotokoll für gemeinsame fachliche Zust�
 
 :::warning Experimentell
 
-Die API `Workflow\V2\StateMachine` sowie der von ihr verwendete bestätigte Kindstart (`Workflow::startChild()`) und `DurableScope::reserveChild()` sind experimentell. Sie werden ab Workflow 2.29.0 experimentell ausgeliefert, fallen nicht unter die Stabilitätsgarantien des Pakets und können sich in einem Minor-Release ändern. Sie sind eine `experimental`-Oberfläche gemäß den [Stabilitätsstufen](../compatibility.md#stability-levels). Die übrige von ihr verwendete API für beibehaltene Kompensationsbereiche ist seit Workflow 2.33.0 stabil.
+Die API `Workflow\V2\StateMachine` sowie der von ihr verwendete bestätigte Kindstart (`Workflow::startChild()`) und `DurableScope::reserveChild()` sind experimentell. Sie werden ab Workflow 2.29.0 experimentell ausgeliefert, fallen nicht unter die Stabilitätsgarantien des Pakets und können sich in einem Minor-Release ändern. Sie sind eine `experimental`-Oberfläche gemäß den [Stabilitätsstufen](../compatibility.md#stability-levels). Die übrige von ihr verwendete API für beibehaltene Kompensationsbereiche ist seit Workflow 2.33.0 stabil. Der Katalog für Kindbindungen, die Übergangserklärungen und `MachineInspection` kamen in Workflow 2.41.0 hinzu.
 
 Die Beispiele auf dieser Seite sind Quellbeispiele aus dem Repository mit synthetischen Anbietern. Sie sind keine Qualifizierung für installierte Pakete oder echte Anbieter. Nichts auf dieser Seite impliziert:
 
@@ -167,6 +167,25 @@ Sie gibt ein `CommitResult` mit `committed`, `conflict` oder `cancellation_reque
 
 Ein `ChildSlot` in der Elterndefinition benennt den Slot, seine Host-Zustände, den untergeordneten Automaten und dessen Definitionsversion sowie das erforderliche fachliche Ergebnis. `MachineDefinition::assertBinding()` prüft eine Bindung gegen diese Deklaration. Die Methode führt kein Nachschlagen, keine Autorisierung und keine Zulassung durch.
 
+### Katalog für Kindbindungen {#child-binding-catalog}
+
+Ab Workflow 2.41.0 registriert ein `MachineCatalog` die Definitionen, die einander hosten dürfen. Beim Erstellen wird jeder Slot auf eine registrierte `machine@version` aufgelöst, und ein ungültiger Graph wird abgelehnt, bevor eine Bindung ihn verwendet:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- Eine doppelte Automatenversion, ein Slot, der ein nicht registriertes Kind benennt, und eine rekursive oder zyklische Bindung lösen `InvalidMachineCatalog` aus. Sein `reason` ist `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` oder `state_machine_child_binding_cycle`. Ein Automat, der sich selbst hostet, direkt, über andere Automaten oder unter einer anderen Version, ist ein Zyklus.
+- `InvalidMachineCatalog::$path` listet die Route auf, zum Beispiel `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- Das optionale `maxChildDepth` löst `ResourceLimitExceeded` mit der Dimension `child_depth` aus, wenn die tiefste Slot-Route länger ist; `observed` meldet diese Tiefe. Beibehaltene Kompensation unterstützt eine Kindebene, verwenden Sie daher `maxChildDepth: 1`, wenn Kinder an beibehaltenen Bereichen teilnehmen.
+- Mehrere Eltern oder Host-Zustände können eine Kinddefinition gemeinsam nutzen.
+- `$catalog->assertBinding()` verlangt außerdem, dass beide Profile genau die registrierten Definitionen verwenden, verglichen per Fingerprint.
+
+Der Katalog ist optional. Der native Kindstart, Reservierungen und `MachineDefinition::assertBinding()` ziehen ihn nicht heran; rufen Sie `$catalog->assertBinding()` daher in der Bindungsautorisierung des Hosts auf, wie es das konfigurierte Beispiel tut. Ein Katalog ist Konfiguration: Jede Ausführung pinnt weiterhin ihre eigenen Fingerprints, und das Ersetzen des Katalogs migriert nichts.
+
 Eine `BindingIdentity` fixiert die ursprüngliche Elternausführung, Namespace, Elterninstanz und -lauf, Slot, **Generation**, Host-Zustand, untergeordneten Workflow-Typ, Richtlinien-Fingerprint des Kindes, erforderliches Ergebnis, Eingabe-Fingerprint und Kindoptionen. Die Generation identifiziert einen einzelnen Eintritt in einen Zustand. Anfragen für eine alte Generation werden nie zu einem neueren Kind umgeleitet, nachdem der Eltern-Workflow einen Zustand wechselt oder erneut betritt.
 
 Das Starten und das Abwarten eines Kindes sind getrennte Übergänge:
@@ -255,10 +274,44 @@ Ein während der Ausführung erreichtes Budget liefert `TransitionStatus::Blocke
 ## Diagnose {#diagnostics}
 
 - `TransitionResult::toArray()` liefert Ausführung, Status, Grund, Bewertung und Übergangsschlüssel.
+- Ab 2.41.0 nennt `TransitionResult::explain()` zusätzlich die `TransitionStage`, die das Ergebnis erzeugt hat, sowie den aufgezeichneten Snapshot und die Phase, die diese Prüfung ausgewertet hat. `toArray()` bleibt unverändert.
 - `ConditionEvaluation::toArray()` bewahrt den Struktur-Fingerprint, die Snapshot-ID, Regelversionen, Gründe, Nachweisreferenzen und fehlende Fakten.
 - `MachineAssessment::toArray()` zeichnet die an Definition und Snapshot gebundene Invariantenentscheidung auf.
 - `ResourceLimitExceeded` stellt `dimension`, `observed` und `limit` bereit.
 - `ScopeRecovery::describe()` meldet den Zustand eines beibehaltenen Bereichs, einschließlich der Fälle, in denen eine neue autorisierte Abbruchanforderung nötig ist.
+
+Die Stufe unterscheidet Ergebnisse mit demselben Status:
+
+| Stufe | Status | Bedeutung |
+| --- | --- | --- |
+| `selection` | `unavailable`, `ambiguous` | Keine eindeutige Kante für Ereignis und Quelle. Kein Snapshot. |
+| `source` | `conflict` | Zustand oder Revision des Snapshots weichen von der erwarteten Quelle ab. |
+| `invariant` | `blocked`, `unknown` | Die gemeinsame Invariante hat abgelehnt, vor oder nach der Arbeit. |
+| `target` | `pending`, `unknown` | Das Ziel war unbekannt, hatte keine deklarierte Arbeit oder blieb nach der Arbeit unerfüllt. |
+| `permission` | `blocked`, `unknown` | Der Ausführungs-Guard hat abgelehnt. |
+| `admission` | `blocked`, `unknown` | Die aufgezeichnete Live-Zulassung hat abgelehnt. |
+| `budget` | `blocked` | Ein Vorwärtsbudget hat den nächsten Befehl abgelehnt. Kein Snapshot. |
+| `commit` | `committed`, `conflict`, `cancellation_requested` | Der geschützte Commit hat die Entscheidung bestätigt. |
+
+Für die Stufen `invariant`, `target` und `permission` findet die Snapshot-ID die `ConditionEvaluation`, die der Host für diesen Snapshot aufbewahrt hat. Bei `admission` und `commit` stammt der Grund aus der aufgezeichneten Zulassung oder dem Commit, und der Snapshot kennzeichnet nur die verwendeten Belege. Eine Ablehnung nach der Arbeit nennt den `after`-Snapshot.
+
+`MachineInspection` gibt Betriebswerkzeugen eine versionierte Sicht auf ein fachliches Subjekt. Der Host erstellt sie außerhalb des Workflow-Codes aus Werten, die er bereits autorisiert hat:
+
+```php
+$inspection = new MachineInspection(
+    $profile, $state, $revision, $execution, $result,
+    [$childBinding, $childReservation, $neverAdmittedChild],
+    [['scope' => $scopeIdentity, 'description' => $scopeRecovery->describe($scopeIdentity, $principal)]],
+);
+$view = $inspection->toArray();
+```
+
+- `machine` enthält die gepinnten Automaten-, Definitions- und Profilversionen mit ihren Fingerprints. `business` ist der aktuelle Zustand mit Revision aus dem Speicher der Anwendung, getrennt vom Status des Workflow-Laufs. `transition` ist das `explain()` der Ausführung.
+- `children` hat einen Eintrag pro Bindungsgeneration und kann daher kürzer sein als die übergebene Liste. Jeder Eintrag hat einen `status` (`admitted`, `never_admitted` oder `reserved`), den Bindungsschlüssel, Slot, die Generation, den Host-Zustand, das erforderliche Ergebnis, die bindende Ausführung, Kindinstanz und -lauf sowie eine Abschluss-ID. Ein zugelassenes Kind ist kein Beleg für sein fachliches Ergebnis.
+- `participation` verknüpft ein Kind mit den IDs seines beibehaltenen Eltern- und Kindbereichs und dem Verpflichtungsschlüssel, die sich mit der `scopeId` der `compensation`-Einträge verbinden lassen. Übergeben Sie die `ChildReservation` eines zugelassenen Kindes neben seinem `ChildBinding`. Ein `participation` von null bedeutet, dass das Kind keine beibehaltene Teilnahme hat oder keine Reservierung übergeben wurde.
+- `compensation` listet Identität und ID jedes Bereichs mit den Schlüsseln von `ScopeRecovery::describe()` auf.
+
+Die Erstellung lehnt einen nicht deklarierten Zustand, eine Ausführung unter einem anderen Profil, einen Übergang einer anderen Ausführung, Kindarbeit eines anderen Subjekts oder Profils, widersprüchliche oder wiederholte Generationen, wiederholte Bereiche und fehlerhafte Bereichsbeschreibungen ab. Sie führt keine I/O aus und autorisiert nichts. Bereichsschlüssel werden von der Anwendung definiert, daher ordnet der Host Wurzelbereiche dem Subjekt zu.
 
 ## Ausführbare Beispiele {#runnable-examples}
 
