@@ -73,8 +73,9 @@ O primeiro valor fixa novas execuções embutidas; o segundo permite reivindica�
 3. Preserve capacidade compatível para execuções fixadas, inclusive as que aguardam passivamente timer, sinal, atividade ou filho.
 4. Drene apenas para impedir deliberadamente novas reivindicações da coorte. Se o trabalho parar por drenagem prematura, retome e restaure o build original compatível.
 5. Para reverter novas inicializações, restaure/retome e promova a coorte correta; depois reverta a implantação defeituosa. As fixações existentes não mudam.
+6. Inspecione o inventário de retirada do build antigo e retire-o com a [ação de retirada protegida](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) antes de parar seus workers.
 
-Zero tarefas pendentes não comprova retirada segura. Preserve artefato e recuperação enquanto uma execução fixada ou cadeia herdada puder precisar deles. [Server #519](https://github.com/durable-workflow/server/issues/519) acompanha essa função protegida separada; esta lista não a entrega.
+Zero tarefas pendentes não comprova retirada segura. O Native Server 3.14.0 e posteriores contam as execuções fixadas, novas tentativas adiadas, timers, atividades, validações de atualização e agendamentos que ainda dependem de um build ou fila, e recusam a retirada com HTTP409 enquanto restar algum.
 
 ## Estado explícito de worker ausente {#explicit-missing-worker-state}
 
@@ -82,7 +83,7 @@ Inspecione conjuntamente [tarefas pendentes por coorte](/docs/polyglot/worker-bu
 
 ## Relação com implantações por build {#how-this-relates-to-build-id-rollouts}
 
-O estado de implantação descreve capacidade registrada e intenções de novas inicializações/ciclo de vida; a compatibilidade determina a reivindicação de uma tarefa original específica. Use ambos. Nem drenagem nem reversão reescrevem compatibilidade durável ou provam que um build pode ser removido.
+O estado de implantação descreve capacidade registrada e intenções de novas inicializações/ciclo de vida; a compatibilidade determina a reivindicação de uma tarefa original específica. Use ambos. Nem drenagem nem reversão reescrevem compatibilidade durável ou provam que um build pode ser removido; quem decide isso é o inventário de retirada protegida.
 
 ## Referências relacionadas {#related-references}
 

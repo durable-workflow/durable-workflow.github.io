@@ -73,8 +73,9 @@ La première valeur épingle les nouveaux workflows embarqués ; la seconde auto
 3. Conservez la capacité compatible des exécutions épinglées, y compris celles qui attendent passivement timer, signal, activité ou enfant.
 4. Drainez uniquement pour arrêter volontairement les nouvelles prises de cette cohorte. Si cela bloque du travail, reprenez et restaurez le build compatible d'origine.
 5. Pour revenir sur les nouveaux démarrages, restaurez/reprenez et promouvez la cohorte connue comme fonctionnelle, puis révoquez le mauvais déploiement. Les pins existants restent inchangés.
+6. Inspectez l'inventaire de retrait de l'ancien build et retirez-le avec l'[action de retrait protégé](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) avant d'arrêter ses workers.
 
-Zéro tâche de workflow en attente ne prouve pas un retrait sûr. Conservez l'artefact et la voie de récupération tant qu'une exécution épinglée ou une chaîne héritée peut en dépendre. [Server #519](https://github.com/durable-workflow/server/issues/519) suit cette capacité protégée distincte ; la checklist ne la livre pas.
+Zéro tâche de workflow en attente ne prouve pas un retrait sûr. Native Server 3.14.0 et versions ultérieures comptent les exécutions épinglées, reprises différées, timers, activités, validations de mise à jour et planifications qui dépendent encore d'un build ou d'une file, et refusent le retrait avec HTTP409 tant qu'il en reste.
 
 ## État explicite de worker manquant {#explicit-missing-worker-state}
 
@@ -82,7 +83,7 @@ Inspectez ensemble les [tâches en attente par cohorte](/docs/polyglot/worker-bu
 
 ## Lien avec les déploiements par build {#how-this-relates-to-build-id-rollouts}
 
-L'état du déploiement décrit la capacité enregistrée et les intentions de nouveaux démarrages/cycle de vie ; la compatibilité détermine la prise d'une tâche d'origine précise. Utilisez les deux. Ni drainage ni rollback ne réécrit la compatibilité durable ou ne prouve qu'un build est supprimable.
+L'état du déploiement décrit la capacité enregistrée et les intentions de nouveaux démarrages/cycle de vie ; la compatibilité détermine la prise d'une tâche d'origine précise. Utilisez les deux. Ni drainage ni rollback ne réécrit la compatibilité durable ou ne prouve qu'un build est supprimable ; c'est l'inventaire de retrait protégé qui en décide.
 
 ## Références associées {#related-references}
 

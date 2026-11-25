@@ -73,8 +73,9 @@ El primer valor fija nuevas ejecuciones embebidas; el segundo permite reclamar e
 3. Conserva capacidad compatible para ejecuciones fijadas, incluidas las que esperan pasivamente temporizador, señal, actividad o hijo.
 4. Drena solo para detener deliberadamente las nuevas reclamaciones de la cohorte. Si se bloquea trabajo por un drenaje temprano, reanuda y restaura la compilación original compatible.
 5. Para revertir nuevos inicios, restaura/reanuda y promueve la cohorte correcta; después revierte el despliegue defectuoso. Las fijaciones existentes no cambian.
+6. Inspecciona el inventario de retirada de la compilación antigua y retírala con la [acción de retirada protegida](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) antes de detener sus workers.
 
-Cero tareas pendientes no demuestra retirada segura. Conserva artefacto y recuperación mientras una ejecución fijada o una cadena heredada pueda necesitarlos. [Server #519](https://github.com/durable-workflow/server/issues/519) sigue esa función protegida separada; esta lista no la entrega.
+Cero tareas pendientes no demuestra retirada segura. Native Server 3.14.0 y posteriores cuentan las ejecuciones fijadas, reintentos diferidos, temporizadores, actividades, validaciones de actualización y programaciones que aún dependen de una compilación o cola, y rechazan retirarla con HTTP409 mientras quede alguna.
 
 ## Estado explícito de worker ausente {#explicit-missing-worker-state}
 
@@ -82,7 +83,7 @@ Inspecciona conjuntamente las [tareas pendientes por cohorte](/docs/polyglot/wor
 
 ## Relación con despliegues por compilación {#how-this-relates-to-build-id-rollouts}
 
-El estado del despliegue describe capacidad registrada e intenciones de nuevos inicios/ciclo de vida; la compatibilidad determina si se puede reclamar una tarea original concreta. Usa ambos. Ni drenaje ni reversión reescriben compatibilidad duradera ni demuestran que se pueda eliminar una compilación.
+El estado del despliegue describe capacidad registrada e intenciones de nuevos inicios/ciclo de vida; la compatibilidad determina si se puede reclamar una tarea original concreta. Usa ambos. Ni drenaje ni reversión reescriben compatibilidad duradera ni demuestran que se pueda eliminar una compilación; eso lo decide el inventario de retirada protegida.
 
 ## Referencias relacionadas {#related-references}
 

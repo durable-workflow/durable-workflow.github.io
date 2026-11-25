@@ -12,7 +12,7 @@ keywords: [build dos workers, drenagem, reversão, canário, workers sem versão
 
 Antes de promover um candidato, reproduza históricos representativos abertos e encerrados recentemente usando seu código exato. Antes de reverter, reproduza os históricos escritos pelo build novo com o artefato antigo. Siga a [verificação de replay](../testing.md#replay-before-deployment); uma coorte de roteamento compatível ou uma verificação de integridade aprovada não comprova, por si só, compatibilidade de replay.
 
-Use este guia para inspecionar coortes, escolher o build de novos workflows e manter workers compatíveis com execuções existentes. A promoção muda a seleção de novas inicializações; a drenagem impede novas reivindicações pela coorte. Nenhuma das ações migra execuções ou comprova que um build pode ser excluído.
+Use este guia para inspecionar coortes, escolher o build de novos workflows e manter workers compatíveis com execuções existentes. A promoção muda a seleção de novas inicializações; a drenagem impede novas reivindicações pela coorte. Nenhuma das ações migra execuções ou comprova que um build pode ser excluído; essa decisão cabe à [retirada protegida](#retire-a-build-or-queue).
 
 [Compatibilidade e roteamento dos workers](/docs/polyglot/worker-compatibility-routing) descreve a identidade de tarefas, atividades, novas tentativas, filhos e continue-as-new. Uma coorte tem escopo `(namespace, task_queue, build_id)`. Registros sem `build_id` pertencem à coorte não versionada, `null`.
 
@@ -78,9 +78,9 @@ A coorte não versionada não recebe esse diagnóstico específico de build. Cam
 
 Um build antigo pode ter duas tarefas prontas e uma concedida, enquanto o novo não tem pendências. Um total de três na fila não identifica qual frota precisa de capacidade. Se não há workers ativos do build antigo, restaure sua capacidade compatível ou retome-o se a drenagem foi acidental. Acrescentar workers novos não consome trabalho fixado ao antigo. Se restam apenas registros desatualizados, investigue processos ou heartbeats perdidos antes de contá-los como capacidade disponível.
 
-Reduza cada coorte com cautela, conferindo suas tarefas, workers recentes, tipos declarados, vagas e intenção de drenagem. Mantenha capacidade para concessões e trabalho futuro de execuções existentes. Uma execução esperando sinal, timer, atividade ou filho pode não ter tarefa de workflow agora e precisar do build antigo depois. Atividades podem usar outras filas registradas. Este endpoint não determina retirada segura nem autoriza reduzir a zero a última coorte necessária.
+Reduza cada coorte com cautela, conferindo suas tarefas, workers recentes, tipos declarados, vagas e intenção de drenagem. Mantenha capacidade para concessões e trabalho futuro de execuções existentes. Uma execução esperando sinal, timer, atividade ou filho pode não ter tarefa de workflow agora e precisar do build antigo depois. Atividades podem usar outras filas registradas. Este endpoint não determina retirada segura nem autoriza reduzir a zero a última coorte necessária; para isso, use a [retirada protegida](#retire-a-build-or-queue).
 
-[Server #519](https://github.com/durable-workflow/server/issues/519) acompanha a decisão protegida de retirada; [Server #534](https://github.com/durable-workflow/server/issues/534), a capacidade separada de coleta e redução a zero. Esta lista não entrega essas funções nem documenta gatilho KEDA/HPA integrado.
+[Server #534](https://github.com/durable-workflow/server/issues/534) acompanha a capacidade separada de coleta e redução a zero. Nenhum gatilho KEDA/HPA integrado é documentado aqui.
 
 ## Primeira transição do não versionado ao versionado {#first-cutover-unversioned-to-versioned}
 
@@ -93,7 +93,7 @@ Reduza cada coorte com cautela, conferindo suas tarefas, workers recentes, tipos
    ```
 
 4. Preserve workers compatíveis com os históricos existentes. Promoção não muda fixações antigas; drenagem não é migração.
-5. Retire capacidade antiga somente após resolver independentemente suas dependências restantes. Contadores vazios e zero registros não bastam. Preserve o artefato e a recuperação enquanto uma execução puder precisar dele.
+5. Retire o build antigo com a [retirada protegida](#retire-a-build-or-queue) quando seu inventário estiver vazio. Contadores vazios e zero registros não comprovam isso. Preserve o artefato enquanto uma execução puder precisar dele.
 
 ## Testar um build novo com canário {#canary-a-new-build}
 
@@ -123,7 +123,53 @@ Não drene apenas porque o novo build consegue reivindicar o próprio trabalho: 
 dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Drenar ou parar todos os workers não comprova que o artefato pode ser excluído. Este snapshot não oferece decisão protegida de retirada.
+Drenar ou parar todos os workers não comprova que o artefato pode ser excluído. A drenagem continua sendo a parada de emergência: ela recusa imediatamente os polls do build, haja ou não trabalho ainda fixado nele. Use a [retirada protegida](#retire-a-build-or-queue) para decidir a remoção.
+
+## Retirar um build ou uma fila {#retire-a-build-or-queue}
+
+O Native Server 3.14.0 e posteriores informam se um build ou uma fila pode ser removido com segurança e recusam a retirada enquanto restar alguma dependência viva. Exija que `capabilities.worker_build_retirement` seja exatamente `true` em `GET /api/cluster/info`; o Server PHP publicado não atende essas rotas. Use um token de operador ou administrador e o namespace, como nas demais rotas de build-id.
+
+| Intenção | Endpoint HTTP |
+| --- | --- |
+| Inspecionar um build | `GET /api/deployments/{namespace}/{taskQueue}@{buildId}/retirement` (`@unversioned` para a coorte não versionada) |
+| Retirar um build | `POST /api/deployments/{namespace}/{taskQueue}@{buildId}/retire` |
+| Inspecionar todas as coortes de uma fila | `GET /api/task-queues/{taskQueue}/retirement` |
+| Retirar uma fila | `POST /api/task-queues/{taskQueue}/retire` |
+
+1. Promova o build substituto e mantenha os workers do build antigo em execução. Eles concluem as execuções ainda fixadas nele, as novas tentativas adiadas, os timers e as cadeias continuadas.
+2. Inspecione o build antigo até que `retirable` seja `true`:
+
+   ```bash
+   dw task-queue:retirement orders-critical --namespace orders-prod --build-id orders-v1 --json
+   ```
+
+   Cada bloqueio informa seu `count` exato, até 20 identidades de amostra e uma ação `recovery`: deixar o trabalho terminar ou cancelar ou encerrar as execuções que você decidir abandonar.
+3. Retire-o, opcionalmente vinculado à `observation.inventory_revision` inspecionada:
+
+   ```bash
+   dw task-queue:retire orders-critical --namespace orders-prod --build-id orders-v1 \
+     --expected-revision "$INVENTORY_REVISION"
+   ```
+
+4. Pare os processos do build antigo somente depois que a retirada for bem-sucedida.
+
+Sem `--build-id` nem `--unversioned`, os dois comandos atuam sobre todas as coortes da fila. Esses comandos chegam na primeira versão da CLI posterior à 2.11.0; com a CLI 2.11.0 ou anterior, chame as rotas HTTP diretamente.
+
+O inventário conta as execuções abertas fixadas no build (incluindo as em espera, continuadas e filhas), as tarefas prontas, concedidas e adiadas (novas tentativas de atividade e timers ainda não vencidos), as atividades abertas, as validações de atualização pendentes e, para uma fila, os agendamentos que iniciam execuções nela. Uma execução aberta sem fila de tarefas registrada deixa o inventário `incomplete`, e a retirada fica indisponível.
+
+A inspeção é uma prévia. A retirada conta novamente dentro da mesma transição serializada usada por inícios, novas tentativas e criação de tarefas, e só grava quando nada resta. Uma retirada recusada responde HTTP409 e não altera nada; siga `expected_resolution` e inspecione novamente.
+
+| `reason` | Significado |
+| --- | --- |
+| `unknown_deployment`, `unknown_task_queue` | Nenhum worker registrado e nenhuma implantação registrada para o alvo. |
+| `selected_for_new_starts` | Novas inicializações na fila ainda selecionam este build. Promova o substituto primeiro. |
+| `inventory_incomplete` | Existem execuções abertas não atribuídas. Inventário ausente nunca autoriza a retirada. |
+| `live_dependencies` | Pelo menos um bloqueio tem contador diferente de zero. |
+| `inventory_changed` | A `expected_inventory_revision` não corresponde mais. |
+
+Uma retirada bem-sucedida retorna HTTP200 com `outcome: "retired"`, `retired_at` e `retired_by`. A intenção de implantação do build passa ao estado terminal `drained`: ele nunca mais é selecionado para novas inicializações, não pode ser promovido nem retomado pelo ciclo de vida da implantação, e seus workers permanecem drenando. Quando todas as coortes de uma fila estão retiradas e não resta nenhum worker ativo, novas inicializações nela são recusadas com `task_queue_draining` e `routing_status: "retired"` até que uma nova coorte ativa se registre. Fixações de execução, filas de atividade, histórico e prazos não mudam.
+
+Para recuperar, `dw task-queue:resume` (`POST /api/task-queues/{taskQueue}/build-ids/resume`) devolve um build retirado ao estado `active`; a retirada garantiu que ele não tinha trabalho naquele momento.
 
 ## Reverter um build defeituoso {#roll-back-a-bad-build}
 
@@ -139,8 +185,10 @@ Novas tentativas, execuções filhas e o continue-as-new comum herdam a fixaçã
 | Selecionar novas inicializações | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
 | Drenar | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
 | Retomar | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Inspecionar a retirada | `GET /api/task-queues/{taskQueue}/retirement`, `GET /api/deployments/{name}/retirement` | `dw task-queue:retirement` | — |
+| Retirar | `POST /api/task-queues/{taskQueue}/retire`, `POST /api/deployments/{name}/retire` | `dw task-queue:retire` | — |
 
-As mutações aceitam `{"build_id":"orders-v2"}` ou `{"build_id":null}` para a coorte não versionada. Comandos CLI usam `--build-id` ou `--unversioned`, nunca ambos.
+As rotas de promoção, drenagem e retomada aceitam `{"build_id":"orders-v2"}` ou `{"build_id":null}` para a coorte não versionada. As rotas de retirada aceitam um corpo opcional `{"expected_inventory_revision":"..."}`. Comandos CLI usam `--build-id` ou `--unversioned`, nunca ambos.
 
 Para o ciclo completo, use `GET /api/deployments` e `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Use o nome retornado, como `orders-prod/orders-critical@orders-v2`, no namespace original. No caminho Apache publicado, preserve a barra separadora: codificar todo o nome composto pode gerar uma HTML404 do Apache antes de chegar à API. Ações recusadas retornam HTTP409 com `reason` tipado e array `blockages`. Examine `expected_resolution`; recusa não é promoção bem-sucedida. [Server #521](https://github.com/durable-workflow/server/issues/521) acompanha o espelho OpenAPI atual incompleto, não uma implementação nova nem mudança de esquemas congelados.
 

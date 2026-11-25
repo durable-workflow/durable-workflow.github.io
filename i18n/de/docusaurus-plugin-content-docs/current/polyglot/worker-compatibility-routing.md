@@ -73,8 +73,9 @@ Der erste Wert pinnt neue Embedded-Läufe; der zweite erlaubt Claims für diese 
 3. Erhalten Sie kompatible Kapazität für bestehende Pins, auch für passive Läufe, die auf Timer, Signal, Aktivität oder Kind warten.
 4. Drainen Sie nur, wenn neue Claims dieser Kohorte absichtlich gestoppt werden sollen. Bei blockierter Arbeit nach frühem Drain setzen Sie fort und stellen den ursprünglichen kompatiblen Build wieder her.
 5. Für einen Rollback neuer Starts stellen Sie die bekannte funktionierende Kohorte wieder her, setzen sie fort und promoten sie; rollen Sie dann das schlechte Deployment zurück. Bestehende Pins bleiben erhalten.
+6. Prüfen Sie das Stilllegungsinventar des alten Builds und legen Sie ihn mit der [abgesicherten Stilllegung](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) still, bevor Sie seine Worker stoppen.
 
-Null ausstehende Workflow-Tasks beweisen keine sichere Stilllegung. Erhalten Sie Artefakt und Wiederherstellungsweg, solange ein gepinnter Lauf oder eine geerbte Kette sie benötigen kann. [Server #519](https://github.com/durable-workflow/server/issues/519) verfolgt die separate abgesicherte Stilllegung; diese Checkliste liefert sie nicht.
+Null ausstehende Workflow-Tasks beweisen keine sichere Stilllegung. Native Server 3.14.0 und neuer zählen gepinnte Läufe, verzögerte Retries, Timer, Aktivitäten, Update-Validierungen und Schedules, die noch von einem Build oder einer Queue abhängen, und verweigern die Stilllegung mit HTTP409, solange welche übrig sind.
 
 ## Sichtbarer Zustand bei fehlenden Workern {#explicit-missing-worker-state}
 
@@ -82,7 +83,7 @@ Prüfen Sie [Workflow-Tasks pro Kohorte](/docs/polyglot/worker-build-id-rollout#
 
 ## Zusammenhang mit Build-ID-Rollouts {#how-this-relates-to-build-id-rollouts}
 
-Der Rollout-Zustand beschreibt registrierte Kapazität sowie neue Start- und Lebenszyklusabsichten; Kompatibilität bestimmt den Claim eines konkreten ursprünglichen Tasks. Nutzen Sie beides. Weder Drain noch Rollback schreibt dauerhafte Kompatibilität um oder beweist, dass ein Build entfernt werden darf.
+Der Rollout-Zustand beschreibt registrierte Kapazität sowie neue Start- und Lebenszyklusabsichten; Kompatibilität bestimmt den Claim eines konkreten ursprünglichen Tasks. Nutzen Sie beides. Weder Drain noch Rollback schreibt dauerhafte Kompatibilität um oder beweist, dass ein Build entfernt werden darf; das entscheidet das Inventar der abgesicherten Stilllegung.
 
 ## Weitere Referenzen {#related-references}
 

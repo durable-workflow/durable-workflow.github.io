@@ -15,7 +15,8 @@ Before promoting a candidate, replay representative open and recently closed his
 Use this guide to inspect worker cohorts, choose the build for new workflow
 starts, and keep compatible workers available for existing runs. Promotion
 changes new-start selection. Draining stops new claims by the selected cohort.
-Neither operation migrates existing runs or proves that a build can be deleted.
+Neither operation migrates existing runs or proves that a build can be deleted;
+[guarded retirement](#retire-a-build-or-queue) makes that decision.
 
 Read [Worker Compatibility and Routing](/docs/polyglot/worker-compatibility-routing)
 for the identity carried by workflow tasks, activities, retries, children and
@@ -102,12 +103,11 @@ compatible capacity for leased work and future work from existing runs. A run
 waiting on a signal, timer, activity or child can have no pending workflow task
 now and still require the old build later. Activities can use other recorded
 queues. This endpoint does not establish safe retirement or authority to scale
-the last required cohort to zero.
+the last required cohort to zero; use [guarded retirement](#retire-a-build-or-queue).
 
-[Server #519](https://github.com/durable-workflow/server/issues/519) tracks a
-guarded retirement decision. [Server #534](https://github.com/durable-workflow/server/issues/534)
-tracks the separate scrape/scale-to-zero capability. These are not delivered by
-this checklist, and there is no documented built-in KEDA/HPA trigger here.
+[Server #534](https://github.com/durable-workflow/server/issues/534) tracks the
+separate scrape/scale-to-zero capability. There is no documented built-in
+KEDA/HPA trigger here.
 
 ## First Cutover: Unversioned To Versioned {#first-cutover-unversioned-to-versioned}
 
@@ -123,9 +123,9 @@ this checklist, and there is no documented built-in KEDA/HPA trigger here.
 
 4. Keep compatible workers for existing histories. Promotion does not assign
    the new pin to old runs, and draining is not a migration.
-5. Retire old capacity only when its remaining dependencies have been resolved
-   independently. Empty task counts and zero worker registrations are not that
-   proof. Keep the build artifact and recovery path while any run can need it.
+5. Retire the old build with [guarded retirement](#retire-a-build-or-queue)
+   once its inventory is empty. Empty task counts and zero worker registrations
+   are not that proof. Keep the build artifact while any run can need it.
 
 ## Canary A New Build {#canary-a-new-build}
 
@@ -181,7 +181,82 @@ dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v
 ```
 
 Draining or stopping every worker is not proof that the build artifact is safe
-to remove. There is no guarded retirement decision in this snapshot.
+to remove. Drain remains the emergency stop: it refuses the build's polls
+immediately, whether or not work is still pinned to it. Use
+[guarded retirement](#retire-a-build-or-queue) to decide removal.
+
+## Retire A Build Or Queue {#retire-a-build-or-queue}
+
+Native Server 3.14.0 and later answer whether a build or queue can be removed
+safely, and refuse to retire it while any live dependency remains. Require
+`capabilities.worker_build_retirement` to be exactly `true` on
+`GET /api/cluster/info`; published PHP Server does not serve these routes. Use
+an operator or admin token and the namespace, like the other build-id routes.
+
+| Intent | HTTP endpoint |
+| --- | --- |
+| Inspect one build | `GET /api/deployments/{namespace}/{taskQueue}@{buildId}/retirement` (`@unversioned` for the unversioned cohort) |
+| Retire one build | `POST /api/deployments/{namespace}/{taskQueue}@{buildId}/retire` |
+| Inspect every cohort on a queue | `GET /api/task-queues/{taskQueue}/retirement` |
+| Retire a queue | `POST /api/task-queues/{taskQueue}/retire` |
+
+1. Promote the replacement build and keep the old build's workers running.
+   They finish the runs still pinned to it, delayed retries, timers and
+   continued chains.
+2. Inspect the old build until `retirable` is `true`:
+
+   ```bash
+   dw task-queue:retirement orders-critical --namespace orders-prod --build-id orders-v1 --json
+   ```
+
+   Each blocker gives its exact `count`, up to 20 sample identities and a
+   `recovery` action: let the work finish, or cancel or terminate the runs you
+   choose to abandon.
+3. Retire it, optionally bound to the inspected
+   `observation.inventory_revision`:
+
+   ```bash
+   dw task-queue:retire orders-critical --namespace orders-prod --build-id orders-v1 \
+     --expected-revision "$INVENTORY_REVISION"
+   ```
+
+4. Stop the old build's processes only after the retire succeeds.
+
+Without `--build-id` or `--unversioned`, both commands act on every cohort on
+the queue. These commands ship in the first CLI release after 2.11.0; with CLI
+2.11.0 or earlier, call the HTTP routes directly.
+
+The inventory counts open runs pinned to the build (including waiting,
+continued and child runs), ready, leased and delayed tasks (activity retries
+and timers not yet due), open activities, pending update validations and, for a
+queue, schedules that start runs on it. An open run with no recorded task queue
+makes the inventory `incomplete`, and retirement is unavailable.
+
+Inspection is a preview. The retire action counts again inside the same
+serialized transition that starts, retries and task creation take, and writes
+only when nothing remains. A refused retire answers HTTP409 and changes
+nothing; follow `expected_resolution` and inspect again.
+
+| `reason` | Meaning |
+| --- | --- |
+| `unknown_deployment`, `unknown_task_queue` | No worker registered and no rollout was recorded for the target. |
+| `selected_for_new_starts` | New starts on the queue still select this build. Promote the replacement first. |
+| `inventory_incomplete` | Unattributed open runs exist. Missing inventory is never permission to retire. |
+| `live_dependencies` | At least one blocker has a nonzero count. |
+| `inventory_changed` | The `expected_inventory_revision` no longer matches. |
+
+A successful retire returns HTTP200 with `outcome: "retired"`, `retired_at` and
+`retired_by`. The build's rollout intent becomes the terminal `drained` state:
+it is never selected for new starts, cannot be promoted or resumed through the
+deployment lifecycle, and its workers stay draining. When every cohort on a
+queue is retired and no active worker remains, new starts there are refused
+with `task_queue_draining` and `routing_status: "retired"` until a new active
+cohort registers. Run pins, activity queues, history and deadlines are
+unchanged.
+
+To recover, `dw task-queue:resume` (`POST /api/task-queues/{taskQueue}/build-ids/resume`)
+sets a retired build back to `active`; retirement guaranteed it had no work at
+that time.
 
 ## Roll Back A Bad Build {#roll-back-a-bad-build}
 
@@ -204,10 +279,13 @@ when they continue. Keep stored compatibility fields intact during recovery.
 | Promote for new starts | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
 | Drain | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
 | Resume | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Inspect retirement | `GET /api/task-queues/{taskQueue}/retirement`, `GET /api/deployments/{name}/retirement` | `dw task-queue:retirement` | — |
+| Retire | `POST /api/task-queues/{taskQueue}/retire`, `POST /api/deployments/{name}/retire` | `dw task-queue:retire` | — |
 
-These mutation routes accept `{"build_id":"orders-v2"}` or `{"build_id":null}`
-for the unversioned cohort. CLI mutation commands use `--build-id` or
-`--unversioned`, never both.
+The promote, drain and resume routes accept `{"build_id":"orders-v2"}` or
+`{"build_id":null}` for the unversioned cohort. The retire routes take an
+optional `{"expected_inventory_revision":"..."}` body. CLI mutation commands use
+`--build-id` or `--unversioned`, never both.
 
 For the complete lifecycle, use `GET /api/deployments` and
 `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Use the returned
