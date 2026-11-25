@@ -308,6 +308,8 @@ Los tokens pertenecen al espacio de nombres y a la selección de filtros. Empiec
 | `dw task-queue:build-ids <queue>` | Inspeccionar estado de cohortes por build id y despliegue de una cola. | `--json` |
 | `dw task-queue:drain <queue>` | Marcar una cohorte como drenando para que deje de reclamar tareas nuevas. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Borrar un drenaje anterior para volver a reclamar tareas. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | Muestra qué bloquea todavía la retirada de una cohorte de compilación o de toda la cola, con recuentos, muestras y pasos de recuperación. Solo lectura. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | Retira una cohorte de compilación o toda la cola solo cuando nada depende de ella; un rechazo no cambia nada. | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | Retener el despacho de nuevas actividades en una cola de tareas hasta reanudarlo. | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | Reanudar el despacho de actividades en una cola de tareas pausada. | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | Mostrar si el despacho de actividades está pausado, y quién lo pausó o reanudó, cuándo y por qué. | `--json` |
@@ -315,6 +317,15 @@ Los tokens pertenecen al espacio de nombres y a la selección de filtros. Empiec
 Los comandos de cola son la vista operativa preferida para diagnosticar limitación, capacidad y ausencia de workers. Consulta [Admisión en colas de tareas](/docs/polyglot/task-queue-admission) para la política del servidor y [Despliegue de workers por build id](/docs/polyglot/worker-build-id-rollout) para transición de sin versión a versionado, canary, drenaje y reversión.
 
 `dw task-queue:drain` y `dw task-queue:resume` requieren `--build-id <value>` para una cohorte concreta o `--unversioned` para workers registrados sin `build_id`. Combinarlos falla de inmediato por opción no válida. Ambos son idempotentes: repetir el drenaje no desplaza `drained_at` y reanudar una cohorte ya activa no cambia nada.
+
+`dw task-queue:retirement` y `dw task-queue:retire` (CLI 2.12.0 y posteriores) inspeccionan y retiran una cohorte de compilación (`--build-id <value>` o `--unversioned`) o, sin ninguna de las dos opciones, todas las cohortes de la cola:
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+La inspección es de solo lectura. Cuando el destino se puede retirar, imprime el comando `dw task-queue:retire` correspondiente, vinculado a la revisión de inventario inspeccionada. El servidor repite la comprobación al retirar. Una retirada rechazada es HTTP 409 y no cambia nada: `dw` muestra cada bloqueo con su paso de recuperación y termina con el código `2`. Ambos comandos necesitan un servidor que anuncie `capabilities.worker_build_retirement` (servidor nativo 3.14.0 o posterior); con cualquier otro servidor, `dw` termina con el código `8` antes de enviar la solicitud. Consulta [Retirar una compilación o una cola](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) para el recorrido completo.
 
 `dw task-queue:pause-activities`, `dw task-queue:resume-activities` y `dw task-queue:activity-dispatch` (CLI 2.7.0 y posteriores) pausan, reanudan y muestran el despacho de actividades en una cola de tareas del namespace seleccionado, por ejemplo durante una caída de un servicio externo:
 

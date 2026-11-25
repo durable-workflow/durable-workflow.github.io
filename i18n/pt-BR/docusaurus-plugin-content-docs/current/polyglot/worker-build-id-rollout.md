@@ -153,7 +153,7 @@ O Native Server 3.14.0 e posteriores informam se um build ou uma fila pode ser r
 
 4. Pare os processos do build antigo somente depois que a retirada for bem-sucedida.
 
-Sem `--build-id` nem `--unversioned`, os dois comandos atuam sobre todas as coortes da fila. Esses comandos chegam na primeira versão da CLI posterior à 2.11.0; com a CLI 2.11.0 ou anterior, chame as rotas HTTP diretamente.
+Sem `--build-id` nem `--unversioned`, os dois comandos atuam sobre todas as coortes da fila. Esses comandos exigem a CLI 2.12.0 ou posterior; com uma CLI anterior, chame as rotas HTTP diretamente.
 
 O inventário conta as execuções abertas fixadas no build (incluindo as em espera, continuadas e filhas), as tarefas prontas, concedidas e adiadas (novas tentativas de atividade e timers ainda não vencidos), as atividades abertas, as validações de atualização pendentes e, para uma fila, os agendamentos que iniciam execuções nela. Uma execução aberta sem fila de tarefas registrada deixa o inventário `incomplete`, e a retirada fica indisponível.
 

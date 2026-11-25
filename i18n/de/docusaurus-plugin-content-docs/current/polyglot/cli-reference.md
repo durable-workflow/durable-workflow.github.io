@@ -428,6 +428,8 @@ Tokens gehören zum Namespace und zur Filterauswahl. Beginnen Sie nach einer Fil
 | `dw task-queue:build-ids <queue>` | Kohortenzustand je Build-ID und Rollout-Status einer Warteschlange untersuchen. | `--json` |
 | `dw task-queue:drain <queue>` | Build-ID-Kohorte als auslaufend markieren, damit sie keine neuen Tasks übernimmt. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Frühere Leerung aufheben, sodass die Kohorte wieder neue Tasks übernimmt. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | Zeigt, was die Stilllegung einer Build-Kohorte oder der ganzen Queue noch blockiert, mit Anzahlen, Beispielen und Wiederherstellungsschritten. Nur lesend. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | Legt eine Build-Kohorte oder die ganze Queue nur still, wenn nichts mehr davon abhängt; eine Ablehnung ändert nichts. | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | Neue Activity-Zuteilung auf einer Task-Warteschlange anhalten, bis sie fortgesetzt wird. | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | Activity-Zuteilung auf einer angehaltenen Task-Warteschlange fortsetzen. | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | Anzeigen, ob die Activity-Zuteilung angehalten ist und wer sie wann und warum angehalten oder fortgesetzt hat. | `--json` |
@@ -445,6 +447,15 @@ für ohne `build_id` registrierte Worker. Beides zusammen scheitert sofort mit
 einem Fehler für ungültige Optionen. Beide Befehle sind idempotent: Wiederholtes
 Leeren verschiebt `drained_at` nicht. Das Fortsetzen einer bereits aktiven
 Kohorte ändert nichts.
+
+`dw task-queue:retirement` und `dw task-queue:retire` (CLI 2.12.0 und neuer) prüfen eine Build-Kohorte (`--build-id <value>` oder `--unversioned`) oder ohne beide Optionen alle Kohorten der Queue und legen sie still:
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+Die Prüfung ist nur lesend. Ist das Ziel stilllegbar, gibt sie den passenden Befehl `dw task-queue:retire` aus, gebunden an die geprüfte Inventarrevision. Der Server wiederholt die Prüfung beim Stilllegen. Eine abgelehnte Stilllegung ist HTTP 409 und ändert nichts: `dw` zeigt jeden Blocker mit seinem Wiederherstellungsschritt und endet mit Code `2`. Beide Befehle brauchen einen Server, der `capabilities.worker_build_retirement` meldet (nativer Server 3.14.0 oder neuer); bei jedem anderen Server endet `dw` mit Code `8`, bevor die Anfrage gesendet wird. Den vollständigen Ablauf beschreibt [Build oder Queue stilllegen](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue).
 
 `dw task-queue:pause-activities`, `dw task-queue:resume-activities` und
 `dw task-queue:activity-dispatch` (CLI 2.7.0 und neuer) halten die

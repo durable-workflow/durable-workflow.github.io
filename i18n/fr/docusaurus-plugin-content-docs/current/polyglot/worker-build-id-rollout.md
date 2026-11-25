@@ -153,7 +153,7 @@ Native Server 3.14.0 et versions ultérieures indiquent si un build ou une file 
 
 4. N'arrêtez les processus de l'ancien build qu'après la réussite du retrait.
 
-Sans `--build-id` ni `--unversioned`, les deux commandes portent sur toutes les cohortes de la file. Ces commandes arrivent dans la première version de la CLI après 2.11.0 ; avec la CLI 2.11.0 ou antérieure, appelez directement les routes HTTP.
+Sans `--build-id` ni `--unversioned`, les deux commandes portent sur toutes les cohortes de la file. Ces commandes nécessitent la CLI 2.12.0 ou ultérieure ; avec une CLI antérieure, appelez directement les routes HTTP.
 
 L'inventaire compte les exécutions ouvertes épinglées au build (y compris celles en attente, continuées et enfants), les tâches prêtes, louées et différées (reprises d'activité et timers pas encore échus), les activités ouvertes, les validations de mise à jour en attente et, pour une file, les planifications qui y démarrent des exécutions. Une exécution ouverte sans file de tâches enregistrée rend l'inventaire `incomplete`, et le retrait est indisponible.
 

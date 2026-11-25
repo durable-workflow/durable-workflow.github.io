@@ -153,7 +153,7 @@ Native Server 3.14.0 y posteriores indican si una compilación o una cola puede 
 
 4. Detén los procesos de la compilación antigua solo después de que la retirada tenga éxito.
 
-Sin `--build-id` ni `--unversioned`, ambos comandos actúan sobre todas las cohortes de la cola. Estos comandos se incluyen en la primera versión de la CLI posterior a 2.11.0; con la CLI 2.11.0 o anterior, llama directamente a las rutas HTTP.
+Sin `--build-id` ni `--unversioned`, ambos comandos actúan sobre todas las cohortes de la cola. Estos comandos requieren la CLI 2.12.0 o posterior; con una CLI anterior, llama directamente a las rutas HTTP.
 
 El inventario cuenta las ejecuciones abiertas fijadas a la compilación (incluidas las que esperan, las continuadas y las hijas), las tareas listas, concedidas y diferidas (reintentos de actividad y temporizadores aún no vencidos), las actividades abiertas, las validaciones de actualización pendientes y, para una cola, las programaciones que inician ejecuciones en ella. Una ejecución abierta sin cola de tareas registrada deja el inventario `incomplete`, y la retirada no está disponible.
 

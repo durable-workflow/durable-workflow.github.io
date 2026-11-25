@@ -435,6 +435,8 @@ Les jetons appartiennent à l’espace de noms et à la sélection de filtres. R
 | `dw task-queue:build-ids <queue>` | Inspecter l'état des cohortes par build-id et du déploiement d'une file. | `--json` |
 | `dw task-queue:drain <queue>` | Marquer une cohorte build-id en drainage pour arrêter les nouvelles prises de tâches. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Effacer un drainage antérieur pour reprendre les nouvelles prises de tâches. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | Affiche ce qui bloque encore le retrait d'une cohorte de build ou de toute la file, avec les nombres, des exemples et les étapes de reprise. Lecture seule. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | Retire une cohorte de build ou toute la file uniquement quand plus rien n'en dépend ; un refus ne change rien. | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | Suspendre la distribution des nouvelles activités sur une file de tâches jusqu'à sa reprise. | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | Reprendre la distribution des activités sur une file de tâches suspendue. | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | Indiquer si la distribution des activités est suspendue, et qui l'a suspendue ou reprise, quand et pourquoi. | `--json` |
@@ -451,6 +453,15 @@ de drainage et de retour arrière.
 workers inscrits sans `build_id`. Les combiner échoue immédiatement avec une
 erreur d'option invalide. Les deux commandes sont idempotentes : les drainages
 répétés ne décalent pas `drained_at`, et réactiver une cohorte déjà active ne fait rien.
+
+`dw task-queue:retirement` et `dw task-queue:retire` (CLI 2.12.0 et ultérieures) inspectent et retirent une cohorte de build (`--build-id <value>` ou `--unversioned`) ou, sans l'une ni l'autre option, toutes les cohortes de la file :
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+L'inspection est en lecture seule. Quand la cible peut être retirée, elle affiche la commande `dw task-queue:retire` correspondante, liée à la révision d'inventaire inspectée. Le serveur refait la vérification au moment du retrait. Un retrait refusé est un HTTP 409 et ne change rien : `dw` affiche chaque blocage avec son étape de reprise et se termine avec le code `2`. Les deux commandes exigent un serveur qui annonce `capabilities.worker_build_retirement` (serveur natif 3.14.0 ou ultérieur) ; avec tout autre serveur, `dw` se termine avec le code `8` avant d'envoyer la requête. Voir [Retirer un build ou une file](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue) pour le parcours complet.
 
 `dw task-queue:pause-activities`, `dw task-queue:resume-activities` et
 `dw task-queue:activity-dispatch` (CLI 2.7.0 et versions ultérieures)

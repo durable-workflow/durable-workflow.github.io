@@ -223,8 +223,8 @@ an operator or admin token and the namespace, like the other build-id routes.
 4. Stop the old build's processes only after the retire succeeds.
 
 Without `--build-id` or `--unversioned`, both commands act on every cohort on
-the queue. These commands ship in the first CLI release after 2.11.0; with CLI
-2.11.0 or earlier, call the HTTP routes directly.
+the queue. These commands need CLI 2.12.0 or later; with an earlier
+CLI, call the HTTP routes directly.
 
 The inventory counts open runs pinned to the build (including waiting,
 continued and child runs), ready, leased and delayed tasks (activity retries

@@ -153,7 +153,7 @@ Native Server 3.14.0 und neuer beantworten, ob ein Build oder eine Queue sicher 
 
 4. Stoppen Sie die Prozesse des alten Builds erst, nachdem die Stilllegung erfolgreich war.
 
-Ohne `--build-id` oder `--unversioned` wirken beide Befehle auf alle Kohorten der Queue. Die Befehle erscheinen im ersten CLI-Release nach 2.11.0; mit CLI 2.11.0 oder älter rufen Sie die HTTP-Routen direkt auf.
+Ohne `--build-id` oder `--unversioned` wirken beide Befehle auf alle Kohorten der Queue. Die Befehle benötigen CLI 2.12.0 oder neuer; mit einer älteren CLI rufen Sie die HTTP-Routen direkt auf.
 
 Das Inventar zählt offene, an den Build gepinnte Läufe (einschließlich wartender, fortgesetzter und Kind-Läufe), bereite, geleaste und verzögerte Tasks (noch nicht fällige Aktivitäts-Retries und Timer), offene Aktivitäten, ausstehende Update-Validierungen und bei einer Queue die Schedules, die Läufe auf ihr starten. Ein offener Lauf ohne gespeicherte Task-Queue macht das Inventar `incomplete`; dann ist keine Stilllegung möglich.
 

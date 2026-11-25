@@ -423,6 +423,8 @@ Tokens belong to the namespace and filter selection. Start again without a token
 | `dw task-queue:build-ids <queue>` | Inspect per-build-id cohort state and rollout status for one queue. | `--json` |
 | `dw task-queue:drain <queue>` | Mark a build-id cohort as draining so it stops claiming new tasks. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Clear a previous drain so the cohort can claim new tasks again. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | Show what still blocks retiring one build cohort or the whole queue, with counts, samples and recovery steps. Read-only. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | Retire one build cohort or the whole queue only when nothing depends on it; a refusal changes nothing. | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | Hold new activity dispatch on one task queue until it is resumed. | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | Resume activity dispatch on a paused task queue. | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | Show whether activity dispatch is paused, and who paused or resumed it, when and why. | `--json` |
@@ -440,6 +442,25 @@ target the cohort of workers registered without a `build_id`. Combining the
 two fails fast with an invalid-option error. Both commands are idempotent:
 repeated drains do not shift the recorded `drained_at` timestamp, and
 resuming an already-active cohort is a no-op.
+
+`dw task-queue:retirement` and `dw task-queue:retire` (CLI 2.12.0 and later)
+inspect and retire one build cohort (`--build-id <value>` or `--unversioned`)
+or, with neither option, every cohort on the queue:
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+The inspection is read-only. When the target is retirable, it prints the
+matching `dw task-queue:retire` command bound to the inspected inventory
+revision. The Server repeats the check when it retires. A refused retire is
+HTTP 409 and changes nothing: `dw` prints each blocker with its recovery step
+and exits with code `2`. Both commands need a Server that advertises
+`capabilities.worker_build_retirement` (native Server 3.14.0 or later); on any
+other Server, `dw` exits with code `8` before sending the request. See
+[Retire A Build Or Queue](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue)
+for the full journey.
 
 `dw task-queue:pause-activities`, `dw task-queue:resume-activities` and
 `dw task-queue:activity-dispatch` (CLI 2.7.0 and later) pause, resume and show

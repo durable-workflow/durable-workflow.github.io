@@ -415,6 +415,8 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 | `dw task-queue:build-ids <queue>` | Перевірити стан груп за build-id і розгортання однієї черги. | `--json` |
 | `dw task-queue:drain <queue>` | Позначити групу build-id як draining, щоб вона перестала отримувати нові завдання. | `--build-id <value>`, `--unversioned`, `--json` |
 | `dw task-queue:resume <queue>` | Зняти попередній drain, щоб група знову отримувала нові завдання. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retirement <queue>` | Показує, що ще блокує виведення когорти збірки або всієї черги, з кількостями, прикладами та кроками відновлення. Лише читання. | `--build-id <value>`, `--unversioned`, `--json` |
+| `dw task-queue:retire <queue>` | Виводить когорту збірки або всю чергу, лише коли від неї ніщо не залежить; відмова нічого не змінює. | `--build-id <value>`, `--unversioned`, `--expected-revision <revision>`, `--json` |
 | `dw task-queue:pause-activities <queue>` | Затримати диспетчеризацію нових activity в одній черзі завдань до відновлення. | `--reason <text>`, `--json` |
 | `dw task-queue:resume-activities <queue>` | Відновити диспетчеризацію activity в призупиненій черзі завдань. | `--json` |
 | `dw task-queue:activity-dispatch <queue>` | Показати, чи призупинено диспетчеризацію activity, хто її призупинив або відновив, коли й чому. | `--json` |
@@ -430,6 +432,15 @@ dw schedule:list --namespace=production --status=paused --type=orders.rollup \
 зареєстрованих без `build_id`. Поєднання цих параметрів одразу спричиняє
 помилку параметрів. Обидві команди ідемпотентні: повторний drain не зсуває
 записаний час `drained_at`, а resume вже активної групи не змінює стану.
+
+`dw task-queue:retirement` і `dw task-queue:retire` (CLI 2.12.0 і новіші) перевіряють і виводять одну когорту збірки (`--build-id <value>` або `--unversioned`) або, без жодної з цих опцій, усі когорти черги:
+
+```bash
+dw task-queue:retirement orders --build-id build-2026.04.20-a3f
+dw task-queue:retire orders --build-id build-2026.04.20-a3f --expected-revision=sha256:...
+```
+
+Перевірка лише читає дані. Якщо ціль можна вивести, вона друкує відповідну команду `dw task-queue:retire`, прив’язану до перевіреної ревізії інвентарю. Під час виведення сервер повторює перевірку. Відхилене виведення — це HTTP 409, і воно нічого не змінює: `dw` показує кожен блокер із кроком відновлення та завершується з кодом `2`. Обидві команди потребують сервера, що оголошує `capabilities.worker_build_retirement` (нативний сервер 3.14.0 або новіший); з будь-яким іншим сервером `dw` завершується з кодом `8` ще до надсилання запиту. Повний сценарій описано в розділі [Виведення збірки або черги з експлуатації](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue).
 
 `dw task-queue:pause-activities`, `dw task-queue:resume-activities` і
 `dw task-queue:activity-dispatch` (CLI 2.7.0 і новіші) призупиняють,
