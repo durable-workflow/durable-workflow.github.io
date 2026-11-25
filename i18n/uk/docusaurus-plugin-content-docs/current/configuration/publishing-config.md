@@ -330,3 +330,148 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 необов’язковий `signing_key_id` повідомляється як `key_id`. Зберігайте ключ
 підпису поза експортованим файлом і змінюйте ідентифікатор ключа, коли подальшим
 засобам перевірки потрібно розрізняти ключі.
+
+## Перехоплювачі worker {#worker-interceptors}
+
+Перехоплювачі worker доступні починаючи з наступного випуску пакета Workflow.
+Вбудований Durable Workflow запускає впорядковані перехоплювачі worker навколо
+завдань workflow, activity та query, які він виконує в процесах вашого застосунку.
+Використовуйте їх для журналу аудиту, міток метрик, контексту tenant чи трасування,
+які ви хочете написати один раз, а не в кожному workflow та activity. Форма hook
+відповідає перехоплювачам
+[Python](../polyglot/python.md#worker-interceptors),
+[PHP](../polyglot/php.md#worker-interceptors) і
+[Rust](../polyglot/rust.md#worker-interceptors) SDK.
+
+Перелічіть класи перехоплювачів у `workflows.v2.interceptors` у
+`config/workflows.php`. Вони розв’язуються з контейнера Laravel, тож впровадження
+через конструктор працює, і виконуються в зазначеному порядку; перший є зовнішньою
+обгорткою.
+
+```php
+'v2' => [
+    // ...
+    'interceptors' => [
+        App\Workflows\AuditInterceptor::class,
+    ],
+],
+```
+
+Кожен перехоплювач реалізує `Workflow\V2\Interceptors\WorkerInterceptor`.
+Розширте `Workflow\V2\Interceptors\PassthroughWorkerInterceptor`, щоб реалізувати
+лише потрібні hook, і викликайте `$next($context)`, щоб продовжити ланцюжок. Цей
+перехоплювач аудиту журналює кожне зафіксоване завдання workflow і кожну спробу
+activity:
+
+```php
+namespace App\Workflows;
+
+use Illuminate\Support\Facades\DB;
+use Psr\Log\LoggerInterface;
+use Workflow\V2\Interceptors\ActivityInterceptorContext;
+use Workflow\V2\Interceptors\PassthroughWorkerInterceptor;
+use Workflow\V2\Interceptors\WorkflowTaskInterceptorContext;
+use Workflow\V2\Interceptors\WorkflowTaskOutcome;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        // The task commits after the chain returns; log only once it has.
+        DB::afterCommit(fn () => $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'run_id' => $context->runId,
+            'attempt' => $context->workflowTaskAttempt,
+            'recorded' => $outcome->historyEventTypes,
+        ]));
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+```
+
+Контейнер створює налаштовані перехоплювачі для кожного завдання. Прив’яжіть
+перехоплювач як singleton, коли він має зберігати стан між завданнями.
+
+| Hook | Контекст | Повертає `$next` |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` з `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | результат activity |
+| `executeQueryTask($context, $next)` | `workerId` (завжди null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | результат query |
+
+`task` є знімком узятого рядка завдання у вигляді масиву, а не самою моделлю.
+`workerId` ідентифікує процес queue worker за хостом та ID процесу. Query
+виконуються у викликальному процесі, тому їхній `workerId` дорівнює null.
+
+Перехоплювачі завдань workflow не можуть змінити те, що записує workflow:
+
+- `executeWorkflowTask` обгортає завдання workflow всередині його транзакції бази
+  даних, один раз на кожну спробу завдання. `replaying` має значення `true`, коли
+  попередні завдання workflow уже записали команди для run. Це не ключ
+  дедуплікації: `historyEventTypes` перелічує лише події, які додало це завдання.
+- Побічні ефекти hook виконуються до фіксації завдання й можуть повторитися під час
+  повторної спроби, тож відкладайте їх через `DB::afterCommit()` або прив’язуйте їх
+  до ключа з `taskId` і `workflowTaskAttempt`.
+- Рушій фіксує історію, яку створив код workflow. Результат є поданням лише для
+  читання; повернення іншого результату чи передавання іншого контексту в `$next`
+  нічого не змінює.
+- Помилка з коду workflow доходить до рушія без змін, навіть якщо перехоплювач
+  перехоплює її та повертається звичайним чином.
+- Якщо перехоплювач кидає виняток за межі ланцюжка, пропускає `$next` або викликає
+  його більше одного разу, транзакція завдання відкочується, тож нічого не
+  записується. Завдання звільняється з `WorkflowTaskInterceptorFailed` як останньою
+  помилкою й повторюється після звичайного backoff відновлення. Зовнішній
+  перехоплювач усе ще може перехопити виняток, кинутий внутрішнім перехоплювачем
+  після `$next`, і дозволити завданню зафіксуватися; пропущений або повторений
+  `$next` завжди спричиняє збій завдання.
+- Hook виконуються, поки рядки run і завдання заблоковані, тож робіть їх короткими.
+  Вони не повинні фіксувати чи відкочувати зовнішню транзакцію й не повинні
+  надсилати команди, як-от signal, run, який вони обгортають; зміна записаного
+  стану run спричиняє збій завдання за кожної спроби.
+- Local activity виконуються всередині завдання workflow, тож hook, який постійно
+  завершується помилкою після `$next`, змушує кожну повторну спробу знову
+  виконувати ці local activity.
+
+Перехоплювачі activity та query можуть змінювати аргументи через
+`$context->withArguments(...)` і змінювати повернене значення, оскільки результат
+activity записується один раз, а query нічого не записує. Переписані аргументи query
+знову перевіряються за контрактом query. Винятки activity проходять крізь кожен
+перехоплювач, якщо жоден із них їх не обробить, а потім обробляються звичайною
+політикою повторних спроб activity. Перехоплювачі activity обгортають activity з
+черги та local activity; `local` розрізняє їх. Імітовані activity у
+`WorkflowStub::fake()` не запускають перехоплювачів.
+
+Коли [вбудоване трасування](../monitoring.md#embedded-tracing) увімкнено, вбудовані
+span workflow та activity залишаються зовнішніми, тож перехоплювачі виконуються
+всередині активного span і можуть додавати атрибути чи дочірні span.
+
+Перехоплювачі обгортають завдання черги, local activity та query, які запускає цей
+пакет. Завдання, передані зовнішнім SDK worker через мости завдань worker,
+виконуються під власними перехоплювачами відповідного SDK. Маршрут `execute` мосту
+worker, який виконує взяте завдання workflow у процесі для викликача мосту, не
+запускає перехоплювачі завдань workflow. Запис у `workflows.v2.interceptors`, який
+не вдається розв’язати, спричиняє збій кожного шляху по-своєму: завдання workflow із
+черги звільняється й повторюється, спроба activity завершується помилкою відповідно
+до своєї політики повторних спроб, а query кидає виняток своєму викликачу.
+Перевіряйте список під час розгортання.
+[Посібник із вбудованих перехоплювачів](https://github.com/durable-workflow/workflow/blob/main/docs/worker-interceptors.md)
+містить повний контракт.

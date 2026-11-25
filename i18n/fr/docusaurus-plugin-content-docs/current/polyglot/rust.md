@@ -287,6 +287,121 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 Pour les métriques OpenTelemetry, implémentez le recorder avec votre meter existant : compteurs d’unité `1`, histogrammes en secondes `s`, noms/tags exacts ci-dessus. Provider, agrégation, labels de ressources et cycle de l’exporter restent applicatifs. Cela est distinct du tracing d’exécution. Voir l’[API recorder](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html), l’[API Prometheus](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html) et le [contrat publié](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics).
 
+## Intercepteurs worker {#worker-interceptors}
+
+Les intercepteurs worker sont disponibles à partir de la prochaine version du SDK Rust. Ils ajoutent
+un comportement transversal, comme la journalisation d'audit, des tags de métriques ou un contexte de tenant,
+une seule fois pour chaque tâche exécutée par un worker. Implémentez `WorkerInterceptor` et enregistrez-le
+avec `Worker::interceptor`, ou plusieurs avec `Worker::interceptors`. Chaque hook
+transmet l'appel par défaut ; n'implémentez donc que les hooks dont vous avez besoin.
+`PassthroughWorkerInterceptor` est un intercepteur sans effet. La forme des hooks correspond à celle
+des intercepteurs des SDK [Python](./python.md#worker-interceptors) et
+[PHP](./php.md#worker-interceptors).
+
+Cet intercepteur d'audit journalise chaque résultat de tâche de workflow et chaque tentative d'activité :
+
+```rust
+use durable_workflow::interceptors::{
+    ActivityInterceptorContext, ActivityNext, InterceptorFuture,
+    WorkflowTaskInterceptorContext, WorkflowTaskNext, WorkflowTaskOutcome,
+};
+use durable_workflow::{AvroValue, Result, Worker, WorkerInterceptor};
+
+struct AuditLog;
+
+impl WorkerInterceptor for AuditLog {
+    fn execute_workflow_task<'a>(
+        &'a self,
+        context: &'a WorkflowTaskInterceptorContext,
+        next: WorkflowTaskNext<'a>,
+    ) -> InterceptorFuture<'a, Result<WorkflowTaskOutcome>> {
+        Box::pin(async move {
+            let outcome = next.run().await;
+            match &outcome {
+                // The commands are new for this task even when it replayed
+                // history first. A retry of a failed task has attempt > 1.
+                Ok(outcome) => tracing::info!(
+                    workflow_id = context.workflow_id(),
+                    task_id = context.task_id(),
+                    attempt = context.attempt(),
+                    commands = outcome.commands().len(),
+                    "workflow task completed"
+                ),
+                Err(error) => tracing::warn!(%error, "workflow task failed"),
+            }
+            outcome
+        })
+    }
+
+    fn execute_activity(
+        &self,
+        context: ActivityInterceptorContext,
+        next: ActivityNext,
+    ) -> InterceptorFuture<'_, Result<AvroValue>> {
+        Box::pin(async move {
+            let activity_type = context.activity_type().to_owned();
+            let attempt = context.attempt();
+            let result = next.run(context).await;
+            tracing::info!(%activity_type, attempt, ok = result.is_ok(), "activity attempt");
+            result
+        })
+    }
+}
+
+let worker = Worker::new(client, "orders").interceptor(AuditLog);
+```
+
+L'[exemple `audit_interceptor`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/audit_interceptor.rs)
+du dépôt exécute le même intercepteur contre un Server auto-hébergé.
+
+| Hook | S'exécute autour de | Contexte | `next` |
+| --- | --- | --- | --- |
+| `execute_workflow_task` | une tâche de workflow, relecture comprise | `WorkflowTaskInterceptorContext` | `next.run()` renvoie un `WorkflowTaskOutcome` en lecture seule |
+| `execute_activity` | une tentative d'activité ou d'activité locale | `ActivityInterceptorContext` | `next.run(context)` renvoie le résultat de l'activité |
+| `execute_query_task` | une tâche de requête | `QueryTaskInterceptorContext` | `next.run()` renvoie le résultat de la requête ou `QueryTaskFailure` |
+
+Les contextes sont en lecture seule. Ils portent l'identifiant du worker, la file de tâches, le namespace et
+l'identité de la tâche : identifiant de tâche, identifiant de workflow, identifiant d'exécution, type de workflow ou d'activité,
+tentative et, pour les tâches de workflow, la longueur de l'historique, le porteur de trace de la tâche et
+l'état de relecture. Un contexte d'activité expose aussi les arguments décodés, indique si
+la tentative est une activité locale, et fournit l'`ActivityContext` que reçoit le handler.
+
+Les intercepteurs s'exécutent dans l'ordre d'enregistrement. Le premier enregistré est le plus
+extérieur : il s'exécute en premier avant la tâche et en dernier après elle. Chaque hook doit appeler
+`next` pour poursuivre la chaîne ; le `next` le plus intérieur exécute le traitement propre du SDK.
+Les erreurs de la tâche remontent inchangées à travers chaque intercepteur, sauf si
+un intercepteur d'activité ou de requête les gère délibérément. Les intercepteurs
+d'activité peuvent modifier les arguments avec `context.with_args(..)` et transformer les
+résultats, et les intercepteurs d'activité et de requête peuvent répondre sans appeler `next`.
+Les spans intégrés `ExecutionTelemetry` restent les plus extérieurs autour de toute la chaîne.
+
+Les intercepteurs de tâche de workflow ne peuvent pas modifier ce qu'un workflow enregistre :
+
+- `next.run()` ne prend aucune entrée ; la tâche s'exécute donc toujours telle qu'elle a été reçue.
+- Le worker soumet exactement les commandes produites par le workflow. Le résultat en est
+  une vue en lecture seule.
+- Si la tâche échoue, le worker signale cet échec même lorsqu'un intercepteur
+  renvoie `Ok`. Les intercepteurs le voient sous la forme `Error::WorkflowTaskFailed`, une
+  description en lecture seule avec `.kind()`, `.message()` et `.debug()` ; le worker conserve
+  l'erreur d'origine.
+- Une erreur d'intercepteur après la réussite de la tâche, ou un retour sans exécuter
+  `next`, fait échouer la tâche de workflow avec `Error::WorkflowTaskInterceptor`. Rien
+  n'est enregistré et le Server relance la tâche. Le workflow n'échoue pas.
+- Les intercepteurs s'exécutent sur chaque tâche de workflow. `context.replay_state()` vaut
+  `Replaying` lorsque la tâche a rejoué des commandes validées par des tâches antérieures avant
+  toute nouvelle exécution, et `Executing` pour une tâche sans historique validé. Le
+  worker ne soumet jamais à nouveau les commandes rejouées ; les commandes d'un résultat sont donc toujours
+  nouvelles pour cette tâche : auditez chaque résultat réussi, quel que soit l'état de relecture.
+- Si une tâche échoue après qu'un intercepteur l'a observée, sa relance peut répéter le
+  même résultat ; une valeur de `context.attempt()` supérieure à 1 identifie une relance, donc rendez
+  idempotentes les écritures d'audit externes.
+
+Le `WorkflowEnvironment` hors ligne exécute les intercepteurs d'activité enregistrés sur le
+worker qu'il enveloppe. Il n'a ni tâches de workflow ni tâches de requête ; ces hooks ne s'y exécutent donc
+pas. Consultez le
+[README du SDK Rust](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors)
+pour le contrat complet des intercepteurs.
+
 ## Concurrence des tâches du worker {#worker-task-concurrency}
 
 Les voies bornées ci-dessous nécessitent Rust SDK **4.3.1 ou ultérieur**. Vérifiez la version dans `Cargo.lock` : l’installation fixée plus haut appartient à une autre combinaison qualifiée et peut sélectionner un ancien SDK. La [vérification du paquet publié](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) confirme trois emplacements configurés, un quatrième callback admis après libération d’un emplacement et sept workflows terminés, dont un échec d’activité traité. Les exigences de protocole Server précédentes restent applicables.

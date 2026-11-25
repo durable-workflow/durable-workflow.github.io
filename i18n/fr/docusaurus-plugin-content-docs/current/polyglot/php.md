@@ -303,6 +303,139 @@ mode service livré, y compris le drainage et le retour arrière.
 Les [modes de déploiement](/docs/polyglot/deployment-modes/) comparent plus
 largement les frontières du runtime.
 
+## Intercepteurs worker {#worker-interceptors}
+
+Les intercepteurs worker sont disponibles à partir de la prochaine version du SDK PHP. Passez des
+`interceptors` ordonnés à `Worker::create()` (ou au constructeur `Worker`) pour ajouter une journalisation
+d'audit, des tags de métriques, un contexte de tenant ou du traçage autour de chaque tâche, une seule fois,
+plutôt que dans chaque handler. Chaque intercepteur implémente
+`DurableWorkflow\Worker\Interceptor\WorkerInterceptor` ; étendez
+`PassthroughWorkerInterceptor` pour n'implémenter que les hooks dont vous avez besoin. La forme des hooks
+correspond à celle des intercepteurs des SDK [Python](./python.md#worker-interceptors) et
+[Rust](./rust.md#worker-interceptors).
+
+Cet intercepteur d'audit journalise chaque résultat de tâche de workflow et chaque tentative d'activité :
+
+```php
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\Interceptor\ActivityInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\PassthroughWorkerInterceptor;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskOutcome;
+use Psr\Log\LoggerInterface;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'workflow_type' => $context->workflowType,
+            'attempt' => $context->workflowTaskAttempt,
+            'replayed_history' => $context->replaying,
+            'commands' => $outcome->commandTypes(),
+        ]);
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+
+$worker = Worker::create($client, 'orders', container: $container,
+    interceptors: [AuditInterceptor::class]);
+```
+
+| Hook | Contexte | Retour de `$next` |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` avec une copie des commandes |
+| `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | le résultat de l'activité |
+| `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | le résultat de la requête |
+
+Les intercepteurs s'exécutent dans l'ordre où vous les listez. Le premier intercepteur est
+l'enveloppe la plus extérieure : il s'exécute en premier avant la tâche et en dernier après elle. Chaque hook
+appelle `$next($context)` pour poursuivre la chaîne. Lorsque le traçage est configuré, les
+spans worker intégrés restent les plus extérieurs, de sorte que les intercepteurs s'exécutent à l'intérieur du span
+de tâche actif.
+
+Les intercepteurs de tâche de workflow ne peuvent pas rompre le déterminisme :
+
+- `executeWorkflowTask` enveloppe le code de workflow qui produit les commandes d'une tâche
+  de workflow, une fois par tentative de tâche. `replaying` vaut `true` lorsque des tâches de workflow
+  antérieures ont déjà enregistré des commandes ; le code de workflow a alors d'abord rejoué ce
+  préfixe validé. Le résultat ne contient que les commandes ajoutées par cette tâche ;
+  les commandes rejouées ne sont jamais soumises à nouveau.
+- Une tentative relancée (`workflowTaskAttempt > 1`) peut répéter un résultat dont la tâche
+  a échoué ; rendez donc idempotentes les écritures d'audit externes.
+- Les tâches de mise à jour (`updateId` défini) exécutent le handler de mise à jour sur l'état validé
+  sans réexécuter le corps du workflow ; pour elles, `replaying` indique seulement que
+  des commandes antérieures existent.
+- Le worker soumet exactement les commandes produites par le code de workflow. Le
+  résultat est une copie ; renvoyer un résultat différent, ou passer un contexte différent
+  à `$next`, ne change rien.
+- Un échec du code de workflow parvient au worker inchangé, même si un
+  intercepteur l'intercepte et retourne normalement.
+- Une exception levée par un intercepteur fait échouer la tâche de workflow. Rien n'est
+  enregistré et le Server relance la tâche. Omettre `$next`, ou l'appeler plus
+  d'une fois, fait échouer la tâche avec `WorkflowTaskInterceptorViolation`.
+
+Les intercepteurs d'activité et de requête peuvent modifier les arguments avec
+`$context->withArguments(...)` et modifier la valeur renvoyée, car
+les résultats d'activité sont enregistrés une seule fois et les requêtes n'enregistrent rien. Les
+exceptions d'activité traversent tous les intercepteurs, sauf si l'un d'eux les gère. Les intercepteurs
+d'activité enveloppent les activités distantes et locales ; `local` permet de les distinguer. Avec
+l'annulation coopérative, les callbacks des activités distantes, locales coopératives et locales préparées,
+ainsi que leurs intercepteurs, s'exécutent dans le processus enfant de l'activité ; les modifications
+de mémoire qui y sont faites n'atteignent donc pas le processus worker.
+
+### Configuration du conteneur et du framework {#worker-interceptor-configuration}
+
+Passez des instances d'intercepteurs ou des noms de classes. Les noms de classes sont résolus à partir du
+conteneur PSR-11 passé au worker, de la même manière que les handlers déclarés par attributs.
+Sans conteneur, une classe ne doit avoir aucun argument de constructeur obligatoire.
+
+En mode service Laravel et Symfony, listez les classes d'intercepteurs sous
+`worker.interceptors`. Elles sont résolues à partir du conteneur du framework dans cet
+ordre :
+
+```php
+// config/durable-workflow.php
+'worker' => [
+    'interceptors' => [App\Durable\AuditInterceptor::class],
+],
+```
+
+```yaml
+# config/packages/durable_workflow.yaml
+durable_workflow:
+  worker:
+    interceptors:
+      - App\Durable\AuditInterceptor
+```
+
+Les workflows Laravel embarqués configurent leurs propres intercepteurs sous
+`workflows.v2.interceptors` ; consultez
+[intercepteurs worker embarqués](../configuration/publishing-config.md#worker-interceptors).
+La [référence du SDK PHP](https://github.com/durable-workflow/sdk-php/blob/main/docs/sdk-reference.md#worker-interceptors)
+contient le contrat complet des intercepteurs.
+
 ## Résultats de requête avec des valeurs binaires {#query-binary-results}
 
 Le PHP SDK 3.18.2 corrige la finalisation des requêtes pour des résultats Avro valides contenant des octets `AvroBinaryValue` imbriqués. `result_envelope` reste la représentation de référence. Le SDK omet uniquement la projection simple facultative `result` lorsqu’elle ne peut pas être encodée en JSON ; les résultats ordinaires compatibles JSON conservent cette projection.

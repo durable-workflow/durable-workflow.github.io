@@ -241,3 +241,144 @@ Em seguida, registre-o em `config/workflows.php`:
 O componente recebe o valor atual e informações de contexto como `path`, `category`, `workflow_instance_id`, `workflow_run_id` e `workflow_type`. A exportação o chama para payloads de argumentos/saída do workflow, payloads de eventos do histórico, payload/contexto de comandos, payloads de atualizações, tarefas e atividades, e diagnósticos de mensagem/arquivo/rastreamento de falha. O pacote resultante inclui `redaction.applied`, `redaction.policy` e `redaction.paths` para que ferramentas posteriores identifiquem qual política moldou o artefato.
 
 Cada exportação também inclui um bloco `integrity` calculado após a ocultação de dados. A soma de verificação usa `canonicalization = json-recursive-ksort-v1` e `checksum_algorithm = sha256`. Quando `signing_key` está configurado, o mesmo payload canônico é assinado com `signature_algorithm = hmac-sha256` e o `signing_key_id` opcional é informado como `key_id`. Mantenha a chave de assinatura fora do artefato exportado e altere o identificador da chave quando os verificadores posteriores precisarem distinguir chaves.
+
+## Interceptadores de worker {#worker-interceptors}
+
+Os interceptadores de worker estão disponíveis a partir da próxima versão do pacote Workflow.
+O Durable Workflow embarcado executa interceptadores de worker ordenados em torno das tarefas
+de workflow, atividades e consultas que executa nos processos da sua aplicação. Use-os
+para logs de auditoria, tags de métricas, contexto de tenant ou tracing que você queira
+escrever uma única vez, em vez de em cada workflow e atividade. O formato dos hooks corresponde aos
+interceptadores dos SDKs [Python](../polyglot/python.md#worker-interceptors),
+[PHP](../polyglot/php.md#worker-interceptors) e
+[Rust](../polyglot/rust.md#worker-interceptors).
+
+Liste as classes de interceptadores em `workflows.v2.interceptors` no
+`config/workflows.php`. Elas são resolvidas a partir do contêiner do Laravel, então a
+injeção pelo construtor funciona, e executam na ordem listada; o primeiro é o
+wrapper mais externo.
+
+```php
+'v2' => [
+    // ...
+    'interceptors' => [
+        App\Workflows\AuditInterceptor::class,
+    ],
+],
+```
+
+Cada interceptador implementa `Workflow\V2\Interceptors\WorkerInterceptor`.
+Estenda `Workflow\V2\Interceptors\PassthroughWorkerInterceptor` para implementar apenas
+os hooks de que precisar e chame `$next($context)` para continuar a cadeia. Este interceptador
+de auditoria registra em log cada tarefa de workflow confirmada e cada tentativa de atividade:
+
+```php
+namespace App\Workflows;
+
+use Illuminate\Support\Facades\DB;
+use Psr\Log\LoggerInterface;
+use Workflow\V2\Interceptors\ActivityInterceptorContext;
+use Workflow\V2\Interceptors\PassthroughWorkerInterceptor;
+use Workflow\V2\Interceptors\WorkflowTaskInterceptorContext;
+use Workflow\V2\Interceptors\WorkflowTaskOutcome;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        // The task commits after the chain returns; log only once it has.
+        DB::afterCommit(fn () => $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'run_id' => $context->runId,
+            'attempt' => $context->workflowTaskAttempt,
+            'recorded' => $outcome->historyEventTypes,
+        ]));
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+```
+
+O contêiner cria os interceptadores configurados para cada tarefa. Registre um como
+singleton quando ele precisar manter estado entre tarefas.
+
+| Hook | Contexto | Retorno de `$next` |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` com `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | o resultado da atividade |
+| `executeQueryTask($context, $next)` | `workerId` (sempre null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | o resultado da consulta |
+
+`task` é um snapshot em array da linha da tarefa adquirida, nunca o próprio model.
+`workerId` identifica o processo do worker de fila pelo host e pelo ID do processo. Consultas
+executam no processo chamador, então o `workerId` delas é null.
+
+Interceptadores de tarefa de workflow não conseguem alterar o que um workflow registra:
+
+- `executeWorkflowTask` envolve a tarefa de workflow dentro da sua transação de
+  banco de dados, uma vez por tentativa da tarefa. `replaying` é `true` quando tarefas de
+  workflow anteriores já registraram comandos para a execução. Ele não é uma
+  chave de deduplicação: `historyEventTypes` lista apenas os eventos que esta tarefa
+  acrescentou.
+- Os efeitos colaterais dos hooks executam antes de a tarefa ser confirmada e podem se repetir quando uma tentativa
+  é executada novamente, então adie-os com `DB::afterCommit()` ou use `taskId` e
+  `workflowTaskAttempt` como chave.
+- O engine confirma o histórico que o código do workflow produziu. O resultado é uma
+  visão somente leitura; retornar um resultado diferente, ou passar um contexto diferente
+  para `$next`, não altera nada.
+- Uma falha do código do workflow chega ao engine inalterada, mesmo que um
+  interceptador a capture e retorne normalmente.
+- Se um interceptador lançar uma exceção para fora da cadeia, pular `$next` ou chamá-lo mais de
+  uma vez, a transação da tarefa é revertida, então nada é registrado. A tarefa é
+  liberada com `WorkflowTaskInterceptorFailed` como seu último erro e executada novamente
+  após o backoff de reparo habitual. Um interceptador externo ainda pode capturar uma
+  exceção que um interceptador interno lançou depois de `$next` e deixar a tarefa ser confirmada; um
+  `$next` pulado ou repetido sempre faz a tarefa falhar.
+- Os hooks executam enquanto as linhas da execução e da tarefa estão bloqueadas, então mantenha-os curtos. Eles
+  não podem confirmar nem reverter a transação em volta, e não podem enviar
+  comandos, como sinais, para a execução que estão envolvendo; uma alteração no estado
+  registrado da execução faz a tarefa falhar em todas as tentativas.
+- Atividades locais executam dentro da tarefa de workflow, então um hook que continua falhando
+  depois de `$next` faz cada nova tentativa executar essas atividades locais novamente.
+
+Interceptadores de atividade e de consulta podem alterar argumentos com
+`$context->withArguments(...)` e podem alterar o valor retornado, porque um
+resultado de atividade é registrado uma única vez e uma consulta não registra nada. Argumentos
+de consulta reescritos são validados novamente contra o contrato da consulta. Exceções de atividade
+passam por todos os interceptadores, a menos que um deles as trate, e então seguem a
+política normal de novas tentativas da atividade. Interceptadores de atividade envolvem atividades enfileiradas e locais;
+`local` as diferencia. Atividades simuladas em
+`WorkflowStub::fake()` não executam interceptadores.
+
+Quando o [tracing embarcado](../monitoring.md#embedded-tracing) está habilitado, os
+spans internos de workflow e de atividade permanecem como os mais externos, de modo que os interceptadores executam dentro
+do span ativo e podem adicionar atributos ou spans filhos.
+
+Os interceptadores envolvem os jobs de fila, as atividades locais e as consultas que este pacote
+executa. Tarefas entregues a workers de SDKs externos por meio das pontes de tarefas de worker executam
+sob os próprios interceptadores desse SDK. A rota `execute` da ponte de worker, que
+executa no próprio processo uma tarefa de workflow adquirida para um chamador da ponte, não executa
+interceptadores de tarefa de workflow. Uma entrada em `workflows.v2.interceptors` que
+não possa ser resolvida falha de um jeito diferente em cada caminho: uma tarefa de workflow enfileirada é
+liberada e executada novamente, uma tentativa de atividade falha conforme sua política de novas tentativas, e uma
+consulta lança uma exceção para quem a chamou. Verifique a lista ao implantar. O
+[guia de interceptadores embarcados](https://github.com/durable-workflow/workflow/blob/main/docs/worker-interceptors.md)
+traz o contrato completo.

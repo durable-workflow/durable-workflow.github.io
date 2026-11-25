@@ -195,6 +195,101 @@ Worker は `workflow_entry_arguments_validation` を自動的に通知します�
 
 これらのブリッジは、`durable-workflow/workflow` によって Laravel アプリケーション自体が永続状態を所有し Laravel キューで実行する[組み込み Laravel ワークフロー](/docs/installation/)とは別です。ドレインとロールバックを含め、v1、v2 組み込み、同梱サービスモードブリッジで同じ代表的な Laravel ユースケースを比較するには、[Laravel の採用とランタイム移行](/docs/laravel-adoption/)を参照してください。より広いランタイム境界の比較には[デプロイモード](/docs/polyglot/deployment-modes/)を使います。
 
+## Worker インターセプター {#worker-interceptors}
+
+Worker インターセプターは次の PHP SDK リリースから利用できます。順序付きの `interceptors` を `Worker::create()`（または `Worker` コンストラクター）に渡すと、監査ログ、メトリクスタグ、テナントコンテキスト、トレースを各ハンドラーではなく、すべてのタスクの前後に一度だけ追加できます。各インターセプターは `DurableWorkflow\Worker\Interceptor\WorkerInterceptor` を実装します。必要なフックだけを実装するには `PassthroughWorkerInterceptor` を継承します。フックの形は [Python](./python.md#worker-interceptors) と [Rust](./rust.md#worker-interceptors) の SDK インターセプターと同じです。
+
+次の監査インターセプターは、すべてのワークフロータスクの結果とアクティビティ試行をログに記録します。
+
+```php
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\Interceptor\ActivityInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\PassthroughWorkerInterceptor;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskOutcome;
+use Psr\Log\LoggerInterface;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'workflow_type' => $context->workflowType,
+            'attempt' => $context->workflowTaskAttempt,
+            'replayed_history' => $context->replaying,
+            'commands' => $outcome->commandTypes(),
+        ]);
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+
+$worker = Worker::create($client, 'orders', container: $container,
+    interceptors: [AuditInterceptor::class]);
+```
+
+| フック | コンテキスト | `$next` の戻り値 |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | コマンドのコピーを持つ `WorkflowTaskOutcome` |
+| `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | アクティビティの結果 |
+| `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | クエリの結果 |
+
+インターセプターは列挙した順に実行されます。最初のインターセプターが最も外側のラッパーで、タスクの前では最初に、タスクの後では最後に実行されます。各フックはチェーンを続けるために `$next($context)` を呼び出します。トレースが設定されている場合、組み込みの Worker スパンが最も外側に留まるため、インターセプターはアクティブなタスクスパンの内側で実行されます。
+
+ワークフロータスクのインターセプターは決定性を壊せません。
+
+- `executeWorkflowTask` は、1つのワークフロータスクのコマンドを生成するワークフローコードを、タスク試行ごとに一度ラップします。それ以前のワークフロータスクがすでにコマンドを記録している場合、`replaying` は `true` になり、ワークフローコードはまずそのコミット済みの部分を再実行しています。結果には、このタスクが追加するコマンドだけが含まれます。リプレイされたコマンドが再送信されることはありません。
+- 再試行された試行（`workflowTaskAttempt > 1`）では、タスクが失敗した結果が繰り返される可能性があるため、外部への監査書き込みは冪等にしてください。
+- Update タスク（`updateId` が設定されたもの）は、ワークフロー本体を再実行せずに、コミット済みの状態に対して Update ハンドラーを実行します。このタスクでは、`replaying` はそれ以前のコマンドが存在することを示すだけです。
+- Worker は、ワークフローコードが生成したコマンドをそのまま送信します。結果はコピーです。別の結果を返したり、別のコンテキストを `$next` に渡したりしても、何も変わりません。
+- ワークフローコードからの失敗は、インターセプターがそれを捕捉して正常に戻った場合でも、そのまま Worker に届きます。
+- インターセプターが例外をスローすると、ワークフロータスクは失敗します。何も記録されず、Server がタスクを再試行します。`$next` を呼ばなかったり、複数回呼び出したりすると、タスクは `WorkflowTaskInterceptorViolation` で失敗します。
+
+アクティビティとクエリのインターセプターは、`$context->withArguments(...)` で引数を変更でき、戻り値も変更できます。アクティビティの結果は一度だけ記録され、クエリは何も記録しないためです。アクティビティの例外は、いずれかのインターセプターが処理しない限り、すべてのインターセプターを通過します。アクティビティのインターセプターはリモートアクティビティとローカルアクティビティの両方をラップし、`local` で両者を区別できます。協調的キャンセルを使う場合、リモート、協調的ローカル、準備済みローカルの各アクティビティのコールバックとそのインターセプターはアクティビティの子プロセスで実行されるため、そこでのメモリの変更は Worker プロセスに反映されません。
+
+### コンテナとフレームワークの設定 {#worker-interceptor-configuration}
+
+インターセプターのインスタンスまたはクラス名を渡します。クラス名は、属性付きハンドラーと同じ方法で、Worker に渡された PSR-11 コンテナから解決されます。コンテナがない場合、クラス名のコンストラクターには必須の引数があってはなりません。
+
+Laravel と Symfony のサービスモードでは、インターセプタークラスを `worker.interceptors` に列挙します。これらはその順序でフレームワークのコンテナから解決されます。
+
+```php
+// config/durable-workflow.php
+'worker' => [
+    'interceptors' => [App\Durable\AuditInterceptor::class],
+],
+```
+
+```yaml
+# config/packages/durable_workflow.yaml
+durable_workflow:
+  worker:
+    interceptors:
+      - App\Durable\AuditInterceptor
+```
+
+組み込み Laravel ワークフローは、独自のインターセプターを `workflows.v2.interceptors` に設定します。[組み込み Worker インターセプター](../configuration/publishing-config.md#worker-interceptors)を参照してください。インターセプターの完全な契約は [PHP SDK リファレンス](https://github.com/durable-workflow/sdk-php/blob/main/docs/sdk-reference.md#worker-interceptors)にあります。
+
 ## バイナリ値を含む Query 結果 {#query-binary-results}
 
 PHP SDK 3.18.2 は、入れ子の `AvroBinaryValue` バイトを含む正当な Avro 結果の Query 完了を修正します。`result_envelope` が引き続き正規の結果です。SDK は JSON にエンコードできない場合だけ任意のプレーン `result` 表現を省略し、通常の JSON 互換の結果ではその表現を保持します。

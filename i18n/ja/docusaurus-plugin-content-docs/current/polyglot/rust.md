@@ -219,6 +219,86 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 OpenTelemetry のメトリクスには既存 meter で recorder を実装し、単位 `1` のカウンターと秒 `s` のヒストグラムを上の名前/タグで作ります。provider、集約、resource label、exporter のライフサイクルはアプリが管理し、実行 tracing とは別です。[recorder API](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html)、[Prometheus API](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html)、[公開契約](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics)を参照してください。
 
+## Worker インターセプター {#worker-interceptors}
+
+Worker インターセプターは次の Rust SDK リリースから利用できます。監査ログ、メトリクスタグ、テナントコンテキストなどの横断的な処理を、Worker が実行するすべてのタスクに対して一度だけ追加できます。`WorkerInterceptor` を実装して `Worker::interceptor` で登録するか、複数を `Worker::interceptors` で登録します。すべてのフックはデフォルトで呼び出しをそのまま次に渡すため、必要なフックだけを実装します。`PassthroughWorkerInterceptor` は何もしないインターセプターです。フックの形は [Python](./python.md#worker-interceptors) と [PHP](./php.md#worker-interceptors) の SDK インターセプターと同じです。
+
+次の監査インターセプターは、すべてのワークフロータスクの結果とアクティビティ試行をログに記録します。
+
+```rust
+use durable_workflow::interceptors::{
+    ActivityInterceptorContext, ActivityNext, InterceptorFuture,
+    WorkflowTaskInterceptorContext, WorkflowTaskNext, WorkflowTaskOutcome,
+};
+use durable_workflow::{AvroValue, Result, Worker, WorkerInterceptor};
+
+struct AuditLog;
+
+impl WorkerInterceptor for AuditLog {
+    fn execute_workflow_task<'a>(
+        &'a self,
+        context: &'a WorkflowTaskInterceptorContext,
+        next: WorkflowTaskNext<'a>,
+    ) -> InterceptorFuture<'a, Result<WorkflowTaskOutcome>> {
+        Box::pin(async move {
+            let outcome = next.run().await;
+            match &outcome {
+                // The commands are new for this task even when it replayed
+                // history first. A retry of a failed task has attempt > 1.
+                Ok(outcome) => tracing::info!(
+                    workflow_id = context.workflow_id(),
+                    task_id = context.task_id(),
+                    attempt = context.attempt(),
+                    commands = outcome.commands().len(),
+                    "workflow task completed"
+                ),
+                Err(error) => tracing::warn!(%error, "workflow task failed"),
+            }
+            outcome
+        })
+    }
+
+    fn execute_activity(
+        &self,
+        context: ActivityInterceptorContext,
+        next: ActivityNext,
+    ) -> InterceptorFuture<'_, Result<AvroValue>> {
+        Box::pin(async move {
+            let activity_type = context.activity_type().to_owned();
+            let attempt = context.attempt();
+            let result = next.run(context).await;
+            tracing::info!(%activity_type, attempt, ok = result.is_ok(), "activity attempt");
+            result
+        })
+    }
+}
+
+let worker = Worker::new(client, "orders").interceptor(AuditLog);
+```
+
+リポジトリの [`audit_interceptor` サンプル](https://github.com/durable-workflow/sdk-rust/blob/main/examples/audit_interceptor.rs)は、同じインターセプターをセルフホストの Server に対して実行します。
+
+| フック | ラップする範囲 | コンテキスト | `next` |
+| --- | --- | --- | --- |
+| `execute_workflow_task` | リプレイを含む1つのワークフロータスク | `WorkflowTaskInterceptorContext` | `next.run()` は読み取り専用の `WorkflowTaskOutcome` を返す |
+| `execute_activity` | 1回のアクティビティまたはローカルアクティビティの試行 | `ActivityInterceptorContext` | `next.run(context)` はアクティビティの結果を返す |
+| `execute_query_task` | 1つのクエリタスク | `QueryTaskInterceptorContext` | `next.run()` はクエリの結果または `QueryTaskFailure` を返す |
+
+コンテキストは読み取り専用です。Worker ID、タスクキュー、名前空間と、タスクの識別情報（タスク ID、ワークフロー ID、実行 ID、ワークフローまたはアクティビティの型、試行回数、およびワークフロータスクの場合は履歴の長さ、タスクのトレースキャリア、リプレイ状態）を保持します。アクティビティのコンテキストは、デコード済みの引数、その試行がローカルアクティビティかどうか、ハンドラーが受け取る `ActivityContext` も公開します。
+
+インターセプターは登録順に実行されます。最初に登録したものが最も外側になり、タスクの前では最初に、タスクの後では最後に実行されます。各フックはチェーンを続けるために `next` を呼び出す必要があります。最も内側の `next` が SDK 自身の処理を実行します。タスクからのエラーは、アクティビティまたはクエリのインターセプターが意図的に処理しない限り、すべてのインターセプターをそのまま通って外側に戻ります。アクティビティのインターセプターは `context.with_args(..)` で引数を変更し、結果を変換できます。また、アクティビティとクエリのインターセプターは `next` を呼ばずに応答できます。組み込みの `ExecutionTelemetry` スパンは、チェーン全体を囲む最も外側に留まります。
+
+ワークフロータスクのインターセプターは、ワークフローが記録する内容を変更できません。
+
+- `next.run()` は入力を受け取らないため、タスクは常に受信したとおりに実行されます。
+- Worker は、ワークフローが生成したコマンドをそのまま送信します。結果はそれらの読み取り専用のビューです。
+- タスクが失敗した場合、インターセプターが `Ok` を返しても、Worker はその失敗を報告します。インターセプターからは `Error::WorkflowTaskFailed` として見えます。これは `.kind()`、`.message()`、`.debug()` を持つ読み取り専用の説明で、Worker は元のエラーを保持します。
+- タスクが成功した後のインターセプターのエラー、または `next` を実行せずに戻ることは、ワークフロータスクを `Error::WorkflowTaskInterceptor` で失敗させます。何も記録されず、Server がタスクを再試行します。ワークフローは失敗しません。
+- インターセプターはすべてのワークフロータスクで実行されます。`context.replay_state()` は、タスクが新しい実行の前に以前のタスクでコミットされたコマンドを再実行した場合は `Replaying`、コミット済みの履歴がないタスクでは `Executing` になります。Worker はリプレイされたコマンドを再送信しないため、結果のコマンドは常にそのタスクにとって新しいものです。リプレイ状態にかかわらず、成功したすべての結果を監査してください。
+- インターセプターが観察した後にタスクが失敗した場合、その再試行で同じ結果が繰り返される可能性があります。`context.attempt()` が 1 より大きければ再試行であることを示すため、外部への監査書き込みは冪等にしてください。
+
+オフラインの `WorkflowEnvironment` は、ラップする Worker に登録されたアクティビティのインターセプターを実行します。ワークフロータスクやクエリタスクはないため、それらのフックはそこでは実行されません。インターセプターの完全な契約については、[Rust SDK README](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors) を参照してください。
+
 ## Worker タスクの並行実行 {#worker-task-concurrency}
 
 以下の有界実行レーンには Rust SDK **4.3.1 以降**が必要です。`Cargo.lock` のバージョンを確認してください。上の固定インストールは別の検証済み構成に属し、古い SDK を選ぶ場合があります。[公開パッケージの受け入れ検証](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)では、設定した三つのスロット、解放後に初めて入る四つ目のコールバック、処理済みのアクティビティ失敗を含む七つのワークフロー完了を確認しています。前述の Server プロトコル要件は引き続き適用されます。
