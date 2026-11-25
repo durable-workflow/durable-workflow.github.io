@@ -621,6 +621,7 @@ Python Worker 通过向 Server 返回查询任务结果来完成 Server 路由�
 | `ctx.upsert_search_attributes(attrs)` | 更新搜索属性 |
 | `ctx.continue_as_new(*args)` | 使用新输入重启工作流 |
 | `ctx.now()` | 持久化的工作流开始时间，在本次运行内固定 |
+| `ctx.replay_now()` | 会前进的、对重放安全的 UTC 时间：入口处为运行的开始时间，之后为每个已消费持久步骤的记录时间 |
 | `ctx.random()` | 带种子的随机生成器 |
 | `ctx.uuid4()` | 确定性 UUID |
 | `ctx.logger` | 重放期间保持静默的日志器 |
@@ -682,6 +683,63 @@ HTTP 或 `get_result()` 的等待超时只限制该本地请求，并不能替�
 绝不要将 UTC 时间戳与单调时钟值比较，也不要对不同进程或主机的单调时钟读数做差。
 在 Python 中，对 `ctx.now()` 做差既不能测量有效处理时间，也不能测量实际经过的墙上时间。
 
+#### 会前进的重放时钟 {#advancing-replay-clock}
+
+`ctx.replay_now()` 是一个附加的 UTC 时钟，会随已消费的历史前进。Rust
+（`WorkflowContext::replay_now()`）和服务模式 PHP
+（`WorkflowContext::replayNow()`）SDK 提供相同的时钟。
+
+- 在普通工作流入口处、任何持久步骤之前，它返回运行的规范开始时间。Server
+  3.6.0 及更高版本会在每个工作流任务中以 `replay_clock` 发送该时刻。绝不会改用
+  历史插入时间、派发时间或租约时间。
+- 在受支持的持久步骤之后，它返回该步骤的记录时间：所有 SDK 中的活动、定时器和
+  子工作流，SDK 支持时的信号等待和条件等待，以及经过验证的组。
+- 在持久步骤之间重复读取会返回同一个值，该运行的每次重放都会返回相同的值。
+
+因此，围绕持久定时器的截止时间循环会结束，两个持久步骤之后读取值的差可以衡量
+它们之间记录的经过时间：
+
+```python
+from datetime import timedelta
+
+from durable_workflow import workflow
+
+
+@workflow.defn(name="poll_until_deadline")
+class PollUntilDeadline:
+    def run(self, ctx):
+        deadline = ctx.replay_now() + timedelta(minutes=10)
+        while ctx.replay_now() < deadline:
+            yield ctx.schedule_activity("check_status", [])
+            yield ctx.start_timer(60)
+        return "deadline reached"
+```
+
+当 SDK 无法证明时间时，`ctx.replay_now()` 会抛出 `ReplayClockUnavailable`，
+而不会改用任何其他时间：
+
+- 在入口处且任务没有载体：早于 3.6.0 的 Server，或 Server 无法证明其开始时间的
+  运行；
+- 在内联和本地操作之后，例如副作用、版本标记、本地活动和备忘录。在 Core 为这些
+  步骤定义持久化时间之前，它们保持不可用；
+- 在其他组模式之后、查询处理器内部以及取消作用域中。
+
+未处理的 `ReplayClockUnavailable` 会像其他任何异常一样使工作流失败。
+
+Python 和 Rust 会根据历史重建工作流，以响应查询或接受前的更新验证。如果重建后的
+工作流在入口处读取时钟，而任务没有 `replay_clock`（下一个 Server 版本之前的
+Server 从不在这些任务上发送它），查询或验证会失败，而不是用工作流任务从未计算过
+的状态作答。PHP SDK 从不为查询或更新重建工作流主体。
+
+**发布状态。** 入口值以及查询和验证规则将在下一个 Python、Rust 和 PHP SDK 版本中
+提供，并需要 Server 3.6.0 或更高版本。查询和验证任务上的载体将在下一个 Server
+版本中提供。更早的 SDK 版本会将入口报告为不可用。
+
+**升级。** 如果正在运行的工作流的代码根据入口读取是否不可用进行分支（例如捕获
+`ReplayClockUnavailable`），升级后在重放时会走另一个分支。请将此类代码放在
+`ctx.get_version(...)` 之后，或先让这些运行结束。`ctx.now()` 保持固定的开始
+时间，因此读取它的运行会原样重放。
+
 #### 各 SDK 的时钟差异 {#clock-differences-across-sdks}
 
 这些 API 在提供时是确定性的，但并不共享同一个时钟：
@@ -689,15 +747,14 @@ HTTP 或 `get_result()` 的等待超时只限制该本地请求，并不能替�
 | 编写接口 | 重复调用与持久步骤 | continue-as-new 后继运行 |
 | --- | --- | --- |
 | Python `ctx.now()` | 固定为本次运行的持久化开始时间，定时器或活动之后也不变。 | 使用后继运行的开始时间基准。 |
+| Python `ctx.replay_now()` | 从运行的开始时间开始，并前进到每个受支持的已消费步骤的记录时间。参见[会前进的重放时钟](#advancing-replay-clock)。 | 从后继运行自己的开始时间开始。 |
 | 嵌入式 PHP `Workflow::now()` | 从运行开始时间起步，并推进到重放已消费事件的记录时间。参见[工作流时间](../features/timers.md#reading-deterministic-time)。 | 从新运行开始，随后沿该运行已消费的事件推进。 |
-| 服务模式 PHP SDK | 没有通用的公开工作流 `now()` 辅助方法。使用持久操作或已记录的活动／副作用值。 | 需要跨交接保留应用时间状态时，必须明确传递。 |
-| 服务模式 Rust SDK | 没有通用的公开 `WorkflowContext::now()` 辅助方法。`side_effect` 可以记录一个小型墙上时钟快照，但它不是会推进的时钟。 | 新运行中的副作用是新操作；需要时应明确传递先前的时间状态。 |
+| 服务模式 PHP `WorkflowContext::replayNow()` | 与 Python `ctx.replay_now()` 语义相同。 | 从后继运行自己的开始时间开始。 |
+| 服务模式 Rust `WorkflowContext::replay_now()` | 与 Python `ctx.replay_now()` 语义相同。 | 从后继运行自己的开始时间开始。 |
 
-嵌入式 PHP 的行为已存在于
-[已发布的 Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php)。
-独立的 [PHP SDK 上下文](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
-和 [Rust SDK 上下文](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
-各有自己的 API。应迁移持久操作与期限策略，而不是假定每个 SDK 的时钟辅助方法都有相同语义。
+服务模式的时钟共享同一份契约。重放时，嵌入式 `Workflow::now()` 还会移动到
+副作用等内联步骤的记录时间，而服务模式的时钟会将该时间报告为不可用。请移植持久
+操作和截止时间策略，而不要假设每个时钟辅助方法的行为都相同。
 
 #### 使用序列值排列发出的事件 {#order-emitted-events-with-sequence-values}
 
@@ -707,6 +764,8 @@ HTTP 或 `get_result()` 的等待超时只限制该本地请求，并不能替�
 运行本地计数器应配合 `run_id` 使用；如果应用需要一个逻辑序列，必须通过
 continue-as-new 明确传递。独立流或运行不会因拥有时间戳而获得全局顺序。
 
+
+在持久步骤之间重复读取 `ctx.replay_now()` 也只会返回一个值，因此同样不要用它来排列事件。
 
 ### 活动重试与超时 {#activity-retries-and-timeouts}
 

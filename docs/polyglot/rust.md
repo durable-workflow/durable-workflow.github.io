@@ -763,6 +763,23 @@ Keep durable command order independent of this observation state and log deliver
 
 See the [published logging guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) and [WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry lifecycle/deadline controls](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) and [four-process logging acceptance](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) were recorded on the named native Server 3.10.0 linux/amd64 tuple. Other bindings and broader replay/producer qualification retain their own scope.
 
+## Replay-safe workflow time {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` returns replay-safe UTC business time as
+`Result<DateTime<Utc>>`. At ordinary entry it is the run's start from the
+task's `replay_clock` (Server 3.6.0 and later). After each supported consumed
+durable step (activities, timers, child workflows, signal and condition waits,
+validated groups) it is that step's recorded time. Repeated reads between
+durable steps return the same value, and every replay returns the same values.
+
+Where the SDK cannot prove the time, it returns `Error::ReplayClockUnavailable`.
+That includes inline and local operations (side effects, version markers, local
+activities, memos), which stay unavailable until Core defines a persisted time
+for them. Offline replay supplies a carrier with
+`WorkflowHistory::replay_clock(carrier)`. See the
+[cross-SDK clock semantics](./python.md#advancing-replay-clock) for the full
+list, the query and validation rule, release status and the upgrade note.
+
 ## Rust determinism rules {#rust-determinism-rules}
 
 A replay must produce the same durable commands in the same order for the recorded input and history. Rust's ordinary collections, clocks and concurrency primitives do not automatically preserve that contract:
@@ -770,7 +787,7 @@ A replay must produce the same durable commands in the same order for the record
 | Pattern in workflow code | Durable replacement |
 | --- | --- |
 | Scheduling while iterating a `HashMap` | Sort keys first or use a `BTreeMap`. |
-| System-clock reads, `thread_rng` or a new UUID | Record a snapshot with `ctx.side_effect(...)`, or use an activity. |
+| System-clock reads, `thread_rng` or a new UUID | `ctx.replay_now()` for business time; record other values with `ctx.side_effect(...)`, or use an activity. |
 | `tokio::time::sleep` or `std::thread::sleep` | `ctx.sleep(...)` or `ctx.start_timer(...)`. |
 | `tokio::select!` or racing ordinary futures | `ctx.select(...)` or `ctx.select_keyed(...)`. |
 | Untracked concurrent durable calls | `ctx.parallel(...)` with stable input ordering. |

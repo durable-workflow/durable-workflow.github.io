@@ -589,6 +589,26 @@ Mantenga el orden de comandos durables independiente de este estado de observaci
 
 Consulte la [guía de logging publicada](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), la [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) y la [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). Los [controles de ciclo de vida/deadline desde el registro](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) y la [aceptación de logging con cuatro procesos](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) se registraron en la tupla nombrada native Server 3.10.0 linux/amd64. Los demás bindings y la cualificación más amplia de replay/productor mantienen su propio alcance.
 
+## Hora del workflow segura para replay {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` devuelve la hora de negocio UTC segura para
+replay como `Result<DateTime<Utc>>`. En la entrada normal es el inicio del run
+tomado del `replay_clock` de la tarea (Server 3.6.0 y posteriores). Después de
+cada paso duradero consumido compatible (actividades, temporizadores, workflows
+hijos, esperas de señales y condiciones, grupos validados) es la hora registrada
+de ese paso. Las lecturas repetidas entre pasos duraderos devuelven el mismo
+valor, y cada replay devuelve los mismos valores.
+
+Cuando el SDK no puede demostrar la hora, devuelve
+`Error::ReplayClockUnavailable`. Eso incluye las operaciones en línea y locales
+(efectos secundarios, marcadores de versión, actividades locales, memos), que
+siguen sin estar disponibles hasta que Core defina una hora persistida para
+ellas. El replay sin conexión proporciona un portador con
+`WorkflowHistory::replay_clock(carrier)`. Consulta la
+[semántica del reloj entre SDK](./python.md#advancing-replay-clock) para ver la
+lista completa, la regla para consultas y validaciones, el estado de publicación
+y la nota de actualización.
+
 ## Reglas de determinismo de Rust {#rust-determinism-rules}
 
 Una reproducción debe generar los mismos comandos duraderos, en el mismo orden, para la entrada y el historial registrados. Las colecciones, relojes y primitivas de concurrencia normales de Rust no mantienen automáticamente ese contrato:
@@ -596,7 +616,7 @@ Una reproducción debe generar los mismos comandos duraderos, en el mismo orden,
 | Patrón en el código del workflow | Sustitución duradera |
 | --- | --- |
 | Programar mientras se recorre un `HashMap` | Ordene primero las claves o use un `BTreeMap`. |
-| Leer el reloj, `thread_rng` o un UUID nuevo | Registre una instantánea con `ctx.side_effect(...)` o use una actividad. |
+| Leer el reloj, `thread_rng` o un UUID nuevo | `ctx.replay_now()` para la hora de negocio; registra otros valores con `ctx.side_effect(...)` o usa una actividad. |
 | `tokio::time::sleep` o `std::thread::sleep` | `ctx.sleep(...)` o `ctx.start_timer(...)`. |
 | `tokio::select!` o carreras de futuros normales | `ctx.select(...)` o `ctx.select_keyed(...)`. |
 | Llamadas duraderas concurrentes sin seguimiento | `ctx.parallel(...)` con un orden estable de entrada. |

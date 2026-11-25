@@ -851,6 +851,7 @@ The `WorkflowContext` passed to `run` provides deterministic operations:
 | `ctx.upsert_search_attributes(attrs)` | Update search attributes |
 | `ctx.continue_as_new(*args)` | Restart the workflow with new input |
 | `ctx.now()` | Persisted workflow-start time, fixed for this run |
+| `ctx.replay_now()` | Advancing replay-safe UTC time: the run's start at entry, then each consumed durable step's recorded time |
 | `ctx.random()` | Seeded random generator |
 | `ctx.uuid4()` | Deterministic UUID |
 | `ctx.logger` | Logger that is silent during replay |
@@ -921,6 +922,73 @@ UTC timestamps with monotonic values, or subtract monotonic readings from
 different processes or hosts. `ctx.now()` subtraction measures neither active
 processing time nor elapsed wall time in Python.
 
+#### Advancing replay clock {#advancing-replay-clock}
+
+`ctx.replay_now()` is an additive UTC clock that moves with consumed history.
+The Rust (`WorkflowContext::replay_now()`) and PHP service-mode
+(`WorkflowContext::replayNow()`) SDKs provide the same clock.
+
+- At ordinary workflow entry, before any durable step, it returns the run's
+  canonical start. Server 3.6.0 and later sends that instant on each workflow
+  task as `replay_clock`. History insertion, dispatch and lease times are never
+  used instead.
+- After a supported durable step it returns that step's recorded time:
+  activities, timers and child workflows in every SDK, signal and condition
+  waits where the SDK supports them, and validated groups.
+- Repeated reads between durable steps return the same value, and every replay
+  of the run returns the same values.
+
+A deadline loop around a durable timer therefore terminates, and the
+difference between reads after two durable steps measures their recorded
+elapsed time:
+
+```python
+from datetime import timedelta
+
+from durable_workflow import workflow
+
+
+@workflow.defn(name="poll_until_deadline")
+class PollUntilDeadline:
+    def run(self, ctx):
+        deadline = ctx.replay_now() + timedelta(minutes=10)
+        while ctx.replay_now() < deadline:
+            yield ctx.schedule_activity("check_status", [])
+            yield ctx.start_timer(60)
+        return "deadline reached"
+```
+
+Where the SDK cannot prove the time, `ctx.replay_now()` raises
+`ReplayClockUnavailable` rather than using any other time:
+
+- at entry on a task without the carrier: Servers before 3.6.0, or a run whose
+  start Server cannot prove;
+- after inline and local operations, such as side effects, version markers,
+  local activities and memos. These stay unavailable until Core defines a
+  persisted time for those steps;
+- after other group modes, inside query handlers and in cancellation scopes.
+
+An unhandled `ReplayClockUnavailable` fails the workflow like any other
+exception.
+
+Python and Rust rebuild the workflow from history to answer a query or a
+pre-accept update validation. If the rebuilt workflow reads the clock at entry
+and the task has no `replay_clock`, which Servers before the next Server
+release never send on those tasks, the query or validation fails rather than
+answering with state the workflow task never computed. The PHP SDK never
+rebuilds the workflow body for queries or updates.
+
+**Release status.** The entry value and the query and validation rule ship in
+the next Python, Rust and PHP SDK releases and need Server 3.6.0 or later. The
+carrier on query and validation tasks ships in the next Server release.
+Earlier SDK releases report entry as unavailable.
+
+**Upgrading.** A running workflow whose code branches on the entry read being
+unavailable, for example by catching `ReplayClockUnavailable`, takes the other
+branch on replay after the upgrade. Put such code behind `ctx.get_version(...)`
+or drain those runs first. `ctx.now()` keeps its fixed start time, so runs that
+read it replay unchanged.
+
 #### Clock differences across SDKs
 
 These APIs are deterministic where provided, but they do not share one clock:
@@ -928,16 +996,16 @@ These APIs are deterministic where provided, but they do not share one clock:
 | Authoring surface | Repeated calls and durable steps | Continue-as-new successor |
 | --- | --- | --- |
 | Python `ctx.now()` | Fixed to this run's persisted start time, including after a timer or activity. | Uses the successor run's start anchor. |
+| Python `ctx.replay_now()` | Starts at the run's start and advances to each supported consumed step's recorded time. See [Advancing replay clock](#advancing-replay-clock). | Starts at the successor run's own start. |
 | Embedded PHP `Workflow::now()` | Starts at the run's start time and advances to the recorded event time consumed by replay. See [workflow time](../features/timers.md#reading-deterministic-time). | Starts with the new run, then advances through that run's consumed events. |
-| PHP service-mode SDK | No general public workflow `now()` helper. Use durable operations or recorded activity/side-effect values. | Pass application timing state explicitly when it must survive the handoff. |
-| Rust service-mode SDK | No general public `WorkflowContext::now()` helper. A `side_effect` can record a small wall-clock snapshot; it is not an advancing clock. | A side effect in the new run is a new operation; pass earlier timing state explicitly if needed. |
+| PHP service-mode `WorkflowContext::replayNow()` | Same semantics as Python `ctx.replay_now()`. | Starts at the successor run's own start. |
+| Rust service-mode `WorkflowContext::replay_now()` | Same semantics as Python `ctx.replay_now()`. | Starts at the successor run's own start. |
 
-The embedded PHP behavior is present in
-[published Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php);
-the separate [PHP SDK context](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
-and [Rust SDK context](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
-have their own APIs. Port the durable operation and deadline policy rather than
-assuming that a clock helper has identical semantics in every SDK.
+The service-mode clocks share one contract. On replay, embedded
+`Workflow::now()` also moves to the recorded time of an inline step such as a
+side effect, where the service-mode clocks report the time as unavailable. Port
+the durable operation and deadline policy rather than assuming that every clock
+helper behaves identically.
 
 #### Order emitted events with sequence values
 
@@ -948,6 +1016,8 @@ A workflow timestamp is not an event ordering key. Python events stamped with
 workflow-local counter. Pair a run-local counter with `run_id`; carry it through
 continue-as-new explicitly if the application needs one logical sequence.
 Independent streams or runs do not gain a global order from their timestamps.
+
+Repeated `ctx.replay_now()` reads between durable steps also return one value, so do not use it to order events either.
 
 ### Activity Retries and Timeouts
 

@@ -627,6 +627,7 @@ Server がルーティングするクエリでは、Worker は元のクエリ期
 | `ctx.upsert_search_attributes(attrs)` | 検索属性を更新する |
 | `ctx.continue_as_new(*args)` | 新しい入力でワークフローを再開する |
 | `ctx.now()` | 永続化されたワークフロー開始時刻。この実行中は固定 |
+| `ctx.replay_now()` | 進行するリプレイ安全な UTC 時刻。エントリーでは実行の開始時刻、その後は消費した各永続ステップの記録時刻 |
 | `ctx.random()` | シード付き乱数生成器 |
 | `ctx.uuid4()` | 決定的な UUID |
 | `ctx.logger` | リプレイ中は出力しないロガー |
@@ -695,6 +696,72 @@ continue-as-new に引き継ぐ必要がある場合は、Server の元の実行
 異なるプロセスやホストの単調時計の値を引き算したりしないでください。
 Python で `ctx.now()` 同士を引いても、実処理時間や実時間での経過時間にはなりません。
 
+#### 進行するリプレイ時計 {#advancing-replay-clock}
+
+`ctx.replay_now()` は、消費した履歴とともに進む追加の UTC 時計です。Rust
+(`WorkflowContext::replay_now()`) と PHP サービスモード
+(`WorkflowContext::replayNow()`) の SDK も同じ時計を提供します。
+
+- 通常のワークフローエントリーでは、永続ステップの前に実行の正規の開始時刻を
+  返します。Server 3.6.0 以降は、この時刻を各ワークフロータスクに
+  `replay_clock` として送ります。履歴の挿入時刻、ディスパッチ時刻、リース時刻が
+  代わりに使われることはありません。
+- サポートされる永続ステップの後は、そのステップの記録時刻を返します。対象は
+  すべての SDK のアクティビティ、タイマー、子ワークフローに加え、SDK が対応する
+  シグナル待機と条件待機、および検証済みグループです。
+- 永続ステップの間で繰り返し読み取っても同じ値が返り、実行のどのリプレイでも
+  同じ値が返ります。
+
+そのため、永続タイマーを囲む期限ループは終了し、2 つの永続ステップの後の
+読み取り値の差は、記録された経過時間を表します。
+
+```python
+from datetime import timedelta
+
+from durable_workflow import workflow
+
+
+@workflow.defn(name="poll_until_deadline")
+class PollUntilDeadline:
+    def run(self, ctx):
+        deadline = ctx.replay_now() + timedelta(minutes=10)
+        while ctx.replay_now() < deadline:
+            yield ctx.schedule_activity("check_status", [])
+            yield ctx.start_timer(60)
+        return "deadline reached"
+```
+
+SDK が時刻を証明できない場合、`ctx.replay_now()` は他の時刻を使わずに
+`ReplayClockUnavailable` を送出します。
+
+- キャリアのないタスクでのエントリー: 3.6.0 より前の Server、または Server が
+  開始時刻を証明できない実行。
+- サイドエフェクト、バージョンマーカー、ローカルアクティビティ、メモなどの
+  インライン操作とローカル操作の後。Core がこれらのステップの永続化された時刻を
+  定義するまで利用できません。
+- その他のグループモードの後、クエリハンドラー内、キャンセルスコープ内。
+
+処理されない `ReplayClockUnavailable` は、他の例外と同様にワークフローを
+失敗させます。
+
+Python と Rust は、クエリや受け入れ前の更新検証に応答するために履歴から
+ワークフローを再構築します。再構築したワークフローがエントリーで時計を読み、
+タスクに `replay_clock` がない場合（次の Server リリースより前の Server は
+これらのタスクに送りません）、クエリや検証は、ワークフロータスクが計算して
+いない状態で応答する代わりに失敗します。PHP SDK は、クエリや更新のために
+ワークフロー本体を再構築しません。
+
+**リリース状況。** エントリー値と、クエリおよび検証のルールは、次回の Python、
+Rust、PHP SDK リリースで提供され、Server 3.6.0 以降が必要です。クエリと検証の
+タスクに載るキャリアは、次回の Server リリースで提供されます。それより前の SDK
+リリースは、エントリーを利用不可として報告します。
+
+**アップグレード。** エントリーの読み取りが利用不可かどうかで分岐するコードを
+持つ実行中のワークフロー（たとえば `ReplayClockUnavailable` を捕捉するもの）は、
+アップグレード後のリプレイで別の分岐を通ります。そのようなコードは
+`ctx.get_version(...)` の背後に置くか、先にそれらの実行を完了させてください。
+`ctx.now()` は固定の開始時刻を保つため、それを読む実行は変わらずリプレイされます。
+
 #### SDK 間の時計の違い {#clock-differences-across-sdks}
 
 これらの API は、提供されている場合には決定的ですが、共通の時計ではありません。
@@ -702,16 +769,16 @@ Python で `ctx.now()` 同士を引いても、実処理時間や実時間での
 | 記述インターフェース | 繰り返し呼び出しと永続的なステップ | continue-as-new の後続実行 |
 | --- | --- | --- |
 | Python `ctx.now()` | タイマーやアクティビティの後も、この実行の永続化された開始時刻に固定されます。 | 後続実行の開始時刻を基準にします。 |
+| Python `ctx.replay_now()` | 実行の開始時刻から始まり、サポートされる消費済みステップごとの記録時刻へ進みます。[進行するリプレイ時計](#advancing-replay-clock)を参照してください。 | 後続実行自身の開始時刻から始まります。 |
 | 組み込み PHP `Workflow::now()` | 実行の開始時刻から始まり、リプレイが消費したイベントの記録時刻へ進みます。[ワークフロー時刻](../features/timers.md#reading-deterministic-time)を参照してください。 | 新しい実行から始まり、その実行で消費したイベントに沿って進みます。 |
-| サービスモードの PHP SDK | 汎用の公開ワークフローヘルパー `now()` はありません。永続的な操作か、記録済みのアクティビティ／副作用の値を使います。 | 引き継ぎ後も必要なアプリケーションの時刻状態は、明示的に渡します。 |
-| サービスモードの Rust SDK | 汎用の公開ヘルパー `WorkflowContext::now()` はありません。`side_effect` で小さな実時間時計のスナップショットを記録できますが、進む時計ではありません。 | 新しい実行の副作用は新しい操作です。以前の時刻状態が必要なら明示的に渡します。 |
+| PHP サービスモード `WorkflowContext::replayNow()` | Python の `ctx.replay_now()` と同じセマンティクスです。 | 後続実行自身の開始時刻から始まります。 |
+| Rust サービスモード `WorkflowContext::replay_now()` | Python の `ctx.replay_now()` と同じセマンティクスです。 | 後続実行自身の開始時刻から始まります。 |
 
-組み込み PHP の動作は
-[公開済み Core](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php)
-にあります。別の [PHP SDK コンテキスト](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
-と [Rust SDK コンテキスト](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
-には独自の API があります。すべての SDK で時計ヘルパーの意味が同じだと仮定せず、
-永続的な操作と期限ポリシーを移植してください。
+サービスモードの時計は 1 つの契約を共有します。組み込み版の
+`Workflow::now()` は、リプレイ時にサイドエフェクトなどのインラインステップの
+記録時刻にも移りますが、サービスモードの時計はその時刻を利用不可として報告します。
+すべての時計ヘルパーが同じように動作すると仮定せず、永続操作と期限ポリシーを
+移植してください。
 
 #### 発行イベントをシーケンス値で順序付けする {#order-emitted-events-with-sequence-values}
 
@@ -724,6 +791,8 @@ Python で `ctx.now()` 同士を引いても、実処理時間や実時間での
 continue-as-new で明示的に引き継ぎます。独立したストリームや実行のタイムスタンプから、
 全体的な順序が得られるわけではありません。
 
+
+永続ステップの間で `ctx.replay_now()` を繰り返し読み取っても 1 つの値しか返らないため、これもイベントの順序付けには使わないでください。
 
 ### アクティビティの再試行とタイムアウト {#activity-retries-and-timeouts}
 

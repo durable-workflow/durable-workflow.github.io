@@ -575,6 +575,23 @@ Rust SDK 4.17.0 はワークフローコードからの観測に `ctx.logger().i
 
 [公開済みロギングガイド](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging)、[WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html)、[WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html)を参照してください。[registry からの lifecycle/deadline 検証](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853)と[4プロセスのロギング受入検証](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262)は、明記された native Server 3.10.0 linux/amd64 の組合せで記録されました。他の binding や、より広い replay/producer の適格性は別の範囲です。
 
+## リプレイ安全なワークフロー時刻 {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` は、リプレイ安全な UTC のビジネス時刻を
+`Result<DateTime<Utc>>` として返します。通常のエントリーでは、タスクの
+`replay_clock`（Server 3.6.0 以降）に含まれる実行の開始時刻です。サポートされる
+消費済み永続ステップ（アクティビティ、タイマー、子ワークフロー、シグナル待機と
+条件待機、検証済みグループ）の後は、そのステップの記録時刻です。永続ステップの
+間で繰り返し読み取っても同じ値が返り、どのリプレイでも同じ値が返ります。
+
+SDK が時刻を証明できない場合は `Error::ReplayClockUnavailable` を返します。
+これにはインライン操作とローカル操作（サイドエフェクト、バージョンマーカー、
+ローカルアクティビティ、メモ）が含まれ、Core が永続化された時刻を定義するまで
+利用できません。オフラインリプレイでは
+`WorkflowHistory::replay_clock(carrier)` でキャリアを渡します。完全な一覧、
+クエリと検証のルール、リリース状況、アップグレードの注意点は
+[SDK 共通の時計セマンティクス](./python.md#advancing-replay-clock)を参照してください。
+
 ## Rust の決定性ルール {#rust-determinism-rules}
 
 リプレイでは、記録済みの入力と履歴に対して、同じ順序で同じ永続コマンドを生成する必要があります。Rust の通常のコレクション、時計、並行処理のプリミティブは、この契約を自動では保ちません。
@@ -582,7 +599,7 @@ Rust SDK 4.17.0 はワークフローコードからの観測に `ctx.logger().i
 | ワークフローコードのパターン | 永続的な代替手段 |
 | --- | --- |
 | `HashMap` を走査しながらスケジュール | 先にキーをソートするか、`BTreeMap` を使用します。 |
-| システム時刻、`thread_rng`、新しい UUID | `ctx.side_effect(...)` でスナップショットを記録するか、アクティビティを使用します。 |
+| システム時刻、`thread_rng`、新しい UUID | ビジネス時刻には `ctx.replay_now()` を使い、その他の値は `ctx.side_effect(...)` で記録するか、アクティビティを使用します。 |
 | `tokio::time::sleep` または `std::thread::sleep` | `ctx.sleep(...)` または `ctx.start_timer(...)`。 |
 | `tokio::select!` または通常の future の競合 | `ctx.select(...)` または `ctx.select_keyed(...)`。 |
 | 追跡されない並行の永続呼び出し | 安定した入力順序で `ctx.parallel(...)`。 |

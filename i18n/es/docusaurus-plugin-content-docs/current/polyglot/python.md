@@ -766,6 +766,7 @@ Los helpers locales síncronos no pueden esperar. `workflow.query_state()` recha
 | `ctx.upsert_search_attributes(attrs)` | Actualiza atributos de búsqueda |
 | `ctx.continue_as_new(*args)` | Reinicia el workflow con otra entrada |
 | `ctx.now()` | Hora de inicio persistida del workflow, fija durante este run |
+| `ctx.replay_now()` | Hora UTC segura para replay que avanza: el inicio del run en la entrada y después la hora registrada de cada paso duradero consumido |
 | `ctx.random()` | Generador aleatorio con semilla |
 | `ctx.uuid4()` | UUID determinista |
 | `ctx.logger` | Logger silencioso durante la reproducción |
@@ -836,6 +837,77 @@ registrado. Nunca compares marcas UTC con valores monotónicos ni restes
 lecturas monotónicas de procesos o equipos diferentes. Restar `ctx.now()` no
 mide ni el tiempo de procesamiento activo ni el tiempo real transcurrido en Python.
 
+#### Reloj de replay que avanza {#advancing-replay-clock}
+
+`ctx.replay_now()` es un reloj UTC adicional que avanza con el historial
+consumido. Los SDK de Rust (`WorkflowContext::replay_now()`) y de PHP en modo
+servicio (`WorkflowContext::replayNow()`) ofrecen el mismo reloj.
+
+- En la entrada normal del workflow, antes de cualquier paso duradero, devuelve
+  el inicio canónico del run. Server 3.6.0 y versiones posteriores envían ese
+  instante en cada tarea de workflow como `replay_clock`. Nunca se usan en su
+  lugar las horas de inserción en el historial, de despacho ni de lease.
+- Después de un paso duradero compatible devuelve la hora registrada de ese
+  paso: actividades, temporizadores y workflows hijos en todos los SDK, esperas
+  de señales y condiciones donde el SDK las admite, y grupos validados.
+- Las lecturas repetidas entre pasos duraderos devuelven el mismo valor, y cada
+  replay del run devuelve los mismos valores.
+
+Por eso un bucle con plazo alrededor de un temporizador duradero termina, y la
+diferencia entre lecturas después de dos pasos duraderos mide el tiempo
+transcurrido registrado entre ellos:
+
+```python
+from datetime import timedelta
+
+from durable_workflow import workflow
+
+
+@workflow.defn(name="poll_until_deadline")
+class PollUntilDeadline:
+    def run(self, ctx):
+        deadline = ctx.replay_now() + timedelta(minutes=10)
+        while ctx.replay_now() < deadline:
+            yield ctx.schedule_activity("check_status", [])
+            yield ctx.start_timer(60)
+        return "deadline reached"
+```
+
+Cuando el SDK no puede demostrar la hora, `ctx.replay_now()` lanza
+`ReplayClockUnavailable` en lugar de usar cualquier otra hora:
+
+- en la entrada con una tarea sin portador: Servers anteriores a 3.6.0, o un run
+  cuyo inicio Server no puede demostrar;
+- después de operaciones en línea y locales, como efectos secundarios,
+  marcadores de versión, actividades locales y memos. Siguen sin estar
+  disponibles hasta que Core defina una hora persistida para esos pasos;
+- después de otros modos de grupo, dentro de handlers de consulta y en ámbitos
+  de cancelación.
+
+Un `ReplayClockUnavailable` no gestionado hace fallar el workflow como
+cualquier otra excepción.
+
+Python y Rust reconstruyen el workflow a partir del historial para responder a
+una consulta o a una validación de actualización previa a la aceptación. Si el
+workflow reconstruido lee el reloj en la entrada y la tarea no tiene
+`replay_clock` (los Servers anteriores a la próxima versión de Server nunca lo
+envían en esas tareas), la consulta o la validación falla en lugar de responder
+con un estado que la tarea de workflow nunca calculó. El SDK de PHP nunca
+reconstruye el cuerpo del workflow para consultas ni actualizaciones.
+
+**Estado de publicación.** El valor de entrada y la regla para consultas y
+validaciones llegan en las próximas versiones de los SDK de Python, Rust y PHP
+y requieren Server 3.6.0 o posterior. El portador en las tareas de consulta y
+validación llega en la próxima versión de Server. Las versiones anteriores de
+los SDK informan la entrada como no disponible.
+
+**Actualización.** Un workflow en ejecución cuyo código se ramifica según si la
+lectura de entrada no está disponible, por ejemplo capturando
+`ReplayClockUnavailable`, toma la otra rama en el replay después de la
+actualización. Pon ese código detrás de `ctx.get_version(...)` o deja que esos
+runs terminen antes. `ctx.now()` conserva su hora de inicio fija, así que los
+runs que lo leen se reproducen sin cambios.
+
 #### Diferencias entre los relojes de los SDK {#clock-differences-across-sdks}
 
 Estas API son deterministas cuando existen, pero no comparten un único reloj:
@@ -843,16 +915,16 @@ Estas API son deterministas cuando existen, pero no comparten un único reloj:
 | Interfaz de autoría | Llamadas repetidas y pasos duraderos | Sucesor de continue-as-new |
 | --- | --- | --- |
 | Python `ctx.now()` | Fija la hora de inicio persistida de este run, incluso después de un temporizador o actividad. | Usa el ancla inicial del run sucesor. |
+| Python `ctx.replay_now()` | Empieza en el inicio del run y avanza a la hora registrada de cada paso consumido compatible. Consulta [Reloj de replay que avanza](#advancing-replay-clock). | Empieza en el inicio propio del run sucesor. |
 | PHP integrado `Workflow::now()` | Parte de la hora inicial del run y avanza a la hora registrada del evento consumido durante la reproducción. Consulta [tiempo del workflow](../features/timers.md#reading-deterministic-time). | Parte del nuevo run y avanza por sus propios eventos consumidos. |
-| SDK PHP en modo servicio | No hay un ayudante público general `now()` para workflows. Usa operaciones duraderas o valores registrados de actividades o efectos secundarios. | Pasa explícitamente el estado temporal de la aplicación si debe sobrevivir al traspaso. |
-| SDK Rust en modo servicio | No hay un ayudante público general `WorkflowContext::now()`. Un `side_effect` puede registrar una pequeña instantánea del reloj de pared; no es un reloj que avance. | Un efecto secundario en el nuevo run es otra operación; pasa explícitamente el estado temporal anterior si hace falta. |
+| PHP en modo servicio `WorkflowContext::replayNow()` | La misma semántica que Python `ctx.replay_now()`. | Empieza en el inicio propio del run sucesor. |
+| Rust en modo servicio `WorkflowContext::replay_now()` | La misma semántica que Python `ctx.replay_now()`. | Empieza en el inicio propio del run sucesor. |
 
-El comportamiento de PHP integrado existe en el
-[Core publicado](https://github.com/durable-workflow/workflow/blob/64efa176e4c37e5d6ae80e767ba3b41464024e53/src/V2/Support/WorkflowFiberContext.php).
-Los contextos independientes del [SDK PHP](https://github.com/durable-workflow/sdk-php/blob/2.5.2/src/Worker/WorkflowContext.php)
-y del [SDK Rust](https://github.com/durable-workflow/sdk-rust/blob/3.5.5/src/lib.rs)
-tienen sus propias API. Porta la operación duradera y la política de plazos
-sin suponer que un ayudante de reloj significa lo mismo en todos los SDK.
+Los relojes del modo servicio comparten un contrato. En el replay,
+`Workflow::now()` integrado también pasa a la hora registrada de un paso en línea
+como un efecto secundario, donde los relojes del modo servicio informan la hora
+como no disponible. Traslada la operación duradera y la política de plazos en
+lugar de suponer que todos los helpers de reloj se comportan igual.
 
 #### Ordena eventos emitidos mediante secuencias {#order-emitted-events-with-sequence-values}
 
@@ -865,6 +937,8 @@ con `run_id`; pásalo explícitamente por continue-as-new si la aplicación
 necesita una secuencia lógica única. Los streams o runs independientes no
 obtienen un orden global a partir de sus marcas temporales.
 
+
+Las lecturas repetidas de `ctx.replay_now()` entre pasos duraderos también devuelven un único valor, así que tampoco lo uses para ordenar eventos.
 
 ### Reintentos y plazos de actividades {#activity-retries-and-timeouts}
 

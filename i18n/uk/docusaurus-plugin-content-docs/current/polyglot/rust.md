@@ -760,6 +760,23 @@ Rust SDK 4.17.0 додає `ctx.logger().info("message")` для спостер�
 
 Дивіться [опублікований посібник журналювання](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) та [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-перевірки lifecycle/deadline](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) і [приймання журналювання з чотирма процесами](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) записано на вказаному кортежі native Server 3.10.0 linux/amd64. Інші binding та ширша кваліфікація replay/producer зберігають окремі межі.
 
+## Безпечний для replay час workflow {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` повертає безпечний для replay бізнес-час UTC як
+`Result<DateTime<Utc>>`. На звичайному вході це початок run з `replay_clock`
+завдання (Server 3.6.0 і новіші). Після кожного підтримуваного спожитого
+стійкого кроку (activity, timer, дочірні workflow, очікування сигналів і умов,
+перевірені групи) це записаний час цього кроку. Повторні читання між стійкими
+кроками повертають те саме значення, а кожен replay повертає ті самі значення.
+
+Якщо SDK не може довести час, він повертає `Error::ReplayClockUnavailable`. Це
+стосується вбудованих і локальних операцій (побічні ефекти, маркери версій,
+локальні activity, memo), які лишаються недоступними, доки Core не визначить
+для них збережений час. Офлайн-replay передає носій через
+`WorkflowHistory::replay_clock(carrier)`. Повний перелік, правило для query і
+перевірок, стан випуску та примітку щодо оновлення див. у
+[семантиці годинника для всіх SDK](./python.md#advancing-replay-clock).
+
 ## Правила детермінізму Rust {#rust-determinism-rules}
 
 Replay має створювати ті самі durable-команди в тому самому порядку для записаного входу й історії. Звичайні колекції, годинники та примітиви конкурентності Rust не зберігають цей контракт автоматично:
@@ -767,7 +784,7 @@ Replay має створювати ті самі durable-команди в то�
 | Шаблон у коді workflow | Durable-заміна |
 | --- | --- |
 | Планування під час обходу `HashMap` | Спочатку сортуйте ключі або використовуйте `BTreeMap`. |
-| Системний годинник, `thread_rng` чи новий UUID | Записуйте знімок через `ctx.side_effect(...)` або використовуйте activity. |
+| Системний годинник, `thread_rng` чи новий UUID | `ctx.replay_now()` для бізнес-часу; інші значення записуйте через `ctx.side_effect(...)` або використовуйте activity. |
 | `tokio::time::sleep` чи `std::thread::sleep` | `ctx.sleep(...)` або `ctx.start_timer(...)`. |
 | `tokio::select!` чи перегони звичайних future | `ctx.select(...)` або `ctx.select_keyed(...)`. |
 | Невідстежувані конкурентні durable-виклики | `ctx.parallel(...)` зі стабільним порядком входів. |

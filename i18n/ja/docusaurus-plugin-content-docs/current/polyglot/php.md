@@ -179,6 +179,23 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 （`^2.72.6|^3.8.4`）が必須の依存関係として追加されたため、期間は組み込みパッケージと同じパーサーで変換されます。
 すべての単位は [PHP SDK の期間指定リファレンス](https://php.durable-workflow.com/build/workflows-activities/#durations)に記載されています。
 
+## リプレイ安全なワークフロー時刻 {#replay-safe-workflow-time}
+
+`WorkflowContext::replayNow()` は、リプレイ安全な UTC のビジネス時刻を
+`DateTimeImmutable` として返します。通常のエントリーでは、タスクの
+`replay_clock`（Server 3.6.0 以降）に含まれる実行の開始時刻です。サポートされる
+消費済み永続ステップ（アクティビティ、タイマー、子ワークフロー、条件待機、
+検証済みグループ）の後は、そのステップの記録時刻です。永続ステップの間で繰り返し
+読み取っても同じ値が返り、どのリプレイでも同じ値が返ります。
+
+SDK が時刻を証明できない場合は
+`DurableWorkflow\Exception\ReplayClockUnavailable` を送出します。これには
+サイドエフェクト、バージョンマーカー、ローカルアクティビティが含まれ、Core が
+永続化された時刻を定義するまで利用できません。クエリハンドラーと更新ハンドラーは
+履歴のスナップショットを読み、ワークフロー本体を再構築しません。完全な一覧、
+リリース状況、アップグレードの注意点は
+[SDK 共通の時計セマンティクス](./python.md#advancing-replay-clock)を参照してください。
+
 ## エントリの互換性と復旧 {#entry-compatibility-and-recovery}
 
 **公開済みのサポートです。** PHP SDK 2.5.4 で以下のエントリ保護が導入され、Server 2.9.9 でルーティングと復旧がサポートされました。これらは機能の最小対応バージョンです。セキュリティ修正を含む最新の安定版をインストールしてください。

@@ -567,6 +567,20 @@ worker 重建 workflow 历史时，普通日志调用会再次执行。workflow 
 
 参见[已发布日志指南](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging)、[WorkflowLogger API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) 和 [WorkflowReplayState API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html)。[registry lifecycle/deadline 控制](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853)与[四进程日志验收](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262)记录于明确指定的 native Server 3.10.0 linux/amd64 组合。其他 binding 以及更广泛的 replay/producer 验收各自保留范围。
 
+## 对重放安全的工作流时间 {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` 以 `Result<DateTime<Utc>>` 返回对重放安全的
+UTC 业务时间。在普通入口处，它是任务 `replay_clock`（Server 3.6.0 及更高版本）
+中的运行开始时间。在每个受支持的已消费持久步骤（活动、定时器、子工作流、信号
+等待和条件等待、经过验证的组）之后，它是该步骤的记录时间。在持久步骤之间重复
+读取会返回同一个值，每次重放都会返回相同的值。
+
+当 SDK 无法证明时间时，它返回 `Error::ReplayClockUnavailable`。这包括内联和本地
+操作（副作用、版本标记、本地活动、备忘录），在 Core 为其定义持久化时间之前，
+它们保持不可用。离线重放可通过 `WorkflowHistory::replay_clock(carrier)` 提供
+载体。完整列表、查询和验证规则、发布状态以及升级说明，请参见
+[跨 SDK 的时钟语义](./python.md#advancing-replay-clock)。
+
 ## Rust 确定性规则 {#rust-determinism-rules}
 
 对于已记录的输入和历史，重放必须按相同顺序生成相同的持久命令。Rust 常规集合、时钟和并发原语不会自动保持这一约定：
@@ -574,7 +588,7 @@ worker 重建 workflow 历史时，普通日志调用会再次执行。workflow 
 | 工作流代码中的模式 | 持久替代方式 |
 | --- | --- |
 | 遍历 `HashMap` 时调度 | 先对键排序，或使用 `BTreeMap`。 |
-| 读取系统时钟、`thread_rng` 或新 UUID | 用 `ctx.side_effect(...)` 记录快照，或使用活动。 |
+| 读取系统时钟、`thread_rng` 或新 UUID | 业务时间使用 `ctx.replay_now()`；其他值用 `ctx.side_effect(...)` 记录，或使用活动。 |
 | `tokio::time::sleep` 或 `std::thread::sleep` | `ctx.sleep(...)` 或 `ctx.start_timer(...)`。 |
 | `tokio::select!` 或普通 future 竞争 | `ctx.select(...)` 或 `ctx.select_keyed(...)`。 |
 | 未跟踪的并发持久调用 | 使用输入顺序稳定的 `ctx.parallel(...)`。 |
