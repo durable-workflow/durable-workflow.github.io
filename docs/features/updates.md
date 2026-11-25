@@ -14,6 +14,7 @@ Each accepted update:
 - Uses the declared durable update name in command history and webhook routing — `#[UpdateMethod('mark-approved')]` keeps the public callable name stable across PHP method renames.
 - Rejects against historical or already-closed runs rather than silently mutating the current run.
 - Rejects undeclared method names as `rejected_unknown_update` and contract-invalid arguments as `rejected_invalid_arguments` (with machine-readable `validation_errors`) before the handler runs.
+- Rejects a request that your [update validator](#validate-updates-before-acceptance) refuses as `update_validator_rejected` before it is accepted.
 
 Like queries, updates replay committed history first. Unlike queries, updates are allowed to mutate replay-safe workflow state and return a value.
 
@@ -110,6 +111,52 @@ $latest->closedAt();     // null until the lifecycle closes
 ```
 
 `inspectUpdate()` does not wait for workflow execution. It reloads the stored durable lifecycle and returns the current `UpdateResult`.
+
+## Validate updates before acceptance {#validate-updates-before-acceptance}
+
+Without a validator, an update that breaks a business rule is accepted and then fails. It is recorded as a failed update, and the caller can't tell a bad request from a failed operation. Declare a validator to refuse the request before it is accepted. Validators require Workflow 2.42.0 or later.
+
+```php
+use RuntimeException;
+use Workflow\UpdateMethod;
+use Workflow\UpdateValidator;
+use Workflow\V2\Workflow;
+
+final class CartWorkflow extends Workflow
+{
+    private array $items = [];
+
+    #[UpdateMethod('add-item')]
+    public function addItem(string $item): array
+    {
+        $this->items[] = $item;
+
+        return $this->items;
+    }
+
+    #[UpdateValidator('add-item')]
+    public function validateAddItem(string $item): void
+    {
+        if (count($this->items) >= 10) {
+            throw new RuntimeException('The cart is full.');
+        }
+    }
+}
+```
+
+`#[UpdateValidator]` names the update by its durable name, or by its method name when the update has no alias. The validator takes the same arguments as the update. Before the update is accepted, the engine rebuilds the run's state from its history and calls only the validator:
+
+- Returning normally lets the update be accepted and applied as usual.
+- Throwing, or returning `false`, rejects the update with the reason `update_validator_rejected` and the outcome `rejected_invalid_arguments`. `rejectedByValidator()` is true, `rejectionMessage()` returns the exception message, and `validationErrors()` returns the errors of a Laravel `ValidationException`. `update()` throws a `LogicException` that includes both.
+- A rejected update is never accepted, its handler never runs and the workflow isn't woken. Like every other rejection, it is recorded only as an `UpdateRejected` audit event, which replay ignores.
+
+Validators are read-only. They can read the replayed workflow state, but any durable call (an activity, timer, child workflow, signal, side effect, `await`, continue-as-new, or memo or search-attribute upsert) throws `UpdateValidatorCommandException` and rejects the update. Changes a validator makes to the replayed state are discarded. A generator validator is rejected, because its body never runs.
+
+Validators aren't recorded in history and never run during replay, so they don't affect determinism. They see the state from committed history: an update that was accepted but not yet applied isn't visible to them. The replay and the validator run while the update's admission holds the run's locks, so keep validators fast.
+
+If the state can't be replayed, or the validator hits a database error, `UpdateValidationFailedException` is thrown and nothing is recorded. Webhook update routes answer it with a retryable `503` and `update_validation_failed`. Retry with the same request ID.
+
+A keyed retry of a rejected update returns the retained rejection without running the validator again.
 
 ## Recover after an uncertain response {#recover-after-an-uncertain-response}
 

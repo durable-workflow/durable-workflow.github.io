@@ -151,6 +151,64 @@ Remote workers register workflow, activity, query, and update handlers through
 Use the generated [PHP SDK API reference](https://php.durable-workflow.com/api/)
 for complete parameters and return types.
 
+## Update validators {#update-validators}
+
+PHP SDK 3.32.0 and later let a workflow refuse an update before it is accepted. Put `#[UpdateValidator]` on a method of the workflow class, next to its `#[Update]` handler. The low-level form is `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`, called after `registerUpdate()`.
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+The validator takes a `QueryContext` with the run's committed history, followed by the update's arguments. The worker advertises the validator to the Server and polls workflow and update-validation tasks together. Registration is refused with `update_validation_tasks_unavailable` when the Server doesn't advertise synchronous update validation. For each validation task, the worker runs only the validator:
+
+- Returning normally approves the update, and the Server accepts it.
+- Throwing, or returning `false`, rejects it with `update_validator_rejected`, the exception message and class, and any field errors from an `errors()` method on the exception. The update is never accepted and its handler never runs. The Server records the rejection only as an `UpdateRejected` audit event.
+- Trying to schedule durable work is refused with `UpdateValidatorCommandRefused`, which rejects the update.
+
+On the client, `updateWorkflow()` throws `UpdateFailed`. `rejectedByValidator()` identifies a validator rejection and `validationErrors()` returns its field errors. `validationFailed()` is true when the Server couldn't get a decision in time; nothing was accepted, so retry with the same request ID.
+
+Validators never run during replay. Each validation sees only the history committed before its own task, so two validations running at the same time can both pass a check that only one of them should. A validator worker doesn't use carried workflow polls, and update validation tasks don't pass through worker interceptors.
+
+## Replay-aware workflow logging {#workflow-logging}
+
+The worker replays a workflow from its history on every workflow task, so an ordinary log call in workflow code repeats once for every completed step. PHP SDK 3.32.0 and later provide `$context->logger()`. It returns a PSR-3 logger that writes through the logger you pass to the `Worker` (the named `logger` argument), and only when the code runs past the run's committed history:
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+Each line carries `namespace`, `workflow_type`, `workflow_id` and `workflow_run_id`. `$context->replayState()` returns `WorkflowReplayState::Replaying`, `Executing` or `Unavailable`, and `isReplaying()` is its boolean form. Use them for diagnostics only; never choose workflow commands from them.
+
+This is a process logger, not an exactly-once outbox. A workflow task that fails or loses its lease before it commits runs its new code, and its log lines, again. Keep log handlers fast and non-blocking: a handler that waits on the network stalls the worker and can cost it the task lease. Logger failures are caught and never change the workflow's commands.
+
 ## Activity retry context and owning run {#activity-retry-context}
 
 PHP SDK **3.6.1 or later** exposes `$context->retryInfo`, `$context->workflowId` and `$context->runId` in service-mode activities. Check `$context->retryInfo->isLastConfiguredAttempt() === true` for the final configured attempt of a bounded policy. `attemptNumber` preserves the original received attempt number.
