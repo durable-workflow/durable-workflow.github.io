@@ -12,7 +12,7 @@ keywords: [build des workers, drainage, retour arrière, canary, workers sans ve
 
 Avant de promouvoir un candidat, relisez des historiques représentatifs ouverts et récemment clôturés avec son code applicatif exact. Avant un retour arrière, relisez les historiques écrits par le nouveau build avec l’ancien artefact. Suivez le [contrôle de relecture](../testing.md#replay-before-deployment) : une cohorte de routage compatible ou une vérification d’intégrité réussie ne prouve pas à elle seule la compatibilité de relecture.
 
-Inspectez les cohortes, choisissez le build des nouveaux workflows et conservez des workers compatibles pour les exécutions existantes. La promotion change la sélection des nouveaux démarrages. Le drainage empêche de nouvelles prises de tâches par la cohorte. Aucune de ces opérations ne migre les exécutions ni ne prouve qu'un build peut être supprimé.
+Inspectez les cohortes, choisissez le build des nouveaux workflows et conservez des workers compatibles pour les exécutions existantes. La promotion change la sélection des nouveaux démarrages. Le drainage empêche de nouvelles prises de tâches par la cohorte. Aucune de ces opérations ne migre les exécutions ni ne prouve qu'un build peut être supprimé ; c'est le [retrait protégé](#retire-a-build-or-queue) qui en décide.
 
 [Compatibilité et routage des workers](/docs/polyglot/worker-compatibility-routing) décrit l'identité portée par les tâches, activités, reprises, enfants et continue-as-new. Une cohorte est délimitée par `(namespace, task_queue, build_id)`. Sans `build_id`, une inscription appartient à la cohorte non versionnée `null`.
 
@@ -78,9 +78,9 @@ La cohorte non versionnée ne reçoit pas ce diagnostic propre au build. Un cham
 
 Un ancien build peut avoir deux tâches prêtes et une louée, tandis que le nouveau n'en a aucune. Un total de trois pour la file ne désigne pas la flotte à renforcer. Sans worker actif de l'ancien build, restaurez sa capacité compatible ou reprenez-le si son drainage était accidentel. Des workers du nouveau build ne consomment pas les tâches épinglées à l'ancien. Si seules des inscriptions périmées subsistent, recherchez les processus ou heartbeats perdus avant de les compter comme capacité disponible.
 
-Réduisez une cohorte prudemment après examen de ses tâches, inscriptions récentes, types de workflow, places disponibles et intention de drainage. Conservez de la capacité pour les baux et les futures tâches des exécutions existantes. Une exécution attendant signal, timer, activité ou enfant peut n'avoir aucune tâche de workflow maintenant et nécessiter l'ancien build plus tard. Les activités peuvent utiliser d'autres files enregistrées. Cet endpoint n'autorise ni la suppression sûre du build ni la réduction à zéro de la dernière cohorte nécessaire.
+Réduisez une cohorte prudemment après examen de ses tâches, inscriptions récentes, types de workflow, places disponibles et intention de drainage. Conservez de la capacité pour les baux et les futures tâches des exécutions existantes. Une exécution attendant signal, timer, activité ou enfant peut n'avoir aucune tâche de workflow maintenant et nécessiter l'ancien build plus tard. Les activités peuvent utiliser d'autres files enregistrées. Cet endpoint n'autorise ni la suppression sûre du build ni la réduction à zéro de la dernière cohorte nécessaire ; utilisez pour cela le [retrait protégé](#retire-a-build-or-queue).
 
-[Server #519](https://github.com/durable-workflow/server/issues/519) suit la décision protégée de retrait ; [Server #534](https://github.com/durable-workflow/server/issues/534), la capacité distincte de collecte et de réduction à zéro. Cette checklist ne les livre pas et ne documente aucun déclencheur KEDA/HPA intégré.
+[Server #534](https://github.com/durable-workflow/server/issues/534) suit la capacité distincte de collecte et de réduction à zéro. Aucun déclencheur KEDA/HPA intégré n'est documenté ici.
 
 ## Première transition du non versionné au versionné {#first-cutover-unversioned-to-versioned}
 
@@ -93,7 +93,7 @@ Réduisez une cohorte prudemment après examen de ses tâches, inscriptions réc
    ```
 
 4. Gardez les workers compatibles avec les historiques existants. La promotion ne modifie pas les anciens épinglages ; drainer n'est pas migrer.
-5. Retirez l'ancienne capacité seulement après résolution indépendante de ses dépendances restantes. Des compteurs vides et zéro inscription ne suffisent pas. Conservez l'artefact et la voie de récupération tant qu'une exécution peut en dépendre.
+5. Retirez l'ancien build avec le [retrait protégé](#retire-a-build-or-queue) dès que son inventaire est vide. Des compteurs vides et zéro inscription ne le prouvent pas. Conservez l'artefact tant qu'une exécution peut en dépendre.
 
 ## Tester un nouveau build en canary {#canary-a-new-build}
 
@@ -123,7 +123,53 @@ Ne drainez pas simplement parce que le nouveau build sait prendre son propre tra
 dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Drainer ou arrêter tous les workers ne prouve pas que l'artefact est supprimable. Ce snapshot ne fournit aucune décision protégée de retrait.
+Drainer ou arrêter tous les workers ne prouve pas que l'artefact est supprimable. Le drainage reste l'arrêt d'urgence : il refuse immédiatement les polls du build, qu'il reste ou non du travail épinglé dessus. Utilisez le [retrait protégé](#retire-a-build-or-queue) pour décider de sa suppression.
+
+## Retirer un build ou une file {#retire-a-build-or-queue}
+
+Native Server 3.14.0 et versions ultérieures indiquent si un build ou une file peut être supprimé sans risque, et refusent le retrait tant qu'une dépendance active subsiste. Exigez que `capabilities.worker_build_retirement` vaille exactement `true` dans `GET /api/cluster/info` ; le Server PHP publié ne sert pas ces routes. Utilisez un jeton opérateur ou administrateur et le namespace, comme pour les autres routes build-id.
+
+| Intention | Endpoint HTTP |
+| --- | --- |
+| Inspecter un build | `GET /api/deployments/{namespace}/{taskQueue}@{buildId}/retirement` (`@unversioned` pour la cohorte non versionnée) |
+| Retirer un build | `POST /api/deployments/{namespace}/{taskQueue}@{buildId}/retire` |
+| Inspecter toutes les cohortes d'une file | `GET /api/task-queues/{taskQueue}/retirement` |
+| Retirer une file | `POST /api/task-queues/{taskQueue}/retire` |
+
+1. Promouvez le build de remplacement et laissez tourner les workers de l'ancien. Ils terminent les exécutions encore épinglées dessus, les reprises différées, les timers et les chaînes continuées.
+2. Inspectez l'ancien build jusqu'à ce que `retirable` vaille `true` :
+
+   ```bash
+   dw task-queue:retirement orders-critical --namespace orders-prod --build-id orders-v1 --json
+   ```
+
+   Chaque blocage donne son `count` exact, jusqu'à 20 identités d'exemple et une action `recovery` : laisser le travail se terminer, ou annuler ou terminer les exécutions que vous choisissez d'abandonner.
+3. Retirez-le, éventuellement lié à l'`observation.inventory_revision` inspectée :
+
+   ```bash
+   dw task-queue:retire orders-critical --namespace orders-prod --build-id orders-v1 \
+     --expected-revision "$INVENTORY_REVISION"
+   ```
+
+4. N'arrêtez les processus de l'ancien build qu'après la réussite du retrait.
+
+Sans `--build-id` ni `--unversioned`, les deux commandes portent sur toutes les cohortes de la file. Ces commandes arrivent dans la première version de la CLI après 2.11.0 ; avec la CLI 2.11.0 ou antérieure, appelez directement les routes HTTP.
+
+L'inventaire compte les exécutions ouvertes épinglées au build (y compris celles en attente, continuées et enfants), les tâches prêtes, louées et différées (reprises d'activité et timers pas encore échus), les activités ouvertes, les validations de mise à jour en attente et, pour une file, les planifications qui y démarrent des exécutions. Une exécution ouverte sans file de tâches enregistrée rend l'inventaire `incomplete`, et le retrait est indisponible.
+
+L'inspection n'est qu'un aperçu. Le retrait recompte dans la même transition sérialisée que les démarrages, les reprises et la création de tâches, et n'écrit que lorsqu'il ne reste rien. Un retrait refusé répond HTTP409 et ne change rien ; suivez `expected_resolution` puis inspectez de nouveau.
+
+| `reason` | Signification |
+| --- | --- |
+| `unknown_deployment`, `unknown_task_queue` | Aucun worker inscrit et aucun déploiement enregistré pour la cible. |
+| `selected_for_new_starts` | Les nouveaux démarrages de la file sélectionnent encore ce build. Promouvez d'abord le remplaçant. |
+| `inventory_incomplete` | Des exécutions ouvertes non attribuées existent. Un inventaire manquant n'autorise jamais un retrait. |
+| `live_dependencies` | Au moins un blocage a un compteur non nul. |
+| `inventory_changed` | L'`expected_inventory_revision` ne correspond plus. |
+
+Un retrait réussi renvoie HTTP200 avec `outcome: "retired"`, `retired_at` et `retired_by`. L'intention de déploiement du build passe à l'état terminal `drained` : il n'est plus jamais sélectionné pour les nouveaux démarrages, ne peut être ni promu ni repris via le cycle de vie du déploiement, et ses workers restent en drainage. Quand toutes les cohortes d'une file sont retirées et qu'aucun worker actif ne reste, les nouveaux démarrages y sont refusés avec `task_queue_draining` et `routing_status: "retired"` jusqu'à l'inscription d'une nouvelle cohorte active. Les pins d'exécution, files d'activités, historiques et échéances restent inchangés.
+
+Pour récupérer, `dw task-queue:resume` (`POST /api/task-queues/{taskQueue}/build-ids/resume`) remet un build retiré à `active` ; le retrait garantissait qu'il n'avait aucun travail à ce moment-là.
 
 ## Revenir d'un build défectueux {#roll-back-a-bad-build}
 
@@ -139,8 +185,10 @@ Les réessais, les exécutions enfants et le continue-as-new ordinaire héritent
 | Sélectionner les nouveaux démarrages | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
 | Drainer | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
 | Reprendre | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Inspecter le retrait | `GET /api/task-queues/{taskQueue}/retirement`, `GET /api/deployments/{name}/retirement` | `dw task-queue:retirement` | — |
+| Retirer | `POST /api/task-queues/{taskQueue}/retire`, `POST /api/deployments/{name}/retire` | `dw task-queue:retire` | — |
 
-Ces mutations acceptent `{"build_id":"orders-v2"}` ou `{"build_id":null}` pour la cohorte non versionnée. Les commandes CLI choisissent soit `--build-id`, soit `--unversioned`, jamais les deux.
+Les routes de promotion, de drainage et de reprise acceptent `{"build_id":"orders-v2"}` ou `{"build_id":null}` pour la cohorte non versionnée. Les routes de retrait acceptent un corps optionnel `{"expected_inventory_revision":"..."}`. Les commandes CLI choisissent soit `--build-id`, soit `--unversioned`, jamais les deux.
 
 Le cycle de vie complet utilise `GET /api/deployments` et `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Reprenez le nom retourné, par exemple `orders-prod/orders-critical@orders-v2`, et son namespace d'origine. Sur le chemin Apache publié, gardez le séparateur `/` du nom : encoder le nom composé entier peut produire une HTML404 Apache avant d'atteindre l'API. Une action refusée retourne HTTP409 avec un `reason` typé et un tableau `blockages`. Consultez `expected_resolution` ; un refus n'est pas une promotion réussie. [Server #521](https://github.com/durable-workflow/server/issues/521) concerne le miroir OpenAPI actuel incomplet, pas une nouvelle implémentation ni un changement des schémas figés.
 

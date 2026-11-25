@@ -12,7 +12,7 @@ keywords: [ワーカービルド, ドレイン, ロールバック, カナリア
 
 候補を昇格する前に、代表的な実行中および最近終了した履歴を、その候補の正確なアプリケーションコードでリプレイします。ロールバック前には、新しいビルドが書き込んだ履歴を古いアーティファクトでリプレイしてください。[リプレイの判定](../testing.md#replay-before-deployment)に従います。ルーティング先の互換コホートや整合性確認の成功だけでは、リプレイ互換性を証明できません。
 
-このガイドでは、コホートの確認、新規ワークフロー用ビルドの選択、既存実行に必要な互換ワーカーの維持を説明します。昇格は新規開始の選択を変更し、ドレインは対象コホートの新しいタスク取得を止めます。どちらも既存実行を移行せず、ビルドを削除できる根拠にもなりません。
+このガイドでは、コホートの確認、新規ワークフロー用ビルドの選択、既存実行に必要な互換ワーカーの維持を説明します。昇格は新規開始の選択を変更し、ドレインは対象コホートの新しいタスク取得を止めます。どちらも既存実行を移行せず、ビルドを削除できる根拠にもなりません。その判断は[保護された廃止](#retire-a-build-or-queue)で行います。
 
 タスク、アクティビティ、再試行、子、continue-as-newが保持する識別情報は[ワーカーの互換性とルーティング](/docs/polyglot/worker-compatibility-routing)を参照してください。コホートの範囲は`(namespace, task_queue, build_id)`です。`build_id`のない登録は、バージョンなしの`null`コホートに属します。
 
@@ -78,9 +78,9 @@ async with Client("https://durable-workflow.example", token=operator_token,
 
 例えば旧ビルドにreadyが2件、leasedが1件あり、新ビルドには0件の場合があります。キュー合計3件だけでは、どちらのフリートに処理能力が必要か分かりません。旧ビルドのアクティブワーカーが0なら、互換ワーカーを復旧するか、誤ったドレインを明示的に解除します。新ビルドの増員では旧ピンの仕事を消費できません。古い登録しか残らない場合は、利用可能と数える前にプロセスやheartbeatの喪失を調べてください。
 
-コホートを縮小する際は、個別のタスク数、最新ワーカー、宣言型、空きスロット、ドレイン意図を確認します。既存リースと既存実行から将来生じる仕事の処理能力を残してください。シグナル、タイマー、アクティビティ、子を待つ実行は、今のワークフロータスクが0でも後で旧ビルドを必要とします。アクティビティは別の保存済みキューを使う場合もあります。このエンドポイントは、安全な廃止判断や、最後の必要コホートを0へ縮小する権限を提供しません。
+コホートを縮小する際は、個別のタスク数、最新ワーカー、宣言型、空きスロット、ドレイン意図を確認します。既存リースと既存実行から将来生じる仕事の処理能力を残してください。シグナル、タイマー、アクティビティ、子を待つ実行は、今のワークフロータスクが0でも後で旧ビルドを必要とします。アクティビティは別の保存済みキューを使う場合もあります。このエンドポイントは、安全な廃止判断や、最後の必要コホートを0へ縮小する権限を提供しません。その判断には[保護された廃止](#retire-a-build-or-queue)を使います。
 
-保護された廃止判断は[Server #519](https://github.com/durable-workflow/server/issues/519)、別途のスクレイプ／ゼロスケール機能は[Server #534](https://github.com/durable-workflow/server/issues/534)で追跡します。このチェックリストで提供される機能ではなく、組み込みのKEDA/HPAトリガーもここでは規定しません。
+別途のスクレイプ／ゼロスケール機能は[Server #534](https://github.com/durable-workflow/server/issues/534)で追跡します。組み込みのKEDA/HPAトリガーはここでは規定しません。
 
 ## バージョンなしからの初回切り替え {#first-cutover-unversioned-to-versioned}
 
@@ -93,7 +93,7 @@ async with Client("https://durable-workflow.example", token=operator_token,
    ```
 
 4. 既存履歴に対応するワーカーを維持します。昇格は旧ピンを変えず、ドレインも移行ではありません。
-5. 残存依存関係を独立に解消してから旧処理能力を廃止します。タスク0件や登録0件だけでは不十分です。必要な実行がある限り、成果物と復旧経路を維持してください。
+5. 旧ビルドのインベントリが空になったら、[保護された廃止](#retire-a-build-or-queue)で廃止します。タスク0件や登録0件だけでは証拠になりません。必要な実行がある限り、ビルド成果物を維持してください。
 
 ## 新ビルドのカナリア運用 {#canary-a-new-build}
 
@@ -123,7 +123,53 @@ dw task-queue:drain orders-critical --namespace orders-prod --build-id orders-v1
 dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-全ワーカーのドレインや停止は、ビルド成果物を削除できる証拠ではありません。このスナップショットには保護された廃止判断はありません。
+全ワーカーのドレインや停止は、ビルド成果物を削除できる証拠ではありません。ドレインは引き続き緊急停止手段であり、ビルドに固定された作業が残っているかどうかにかかわらず、そのビルドのポーリングを即座に拒否します。削除の判断には[保護された廃止](#retire-a-build-or-queue)を使ってください。
+
+## ビルドまたはキューを廃止する {#retire-a-build-or-queue}
+
+Native Server 3.14.0以降は、ビルドやキューを安全に削除できるかを判定し、稼働中の依存関係が残っている間は廃止を拒否します。`GET /api/cluster/info`の`capabilities.worker_build_retirement`が厳密に`true`であることを確認してください。公開済みのPHP Serverはこれらのルートを提供しません。他のビルドIDルートと同様に、オペレーターまたは管理者トークンと名前空間を使います。
+
+| 目的 | HTTPエンドポイント |
+| --- | --- |
+| 1つのビルドを確認 | `GET /api/deployments/{namespace}/{taskQueue}@{buildId}/retirement` (バージョンなしコホートは`@unversioned`) |
+| 1つのビルドを廃止 | `POST /api/deployments/{namespace}/{taskQueue}@{buildId}/retire` |
+| キューの全コホートを確認 | `GET /api/task-queues/{taskQueue}/retirement` |
+| キューを廃止 | `POST /api/task-queues/{taskQueue}/retire` |
+
+1. 置き換え先のビルドを昇格し、旧ビルドのワーカーは動かし続けます。旧ワーカーは、まだ旧ビルドに固定されている実行、遅延中のリトライ、タイマー、継続されたチェーンを完了させます。
+2. `retirable`が`true`になるまで旧ビルドを確認します。
+
+   ```bash
+   dw task-queue:retirement orders-critical --namespace orders-prod --build-id orders-v1 --json
+   ```
+
+   各ブロッカーは正確な`count`、最大20件のサンプルID、`recovery`アクションを示します。作業の完了を待つか、放棄すると決めた実行をキャンセルまたは強制終了してください。
+3. 必要に応じて確認時の`observation.inventory_revision`に紐付けて廃止します。
+
+   ```bash
+   dw task-queue:retire orders-critical --namespace orders-prod --build-id orders-v1 \
+     --expected-revision "$INVENTORY_REVISION"
+   ```
+
+4. 廃止が成功してから旧ビルドのプロセスを停止します。
+
+`--build-id`も`--unversioned`も指定しない場合、両コマンドはキューの全コホートを対象にします。これらのコマンドは2.11.0の次のCLIリリースで提供されます。CLI 2.11.0以前ではHTTPルートを直接呼び出してください。
+
+インベントリは、ビルドに固定された未完了の実行（待機中、継続済み、子の実行を含む）、準備完了・リース中・遅延中のタスク（期限前のアクティビティリトライとタイマー）、未完了のアクティビティ、保留中の更新検証、そしてキューの場合はそのキューで実行を開始するスケジュールを数えます。タスクキューが記録されていない未完了の実行があるとインベントリは`incomplete`となり、廃止はできません。
+
+確認はプレビューです。廃止アクションは、開始、リトライ、タスク作成と同じ直列化された遷移の中で再度数え、何も残っていない場合にだけ書き込みます。拒否された廃止はHTTP409を返し、何も変更しません。`expected_resolution`に従ってから再確認してください。
+
+| `reason` | 意味 |
+| --- | --- |
+| `unknown_deployment`, `unknown_task_queue` | 対象に登録済みワーカーも記録済みロールアウトもありません。 |
+| `selected_for_new_starts` | キューの新規開始がまだこのビルドを選択しています。先に置き換え先を昇格してください。 |
+| `inventory_incomplete` | 帰属先のない未完了の実行があります。インベントリの欠落は廃止の許可になりません。 |
+| `live_dependencies` | 少なくとも1つのブロッカーが0以外の件数です。 |
+| `inventory_changed` | `expected_inventory_revision`が一致しなくなりました。 |
+
+廃止が成功するとHTTP200と`outcome: "retired"`、`retired_at`、`retired_by`が返ります。ビルドのロールアウト意図は終端状態`drained`になります。新規開始に選ばれることはなく、デプロイのライフサイクルで昇格や再開もできず、ワーカーはドレイン状態のままです。キューの全コホートが廃止され、アクティブなワーカーが残っていない場合、新しいアクティブコホートが登録されるまで、そのキューでの新規開始は`task_queue_draining`と`routing_status: "retired"`で拒否されます。実行のピン、アクティビティキュー、履歴、期限は変わりません。
+
+復旧するには、`dw task-queue:resume`（`POST /api/task-queues/{taskQueue}/build-ids/resume`）で廃止済みビルドを`active`に戻します。廃止時点でそのビルドに作業がなかったことは保証されています。
 
 ## 不良ビルドをロールバックする {#roll-back-a-bad-build}
 
@@ -139,8 +185,10 @@ dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v
 | 新規開始用の昇格 | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
 | ドレイン | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
 | 再開 | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| 廃止可否の確認 | `GET /api/task-queues/{taskQueue}/retirement`, `GET /api/deployments/{name}/retirement` | `dw task-queue:retirement` | — |
+| 廃止 | `POST /api/task-queues/{taskQueue}/retire`, `POST /api/deployments/{name}/retire` | `dw task-queue:retire` | — |
 
-変更要求は`{"build_id":"orders-v2"}`、またはバージョンなしコホート用の`{"build_id":null}`を受け取ります。CLIでは`--build-id`と`--unversioned`のどちらか一方だけを指定します。
+昇格、ドレイン、再開のルートは`{"build_id":"orders-v2"}`、またはバージョンなしコホート用の`{"build_id":null}`を受け取ります。廃止ルートは省略可能な`{"expected_inventory_revision":"..."}`本文を受け取ります。CLIでは`--build-id`と`--unversioned`のどちらか一方だけを指定します。
 
 完全なライフサイクルには`GET /api/deployments`と`POST /api/deployments/{name}/{promote,drain,resume,rollback}`を使います。返された`orders-prod/orders-critical@orders-v2`のような名前と元の名前空間を使用してください。公開Apache経路では名前の区切りの`/`を保持します。複合名全体を符号化すると、API到達前にApacheのHTML404になる場合があります。拒否は型付き`reason`と`blockages`配列を含むHTTP409です。`expected_resolution`を確認し、拒否を昇格成功として扱わないでください。[Server #521](https://github.com/durable-workflow/server/issues/521)は不完全な現行OpenAPIミラーの課題であり、新実装や凍結スキーマの変更ではありません。
 

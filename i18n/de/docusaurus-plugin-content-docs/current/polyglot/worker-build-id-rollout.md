@@ -12,7 +12,7 @@ keywords: [Worker-Build-ID, Worker entleeren, Worker-Rollback, Canary, unversion
 
 Prüfen Sie vor der Promotion eines Kandidaten repräsentative offene und kürzlich geschlossene Historien gegen dessen genauen Anwendungscode. Prüfen Sie vor einem Rollback die Historien des neueren Builds gegen das ältere Artefakt. Nutzen Sie die [Replay-Prüfung](../testing.md#replay-before-deployment); eine kompatible Routing-Kohorte oder erfolgreiche Integritätsprüfung allein beweist keine Replay-Kompatibilität.
 
-Prüfen Sie mit diesem Leitfaden Worker-Kohorten und wählen Sie den Build für neue Workflow-Starts. Halten Sie kompatible Worker für bestehende Läufe bereit. Eine Promotion ändert die Auswahl für neue Starts; Drain verhindert neue Claims der Kohorte. Keine dieser Aktionen migriert vorhandene Läufe oder beweist, dass ein Build gelöscht werden kann.
+Prüfen Sie mit diesem Leitfaden Worker-Kohorten und wählen Sie den Build für neue Workflow-Starts. Halten Sie kompatible Worker für bestehende Läufe bereit. Eine Promotion ändert die Auswahl für neue Starts; Drain verhindert neue Claims der Kohorte. Keine dieser Aktionen migriert vorhandene Läufe oder beweist, dass ein Build gelöscht werden kann; diese Entscheidung trifft die [abgesicherte Stilllegung](#retire-a-build-or-queue).
 
 [Worker-Kompatibilität und Routing](/docs/polyglot/worker-compatibility-routing) erklärt die Identität von Workflow-Tasks, Aktivitäten, Wiederholungen, Kindern und Continue-as-new. Eine Kohorte ist durch `(namespace, task_queue, build_id)` abgegrenzt. Registrierungen ohne `build_id` gehören zur unversionierten `null`-Kohorte.
 
@@ -78,9 +78,9 @@ Die unversionierte Kohorte erhält diese buildbezogene Diagnose nicht. Ein fehle
 
 Beispielsweise kann der alte Build zwei bereite und einen geleasten Task haben, der neue dagegen keinen. Eine Queue-Gesamtsumme von drei zeigt nicht, welche Flotte Kapazität benötigt. Hat der alte Build keine aktiven Worker, stellen Sie dessen kompatible Kapazität wieder her oder setzen Sie ihn bei versehentlichem Drain gezielt fort. Neue Worker eines anderen Builds übernehmen alte Pins nicht. Prüfen Sie bei ausschließlich veralteten Registrierungen verlorene Prozesse oder Heartbeats, bevor Sie diese als Kapazität zählen.
 
-Reduzieren Sie Kohorten vorsichtig und prüfen Sie ihre eigenen Task-Zahlen, frischen Worker, Workflow-Typen, freien Slots und Drain-Absichten. Erhalten Sie Kapazität für geleaste sowie spätere Arbeit bestehender Läufe. Ein auf Signal, Timer, Aktivität oder Kind wartender Lauf kann derzeit keinen Workflow-Task haben und später den alten Build benötigen. Aktivitäten können andere gespeicherte Queues verwenden. Dieser Endpunkt erteilt weder eine sichere Stilllegungsentscheidung noch die Berechtigung, die letzte benötigte Kohorte auf null zu skalieren.
+Reduzieren Sie Kohorten vorsichtig und prüfen Sie ihre eigenen Task-Zahlen, frischen Worker, Workflow-Typen, freien Slots und Drain-Absichten. Erhalten Sie Kapazität für geleaste sowie spätere Arbeit bestehender Läufe. Ein auf Signal, Timer, Aktivität oder Kind wartender Lauf kann derzeit keinen Workflow-Task haben und später den alten Build benötigen. Aktivitäten können andere gespeicherte Queues verwenden. Dieser Endpunkt erteilt weder eine sichere Stilllegungsentscheidung noch die Berechtigung, die letzte benötigte Kohorte auf null zu skalieren; nutzen Sie dafür die [abgesicherte Stilllegung](#retire-a-build-or-queue).
 
-[Server #519](https://github.com/durable-workflow/server/issues/519) verfolgt eine abgesicherte Stilllegungsentscheidung, [Server #534](https://github.com/durable-workflow/server/issues/534) die separate Scrape-/Scale-to-zero-Funktion. Diese Checkliste liefert beides nicht; hier ist kein eingebauter KEDA-/HPA-Trigger dokumentiert.
+[Server #534](https://github.com/durable-workflow/server/issues/534) verfolgt die separate Scrape-/Scale-to-zero-Funktion. Hier ist kein eingebauter KEDA-/HPA-Trigger dokumentiert.
 
 ## Erster Wechsel von unversioniert zu versioniert {#first-cutover-unversioned-to-versioned}
 
@@ -93,7 +93,7 @@ Reduzieren Sie Kohorten vorsichtig und prüfen Sie ihre eigenen Task-Zahlen, fri
    ```
 
 4. Erhalten Sie kompatible Worker für bestehende Historien. Promotion ändert alte Pins nicht; Drain ist keine Migration.
-5. Entfernen Sie alte Kapazität erst, wenn ihre übrigen Abhängigkeiten unabhängig geklärt sind. Leere Task-Zähler oder null Registrierungen reichen nicht. Erhalten Sie Artefakt und Wiederherstellungsweg, solange ein Lauf den Build benötigen kann.
+5. Legen Sie den alten Build mit der [abgesicherten Stilllegung](#retire-a-build-or-queue) still, sobald sein Inventar leer ist. Leere Task-Zähler oder null Registrierungen sind dafür kein Nachweis. Erhalten Sie das Build-Artefakt, solange ein Lauf es benötigen kann.
 
 ## Canary für einen neuen Build {#canary-a-new-build}
 
@@ -123,7 +123,53 @@ Drainen Sie nicht allein deshalb, weil der neue Build eigene Arbeit übernehmen 
 dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Drain oder das Stoppen aller Worker beweist nicht, dass das Build-Artefakt gelöscht werden darf. Dieser Snapshot enthält keine abgesicherte Stilllegungsentscheidung.
+Drain oder das Stoppen aller Worker beweist nicht, dass das Build-Artefakt gelöscht werden darf. Drain bleibt der Notstopp: Er lehnt die Polls des Builds sofort ab, unabhängig davon, ob noch Arbeit an ihn gepinnt ist. Über das Entfernen entscheidet die [abgesicherte Stilllegung](#retire-a-build-or-queue).
+
+## Build oder Queue stilllegen {#retire-a-build-or-queue}
+
+Native Server 3.14.0 und neuer beantworten, ob ein Build oder eine Queue sicher entfernt werden kann, und verweigern die Stilllegung, solange eine aktive Abhängigkeit besteht. Setzen Sie voraus, dass `capabilities.worker_build_retirement` in `GET /api/cluster/info` exakt `true` ist; der veröffentlichte PHP-Server bedient diese Routen nicht. Verwenden Sie wie bei den anderen Build-ID-Routen ein Operator- oder Admin-Token und den Namespace.
+
+| Absicht | HTTP-Endpunkt |
+| --- | --- |
+| Einen Build prüfen | `GET /api/deployments/{namespace}/{taskQueue}@{buildId}/retirement` (`@unversioned` für die unversionierte Kohorte) |
+| Einen Build stilllegen | `POST /api/deployments/{namespace}/{taskQueue}@{buildId}/retire` |
+| Alle Kohorten einer Queue prüfen | `GET /api/task-queues/{taskQueue}/retirement` |
+| Eine Queue stilllegen | `POST /api/task-queues/{taskQueue}/retire` |
+
+1. Promoten Sie den Ersatz-Build und lassen Sie die Worker des alten Builds weiterlaufen. Sie beenden die noch an ihn gepinnten Läufe, verzögerten Retries, Timer und fortgesetzten Ketten.
+2. Prüfen Sie den alten Build, bis `retirable` den Wert `true` hat:
+
+   ```bash
+   dw task-queue:retirement orders-critical --namespace orders-prod --build-id orders-v1 --json
+   ```
+
+   Jeder Blocker nennt seinen exakten `count`, bis zu 20 Beispielidentitäten und eine `recovery`-Aktion: die Arbeit abschließen lassen oder Läufe, die Sie aufgeben, abbrechen oder beenden.
+3. Legen Sie ihn still, optional gebunden an die geprüfte `observation.inventory_revision`:
+
+   ```bash
+   dw task-queue:retire orders-critical --namespace orders-prod --build-id orders-v1 \
+     --expected-revision "$INVENTORY_REVISION"
+   ```
+
+4. Stoppen Sie die Prozesse des alten Builds erst, nachdem die Stilllegung erfolgreich war.
+
+Ohne `--build-id` oder `--unversioned` wirken beide Befehle auf alle Kohorten der Queue. Die Befehle erscheinen im ersten CLI-Release nach 2.11.0; mit CLI 2.11.0 oder älter rufen Sie die HTTP-Routen direkt auf.
+
+Das Inventar zählt offene, an den Build gepinnte Läufe (einschließlich wartender, fortgesetzter und Kind-Läufe), bereite, geleaste und verzögerte Tasks (noch nicht fällige Aktivitäts-Retries und Timer), offene Aktivitäten, ausstehende Update-Validierungen und bei einer Queue die Schedules, die Läufe auf ihr starten. Ein offener Lauf ohne gespeicherte Task-Queue macht das Inventar `incomplete`; dann ist keine Stilllegung möglich.
+
+Die Prüfung ist eine Vorschau. Die Stilllegung zählt in derselben serialisierten Transition erneut, die auch Starts, Retries und die Task-Erzeugung verwenden, und schreibt nur, wenn nichts übrig ist. Eine abgelehnte Stilllegung liefert HTTP409 und ändert nichts; folgen Sie `expected_resolution` und prüfen Sie erneut.
+
+| `reason` | Bedeutung |
+| --- | --- |
+| `unknown_deployment`, `unknown_task_queue` | Für das Ziel ist kein Worker registriert und kein Rollout gespeichert. |
+| `selected_for_new_starts` | Neue Starts auf der Queue wählen noch diesen Build. Promoten Sie zuerst den Ersatz. |
+| `inventory_incomplete` | Es gibt nicht zugeordnete offene Läufe. Fehlendes Inventar ist nie eine Erlaubnis zur Stilllegung. |
+| `live_dependencies` | Mindestens ein Blocker hat einen Zähler ungleich null. |
+| `inventory_changed` | Die `expected_inventory_revision` stimmt nicht mehr überein. |
+
+Eine erfolgreiche Stilllegung liefert HTTP200 mit `outcome: "retired"`, `retired_at` und `retired_by`. Die Rollout-Absicht des Builds wird zum endgültigen Zustand `drained`: Er wird nie mehr für neue Starts gewählt, kann über den Deployment-Lebenszyklus weder promotet noch fortgesetzt werden, und seine Worker bleiben im Drain. Sind alle Kohorten einer Queue stillgelegt und ist kein aktiver Worker übrig, werden neue Starts dort mit `task_queue_draining` und `routing_status: "retired"` abgelehnt, bis sich eine neue aktive Kohorte registriert. Lauf-Pins, Aktivitäts-Queues, Historie und Fristen bleiben unverändert.
+
+Zur Wiederherstellung setzt `dw task-queue:resume` (`POST /api/task-queues/{taskQueue}/build-ids/resume`) einen stillgelegten Build wieder auf `active`; die Stilllegung hat garantiert, dass er zu diesem Zeitpunkt keine Arbeit hatte.
 
 ## Fehlerhaften Build zurückrollen {#roll-back-a-bad-build}
 
@@ -139,8 +185,10 @@ Wiederholungsversuche, untergeordnete Läufe und gewöhnliches Continue-as-new �
 | Neue Starts auswählen | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
 | Drainen | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
 | Fortsetzen | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Stilllegung prüfen | `GET /api/task-queues/{taskQueue}/retirement`, `GET /api/deployments/{name}/retirement` | `dw task-queue:retirement` | — |
+| Stilllegen | `POST /api/task-queues/{taskQueue}/retire`, `POST /api/deployments/{name}/retire` | `dw task-queue:retire` | — |
 
-Diese Mutationen akzeptieren `{"build_id":"orders-v2"}` oder für die unversionierte Kohorte `{"build_id":null}`. CLI-Mutationen verwenden entweder `--build-id` oder `--unversioned`, niemals beides.
+Promote-, Drain- und Resume-Routen akzeptieren `{"build_id":"orders-v2"}` oder für die unversionierte Kohorte `{"build_id":null}`. Die Retire-Routen nehmen einen optionalen Body `{"expected_inventory_revision":"..."}`. CLI-Mutationen verwenden entweder `--build-id` oder `--unversioned`, niemals beides.
 
 Den vollständigen Lebenszyklus bieten `GET /api/deployments` und `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Verwenden Sie den zurückgegebenen Namen, etwa `orders-prod/orders-critical@orders-v2`, im ursprünglichen Namespace. Auf dem veröffentlichten Apache-Pfad muss der Schrägstrich des Namens erhalten bleiben: vollständiges Kodieren des zusammengesetzten Namens kann vor Erreichen der API eine Apache-HTML404 auslösen. Abgelehnte Aktionen liefern HTTP409 mit typisiertem `reason` und `blockages`-Array. Prüfen Sie `expected_resolution`; eine Ablehnung ist keine erfolgreiche Promotion. [Server #521](https://github.com/durable-workflow/server/issues/521) betrifft den unvollständigen aktuellen OpenAPI-Spiegel, keine neue Runtime oder Änderung eingefrorener Schemas.
 

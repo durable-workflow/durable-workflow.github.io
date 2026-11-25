@@ -12,7 +12,7 @@ keywords: [compilación de workers, drenaje, reversión, canary, workers sin ver
 
 Antes de promover un candidato, reproduzca historiales representativos abiertos y cerrados recientemente con su código exacto. Antes de revertir, reproduzca los historiales escritos por el build nuevo con el artefacto antiguo. Siga la [comprobación de replay](../testing.md#replay-before-deployment); una cohorte de enrutamiento compatible o una comprobación de integridad satisfactoria no demuestra, por sí sola, compatibilidad de replay.
 
-Usa esta guía para inspeccionar cohortes, elegir la compilación de los nuevos workflows y mantener workers compatibles con las ejecuciones existentes. La promoción cambia la selección de nuevos inicios; el drenaje impide nuevas reclamaciones por esa cohorte. Ninguna operación migra ejecuciones ni demuestra que se pueda eliminar una compilación.
+Usa esta guía para inspeccionar cohortes, elegir la compilación de los nuevos workflows y mantener workers compatibles con las ejecuciones existentes. La promoción cambia la selección de nuevos inicios; el drenaje impide nuevas reclamaciones por esa cohorte. Ninguna operación migra ejecuciones ni demuestra que se pueda eliminar una compilación; esa decisión corresponde a la [retirada protegida](#retire-a-build-or-queue).
 
 [Compatibilidad y enrutamiento de workers](/docs/polyglot/worker-compatibility-routing) explica la identidad de tareas, actividades, reintentos, hijos y continue-as-new. Una cohorte tiene el ámbito `(namespace, task_queue, build_id)`. Los registros sin `build_id` pertenecen a la cohorte sin versión, `null`.
 
@@ -78,9 +78,9 @@ La cohorte sin versión no recibe ese diagnóstico específico de compilación. 
 
 La compilación antigua puede tener dos tareas listas y una arrendada mientras la nueva no tiene pendientes. Un total de tres en la cola no identifica qué flota necesita capacidad. Si la antigua no tiene workers activos, restaura su capacidad compatible o reanúdala si se drenó por error. Añadir workers nuevos no consume trabajo fijado a la antigua. Si solo hay registros obsoletos, investiga procesos o heartbeats perdidos antes de contarlos como capacidad disponible.
 
-Reduce cada cohorte con cautela tras revisar sus tareas, workers recientes, tipos declarados, plazas disponibles e intención de drenaje. Conserva capacidad para concesiones y futuras tareas de ejecuciones existentes. Una ejecución que espera señal, temporizador, actividad o hijo puede no tener tareas de workflow ahora y necesitar la compilación antigua después. Las actividades pueden utilizar otras colas registradas. Este endpoint no determina la retirada segura ni autoriza reducir a cero la última cohorte necesaria.
+Reduce cada cohorte con cautela tras revisar sus tareas, workers recientes, tipos declarados, plazas disponibles e intención de drenaje. Conserva capacidad para concesiones y futuras tareas de ejecuciones existentes. Una ejecución que espera señal, temporizador, actividad o hijo puede no tener tareas de workflow ahora y necesitar la compilación antigua después. Las actividades pueden utilizar otras colas registradas. Este endpoint no determina la retirada segura ni autoriza reducir a cero la última cohorte necesaria; para eso usa la [retirada protegida](#retire-a-build-or-queue).
 
-[Server #519](https://github.com/durable-workflow/server/issues/519) sigue la decisión protegida de retirada; [Server #534](https://github.com/durable-workflow/server/issues/534), la capacidad separada de recolección y reducción a cero. Esta lista no entrega esas funciones ni documenta un activador KEDA/HPA integrado.
+[Server #534](https://github.com/durable-workflow/server/issues/534) sigue la capacidad separada de recolección y reducción a cero. Aquí no se documenta un activador KEDA/HPA integrado.
 
 ## Primer cambio de sin versión a versionado {#first-cutover-unversioned-to-versioned}
 
@@ -93,7 +93,7 @@ Reduce cada cohorte con cautela tras revisar sus tareas, workers recientes, tipo
    ```
 
 4. Mantén workers compatibles con los historiales existentes. La promoción no modifica fijaciones antiguas; drenar no es migrar.
-5. Retira capacidad antigua solo cuando se hayan resuelto independientemente sus dependencias restantes. Los contadores vacíos o cero registros no bastan. Conserva el artefacto y la recuperación mientras alguna ejecución pueda necesitarlo.
+5. Retira la compilación antigua con la [retirada protegida](#retire-a-build-or-queue) cuando su inventario esté vacío. Los contadores vacíos o cero registros no lo demuestran. Conserva el artefacto mientras alguna ejecución pueda necesitarlo.
 
 ## Canary de una compilación nueva {#canary-a-new-build}
 
@@ -123,7 +123,53 @@ No lo hagas solo porque la nueva compilación pueda reclamar su propio trabajo: 
 dw task-queue:resume orders-critical --namespace orders-prod --build-id orders-v1
 ```
 
-Drenar o detener todos los workers no demuestra que se pueda eliminar el artefacto. Esta instantánea no incluye una decisión protegida de retirada.
+Drenar o detener todos los workers no demuestra que se pueda eliminar el artefacto. El drenaje sigue siendo la parada de emergencia: rechaza de inmediato los sondeos de la compilación, quede o no trabajo fijado a ella. Usa la [retirada protegida](#retire-a-build-or-queue) para decidir su eliminación.
+
+## Retirar una compilación o una cola {#retire-a-build-or-queue}
+
+Native Server 3.14.0 y posteriores indican si una compilación o una cola puede eliminarse con seguridad, y rechazan retirarla mientras quede alguna dependencia viva. Exige que `capabilities.worker_build_retirement` sea exactamente `true` en `GET /api/cluster/info`; el Server PHP publicado no ofrece estas rutas. Usa un token de operador o administrador y el namespace, como en las demás rutas de build-id.
+
+| Intención | Endpoint HTTP |
+| --- | --- |
+| Inspeccionar una compilación | `GET /api/deployments/{namespace}/{taskQueue}@{buildId}/retirement` (`@unversioned` para la cohorte sin versión) |
+| Retirar una compilación | `POST /api/deployments/{namespace}/{taskQueue}@{buildId}/retire` |
+| Inspeccionar todas las cohortes de una cola | `GET /api/task-queues/{taskQueue}/retirement` |
+| Retirar una cola | `POST /api/task-queues/{taskQueue}/retire` |
+
+1. Promueve la compilación de reemplazo y mantén en marcha los workers de la antigua. Terminan las ejecuciones todavía fijadas a ella, los reintentos diferidos, los temporizadores y las cadenas continuadas.
+2. Inspecciona la compilación antigua hasta que `retirable` sea `true`:
+
+   ```bash
+   dw task-queue:retirement orders-critical --namespace orders-prod --build-id orders-v1 --json
+   ```
+
+   Cada bloqueo indica su `count` exacto, hasta 20 identidades de muestra y una acción `recovery`: dejar que el trabajo termine, o cancelar o terminar las ejecuciones que decidas abandonar.
+3. Retírala, opcionalmente vinculada a la `observation.inventory_revision` inspeccionada:
+
+   ```bash
+   dw task-queue:retire orders-critical --namespace orders-prod --build-id orders-v1 \
+     --expected-revision "$INVENTORY_REVISION"
+   ```
+
+4. Detén los procesos de la compilación antigua solo después de que la retirada tenga éxito.
+
+Sin `--build-id` ni `--unversioned`, ambos comandos actúan sobre todas las cohortes de la cola. Estos comandos se incluyen en la primera versión de la CLI posterior a 2.11.0; con la CLI 2.11.0 o anterior, llama directamente a las rutas HTTP.
+
+El inventario cuenta las ejecuciones abiertas fijadas a la compilación (incluidas las que esperan, las continuadas y las hijas), las tareas listas, concedidas y diferidas (reintentos de actividad y temporizadores aún no vencidos), las actividades abiertas, las validaciones de actualización pendientes y, para una cola, las programaciones que inician ejecuciones en ella. Una ejecución abierta sin cola de tareas registrada deja el inventario `incomplete`, y la retirada no está disponible.
+
+La inspección es una vista previa. La retirada vuelve a contar dentro de la misma transición serializada que usan los inicios, los reintentos y la creación de tareas, y solo escribe cuando no queda nada. Una retirada rechazada responde HTTP409 y no cambia nada; sigue `expected_resolution` y vuelve a inspeccionar.
+
+| `reason` | Significado |
+| --- | --- |
+| `unknown_deployment`, `unknown_task_queue` | No hay ningún worker registrado ni despliegue registrado para el destino. |
+| `selected_for_new_starts` | Los nuevos inicios de la cola todavía seleccionan esta compilación. Promueve primero el reemplazo. |
+| `inventory_incomplete` | Existen ejecuciones abiertas sin atribuir. La falta de inventario nunca autoriza una retirada. |
+| `live_dependencies` | Al menos un bloqueo tiene un contador distinto de cero. |
+| `inventory_changed` | La `expected_inventory_revision` ya no coincide. |
+
+Una retirada correcta devuelve HTTP200 con `outcome: "retired"`, `retired_at` y `retired_by`. La intención de despliegue de la compilación pasa al estado terminal `drained`: nunca se selecciona para nuevos inicios, no puede promoverse ni reanudarse mediante el ciclo de vida del despliegue y sus workers siguen drenando. Cuando todas las cohortes de una cola están retiradas y no queda ningún worker activo, los nuevos inicios en ella se rechazan con `task_queue_draining` y `routing_status: "retired"` hasta que se registre una nueva cohorte activa. Las fijaciones de ejecución, las colas de actividad, el historial y los plazos no cambian.
+
+Para recuperar, `dw task-queue:resume` (`POST /api/task-queues/{taskQueue}/build-ids/resume`) devuelve una compilación retirada a `active`; la retirada garantizó que no tenía trabajo en ese momento.
 
 ## Revertir una compilación defectuosa {#roll-back-a-bad-build}
 
@@ -139,8 +185,10 @@ Los reintentos, las ejecuciones hijas y el continue-as-new habitual heredan la f
 | Seleccionar nuevos inicios | `POST /api/task-queues/{taskQueue}/build-ids/promote` | `dw task-queue:promote` | `Client.promote_task_queue_build_id` |
 | Drenar | `POST /api/task-queues/{taskQueue}/build-ids/drain` | `dw task-queue:drain` | `Client.drain_task_queue_build_id` |
 | Reanudar | `POST /api/task-queues/{taskQueue}/build-ids/resume` | `dw task-queue:resume` | `Client.resume_task_queue_build_id` |
+| Inspeccionar la retirada | `GET /api/task-queues/{taskQueue}/retirement`, `GET /api/deployments/{name}/retirement` | `dw task-queue:retirement` | — |
+| Retirar | `POST /api/task-queues/{taskQueue}/retire`, `POST /api/deployments/{name}/retire` | `dw task-queue:retire` | — |
 
-Estas mutaciones aceptan `{"build_id":"orders-v2"}` o `{"build_id":null}` para la cohorte sin versión. Los comandos CLI usan `--build-id` o `--unversioned`, nunca ambos.
+Las rutas de promoción, drenaje y reanudación aceptan `{"build_id":"orders-v2"}` o `{"build_id":null}` para la cohorte sin versión. Las rutas de retirada aceptan un cuerpo opcional `{"expected_inventory_revision":"..."}`. Los comandos CLI usan `--build-id` o `--unversioned`, nunca ambos.
 
 Para el ciclo completo usa `GET /api/deployments` y `POST /api/deployments/{name}/{promote,drain,resume,rollback}`. Usa el nombre devuelto, por ejemplo `orders-prod/orders-critical@orders-v2`, con su namespace original. En la ruta Apache publicada, conserva la barra separadora: codificar el nombre compuesto completo puede producir una HTML404 de Apache antes de llegar a la API. Las acciones rechazadas devuelven HTTP409 con `reason` tipado y un array `blockages`. Revisa `expected_resolution`; un rechazo no es una promoción correcta. [Server #521](https://github.com/durable-workflow/server/issues/521) sigue el espejo OpenAPI actual incompleto, no una implementación nueva ni un cambio de esquemas congelados.
 

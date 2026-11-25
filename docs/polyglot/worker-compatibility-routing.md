@@ -96,11 +96,14 @@ rebuilds; changing a label does not make incompatible workflow code replay safel
    early drain strands work, resume and restore the original compatible build.
 5. To roll back new starts, restore/resume and promote the known-good cohort,
    then roll back the bad deployment. Existing pins remain unchanged.
+6. Inspect the old build's retirement inventory and retire it with the
+   [guarded retire action](/docs/polyglot/worker-build-id-rollout#retire-a-build-or-queue)
+   before stopping its workers.
 
-Zero pending workflow tasks does not establish safe retirement. Retain the
-artifact and recovery path while any pinned run or inherited chain can need
-it. [Server #519](https://github.com/durable-workflow/server/issues/519) tracks
-the separate guarded retirement capability; this checklist does not deliver it.
+Zero pending workflow tasks does not establish safe retirement. Native Server
+3.14.0 and later count the pinned runs, delayed retries, timers, activities,
+update validations and schedules that still depend on a build or queue, and
+refuse to retire it with HTTP409 while any remain.
 
 ## Explicit missing-worker state {#explicit-missing-worker-state}
 
@@ -117,7 +120,7 @@ its queue, namespace and workflow-type declarations before adding unrelated work
 Rollout state describes registered capacity and new-start/lifecycle intent;
 compatibility determines whether a specific original task can be claimed.
 Use both. Neither a drain nor a rollback rewrites durable compatibility or
-proves that a build can be removed.
+proves that a build can be removed; the guarded retirement inventory decides that.
 
 ## Related references {#related-references}
 
