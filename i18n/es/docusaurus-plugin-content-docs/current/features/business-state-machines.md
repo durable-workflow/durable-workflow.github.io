@@ -8,7 +8,7 @@ description: Protocolo experimental de transiciones para estados de negocio comp
 
 :::warning Experimental
 
-La API `Workflow\V2\StateMachine`, así como el inicio confirmado de hijos (`Workflow::startChild()`) y `DurableScope::reserveChild()` que utiliza, son experimentales. Se distribuyen de forma experimental desde Workflow 2.29.0, no están cubiertas por las garantías de estabilidad del paquete y pueden cambiar en una versión menor. Son una superficie `experimental` según los [niveles de estabilidad](../compatibility.md#stability-levels). El resto de la API de ámbitos de compensación retenidos que utiliza es estable desde Workflow 2.33.0.
+La API `Workflow\V2\StateMachine`, así como el inicio confirmado de hijos (`Workflow::startChild()`) y `DurableScope::reserveChild()` que utiliza, son experimentales. Se distribuyen de forma experimental desde Workflow 2.29.0, no están cubiertas por las garantías de estabilidad del paquete y pueden cambiar en una versión menor. Son una superficie `experimental` según los [niveles de estabilidad](../compatibility.md#stability-levels). El resto de la API de ámbitos de compensación retenidos que utiliza es estable desde Workflow 2.33.0. El catálogo de vinculaciones de hijos, las explicaciones de transición y `MachineInspection` se añadieron en Workflow 2.41.0.
 
 Los ejemplos de esta página son ejemplos del código fuente del repositorio con proveedores sintéticos. No constituyen una cualificación con el paquete instalado ni con proveedores reales. Nada en esta página implica:
 
@@ -220,6 +220,25 @@ if ($key === 'begin') {
 
 Sin una reserva, `Workflow::startChild()` devuelve un recibo `StartedChildWorkflow` que un paso posterior puede esperar con `await()`. El padre debe verificar el resultado de negocio del hijo; la finalización técnica del hijo, una señal aceptada o un tiempo de espera no bastan. `Workflow::startChild()` solo está disponible en modo embebido; la ejecución mediante el protocolo de workers lo rechaza.
 
+### Catálogo de vinculaciones de hijos {#child-binding-catalog}
+
+Desde Workflow 2.41.0, un `MachineCatalog` registra las definiciones que pueden alojarse entre sí. Al construirlo, cada ranura se resuelve a una `machine@version` registrada y se rechaza un grafo no válido antes de que una vinculación lo use:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- Una versión de máquina duplicada, una ranura que nombra un hijo no registrado y una vinculación recursiva o cíclica lanzan `InvalidMachineCatalog`. Su `reason` es `state_machine_definition_duplicate`, `state_machine_child_definition_unregistered` o `state_machine_child_binding_cycle`. Una máquina que se aloja a sí misma, directamente, a través de otras máquinas o con otra versión, es un ciclo.
+- `InvalidMachineCatalog::$path` enumera la ruta, que el mensaje imprime como `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- El parámetro opcional `maxChildDepth` lanza `ResourceLimitExceeded` con la dimensión `child_depth` cuando la ruta de ranuras más profunda es más larga; `observed` informa de esa profundidad. La compensación retenida admite un solo nivel de hijos, así que use `maxChildDepth: 1` cuando los hijos participen en ámbitos retenidos.
+- Varios padres o estados anfitriones pueden compartir una misma definición de hijo.
+- `$catalog->assertBinding()` también exige que ambos perfiles usen exactamente las definiciones registradas, comparadas por huella.
+
+El catálogo es opcional. El inicio nativo de hijos, las reservas y `MachineDefinition::assertBinding()` no lo consultan, así que llame a `$catalog->assertBinding()` en la autorización de vinculaciones del anfitrión, como hace el ejemplo configurado. Un catálogo es configuración: cada ejecución sigue fijando sus propias huellas, y sustituir el catálogo no migra nada.
+
 ## Compensación y ámbitos retenidos {#compensation-and-retained-scopes}
 
 El runner registra el paso original con la Saga nativa antes de que `execute()` pueda suspenderse o fallar. La función de retorno captura la ejecución y el paso originales, no el recibo. Durante la compensación, el runner solicita una instantánea `compensation` nueva y llama a `compensate()` con la ejecución original. Use la compensación secuencial predeterminada.
@@ -255,10 +274,44 @@ Un presupuesto alcanzado durante la ejecución devuelve `TransitionStatus::Block
 ## Diagnóstico {#diagnostics}
 
 - `TransitionResult::toArray()` devuelve la ejecución, el estado, el motivo, la evaluación y la clave de la transición.
+- Desde 2.41.0, `TransitionResult::explain()` también nombra la `TransitionStage` que produjo el resultado y la instantánea registrada y la fase que evaluó esa comprobación. `toArray()` no cambia.
 - `ConditionEvaluation::toArray()` conserva la huella de la estructura, el ID de la instantánea, las versiones de las reglas, los motivos, las referencias de evidencia y los hechos ausentes.
 - `MachineAssessment::toArray()` registra la decisión del invariante vinculada a la definición y a la instantánea.
 - `ResourceLimitExceeded` expone `dimension`, `observed` y `limit`.
 - `ScopeRecovery::describe()` informa del estado de un ámbito retenido, incluido cuándo se necesita una nueva solicitud de cancelación autorizada.
+
+La etapa distingue resultados con el mismo estado:
+
+| Etapa | Estados | Significado |
+| --- | --- | --- |
+| `selection` | `unavailable`, `ambiguous` | No hay una única arista para el evento y el origen. Sin instantánea. |
+| `source` | `conflict` | El estado o la revisión de la instantánea difiere del origen esperado. |
+| `invariant` | `blocked`, `unknown` | El invariante compartido rechazó, antes o después del trabajo. |
+| `target` | `pending`, `unknown` | El objetivo era desconocido, no tenía trabajo declarado o siguió sin cumplirse después del trabajo. |
+| `permission` | `blocked`, `unknown` | La guarda de ejecución rechazó. |
+| `admission` | `blocked`, `unknown` | La admisión en vivo registrada rechazó. |
+| `budget` | `blocked` | Un presupuesto de avance rechazó el siguiente comando. Sin instantánea. |
+| `commit` | `committed`, `conflict`, `cancellation_requested` | El commit protegido confirmó la decisión. |
+
+Para las etapas `invariant`, `target` y `permission`, el ID de instantánea localiza la `ConditionEvaluation` que el anfitrión conservó para esa instantánea. Para `admission` y `commit`, el motivo procede de la admisión o del commit registrados, y la instantánea solo identifica la evidencia utilizada. Un rechazo después del trabajo nombra la instantánea `after`. Los resultados que el código de la aplicación construye sin etapa mantienen `stage` y `snapshot` en null.
+
+`MachineInspection` ofrece a las herramientas de operación una vista versionada de un sujeto de negocio. El anfitrión la construye fuera del código del workflow a partir de valores que ya ha autorizado:
+
+```php
+$inspection = new MachineInspection(
+    $profile, $state, $revision, $execution, $result,
+    [$childBinding, $childReservation, $neverAdmittedChild],
+    [['scope' => $scopeIdentity, 'description' => $scopeRecovery->describe($scopeIdentity, $principal)]],
+);
+$view = $inspection->toArray();
+```
+
+- `machine` contiene las versiones fijadas de la máquina, la definición y el perfil con sus huellas. `business` es el estado y la revisión actuales del almacén de la aplicación, distintos del estado de la ejecución del workflow. `transition` es el `explain()` del `TransitionResult` de la ejecución inspeccionada, o null si no se pasa ninguno.
+- `children` tiene una entrada por generación de vinculación, así que puede ser más corta que la lista pasada. Cada entrada tiene un `status` (`admitted`, `never_admitted` o `reserved`), la clave de vinculación, la ranura, la generación, el estado anfitrión, el tipo de workflow hijo, el resultado requerido, la ejecución padre que creó la vinculación, la instancia y la ejecución hijas y un ID de cierre. Un hijo admitido no es evidencia de su resultado de negocio.
+- `participation` enlaza un hijo con los ID de sus ámbitos padre e hijo retenidos y con la clave de obligación, que se unen con el `scopeId` de las entradas de `compensation`. Pase la `ChildReservation` de un hijo admitido junto a su `ChildBinding`. Un `participation` nulo significa que el hijo no tiene participación retenida o que no se pasó ninguna reserva.
+- `compensation` enumera la identidad y el ID de cada ámbito con las claves de `ScopeRecovery::describe()`.
+
+La construcción rechaza un estado no declarado, una ejecución con otro perfil, una transición de otra ejecución, trabajo de hijos de otro sujeto o perfil, generaciones contradictorias o repetidas, ámbitos repetidos y descripciones de ámbito mal formadas. No realiza E/S y no autoriza nada. Las claves de ámbito las define la aplicación, así que el anfitrión empareja los ámbitos raíz con el sujeto.
 
 ## Ejemplos ejecutables {#runnable-examples}
 

@@ -10,8 +10,10 @@ description: Experimental transition protocol for shared business states, integr
 
 The `Workflow\V2\StateMachine` API, and the confirmed child start
 (`Workflow::startChild()`) and `DurableScope::reserveChild()` it uses, are
-experimental. They ship experimentally from Workflow 2.29.0, are not covered by
-the package's stability guarantees, and may change in a minor release. They are
+experimental. They ship experimentally from Workflow 2.29.0; the child binding
+catalog, transition explanations and `MachineInspection` were added in 2.41.0.
+They are not covered by the package's stability guarantees and may change in a
+minor release. They are
 an `experimental` surface under the
 [stability levels](../compatibility.md#stability-levels). The rest of the
 retained compensation-scope API it uses is stable since Workflow 2.33.0.
@@ -346,6 +348,41 @@ business outcome; technical child completion, an accepted signal or a timeout is
 not enough. `Workflow::startChild()` is embedded-only; worker-protocol
 execution refuses it.
 
+### Child binding catalog
+
+From Workflow 2.41.0, a `MachineCatalog` registers the definitions that may host
+each other. Construction resolves every slot to a registered `machine@version`
+and refuses an invalid graph before any binding uses it:
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- A duplicate machine version, a slot that names an unregistered child, and a
+  recursive or cyclic binding raise `InvalidMachineCatalog`. Its `reason` is
+  `state_machine_definition_duplicate`,
+  `state_machine_child_definition_unregistered` or
+  `state_machine_child_binding_cycle`. A machine hosting itself, directly,
+  through other machines or under another version, is a cycle.
+- `InvalidMachineCatalog::$path` lists the route, which the message prints as
+  `orders@1 -> shipment:shipments@1 -> parent:orders@1`.
+- The optional `maxChildDepth` raises `ResourceLimitExceeded` with the
+  `child_depth` dimension when the deepest slot route is longer; `observed`
+  reports that depth. Retained compensation supports one child level, so use
+  `maxChildDepth: 1` when children participate in retained scopes.
+- Several parents or hosting states can share one child definition.
+- `$catalog->assertBinding()` also requires both profiles to use the exact
+  registered definitions, compared by fingerprint.
+
+The catalog is opt-in. Native child start, reservations and
+`MachineDefinition::assertBinding()` do not consult it, so call
+`$catalog->assertBinding()` in the host's binding authorization, as the
+configured example does. A catalog is configuration: each execution still pins
+its own fingerprints, and replacing the catalog migrates nothing.
+
 ## Compensation and retained scopes
 
 The runner registers the original step with native Saga before `execute()` can
@@ -413,6 +450,9 @@ the forward budgets.
 
 - `TransitionResult::toArray()` returns the execution, status, reason,
   assessment and transition key.
+- From 2.41.0, `TransitionResult::explain()` also names the
+  `TransitionStage` that produced the result and the recorded snapshot and
+  phase that check evaluated. `toArray()` is unchanged.
 - `ConditionEvaluation::toArray()` keeps the structure fingerprint, snapshot ID,
   rule versions, reasons, evidence references and missing facts.
 - `MachineAssessment::toArray()` records the invariant decision bound to the
@@ -420,6 +460,64 @@ the forward budgets.
 - `ResourceLimitExceeded` exposes `dimension`, `observed` and `limit`.
 - `ScopeRecovery::describe()` reports the state of a retained scope, including
   when a fresh authorized cancellation request is needed.
+
+The stage tells apart results with the same status:
+
+| Stage | Statuses | Meaning |
+| --- | --- | --- |
+| `selection` | `unavailable`, `ambiguous` | No unique event and source edge. No snapshot. |
+| `source` | `conflict` | The snapshot's state or revision differs from the expected source. |
+| `invariant` | `blocked`, `unknown` | The shared invariant refused, before or after work. |
+| `target` | `pending`, `unknown` | The target was unknown, had no declared work, or stayed unsatisfied after work. |
+| `permission` | `blocked`, `unknown` | The execution guard refused. |
+| `admission` | `blocked`, `unknown` | Recorded live admission refused. |
+| `budget` | `blocked` | A forward budget refused the next command. No snapshot. |
+| `commit` | `committed`, `conflict`, `cancellation_requested` | The protected commit acknowledged the decision. |
+
+For the `invariant`, `target` and `permission` stages, the snapshot ID finds the
+`ConditionEvaluation` the host retained for that snapshot. For `admission` and
+`commit`, the reason comes from the recorded admission or commit, and the
+snapshot only identifies the evidence it used. A refusal after work names the
+`after` snapshot. Results that application code builds without a stage keep
+`stage` and `snapshot` null.
+
+`MachineInspection` gives operator tooling one versioned view of a business
+subject. The host builds it outside workflow code from values it has already
+authorized:
+
+```php
+$inspection = new MachineInspection(
+    $profile, $state, $revision, $execution, $result,
+    [$childBinding, $childReservation, $neverAdmittedChild],
+    [['scope' => $scopeIdentity, 'description' => $scopeRecovery->describe($scopeIdentity, $principal)]],
+);
+$view = $inspection->toArray();
+```
+
+- `machine` holds the pinned machine, definition and profile versions with
+  their fingerprints. `business` is the current state and revision from the
+  application's store, distinct from workflow-run status. `transition` is
+  `explain()` of the inspected execution's `TransitionResult`, or null when none
+  is passed.
+- `children` has one entry per binding generation, so it can be shorter than
+  the list passed in. Each entry has a `status` (`admitted`, `never_admitted` or
+  `reserved`), the binding key, slot, generation, hosting state, child workflow
+  type, required outcome, the parent execution that bound it, the child instance
+  and run, and a closure ID.
+  An admitted child is not evidence of its business outcome.
+- `participation` links a child to its retained parent and child scope IDs and
+  obligation key, which join the `scopeId` of the `compensation` entries. Pass
+  an admitted child's `ChildReservation` next to its `ChildBinding`. A null
+  `participation` means the child has no retained participation or no
+  reservation was passed.
+- `compensation` lists each scope's identity and ID with its
+  `ScopeRecovery::describe()` keys.
+
+Construction refuses an undeclared state, an execution under another profile, a
+transition of another execution, child work of another subject or profile,
+contradictory or repeated generations, repeated scopes and malformed scope
+descriptions. It performs no I/O and authorizes nothing. Scope keys are
+application-defined, so the host pairs root scopes with the subject.
 
 ## Runnable examples
 

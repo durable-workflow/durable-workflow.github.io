@@ -8,7 +8,7 @@ description: 組み込み Laravel ワークフローで、共有の業務状態�
 
 :::warning 実験的
 
-`Workflow\V2\StateMachine` API と、それが使用する確認付きの子開始（`Workflow::startChild()`）および `DurableScope::reserveChild()` は実験的です。これらは Workflow 2.29.0 から実験的に提供され、パッケージの安定性保証の対象外であり、マイナーリリースで変更される可能性があります。[安定性レベル](../compatibility.md#stability-levels)における `experimental` のサーフェスです。それが使用する保持型補償スコープ API のその他の部分は、Workflow 2.33.0 から安定版です。
+`Workflow\V2\StateMachine` API と、それが使用する確認付きの子開始（`Workflow::startChild()`）および `DurableScope::reserveChild()` は実験的です。これらは Workflow 2.29.0 から実験的に提供され、パッケージの安定性保証の対象外であり、マイナーリリースで変更される可能性があります。[安定性レベル](../compatibility.md#stability-levels)における `experimental` のサーフェスです。それが使用する保持型補償スコープ API のその他の部分は、Workflow 2.33.0 から安定版です。子バインディングのカタログ、遷移の説明、`MachineInspection` は Workflow 2.41.0 で追加されました。
 
 このページの例は、合成プロバイダーを使用するリポジトリのソース例です。インストール済みパッケージや実際のプロバイダーでの適格性確認ではありません。このページのいかなる内容も、次のことを意味しません。
 
@@ -220,6 +220,25 @@ if ($key === 'begin') {
 
 予約なしの場合、`Workflow::startChild()` は、後のステップで `await()` できる `StartedChildWorkflow` レシートを返します。親は子の業務結果を検証する必要があります。技術的な子の完了、受理されたシグナル、タイムアウトだけでは不十分です。`Workflow::startChild()` は組み込み専用であり、Worker プロトコルの実行ではこれを拒否します。
 
+### 子バインディングのカタログ {#child-binding-catalog}
+
+Workflow 2.41.0 以降、`MachineCatalog` は互いをホストできる定義を登録します。構築時に各スロットを登録済みの `machine@version` に解決し、バインディングが使用する前に無効なグラフを拒否します。
+
+```php
+$catalog = new MachineCatalog([$orders, $returns, $shipments], maxChildDepth: 1);
+
+$catalog->child($orders, 'shipment');
+$catalog->assertBinding($parentProfile, $binding, $childProfile);
+```
+
+- 重複したマシンバージョン、未登録の子を指すスロット、再帰的または循環的なバインディングは `InvalidMachineCatalog` を送出します。その `reason` は `state_machine_definition_duplicate`、`state_machine_child_definition_unregistered`、`state_machine_child_binding_cycle` のいずれかです。直接、他のマシン経由、または別のバージョンで自分自身をホストするマシンは循環です。
+- `InvalidMachineCatalog::$path` は経路を列挙し、メッセージでは次のように表示されます: `orders@1 -> shipment:shipments@1 -> parent:orders@1`。
+- 省略可能な `maxChildDepth` は、最も深いスロット経路がそれより長い場合に、次元 `child_depth` の `ResourceLimitExceeded` を送出します。`observed` はその深さを報告します。保持された補償がサポートする子の階層は 1 段なので、子が保持スコープに参加する場合は `maxChildDepth: 1` を使用してください。
+- 複数の親またはホスト状態が 1 つの子定義を共有できます。
+- `$catalog->assertBinding()` は、両方のプロファイルがフィンガープリントで比較して登録済みの定義そのものを使用していることも要求します。
+
+カタログはオプトインです。ネイティブの子の開始、予約、`MachineDefinition::assertBinding()` はカタログを参照しないため、設定済みの例と同様に、ホストのバインディング認可で `$catalog->assertBinding()` を呼び出してください。カタログは設定です。各実行は引き続き自身のフィンガープリントを固定し、カタログを置き換えても何も移行されません。
+
 ## 補償と保持型スコープ {#compensation-and-retained-scopes}
 
 ランナーは、`execute()` が中断または失敗し得るより前に、元のステップをネイティブ Saga に登録します。コールバックが捕捉するのは元の実行とステップであり、レシートではありません。補償中、ランナーは新しい `compensation` スナップショットを要求し、元の実行を指定して `compensate()` を呼び出します。既定の逐次補償を使用してください。
@@ -255,10 +274,44 @@ public function compensate(TransitionContext $context, ExecutionReference $origi
 ## 診断 {#diagnostics}
 
 - `TransitionResult::toArray()` は、実行、ステータス、理由、評価、遷移キーを返します。
+- 2.41.0 以降、`TransitionResult::explain()` は結果を生成した `TransitionStage` と、そのチェックが評価した記録済みスナップショットとフェーズも示します。`toArray()` は変わりません。
 - `ConditionEvaluation::toArray()` は、構造のフィンガープリント、スナップショット ID、ルールのバージョン、理由、証拠への参照、不足している事実を保持します。
 - `MachineAssessment::toArray()` は、定義とスナップショットに結び付いた不変条件の判定を記録します。
 - `ResourceLimitExceeded` は `dimension`、`observed`、`limit` を公開します。
 - `ScopeRecovery::describe()` は、新たな認可済みキャンセル要求が必要な場合を含め、保持型スコープの状態を報告します。
+
+ステージにより、同じステータスの結果を区別できます。
+
+| ステージ | ステータス | 意味 |
+| --- | --- | --- |
+| `selection` | `unavailable`, `ambiguous` | イベントとソースに対する一意のエッジがありません。スナップショットはありません。 |
+| `source` | `conflict` | スナップショットの状態またはリビジョンが想定ソースと異なります。 |
+| `invariant` | `blocked`, `unknown` | 共有不変条件が作業の前または後に拒否しました。 |
+| `target` | `pending`, `unknown` | ターゲットが不明、宣言された作業がない、または作業後も満たされていません。 |
+| `permission` | `blocked`, `unknown` | 実行ガードが拒否しました。 |
+| `admission` | `blocked`, `unknown` | 記録されたライブのアドミッションが拒否しました。 |
+| `budget` | `blocked` | 前進用の予算が次のコマンドを拒否しました。スナップショットはありません。 |
+| `commit` | `committed`, `conflict`, `cancellation_requested` | 保護されたコミットが決定を確認しました。 |
+
+`invariant`、`target`、`permission` の各ステージでは、スナップショット ID を使って、ホストがそのスナップショットについて保持している `ConditionEvaluation` を見つけられます。`admission` と `commit` では、理由は記録されたアドミッションまたはコミットに由来し、スナップショットは使用された証拠を識別するだけです。作業後の拒否では `after` スナップショットが示されます。アプリケーションコードがステージなしで構築した結果では、`stage` と `snapshot` は null のままです。
+
+`MachineInspection` は、運用ツールに業務主体のバージョン付きビューを提供します。ホストは、すでに認可した値からワークフローコードの外で構築します。
+
+```php
+$inspection = new MachineInspection(
+    $profile, $state, $revision, $execution, $result,
+    [$childBinding, $childReservation, $neverAdmittedChild],
+    [['scope' => $scopeIdentity, 'description' => $scopeRecovery->describe($scopeIdentity, $principal)]],
+);
+$view = $inspection->toArray();
+```
+
+- `machine` には、固定されたマシン、定義、プロファイルのバージョンとそのフィンガープリントが含まれます。`business` はアプリケーションのストアにある現在の状態とリビジョンで、ワークフロー実行のステータスとは別物です。`transition` は検査対象の実行の `TransitionResult` の `explain()` で、渡されない場合は null です。
+- `children` はバインディング世代ごとに 1 件なので、渡したリストより短くなることがあります。各エントリには `status`（`admitted`、`never_admitted`、`reserved`）、バインディングキー、スロット、世代、ホスト状態、子ワークフローの型、必要な結果、バインディングを作成した親の実行、子のインスタンスと実行、クローズ ID が含まれます。アドミットされた子は、その業務結果の証拠ではありません。
+- `participation` は、子を保持された親スコープと子スコープの ID および義務キーに関連付けます。これらは `compensation` エントリの `scopeId` と結合できます。アドミットされた子の `ChildReservation` は、その `ChildBinding` と一緒に渡してください。`participation` が null の場合、その子に保持された参加がないか、予約が渡されていません。
+- `compensation` は、各スコープの ID と識別情報を `ScopeRecovery::describe()` のキーとともに列挙します。
+
+構築時には、宣言されていない状態、別のプロファイルでの実行、別の実行の遷移、別の主体またはプロファイルの子の作業、矛盾または重複した世代、重複したスコープ、不正なスコープ記述を拒否します。I/O は行わず、何も認可しません。スコープキーはアプリケーションが定義するため、ルートスコープと主体の対応付けはホストが行います。
 
 ## 実行可能な例 {#runnable-examples}
 
