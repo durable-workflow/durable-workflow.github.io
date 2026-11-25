@@ -158,6 +158,8 @@ Si l’état ne peut pas être reconstruit, ou si le validateur rencontre une er
 
 Une nouvelle tentative avec clé d’une mise à jour rejetée retourne le rejet conservé sans réexécuter le validateur.
 
+Les validateurs de mise à jour ne passent pas par les intercepteurs du worker.
+
 ## Récupérer après une réponse incertaine {#recover-after-an-uncertain-response}
 
 L’admission durable, la fin du gestionnaire et un effet métier externe sont

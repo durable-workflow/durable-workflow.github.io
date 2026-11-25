@@ -158,6 +158,8 @@ Si el estado no puede reconstruirse, o el validador encuentra un error de base d
 
 Un reintento con clave de una actualización rechazada devuelve el rechazo conservado sin volver a ejecutar el validador.
 
+Los validadores de actualización no pasan por los interceptores del worker.
+
 ## Recuperarse tras una respuesta incierta {#recover-after-an-uncertain-response}
 
 La admisión duradera, la finalización del manejador y un efecto de negocio externo son hechos separados. El plazo de quien llama puede vencer mientras una actualización aceptada sigue ejecutándose, y una respuesta perdida puede ocultar un resultado ya confirmado. Un rechazo posterior a enviar otra actualización no aclara el resultado original.

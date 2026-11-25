@@ -207,7 +207,9 @@ function approve(WorkflowContext $context, string $orderId): string
 
 Each line carries `namespace`, `workflow_type`, `workflow_id` and `workflow_run_id`. `$context->replayState()` returns `WorkflowReplayState::Replaying`, `Executing` or `Unavailable`, and `isReplaying()` is its boolean form. Use them for diagnostics only; never choose workflow commands from them.
 
-This is a process logger, not an exactly-once outbox. A workflow task that fails or loses its lease before it commits runs its new code, and its log lines, again. Keep log handlers fast and non-blocking: a handler that waits on the network stalls the worker and can cost it the task lease. Logger failures are caught and never change the workflow's commands.
+Lines are written only after the Worker submits the workflow task that ran the code and the Server accepts it. A superseded replay, a speculative replay the Server declines and a refused completion write nothing. Code that parks on a pending child or operation handle without recording a step logs once, in the task that moves past the wait. A `logger()` call inside a side-effect closure writes nothing.
+
+If the worker dies between the Server's acceptance and the write, those lines are lost. This is a process logger, not an outbox for business effects. Keep log handlers fast and non-blocking: a handler that waits on the network stalls the worker and can cost it the task lease. Logger failures are caught and never change the workflow's commands.
 
 ## Activity retry context and owning run {#activity-retry-context}
 

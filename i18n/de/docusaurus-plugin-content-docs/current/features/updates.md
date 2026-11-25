@@ -179,6 +179,8 @@ Kann der Zustand nicht wiederhergestellt werden oder trifft der Validator auf ei
 
 Eine Wiederholung eines abgelehnten Updates mit demselben Schlüssel liefert die gespeicherte Ablehnung, ohne den Validator erneut auszuführen.
 
+Update-Validatoren durchlaufen keine Worker-Interceptors.
+
 ## Nach einer ungewissen Antwort wiederherstellen {#recover-after-an-uncertain-response}
 
 Dauerhafte Annahme, Handler-Abschluss und ein externer Geschäftseffekt sind

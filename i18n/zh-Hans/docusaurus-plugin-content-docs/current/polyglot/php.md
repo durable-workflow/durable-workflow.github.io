@@ -145,7 +145,9 @@ function approve(WorkflowContext $context, string $orderId): string
 
 每一行都包含 `namespace`、`workflow_type`、`workflow_id` 和 `workflow_run_id`。`$context->replayState()` 返回 `WorkflowReplayState::Replaying`、`Executing` 或 `Unavailable`，`isReplaying()` 是其布尔形式。它们仅用于诊断；切勿据此选择工作流命令。
 
-这是一个进程日志记录器，而不是 exactly-once outbox。在提交之前失败或丢失租约的工作流任务会再次运行其新代码及其日志行。请让日志处理程序保持快速且非阻塞：等待网络的处理程序会阻塞 Worker，并可能使其丢失任务租约。日志记录器的失败会被捕获，绝不会改变工作流的命令。
+只有在 Worker 提交运行该代码的工作流任务并且 Server 接受之后，才会写入日志行。被取代的重放、被 Server 拒绝的推测性重放以及被拒绝的完成都不会写入任何内容。在未记录步骤的情况下等待挂起的子工作流或操作句柄的代码只记录一次，由越过该等待的任务写入。在 side effect 闭包内调用 `logger()` 不会写入任何内容。
+
+如果 Worker 在 Server 接受与写入之间终止，这些日志行会丢失。这是一个进程日志记录器，而不是用于业务效果的 outbox。请让日志处理程序保持快速且非阻塞：等待网络的处理程序会阻塞 Worker，并可能使其丢失任务租约。日志记录器的失败会被捕获，绝不会改变工作流的命令。
 
 ## 活动重试上下文与所属运行 {#activity-retry-context}
 

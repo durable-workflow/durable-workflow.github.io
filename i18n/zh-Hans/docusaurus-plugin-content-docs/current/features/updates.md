@@ -158,6 +158,8 @@ final class CartWorkflow extends Workflow
 
 对被拒绝的更新使用相同键重试时，会返回保留的拒绝结果，而不会再次运行验证器。
 
+更新验证器不经过 Worker 拦截器。
+
 ## 响应不确定后的恢复 {#recover-after-an-uncertain-response}
 
 持久接收、处理器完成和外部业务效果是独立的事实。调用方超时后，已接受的更新可能仍在运行；响应丢失也可能掩盖已经提交的结果。之后重新提交更新被拒绝，并不能确定原操作的结果。

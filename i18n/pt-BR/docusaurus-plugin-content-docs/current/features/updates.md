@@ -158,6 +158,8 @@ Se o estado não puder ser reconstruído, ou se o validador encontrar um erro de
 
 Uma nova tentativa com chave de uma atualização rejeitada retorna a rejeição retida sem executar o validador novamente.
 
+Validadores de atualização não passam pelos interceptadores do worker.
+
 ## Recuperação após uma resposta incerta {#recover-after-an-uncertain-response}
 
 Admissão durável, conclusão do handler e um efeito externo de negócio são

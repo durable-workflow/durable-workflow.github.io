@@ -158,6 +158,8 @@ If the state can't be replayed, or the validator hits a database error, `UpdateV
 
 A keyed retry of a rejected update returns the retained rejection without running the validator again.
 
+Update validators don't pass through worker interceptors.
+
 ## Recover after an uncertain response {#recover-after-an-uncertain-response}
 
 Durable admission, handler completion and an external business effect are

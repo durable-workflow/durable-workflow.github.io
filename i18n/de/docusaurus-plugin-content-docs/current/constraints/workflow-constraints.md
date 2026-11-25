@@ -41,7 +41,9 @@ final class ShipOrderWorkflow extends Workflow
 
 Abfragen und Update-Validatoren protokollieren nie, weil sie immer ein Replay sind.
 
-Logging ist eine Prozessbeobachtung. Halten Sie dauerhafte Workflow-Befehle unabhängig von Replay-Zustand und Log-Zustellung. Auch ein replay-bewusster Logger kann eine Meldung aus einem nicht persistierten Versuch nach Absturz oder Retry wiederholen; er ist keine Outbox mit Exactly-once-Garantie. Host-Handler müssen begrenzt und nicht blockierend bleiben, damit Logging den Worker nicht aufhält. Dauerhafte Geschäftseffekte gehören stattdessen in eine passende Activity oder aufgezeichnete Workflow-Operation.
+In eingebetteten Workflows werden die Zeilen geschrieben, nachdem die Datenbanktransaktion des Workflow-Tasks committet wurde; ein Task, der zurückgerollt wird, schreibt also nichts. Code, der auf einem ausstehenden `select()`-Handle wartet, ohne einen Schritt aufzuzeichnen, protokolliert einmal, und zwar in dem Task, der über das Warten hinauskommt. Zeilen aus einem live ausgeführten Update-Handler werden geschrieben, wenn das Update angewendet wird. Im PHP SDK werden die Zeilen geschrieben, nachdem der Server den Workflow-Task angenommen hat; siehe den [PHP-SDK-Leitfaden](../polyglot/php.md#workflow-logging).
+
+Logging ist eine Prozessbeobachtung. Halten Sie dauerhafte Workflow-Befehle unabhängig von Replay-Zustandsbeobachtungen und der Log-Zustellung. Ein replay-bewusster Logger ist kein Exactly-once-Outbox: Stirbt ein eingebetteter Worker oder ein Worker des PHP SDK zwischen dem Commit bzw. der Annahme und dem Schreiben, gehen diese Zeilen verloren, und der Rust-Logger kann eine Meldung aus einem nicht committeten Versuch nach einem Absturz oder Retry wiederholen. Halten Sie Host-Handler begrenzt und nicht blockierend, damit Logging den Worker nicht aufhält. Legen Sie dauerhafte Geschäftseffekte stattdessen in die passende Aktivität oder aufgezeichnete Workflow-Operation.
 
 ## Prüfungen beim Anwendungsstart {#boot-time-guardrails}
 

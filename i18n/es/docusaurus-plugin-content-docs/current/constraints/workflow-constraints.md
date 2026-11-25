@@ -52,7 +52,9 @@ final class ShipOrderWorkflow extends Workflow
 
 Las consultas y los validadores de actualización nunca registran logs, porque siempre son una reproducción.
 
-El logging es una observación del proceso. Mantenga los comandos durables del workflow independientes de las observaciones de replay y de la entrega de logs. Incluso un logger consciente del replay puede repetir un mensaje de un intento no confirmado tras un fallo o retry; no es un outbox exactamente una vez. Los handlers del host deben estar acotados y no bloquear para no detener al worker. Sitúe los efectos de negocio durables en la actividad u operación de workflow registrada adecuada.
+En los workflows embebidos, las líneas se escriben después de que se confirme la transacción de base de datos de la tarea de workflow, así que una tarea que se revierte no escribe nada. El código que espera en un handle `select()` pendiente sin registrar un paso registra una sola vez, en la tarea que supera la espera. Las líneas de un handler de actualización en vivo se escriben cuando se aplica la actualización. En el PHP SDK, las líneas se escriben después de que el Server acepta la tarea de workflow; consulta la [guía del PHP SDK](../polyglot/php.md#workflow-logging).
+
+El logging es una observación del proceso. Mantén los comandos durables del workflow independientes de las observaciones del estado de reproducción y de la entrega de logs. Un logger consciente de la reproducción no es un outbox exactly-once: si un worker embebido o del PHP SDK muere entre la confirmación o la aceptación y la escritura, esas líneas se pierden, y el logger de Rust puede repetir un mensaje de un intento no confirmado tras una caída o un reintento. Mantén los handlers del host acotados y no bloqueantes para que el logging no detenga el worker. Coloca los efectos de negocio durables en la actividad adecuada o en una operación de workflow registrada.
 
 ## Comprobaciones al iniciar la aplicación {#boot-time-guardrails}
 

@@ -210,7 +210,9 @@ function approve(WorkflowContext $context, string $orderId): string
 
 Jede Zeile enthält `namespace`, `workflow_type`, `workflow_id` und `workflow_run_id`. `$context->replayState()` liefert `WorkflowReplayState::Replaying`, `Executing` oder `Unavailable`, und `isReplaying()` ist die boolesche Form. Verwenden Sie sie nur zur Diagnose; wählen Sie Workflow-Befehle nie danach aus.
 
-Dies ist ein Prozess-Logger, kein Exactly-once-Outbox. Ein Workflow-Task, der vor seinem Commit fehlschlägt oder seine Lease verliert, führt seinen neuen Code und dessen Log-Zeilen erneut aus. Halten Sie Log-Handler schnell und nicht blockierend: Ein Handler, der auf das Netzwerk wartet, blockiert den Worker und kann ihn die Task-Lease kosten. Fehler des Loggers werden abgefangen und ändern nie die Befehle des Workflows.
+Zeilen werden erst geschrieben, nachdem der Worker den Workflow-Task, der den Code ausgeführt hat, übermittelt und der Server ihn angenommen hat. Ein überholtes Replay, ein spekulatives Replay, das der Server ablehnt, und ein verweigerter Abschluss schreiben nichts. Code, der auf einem ausstehenden Child- oder Operations-Handle wartet, ohne einen Schritt aufzuzeichnen, protokolliert einmal, und zwar in dem Task, der über das Warten hinauskommt. Ein `logger()`-Aufruf innerhalb einer Side-Effect-Closure schreibt nichts.
+
+Stirbt der Worker zwischen der Annahme durch den Server und dem Schreiben, gehen diese Zeilen verloren. Dies ist ein Prozess-Logger, kein Outbox für Geschäftseffekte. Halten Sie Log-Handler schnell und nicht blockierend: Ein Handler, der auf das Netzwerk wartet, blockiert den Worker und kann ihn die Task-Lease kosten. Fehler des Loggers werden abgefangen und ändern nie die Befehle des Workflows.
 
 ## Wiederholungskontext und zugehöriger Lauf einer Aktivität {#activity-retry-context}
 

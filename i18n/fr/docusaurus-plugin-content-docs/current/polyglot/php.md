@@ -213,7 +213,9 @@ function approve(WorkflowContext $context, string $orderId): string
 
 Chaque ligne contient `namespace`, `workflow_type`, `workflow_id` et `workflow_run_id`. `$context->replayState()` retourne `WorkflowReplayState::Replaying`, `Executing` ou `Unavailable`, et `isReplaying()` en est la forme booléenne. Utilisez-les uniquement pour le diagnostic ; ne choisissez jamais de commandes de workflow d’après elles.
 
-C’est un logger de processus, pas une outbox exactly-once. Une tâche de workflow qui échoue ou perd son bail avant sa validation réexécute son nouveau code, et ses lignes de journal. Gardez les handlers de journalisation rapides et non bloquants : un handler qui attend le réseau bloque le worker et peut lui coûter le bail de la tâche. Les échecs du logger sont interceptés et ne modifient jamais les commandes du workflow.
+Les lignes ne sont écrites qu’après que le Worker a soumis la tâche de workflow qui a exécuté le code et que le Server l’a acceptée. Une relecture remplacée, une relecture spéculative que le Server décline et une complétion refusée n’écrivent rien. Le code qui attend sur un handle d’enfant ou d’opération en suspens sans enregistrer d’étape journalise une seule fois, dans la tâche qui dépasse l’attente. Un appel à `logger()` dans une closure de side effect n’écrit rien.
+
+Si le worker meurt entre l’acceptation par le Server et l’écriture, ces lignes sont perdues. C’est un logger de processus, pas une outbox pour les effets métier. Gardez les handlers de journalisation rapides et non bloquants : un handler qui attend le réseau bloque le worker et peut lui coûter le bail de la tâche. Les échecs du logger sont interceptés et ne modifient jamais les commandes du workflow.
 
 ## Contexte de reprise et exécution propriétaire d’une activité {#activity-retry-context}
 

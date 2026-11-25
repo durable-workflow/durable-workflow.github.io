@@ -41,7 +41,9 @@ final class ShipOrderWorkflow extends Workflow
 
 Queries and update validators never log, because they always replay.
 
-Logging is a process observation. Keep durable workflow commands independent of replay-state observations and log delivery. Even a replay-aware logger can repeat a message from an uncommitted attempt after a crash or retry; it is not an exactly-once outbox. Keep host handlers bounded and nonblocking so logging does not stall the worker. Put durable business effects behind the appropriate activity or recorded workflow operation instead.
+In embedded workflows, the lines are written after the workflow task's database transaction commits, so a task that rolls back writes nothing. Code that parks on a pending `select()` handle without recording a step logs once, in the task that moves past the await. Lines from a live update handler are written when the update is applied. In the PHP SDK, lines are written after the Server accepts the workflow task; see the [PHP SDK guide](../polyglot/php.md#workflow-logging).
+
+Logging is a process observation. Keep durable workflow commands independent of replay-state observations and log delivery. A replay-aware logger is not an exactly-once outbox: if an embedded or PHP SDK worker dies between the commit or acceptance and the write, those lines are lost, and the Rust logger can repeat a message from an uncommitted attempt after a crash or retry. Keep host handlers bounded and nonblocking so logging does not stall the worker. Put durable business effects behind the appropriate activity or recorded workflow operation instead.
 
 ## Boot-Time Guardrails
 

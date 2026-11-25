@@ -43,7 +43,9 @@ final class ShipOrderWorkflow extends Workflow
 
 查询和更新验证器从不写日志，因为它们始终是重放。
 
-日志是进程观测。持久 workflow 命令应独立于重放状态观测和日志投递。即使使用重放感知 logger，未提交尝试的消息也可能在崩溃或 retry 后重复；它不是 exactly-once outbox。主机 handler 应有界且非阻塞，避免日志阻塞 worker。应通过合适的 activity 或有记录的 workflow 操作执行持久业务效果。
+在嵌入式工作流中，日志行会在工作流任务的数据库事务提交之后写入，因此回滚的任务不会写入任何内容。在未记录步骤的情况下等待某个挂起的 `select()` 句柄的代码只记录一次，由越过该等待的任务写入。实时运行的更新处理程序中的日志行会在更新被应用时写入。在 PHP SDK 中，日志行会在 Server 接受工作流任务之后写入；参见 [PHP SDK 指南](../polyglot/php.md#workflow-logging)。
+
+日志是对进程的观察。请让持久的工作流命令独立于重放状态的观察和日志投递。感知重放的日志记录器不是 exactly-once outbox：如果嵌入式或 PHP SDK 的 Worker 在提交或接受与写入之间终止，这些日志行会丢失；而 Rust 日志记录器在崩溃或重试后可能会重复来自未提交尝试的消息。请让宿主处理程序有界且非阻塞，以免日志阻塞 Worker。请把持久的业务效果放在合适的活动或已记录的工作流操作中。
 
 ## 启动时检查 {#boot-time-guardrails}
 
