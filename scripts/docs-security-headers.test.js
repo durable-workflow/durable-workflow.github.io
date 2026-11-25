@@ -30,6 +30,8 @@ test('refuses HSTS beyond max-age, a broad enforced CSP and unscoped expressions
     [(r) => { header(r, 'docs-security-headers-v1', 'strict-transport-security').value = 'max-age=300; preload'; }, /HSTS must be max-age only/],
     [(r) => { header(r, 'docs-security-headers-v1', 'content-security-policy').value = "default-src 'self'; frame-ancestors 'none'"; }, /enforced CSP must be frame-ancestors 'none'/],
     [(r) => { r.rules[0].expression = '(http.host eq "durable-workflow.com")'; }, /HTTPS requests to named hosts only/],
+    [(r) => { r.rules[0].expression = r.rules[0].expression.replace('(ssl and ', '(http.request.scheme eq "https" and '); }, /HTTPS requests to named hosts only/],
+    [(r) => { r.rules[0].expression = r.rules[0].expression.replace('(ssl and ', '(not ssl and '); }, /HTTPS requests to named hosts only/],
     [(r) => { r.rules[0].expression = r.rules[0].expression.replace('"php.durable-workflow.com"', '"example.com"'); }, /example.com is not a documentation hostname/],
     [(r) => { r.rules[0].enabled = false; }, /x-content-type-options is not set/],
     [(r) => { header(r, 'docs-security-headers-v1', 'x-frame-options').operation = 'add'; }, /must use the set operation/],
