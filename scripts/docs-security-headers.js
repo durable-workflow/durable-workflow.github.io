@@ -58,7 +58,8 @@ function expectedHeaders(rules, host) {
   return headers;
 }
 
-const EXPRESSION = /^\(http\.request\.scheme eq "https" and http\.host (in \{[^}]+\}|eq "[^"]+")\)$/;
+// The zone's Free plan rejects http.request.scheme; the ssl field selects HTTPS.
+const EXPRESSION = /^\(ssl and http\.host (in \{[^}]+\}|eq "[^"]+")\)$/;
 const REQUIRED_FEATURES = ['camera', 'microphone', 'geolocation', 'payment', 'usb'];
 const REPORT_ONLY_FIXED = [['default-src', "'self'"], ['object-src', "'none'"], ['base-uri', "'self'"], ['frame-ancestors', "'none'"]];
 const ANY_ORIGIN = new Set(['*', 'https:', 'http:']);

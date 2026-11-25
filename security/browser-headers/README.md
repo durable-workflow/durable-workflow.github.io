@@ -8,11 +8,16 @@ Cloudflare zone's `http_response_headers_transform` phase entrypoint. It
 replaces the Rust-only candidate below, which must not be applied with it,
 because both set `Content-Security-Policy`.
 
+Each rule matches HTTPS with the `ssl` field, for example
+`(ssl and http.host eq "php.durable-workflow.com")`. The zone is on the
+Cloudflare Free plan, which accepts `ssl` and rejects `http.request.scheme`
+in response-header rule expressions.
+
 GitHub Pages cannot set response headers, and an HTML meta tag cannot carry
 HSTS, `frame-ancestors` or a Report-Only policy. The headers therefore need the
-Cloudflare proxy in front of Pages. As of November 25, 2026 all five DNS
-records are DNS-only and resolve to GitHub Pages, so nothing in this file is
-live yet.
+Cloudflare proxy in front of Pages. On November 25, 2026 all five records
+were switched to Proxied (SSL mode Full) and the first rule was applied. The
+four Report-Only rules follow it.
 
 The first rule sets these headers on all five hostnames:
 
@@ -40,8 +45,9 @@ load:
 - **python:** five inline-script hashes from mkdocs-material, and api.github.com
   for the repository widget.
 - **rust:** four inline-script hashes, and README badge images.
-- **php:** one inline-script hash, and the phpDocumentor Prism, Fuse and
-  css-vars-ponyfill files on cdn.jsdelivr.net, scoped to their paths.
+- **php:** one inline-script hash. Prism, Fuse and css-vars-ponyfill are
+  served from the site itself (sdk-php #483), so no third-party script or
+  style origin remains.
 
 ### Rollout
 
