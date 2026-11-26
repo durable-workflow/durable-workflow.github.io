@@ -157,7 +157,7 @@ Si el estado no puede reconstruirse, o el validador encuentra un error de base d
 
 Un reintento con clave de una actualización rechazada devuelve el rechazo conservado sin volver a ejecutar el validador.
 
-Los validadores de actualización no pasan por los interceptores del worker.
+Los interceptores del worker envuelven la validación de actualizaciones mediante `executeUpdateValidation()`. Ven la decisión del validador, pero no pueden cambiarla.
 
 ## Recuperarse tras una respuesta incierta {#recover-after-an-uncertain-response}
 

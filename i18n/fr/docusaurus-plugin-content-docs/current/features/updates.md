@@ -157,7 +157,7 @@ Si l’état ne peut pas être reconstruit, ou si le validateur rencontre une er
 
 Une nouvelle tentative avec clé d’une mise à jour rejetée retourne le rejet conservé sans réexécuter le validateur.
 
-Les validateurs de mise à jour ne passent pas par les intercepteurs du worker.
+Les intercepteurs du worker enveloppent la validation de mise à jour via `executeUpdateValidation()`. Ils voient la décision du validateur, mais ne peuvent pas la modifier.
 
 ## Récupérer après une réponse incertaine {#recover-after-an-uncertain-response}
 

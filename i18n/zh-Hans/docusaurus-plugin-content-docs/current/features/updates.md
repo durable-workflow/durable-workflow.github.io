@@ -157,7 +157,7 @@ final class CartWorkflow extends Workflow
 
 对被拒绝的更新使用相同键重试时，会返回保留的拒绝结果，而不会再次运行验证器。
 
-更新验证器不经过 Worker 拦截器。
+Worker 拦截器通过 `executeUpdateValidation()` 包裹更新验证。它们能看到验证器的决定，但无法更改。
 
 ## 响应不确定后的恢复 {#recover-after-an-uncertain-response}
 

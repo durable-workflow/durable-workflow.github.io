@@ -186,7 +186,7 @@ The validator takes a `QueryContext` with the run's committed history, followed 
 
 On the client, `updateWorkflow()` throws `UpdateFailed`. `rejectedByValidator()` identifies a validator rejection and `validationErrors()` returns its field errors. `validationFailed()` is true when the Server couldn't get a decision in time; nothing was accepted, so retry with the same request ID.
 
-Validators never run during replay. Each validation sees only the history committed before its own task, so two validations running at the same time can both pass a check that only one of them should. A validator worker doesn't use carried workflow polls, and update validation tasks don't pass through worker interceptors.
+Validators never run during replay. Each validation sees only the history committed before its own task, so two validations running at the same time can both pass a check that only one of them should. A validator worker doesn't use carried workflow polls. Worker interceptors wrap update validation tasks through `executeUpdateValidation()`; they see the validator's decision but can't change it.
 
 ## Replay-aware workflow logging {#workflow-logging}
 

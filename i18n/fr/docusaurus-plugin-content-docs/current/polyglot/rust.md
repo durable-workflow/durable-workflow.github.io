@@ -1024,8 +1024,10 @@ Côté client, `Error::update_validator_rejection()` retourne le message, les
 erreurs de validation et les identifiants du rejet, et
 `Error::is_update_validation_failed()` couvre les délais dépassés et les échecs du
 worker. Une mise à jour en échec ordinaire ne correspond à aucun des deux. Les
-validateurs ne s’exécutent jamais pendant la relecture, et les tâches de
-validation de mise à jour ne passent pas par les intercepteurs du worker.
+validateurs ne s’exécutent jamais pendant la relecture. Les intercepteurs du
+worker enveloppent les tâches de validation de mise à jour via
+`execute_update_validation_task` ; ils voient la décision du validateur, mais ne
+peuvent pas la modifier.
 
 ## Enveloppe de données utiles {#payload-envelope}
 

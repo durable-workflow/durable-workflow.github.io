@@ -1015,8 +1015,9 @@ Auf dem Client liefert `Error::update_validator_rejection()` die Meldung, die
 Validierungsfehler und die IDs der Ablehnung, und
 `Error::is_update_validation_failed()` deckt Timeouts und Worker-Fehler ab. Ein
 gewöhnlich fehlgeschlagenes Update erfüllt keines von beiden. Validatoren laufen
-nie während eines Replays, und Update-Validierungs-Tasks durchlaufen keine
-Worker-Interceptors.
+nie während eines Replays. Worker-Interceptors umschließen Update-Validierungs-Tasks
+über `execute_update_validation_task`; sie sehen die Entscheidung des Validators,
+können sie aber nicht ändern.
 
 ## Nutzlast-Envelope {#payload-envelope}
 

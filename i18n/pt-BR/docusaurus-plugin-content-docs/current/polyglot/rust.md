@@ -1000,8 +1000,10 @@ validação, ele executa apenas o validador:
 No cliente, `Error::update_validator_rejection()` retorna a mensagem, os erros de
 validação e os IDs da rejeição, e `Error::is_update_validation_failed()` cobre
 timeouts e falhas do worker. Uma atualização com falha comum não corresponde a
-nenhum dos dois. Validadores nunca são executados durante o replay, e as tarefas
-de validação de atualização não passam pelos interceptadores do worker.
+nenhum dos dois. Validadores nunca são executados durante o replay. Os interceptadores
+do worker envolvem as tarefas de validação de atualização por meio de
+`execute_update_validation_task`; eles veem a decisão do validador, mas não podem
+alterá-la.
 
 ## Envelope de payload {#payload-envelope}
 

@@ -777,7 +777,7 @@ worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args:
 - `UpdateRejection` は `update_validator_rejected`、メッセージ、型、検証エラーで更新を拒否します。更新は受理されず、ハンドラーも実行されません。Server は拒否を監査イベント `UpdateRejected` としてだけ記録します。
 - ワークフローコマンドを追加するバリデーターは `UpdateValidatorCommandRefused` で拒否され、panic やリプレイの失敗は `update_validation_worker_failed` を報告します。
 
-クライアントでは、`Error::update_validator_rejection()` が拒否のメッセージ、検証エラー、ID を返し、`Error::is_update_validation_failed()` がタイムアウトと Worker の失敗を扱います。通常の失敗した更新はどちらにも該当しません。バリデーターはリプレイ中に実行されず、更新検証タスクは Worker のインターセプターを通りません。
+クライアントでは、`Error::update_validator_rejection()` が拒否のメッセージ、検証エラー、ID を返し、`Error::is_update_validation_failed()` がタイムアウトと Worker の失敗を扱います。通常の失敗した更新はどちらにも該当しません。バリデーターはリプレイ中に実行されません。Worker のインターセプターは `execute_update_validation_task` を通じて更新検証タスクをラップし、バリデーターの判定は見えますが、変更はできません。
 
 ## ペイロードエンベロープ {#payload-envelope}
 

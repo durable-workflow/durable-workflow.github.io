@@ -1011,8 +1011,9 @@ validator:
 On the client, `Error::update_validator_rejection()` returns the rejection's
 message, validation errors and IDs, and `Error::is_update_validation_failed()`
 covers timeouts and worker failures. An ordinary failed update matches neither.
-Validators never run during replay, and update validation tasks don't pass
-through worker interceptors.
+Validators never run during replay. Worker interceptors wrap update validation
+tasks through `execute_update_validation_task`; they see the validator's decision
+but can't change it.
 
 ## Payload envelope
 

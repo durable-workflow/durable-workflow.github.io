@@ -189,7 +189,7 @@ Der Validator erhält einen `QueryContext` mit dem persistierten Verlauf des Lau
 
 Auf dem Client wirft `updateWorkflow()` eine `UpdateFailed`. `rejectedByValidator()` erkennt eine Validator-Ablehnung, und `validationErrors()` liefert ihre Feldfehler. `validationFailed()` ist wahr, wenn der Server nicht rechtzeitig eine Entscheidung erhalten konnte; es wurde nichts angenommen, also wiederholen Sie mit derselben Request-ID.
 
-Validatoren laufen nie während eines Replays. Jede Validierung sieht nur den Verlauf, der vor ihrem eigenen Task persistiert wurde, daher können zwei gleichzeitige Validierungen beide eine Prüfung bestehen, die nur eine von ihnen bestehen sollte. Ein Worker mit Validatoren verwendet keine mitgeführten Workflow-Polls, und Update-Validierungs-Tasks durchlaufen keine Worker-Interceptors.
+Validatoren laufen nie während eines Replays. Jede Validierung sieht nur den Verlauf, der vor ihrem eigenen Task persistiert wurde, daher können zwei gleichzeitige Validierungen beide eine Prüfung bestehen, die nur eine von ihnen bestehen sollte. Ein Worker mit Validatoren verwendet keine mitgeführten Workflow-Polls. Worker-Interceptors umschließen Update-Validierungs-Tasks über `executeUpdateValidation()`; sie sehen die Entscheidung des Validators, können sie aber nicht ändern.
 
 ## Replay-bewusstes Workflow-Logging {#workflow-logging}
 

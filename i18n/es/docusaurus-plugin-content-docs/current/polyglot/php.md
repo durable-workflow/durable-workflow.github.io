@@ -187,7 +187,7 @@ El validador recibe un `QueryContext` con el historial confirmado de la ejecuci�
 
 En el cliente, `updateWorkflow()` lanza `UpdateFailed`. `rejectedByValidator()` identifica un rechazo del validador y `validationErrors()` devuelve sus errores de campo. `validationFailed()` es verdadero cuando el Server no pudo obtener una decisión a tiempo; no se aceptó nada, así que reintenta con el mismo ID de solicitud.
 
-Los validadores nunca se ejecutan durante la reproducción. Cada validación solo ve el historial confirmado antes de su propia tarea, así que dos validaciones simultáneas pueden superar ambas una comprobación que solo una debería superar. Un worker con validadores no usa sondeos de workflow arrastrados, y las tareas de validación de actualizaciones no pasan por los interceptores del worker.
+Los validadores nunca se ejecutan durante la reproducción. Cada validación solo ve el historial confirmado antes de su propia tarea, así que dos validaciones simultáneas pueden superar ambas una comprobación que solo una debería superar. Un worker con validadores no usa sondeos de workflow arrastrados. Los interceptores del worker envuelven las tareas de validación de actualizaciones mediante `executeUpdateValidation()`; ven la decisión del validador, pero no pueden cambiarla.
 
 ## Logging de workflow consciente de la reproducción {#workflow-logging}
 

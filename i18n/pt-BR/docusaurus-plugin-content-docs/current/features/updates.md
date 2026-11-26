@@ -157,7 +157,7 @@ Se o estado não puder ser reconstruído, ou se o validador encontrar um erro de
 
 Uma nova tentativa com chave de uma atualização rejeitada retorna a rejeição retida sem executar o validador novamente.
 
-Validadores de atualização não passam pelos interceptadores do worker.
+Os interceptadores do worker envolvem a validação de atualização por meio de `executeUpdateValidation()`. Eles veem a decisão do validador, mas não podem alterá-la.
 
 ## Recuperação após uma resposta incerta {#recover-after-an-uncertain-response}
 

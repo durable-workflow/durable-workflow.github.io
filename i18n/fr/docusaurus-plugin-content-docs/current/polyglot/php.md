@@ -192,7 +192,7 @@ Le validateur reçoit un `QueryContext` contenant l’historique validé de l’
 
 Côté client, `updateWorkflow()` lève `UpdateFailed`. `rejectedByValidator()` identifie un rejet du validateur et `validationErrors()` retourne ses erreurs de champ. `validationFailed()` est vrai lorsque le Server n’a pas pu obtenir de décision à temps ; rien n’a été accepté, réessayez donc avec le même identifiant de requête.
 
-Les validateurs ne s’exécutent jamais pendant la relecture. Chaque validation ne voit que l’historique validé avant sa propre tâche ; deux validations simultanées peuvent donc toutes deux réussir un contrôle qu’une seule devrait réussir. Un worker avec validateurs n’utilise pas les interrogations de workflow transportées, et les tâches de validation de mise à jour ne passent pas par les intercepteurs du worker.
+Les validateurs ne s’exécutent jamais pendant la relecture. Chaque validation ne voit que l’historique validé avant sa propre tâche ; deux validations simultanées peuvent donc toutes deux réussir un contrôle qu’une seule devrait réussir. Un worker avec validateurs n’utilise pas les interrogations de workflow transportées. Les intercepteurs du worker enveloppent les tâches de validation de mise à jour via `executeUpdateValidation()` ; ils voient la décision du validateur, mais ne peuvent pas la modifier.
 
 ## Journalisation de workflow consciente de la relecture {#workflow-logging}
 

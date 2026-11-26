@@ -1010,8 +1010,9 @@ Server не оголошує синхронну валідацію update, і о
 На клієнті `Error::update_validator_rejection()` повертає повідомлення, помилки
 валідації та ідентифікатори відхилення, а `Error::is_update_validation_failed()`
 охоплює тайм-аути та збої worker. Звичайний невдалий update не відповідає жодному
-з них. Валідатори ніколи не виконуються під час replay, а задачі валідації update
-не проходять через interceptor-и worker.
+з них. Валідатори ніколи не виконуються під час replay. Interceptor-и worker обгортають
+задачі валідації update через `execute_update_validation_task`; вони бачать
+рішення валідатора, але не можуть його змінити.
 
 ## Оболонка payload {#payload-envelope}
 

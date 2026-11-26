@@ -157,7 +157,7 @@ final class CartWorkflow extends Workflow
 
 Повторний запит із ключем для відхиленого update повертає збережене відхилення без повторного виконання валідатора.
 
-Валідатори update не проходять через interceptor-и worker.
+Interceptor-и worker обгортають валідацію update через `executeUpdateValidation()`. Вони бачать рішення валідатора, але не можуть його змінити.
 
 ## Відновлення після невизначеної відповіді {#recover-after-an-uncertain-response}
 

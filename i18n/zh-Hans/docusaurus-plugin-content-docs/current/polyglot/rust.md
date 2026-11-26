@@ -769,7 +769,7 @@ worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args:
 - `UpdateRejection` 以 `update_validator_rejected`、消息、类型和验证错误拒绝更新。更新永远不会被接受，其处理程序也永远不会运行。Server 只把拒绝记录为审计事件 `UpdateRejected`。
 - 添加工作流命令的验证器会被 `UpdateValidatorCommandRefused` 拒绝；panic 或重放失败会报告 `update_validation_worker_failed`。
 
-在客户端，`Error::update_validator_rejection()` 返回拒绝的消息、验证错误和 ID，`Error::is_update_validation_failed()` 涵盖超时和 Worker 失败。普通的失败更新不匹配这两者中的任何一个。验证器从不在重放期间运行，更新验证任务也不经过 Worker 拦截器。
+在客户端，`Error::update_validator_rejection()` 返回拒绝的消息、验证错误和 ID，`Error::is_update_validation_failed()` 涵盖超时和 Worker 失败。普通的失败更新不匹配这两者中的任何一个。验证器从不在重放期间运行。Worker 拦截器通过 `execute_update_validation_task` 包裹更新验证任务，能看到验证器的决定，但无法更改。
 
 ## 负载封装 {#payload-envelope}
 

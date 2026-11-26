@@ -157,7 +157,7 @@ final class CartWorkflow extends Workflow
 
 拒否された更新をキー付きで再試行すると、バリデーターを再実行せずに保持済みの拒否が返ります。
 
-更新バリデーターは Worker のインターセプターを通りません。
+Worker のインターセプターは `executeUpdateValidation()` を通じて更新検証をラップします。バリデーターの判定は見えますが、変更はできません。
 
 ## 応答が不確かな場合の復旧 {#recover-after-an-uncertain-response}
 

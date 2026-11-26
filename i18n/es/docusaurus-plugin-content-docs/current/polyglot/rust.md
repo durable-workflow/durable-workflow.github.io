@@ -808,8 +808,9 @@ En el cliente, `Error::update_validator_rejection()` devuelve el mensaje, los
 errores de validación y los IDs del rechazo, y `Error::is_update_validation_failed()`
 cubre los tiempos de espera agotados y los fallos del worker. Una actualización
 fallida ordinaria no coincide con ninguno. Los validadores nunca se ejecutan
-durante la reproducción, y las tareas de validación de actualizaciones no pasan
-por los interceptores del worker.
+durante la reproducción. Los interceptores del worker envuelven las tareas de
+validación de actualizaciones mediante `execute_update_validation_task`; ven la
+decisión del validador, pero no pueden cambiarla.
 
 ## Sobre de cargas útiles {#payload-envelope}
 

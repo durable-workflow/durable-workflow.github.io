@@ -124,7 +124,7 @@ final class OrderWorkflow
 
 在客户端，`updateWorkflow()` 会抛出 `UpdateFailed`。`rejectedByValidator()` 用于识别验证器拒绝，`validationErrors()` 返回其字段错误。当 Server 未能及时得到决定时，`validationFailed()` 为 true；此时没有任何内容被接受，请使用同一个请求 ID 重试。
 
-验证器从不在重放期间运行。每次验证只能看到在其自身任务之前提交的历史，因此两个同时进行的验证可能都通过一项本应只有一个通过的检查。带验证器的 Worker 不使用携带的工作流轮询，更新验证任务也不经过 Worker 拦截器。
+验证器从不在重放期间运行。每次验证只能看到在其自身任务之前提交的历史，因此两个同时进行的验证可能都通过一项本应只有一个通过的检查。带验证器的 Worker 不使用携带的工作流轮询。Worker 拦截器通过 `executeUpdateValidation()` 包裹更新验证任务，能看到验证器的决定，但无法更改。
 
 ## 感知重放的工作流日志 {#workflow-logging}
 
