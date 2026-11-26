@@ -763,8 +763,11 @@ replay retorna os mesmos valores.
 Quando o SDK não consegue comprovar o horário, ele retorna
 `Error::ReplayClockUnavailable`. Isso inclui operações inline e locais (efeitos
 colaterais, marcadores de versão, atividades locais, memos), que continuam
-indisponíveis até que o Core defina um horário persistido para elas. O replay
-offline fornece um portador com `WorkflowHistory::replay_clock(carrier)`. Veja a
+indisponíveis até que o Core defina um horário persistido para elas. Uma
+leitura do relógio logo depois de um desses passos não é portável entre runners
+nem em frotas mistas; veja
+[Leituras do relógio após passos inline não são portáveis](./python.md#inline-step-clock-reads).
+O replay offline fornece um portador com `WorkflowHistory::replay_clock(carrier)`. Veja a
 [semântica de relógio entre SDKs](./python.md#advancing-replay-clock) para a
 lista completa, a regra de consultas e validações, o status de lançamento e a
 nota de atualização.

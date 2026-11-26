@@ -774,7 +774,10 @@ durable steps return the same value, and every replay returns the same values.
 Where the SDK cannot prove the time, it returns `Error::ReplayClockUnavailable`.
 That includes inline and local operations (side effects, version markers, local
 activities, memos), which stay unavailable until Core defines a persisted time
-for them. Offline replay supplies a carrier with
+for them. A clock read right after such a step is not portable across runners or
+mixed fleets; see
+[Clock reads after inline steps are not portable](./python.md#inline-step-clock-reads).
+Offline replay supplies a carrier with
 `WorkflowHistory::replay_clock(carrier)`. See the
 [cross-SDK clock semantics](./python.md#advancing-replay-clock) for the full
 list, the query and validation rule, release status and the upgrade note.

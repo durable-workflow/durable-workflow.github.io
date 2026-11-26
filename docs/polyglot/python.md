@@ -962,13 +962,39 @@ Where the SDK cannot prove the time, `ctx.replay_now()` raises
 - at entry on a task without the carrier: Servers before 3.6.0, or a run whose
   start Server cannot prove;
 - after inline and local operations, such as side effects, version markers,
-  local activities and memos. These stay unavailable until Core defines a
-  persisted time for those steps;
+  memo and search-attribute updates, and local activities. These stay
+  unavailable until Core defines a persisted time for those steps;
 - after other group modes and in cancellation scopes;
 - in query handlers: always in PHP, and in Python and Rust unless the queried history ends at a supported scalar boundary (grouped boundaries give no query time).
 
 An unhandled `ReplayClockUnavailable` fails the workflow like any other
 exception.
+
+##### Clock reads after inline steps are not portable {#inline-step-clock-reads}
+
+Inline steps are side effects, version markers, memo and search-attribute
+updates, and local activities. Until Core defines a persisted time for them, a
+clock read immediately after one is not portable across runners or mixed
+fleets:
+
+- The service-mode SDKs (Python, Rust and the PHP SDK) report the clock as
+  unavailable there.
+- On the embedded engine, `Workflow::now()` moves to the step's recorded time.
+- On the external-worker runner (the embedded package's worker-protocol
+  `WorkflowFiberRunner`, which external PHP workers use through the bridge),
+  side effects and memo and search-attribute updates keep the previous
+  boundary time. A version marker also keeps the previous boundary time on
+  first execution, while a replay reads the marker's recorded time. This
+  version-marker divergence is kept deliberately: superseding the pinned
+  `repeated-version-legacy-clock-boundaries` replay fixture would change the
+  replay output of runs already in flight.
+- Mixed fleets, where the embedded engine runs the first execution and an
+  external worker replays the same run, are unsupported for clock reads right
+  after side effects and memo or search-attribute updates.
+
+If a workflow runs, or may replay, on more than one runner, do not rely on a
+clock read right after an inline step. Read the clock after the next durable
+step instead.
 
 Python and Rust rebuild the workflow from history to answer a query or a
 pre-accept update validation. If the rebuilt workflow reads the clock at entry
@@ -1001,7 +1027,9 @@ These APIs are deterministic where provided, but they do not share one clock:
 | Rust service-mode `WorkflowContext::replay_now()` | Same semantics as Python `ctx.replay_now()`. | Starts at the successor run's own start. |
 
 The service-mode clocks share one contract. Embedded `Workflow::now()` also moves to the recorded time of an inline step such as a
-side effect, where the service-mode clocks report the time as unavailable. Port
+side effect, where the service-mode clocks report the time as unavailable, so
+such a read is not portable (see
+[Clock reads after inline steps are not portable](#inline-step-clock-reads)). Port
 the durable operation and deadline policy rather than assuming that every clock
 helper behaves identically.
 

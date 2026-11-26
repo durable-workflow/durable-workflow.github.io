@@ -288,8 +288,11 @@ valeur, et chaque replay renvoie les mêmes valeurs.
 Lorsque le SDK ne peut pas prouver l'heure, il lève
 `DurableWorkflow\Exception\ReplayClockUnavailable`. Cela inclut les effets de
 bord, les marqueurs de version et les activités locales, qui restent
-indisponibles jusqu'à ce que Core définisse une heure persistée pour eux. Les
-gestionnaires de requêtes et de mises à jour lisent des instantanés de
+indisponibles jusqu'à ce que Core définisse une heure persistée pour eux. Une
+lecture d'horloge juste après une telle étape n'est portable ni entre runners
+ni dans des flottes mixtes ; voir
+[Les lectures d'horloge après une étape en ligne ne sont pas portables](./python.md#inline-step-clock-reads).
+Les gestionnaires de requêtes et de mises à jour lisent des instantanés de
 l'historique et ne reconstruisent jamais le corps du workflow. Consultez la
 [sémantique d'horloge commune aux SDK](./python.md#advancing-replay-clock) pour
 la liste complète, l'état de publication et la note de mise à niveau.

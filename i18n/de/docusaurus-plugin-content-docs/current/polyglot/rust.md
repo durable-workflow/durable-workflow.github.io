@@ -776,7 +776,11 @@ Schritten liefern denselben Wert, und jedes Replay liefert dieselben Werte.
 Wo das SDK die Zeit nicht nachweisen kann, liefert es
 `Error::ReplayClockUnavailable`. Das umfasst Inline- und lokale Operationen
 (Seiteneffekte, Versionsmarker, lokale Aktivitäten, Memos), die nicht verfügbar
-bleiben, bis Core für sie eine gespeicherte Zeit festlegt. Offline-Replay
+bleiben, bis Core für sie eine gespeicherte Zeit festlegt. Eine Uhrlesung
+direkt nach einem solchen Schritt ist weder zwischen Runnern noch in gemischten
+Flotten portabel; siehe
+[Uhrlesungen nach Inline-Schritten sind nicht portabel](./python.md#inline-step-clock-reads).
+Offline-Replay
 übergibt einen Träger mit `WorkflowHistory::replay_clock(carrier)`. Die
 vollständige Liste, die Regel für Queries und Validierungen, den Release-Status
 und den Upgrade-Hinweis finden Sie in der

@@ -902,14 +902,44 @@ Lorsque le SDK ne peut pas prouver l'heure, `ctx.replay_now()` lève
 - à l'entrée avec une tâche sans porteur : Servers antérieurs à 3.6.0, ou run
   dont Server ne peut pas prouver le début ;
 - après des opérations en ligne et locales, comme les effets de bord, les
-  marqueurs de version, les activités locales et les mémos. Elles restent
-  indisponibles jusqu'à ce que Core définisse une heure persistée pour ces
-  étapes ;
+  marqueurs de version, les mises à jour de mémo et d'attributs de recherche,
+  et les activités locales. Elles restent indisponibles jusqu'à ce que Core
+  définisse une heure persistée pour ces étapes ;
 - après d'autres modes de groupe et dans les portées d'annulation ;
 - dans les gestionnaires de requête : toujours en PHP, et en Python et Rust sauf si l'historique interrogé se termine sur une limite scalaire prise en charge (les limites groupées ne donnent pas d'heure de requête).
 
 Une `ReplayClockUnavailable` non gérée fait échouer le workflow comme toute
 autre exception.
+
+##### Les lectures d'horloge après une étape en ligne ne sont pas portables {#inline-step-clock-reads}
+
+Les étapes en ligne sont les effets de bord, les marqueurs de version, les mises
+à jour de mémo et d'attributs de recherche, et les activités locales. Tant que
+Core ne définit pas d'heure persistée pour elles, une lecture d'horloge
+immédiatement après l'une d'elles n'est portable ni entre runners ni dans des
+flottes mixtes :
+
+- Les SDK en mode service (Python, Rust et le SDK PHP) y signalent l'horloge
+  comme indisponible.
+- Dans le moteur intégré, `Workflow::now()` passe à l'heure enregistrée de
+  l'étape.
+- Dans le runner des workers externes (le `WorkflowFiberRunner` du protocole
+  worker du paquet intégré, que les workers PHP externes utilisent via le
+  bridge), les effets de bord et les mises à jour de mémo et d'attributs de
+  recherche conservent l'heure de la limite précédente. Un marqueur de version
+  conserve lui aussi l'heure de la limite précédente lors de la première
+  exécution, tandis qu'une relecture lit l'heure enregistrée du marqueur. Cette
+  divergence des marqueurs de version est conservée délibérément : remplacer la
+  fixture de relecture épinglée `repeated-version-legacy-clock-boundaries`
+  modifierait la sortie de relecture des runs déjà en cours.
+- Les flottes mixtes, où le moteur intégré effectue la première exécution et un
+  worker externe relit le même run, ne sont pas prises en charge pour les
+  lectures d'horloge juste après des effets de bord ou des mises à jour de mémo
+  ou d'attributs de recherche.
+
+Si un workflow s'exécute, ou peut être relu, sur plus d'un runner, ne vous fiez
+pas à une lecture d'horloge juste après une étape en ligne. Lisez plutôt
+l'horloge après l'étape durable suivante.
 
 Python et Rust reconstruisent le workflow à partir de l'historique pour
 répondre à une requête ou à une validation de mise à jour avant acceptation. Si
@@ -946,7 +976,9 @@ Ces API sont déterministes lorsqu'elles existent, mais ne partagent pas une mê
 
 Les horloges du mode service partagent un contrat. `Workflow::now()` intégré passe aussi à l'heure enregistrée d'une étape en ligne comme un effet
 de bord, là où les horloges du mode service signalent l'heure comme
-indisponible. Transposez l'opération durable et la politique d'échéance plutôt
+indisponible ; une telle lecture n'est donc pas portable (voir
+[Les lectures d'horloge après une étape en ligne ne sont pas portables](#inline-step-clock-reads)).
+Transposez l'opération durable et la politique d'échéance plutôt
 que de supposer que chaque assistant d'horloge se comporte de la même façon.
 
 #### Ordonner les événements émis avec des séquences {#order-emitted-events-with-sequence-values}

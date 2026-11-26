@@ -900,13 +900,42 @@ Quando o SDK não consegue comprovar o horário, `ctx.replay_now()` lança
 - na entrada com uma tarefa sem portador: Servers anteriores ao 3.6.0, ou um
   run cujo início o Server não consegue comprovar;
 - depois de operações inline e locais, como efeitos colaterais, marcadores de
-  versão, atividades locais e memos. Elas continuam indisponíveis até que o
-  Core defina um horário persistido para esses passos;
+  versão, atualizações de memo e de atributos de pesquisa, e atividades locais.
+  Elas continuam indisponíveis até que o Core defina um horário persistido para
+  esses passos;
 - depois de outros modos de grupo e em escopos de cancelamento;
 - em handlers de consulta: sempre no PHP, e no Python e no Rust a menos que o histórico consultado termine em um limite escalar compatível (limites agrupados não fornecem horário de consulta).
 
 Um `ReplayClockUnavailable` não tratado faz o workflow falhar como qualquer
 outra exceção.
+
+##### Leituras do relógio após passos inline não são portáveis {#inline-step-clock-reads}
+
+Passos inline são efeitos colaterais, marcadores de versão, atualizações de memo
+e de atributos de pesquisa, e atividades locais. Até que o Core defina um
+horário persistido para eles, uma leitura do relógio logo depois de um deles não
+é portável entre runners nem em frotas mistas:
+
+- Os SDKs do modo de serviço (Python, Rust e o SDK de PHP) informam o relógio
+  como indisponível nesse ponto.
+- No motor embutido, `Workflow::now()` passa para o horário registrado do passo.
+- No runner de workers externos (o `WorkflowFiberRunner` do protocolo de workers
+  do pacote embutido, que workers PHP externos usam por meio do bridge), efeitos
+  colaterais e atualizações de memo e de atributos de pesquisa mantêm o horário
+  do limite anterior. Um marcador de versão também mantém o horário do limite
+  anterior na primeira execução, enquanto um replay lê o horário registrado do
+  marcador. Essa divergência dos marcadores de versão é mantida de propósito:
+  substituir o fixture de replay fixado
+  `repeated-version-legacy-clock-boundaries` mudaria a saída do replay de runs
+  que já estão em andamento.
+- Frotas mistas, em que o motor embutido faz a primeira execução e um worker
+  externo faz o replay do mesmo run, não são suportadas para leituras do relógio
+  logo depois de efeitos colaterais ou de atualizações de memo ou de atributos
+  de pesquisa.
+
+Se um workflow roda, ou pode passar por replay, em mais de um runner, não
+dependa de uma leitura do relógio logo depois de um passo inline. Leia o
+relógio depois do próximo passo durável.
 
 Python e Rust reconstroem o workflow a partir do histórico para responder a uma
 consulta ou a uma validação de atualização antes da aceitação. Se o workflow
@@ -944,7 +973,9 @@ Essas APIs são determinísticas quando disponíveis, mas não compartilham um �
 
 Os relógios do modo de serviço compartilham um contrato. `Workflow::now()` embutido também passa para o horário registrado de um passo
 inline, como um efeito colateral, onde os relógios do modo de serviço informam
-o horário como indisponível. Leve a operação durável e a política de prazo em
+o horário como indisponível, então essa leitura não é portável (veja
+[Leituras do relógio após passos inline não são portáveis](#inline-step-clock-reads)).
+Leve a operação durável e a política de prazo em
 vez de presumir que todo helper de relógio se comporta igual.
 
 #### Ordene eventos emitidos com valores de sequência {#order-emitted-events-with-sequence-values}

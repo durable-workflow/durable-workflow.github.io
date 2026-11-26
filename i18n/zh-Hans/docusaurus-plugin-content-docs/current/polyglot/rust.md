@@ -577,7 +577,9 @@ UTC 业务时间。在普通入口处，它是任务 `replay_clock`（Server 3.6
 
 当 SDK 无法证明时间时，它返回 `Error::ReplayClockUnavailable`。这包括内联和本地
 操作（副作用、版本标记、本地活动、备忘录），在 Core 为其定义持久化时间之前，
-它们保持不可用。离线重放可通过 `WorkflowHistory::replay_clock(carrier)` 提供
+它们保持不可用。紧接在这类步骤之后的时钟读取在不同运行器之间或混合集群中不可
+移植；参见[内联步骤之后的时钟读取不可移植](./python.md#inline-step-clock-reads)。
+离线重放可通过 `WorkflowHistory::replay_clock(carrier)` 提供
 载体。完整列表、查询和验证规则、发布状态以及升级说明，请参见
 [跨 SDK 的时钟语义](./python.md#advancing-replay-clock)。
 

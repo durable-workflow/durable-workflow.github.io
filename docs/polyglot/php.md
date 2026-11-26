@@ -276,8 +276,11 @@ the same value, and every replay returns the same values.
 Where the SDK cannot prove the time, it throws
 `DurableWorkflow\Exception\ReplayClockUnavailable`. That includes side effects,
 version markers and local activities, which stay unavailable until Core defines
-a persisted time for them. Query and update handlers read history snapshots and
-never rebuild the workflow body. See the
+a persisted time for them. A clock read right after such a step is not portable
+across runners or mixed fleets; see
+[Clock reads after inline steps are not portable](./python.md#inline-step-clock-reads).
+Query and update handlers read history snapshots and never rebuild the workflow
+body. See the
 [cross-SDK clock semantics](./python.md#advancing-replay-clock) for the full
 list, release status and the upgrade note.
 

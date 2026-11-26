@@ -902,13 +902,44 @@ Wo das SDK die Zeit nicht nachweisen kann, löst `ctx.replay_now()`
 - beim Einstieg mit einer Aufgabe ohne Träger: Server vor 3.6.0 oder ein Run,
   dessen Start der Server nicht nachweisen kann;
 - nach Inline- und lokalen Operationen wie Seiteneffekten, Versionsmarkern,
-  lokalen Aktivitäten und Memos. Diese bleiben nicht verfügbar, bis Core für
-  diese Schritte eine gespeicherte Zeit festlegt;
+  Memo- und Suchattribut-Aktualisierungen sowie lokalen Aktivitäten. Diese
+  bleiben nicht verfügbar, bis Core für diese Schritte eine gespeicherte Zeit
+  festlegt;
 - nach anderen Gruppenmodi und in Abbruchbereichen;
 - in Query-Handlern: in PHP immer, in Python und Rust, sofern die abgefragte Historie nicht an einer unterstützten skalaren Grenze endet (gruppierte Grenzen liefern keine Query-Zeit).
 
 Ein nicht behandeltes `ReplayClockUnavailable` lässt den Workflow wie jede
 andere Ausnahme fehlschlagen.
+
+##### Uhrlesungen nach Inline-Schritten sind nicht portabel {#inline-step-clock-reads}
+
+Inline-Schritte sind Seiteneffekte, Versionsmarker, Memo- und
+Suchattribut-Aktualisierungen sowie lokale Aktivitäten. Bis Core für sie eine
+gespeicherte Zeit festlegt, ist eine Uhrlesung unmittelbar nach einem solchen
+Schritt weder zwischen Runnern noch in gemischten Flotten portabel:
+
+- Die SDKs im Service-Modus (Python, Rust und das PHP SDK) melden die Uhr dort
+  als nicht verfügbar.
+- In der eingebetteten Engine springt `Workflow::now()` zur aufgezeichneten Zeit
+  des Schritts.
+- Im External-Worker-Runner (dem Worker-Protokoll-`WorkflowFiberRunner` des
+  eingebetteten Pakets, den externe PHP-Worker über die Bridge verwenden)
+  behalten Seiteneffekte sowie Memo- und Suchattribut-Aktualisierungen die
+  vorherige Grenzzeit. Ein Versionsmarker behält bei der ersten Ausführung
+  ebenfalls die vorherige Grenzzeit, während ein Replay die aufgezeichnete Zeit
+  des Markers liest. Diese Abweichung bei Versionsmarkern wird bewusst
+  beibehalten: Die gepinnte Replay-Fixture
+  `repeated-version-legacy-clock-boundaries` abzulösen, würde die
+  Replay-Ausgabe bereits laufender Runs ändern.
+- Gemischte Flotten, in denen die eingebettete Engine die erste Ausführung
+  übernimmt und ein externer Worker denselben Run erneut abspielt, werden für
+  Uhrlesungen direkt nach Seiteneffekten sowie Memo- oder
+  Suchattribut-Aktualisierungen nicht unterstützt.
+
+Wenn ein Workflow auf mehr als einem Runner läuft oder dort erneut abgespielt
+werden kann, verlassen Sie sich nicht auf eine Uhrlesung direkt nach einem
+Inline-Schritt. Lesen Sie die Uhr stattdessen nach dem nächsten dauerhaften
+Schritt.
 
 Python und Rust bauen den Workflow aus der Historie neu auf, um eine Query oder
 eine Update-Validierung vor der Annahme zu beantworten. Liest der neu
@@ -946,7 +977,9 @@ Diese APIs sind, soweit vorhanden, deterministisch, teilen aber keine gemeinsame
 
 Die Uhren im Service-Modus teilen einen Vertrag. Das eingebettete `Workflow::now()` springt außerdem zur aufgezeichneten Zeit eines
 Inline-Schritts wie eines Seiteneffekts, wo die Uhren im Service-Modus die Zeit
-als nicht verfügbar melden. Übertragen Sie die dauerhafte Operation und
+als nicht verfügbar melden; eine solche Lesung ist daher nicht portabel (siehe
+[Uhrlesungen nach Inline-Schritten sind nicht portabel](#inline-step-clock-reads)).
+Übertragen Sie die dauerhafte Operation und
 Fristenregel, statt anzunehmen, dass sich jeder Uhrhelfer gleich verhält.
 
 #### Ausgegebene Ereignisse mit Sequenzwerten ordnen {#order-emitted-events-with-sequence-values}

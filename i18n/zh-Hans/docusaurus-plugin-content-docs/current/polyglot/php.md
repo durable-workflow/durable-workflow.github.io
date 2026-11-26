@@ -185,7 +185,8 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 
 当 SDK 无法证明时间时，它会抛出 `DurableWorkflow\Exception\ReplayClockUnavailable`。
 这包括副作用、版本标记和本地活动，在 Core 为其定义持久化时间之前，它们保持
-不可用。查询处理器和更新处理器读取历史快照，从不重建工作流主体。完整列表、发布
+不可用。紧接在这类步骤之后的时钟读取在不同运行器之间或混合集群中不可移植；参见
+[内联步骤之后的时钟读取不可移植](./python.md#inline-step-clock-reads)。查询处理器和更新处理器读取历史快照，从不重建工作流主体。完整列表、发布
 状态以及升级说明，请参见[跨 SDK 的时钟语义](./python.md#advancing-replay-clock)。
 
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}

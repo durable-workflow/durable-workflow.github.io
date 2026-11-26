@@ -287,8 +287,11 @@ retorna os mesmos valores.
 Quando o SDK não consegue comprovar o horário, ele lança
 `DurableWorkflow\Exception\ReplayClockUnavailable`. Isso inclui efeitos
 colaterais, marcadores de versão e atividades locais, que continuam
-indisponíveis até que o Core defina um horário persistido para eles. Handlers
-de consultas e atualizações leem snapshots do histórico e nunca reconstroem o
+indisponíveis até que o Core defina um horário persistido para eles. Uma
+leitura do relógio logo depois de um desses passos não é portável entre runners
+nem em frotas mistas; veja
+[Leituras do relógio após passos inline não são portáveis](./python.md#inline-step-clock-reads).
+Handlers de consultas e atualizações leem snapshots do histórico e nunca reconstroem o
 corpo do workflow. Veja a
 [semântica de relógio entre SDKs](./python.md#advancing-replay-clock) para a
 lista completa, o status de lançamento e a nota de atualização.

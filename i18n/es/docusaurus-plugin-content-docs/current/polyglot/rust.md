@@ -602,7 +602,10 @@ Cuando el SDK no puede demostrar la hora, devuelve
 `Error::ReplayClockUnavailable`. Eso incluye las operaciones en línea y locales
 (efectos secundarios, marcadores de versión, actividades locales, memos), que
 siguen sin estar disponibles hasta que Core defina una hora persistida para
-ellas. El replay sin conexión proporciona un portador con
+ellas. Una lectura del reloj justo después de uno de esos pasos no es portable
+entre runners ni en flotas mixtas; consulta
+[Las lecturas del reloj tras pasos en línea no son portables](./python.md#inline-step-clock-reads).
+El replay sin conexión proporciona un portador con
 `WorkflowHistory::replay_clock(carrier)`. Consulta la
 [semántica del reloj entre SDK](./python.md#advancing-replay-clock) para ver la
 lista completa, la regla para consultas y validaciones, el estado de publicación

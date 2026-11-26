@@ -285,7 +285,11 @@ und jedes Replay liefert dieselben Werte.
 Wo das SDK die Zeit nicht nachweisen kann, wirft es
 `DurableWorkflow\Exception\ReplayClockUnavailable`. Das umfasst Seiteneffekte,
 Versionsmarker und lokale Aktivitäten, die nicht verfügbar bleiben, bis Core
-für sie eine gespeicherte Zeit festlegt. Query- und Update-Handler lesen
+für sie eine gespeicherte Zeit festlegt. Eine Uhrlesung direkt nach einem
+solchen Schritt ist weder zwischen Runnern noch in gemischten Flotten portabel;
+siehe
+[Uhrlesungen nach Inline-Schritten sind nicht portabel](./python.md#inline-step-clock-reads).
+Query- und Update-Handler lesen
 Historien-Snapshots und bauen den Workflow-Körper nie neu auf. Die vollständige
 Liste, den Release-Status und den Upgrade-Hinweis finden Sie in der
 [SDK-übergreifenden Uhrsemantik](./python.md#advancing-replay-clock).
