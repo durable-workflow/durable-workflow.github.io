@@ -33,9 +33,9 @@ Cloud Dev は現在利用できます。4つの HA プランは認定中で、�
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU、1 GB RAM | 5 GB | 単一ホスト、SLA なし | $0.075/時、稼働月最低 $2、月額上限 $50 |
 | Cloud Standard | 2 vCPU、4 GB RAM | 25 GB | 予定: 単一リージョン HA、99.99% SLA | $0.45/時、稼働月最低 $10、月額上限 $300 |
-| Cloud Multi-Region | 2 vCPU、4 GB RAM | 25 GB | 予定: 複数リージョン HA、99.99% SLA | $0.60/時、稼働月最低 $15、月額上限 $400 |
-| Cloud Business | 4 vCPU、8 GB RAM | 100 GB | 予定: 単一リージョン HA、99.99% SLA | $2.25/時、稼働月最低 $50、月額上限 $1,500 |
-| Cloud Business Multi-Region | 4 vCPU、8 GB RAM | 100 GB | 予定: 複数リージョン HA、99.99% SLA | $3.00/時、稼働月最低 $75、月額上限 $2,000 |
+| Cloud Multi-Region | 2 vCPU、4 GB RAM | 25 GB | 予定: 複数リージョン HA、99.99% SLA | $0.525/時、稼働月最低 $13、月額上限 $350 |
+| Cloud Business | 4 vCPU、8 GB RAM | 100 GB | 予定: 単一リージョン HA、99.99% SLA | $0.90/時、稼働月最低 $20、月額上限 $600 |
+| Cloud Business Multi-Region | 4 vCPU、8 GB RAM | 100 GB | 予定: 複数リージョン HA、99.99% SLA | $1.125/時、稼働月最低 $28、月額上限 $750 |
 
 容量は管理ランタイムのコンポーネントを対象とし、利用者の Worker 計算資源は含みません。予定の HA プランでは複製と待機系容量が料金に含まれます。表はレプリカを合算して追加のワークフロー実行容量としていません。すべてのプランに Managed Waterline、基本的な暗号化バックアップ、アップグレード、安定したランタイム URL を含みます。
 

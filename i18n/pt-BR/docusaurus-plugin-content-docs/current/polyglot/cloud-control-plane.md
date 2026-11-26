@@ -44,9 +44,9 @@ disponibilidade e termos de SLA abaixo são planejados, não ofertas atuais de c
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Host único, sem SLA | $0.075/hora, mínimo de $2 por mês ativo, teto de $50/mês |
 | Cloud Standard | 2 vCPU, 4 GB RAM | 25 GB | HA planejada em região única, SLA de 99.99% | $0.45/hora, mínimo de $10 por mês ativo, teto de $300/mês |
-| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | HA multirregião planejada, SLA de 99.99% | $0.60/hora, mínimo de $15 por mês ativo, teto de $400/mês |
-| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | HA planejada em região única, SLA de 99.99% | $2.25/hora, mínimo de $50 por mês ativo, teto de $1,500/mês |
-| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | HA multirregião planejada, SLA de 99.99% | $3.00/hora, mínimo de $75 por mês ativo, teto de $2,000/mês |
+| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | HA multirregião planejada, SLA de 99.99% | $0.525/hora, mínimo de $13 por mês ativo, teto de $350/mês |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | HA planejada em região única, SLA de 99.99% | $0.90/hora, mínimo de $20 por mês ativo, teto de $600/mês |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | HA multirregião planejada, SLA de 99.99% | $1.125/hora, mínimo de $28 por mês ativo, teto de $750/mês |
 
 A capacidade cobre os componentes do runtime gerenciado, não a computação dos
 workers do cliente. Nos planos HA planejados, replicação e capacidade de

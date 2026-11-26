@@ -33,9 +33,9 @@ Cloud Dev está disponible. Los cuatro planes de alta disponibilidad están en c
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Un host, sin SLA | $0.075/hora, mínimo de $2 por mes activo, máximo de $50/mes |
 | Cloud Standard | 2 vCPU, 4 GB RAM | 25 GB | HA prevista en una región, SLA del 99.99% | $0.45/hora, mínimo de $10 por mes activo, máximo de $300/mes |
-| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | HA multirregión prevista, SLA del 99.99% | $0.60/hora, mínimo de $15 por mes activo, máximo de $400/mes |
-| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | HA prevista en una región, SLA del 99.99% | $2.25/hora, mínimo de $50 por mes activo, máximo de $1,500/mes |
-| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | HA multirregión prevista, SLA del 99.99% | $3.00/hora, mínimo de $75 por mes activo, máximo de $2,000/mes |
+| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | HA multirregión prevista, SLA del 99.99% | $0.525/hora, mínimo de $13 por mes activo, máximo de $350/mes |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | HA prevista en una región, SLA del 99.99% | $0.90/hora, mínimo de $20 por mes activo, máximo de $600/mes |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | HA multirregión prevista, SLA del 99.99% | $1.125/hora, mínimo de $28 por mes activo, máximo de $750/mes |
 
 La capacidad cubre los componentes del runtime gestionado, no el cómputo de workers del cliente. En los planes HA previstos, replicación y capacidad de reserva están incluidas en el precio; la tabla no suma réplicas como capacidad adicional de ejecución. Todos los planes incluyen Managed Waterline, copias básicas cifradas, actualizaciones y una URL de runtime estable.
 
