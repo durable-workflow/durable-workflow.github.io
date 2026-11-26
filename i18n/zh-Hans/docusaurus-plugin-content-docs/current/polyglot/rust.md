@@ -216,7 +216,7 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 ## Worker 拦截器 {#worker-interceptors}
 
-Worker 拦截器将从下一个 Rust SDK 版本开始提供。它们为 Worker 运行的每个任务统一添加审计日志、指标标签或租户上下文等横切行为。实现 `WorkerInterceptor`，并通过 `Worker::interceptor` 注册，或通过 `Worker::interceptors` 注册多个。每个钩子默认直接传递调用，因此只需实现所需的钩子；`PassthroughWorkerInterceptor` 是不执行任何操作的拦截器。钩子的形式与 [Python](./python.md#worker-interceptors) 和 [PHP](./php.md#worker-interceptors) SDK 拦截器一致。
+Worker 拦截器从 Rust SDK 4.25.0 开始提供。它们为 Worker 运行的每个任务统一添加审计日志、指标标签或租户上下文等横切行为。实现 `WorkerInterceptor`，并通过 `Worker::interceptor` 注册，或通过 `Worker::interceptors` 注册多个。每个钩子默认直接传递调用，因此只需实现所需的钩子；`PassthroughWorkerInterceptor` 是不执行任何操作的拦截器。钩子的形式与 [Python](./python.md#worker-interceptors) 和 [PHP](./php.md#worker-interceptors) SDK 拦截器一致。
 
 下面的审计拦截器会记录每个工作流任务的结果和每次活动尝试：
 

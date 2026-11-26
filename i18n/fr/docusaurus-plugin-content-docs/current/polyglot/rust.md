@@ -289,7 +289,7 @@ Pour les métriques OpenTelemetry, implémentez le recorder avec votre meter exi
 
 ## Intercepteurs worker {#worker-interceptors}
 
-Les intercepteurs worker sont disponibles à partir de la prochaine version du SDK Rust. Ils ajoutent
+Les intercepteurs worker sont disponibles à partir du SDK Rust 4.25.0. Ils ajoutent
 un comportement transversal, comme la journalisation d'audit, des tags de métriques ou un contexte de tenant,
 une seule fois pour chaque tâche exécutée par un worker. Implémentez `WorkerInterceptor` et enregistrez-le
 avec `Worker::interceptor`, ou plusieurs avec `Worker::interceptors`. Chaque hook

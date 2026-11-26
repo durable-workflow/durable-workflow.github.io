@@ -295,7 +295,7 @@ boundary comparison.
 
 ## Worker interceptors {#worker-interceptors}
 
-Worker interceptors are available from the next PHP SDK release. Pass ordered
+Worker interceptors are available in PHP SDK 3.32.0 and later. Pass ordered
 `interceptors` to `Worker::create()` (or the `Worker` constructor) to add audit
 logging, metric tags, tenant context or tracing around every task once,
 instead of in each handler. Each interceptor implements

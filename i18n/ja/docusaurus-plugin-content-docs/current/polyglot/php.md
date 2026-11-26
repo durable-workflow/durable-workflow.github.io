@@ -197,7 +197,7 @@ Worker は `workflow_entry_arguments_validation` を自動的に通知します�
 
 ## Worker インターセプター {#worker-interceptors}
 
-Worker インターセプターは次の PHP SDK リリースから利用できます。順序付きの `interceptors` を `Worker::create()`（または `Worker` コンストラクター）に渡すと、監査ログ、メトリクスタグ、テナントコンテキスト、トレースを各ハンドラーではなく、すべてのタスクの前後に一度だけ追加できます。各インターセプターは `DurableWorkflow\Worker\Interceptor\WorkerInterceptor` を実装します。必要なフックだけを実装するには `PassthroughWorkerInterceptor` を継承します。フックの形は [Python](./python.md#worker-interceptors) と [Rust](./rust.md#worker-interceptors) の SDK インターセプターと同じです。
+Worker インターセプターは PHP SDK 3.32.0 以降で利用できます。順序付きの `interceptors` を `Worker::create()`（または `Worker` コンストラクター）に渡すと、監査ログ、メトリクスタグ、テナントコンテキスト、トレースを各ハンドラーではなく、すべてのタスクの前後に一度だけ追加できます。各インターセプターは `DurableWorkflow\Worker\Interceptor\WorkerInterceptor` を実装します。必要なフックだけを実装するには `PassthroughWorkerInterceptor` を継承します。フックの形は [Python](./python.md#worker-interceptors) と [Rust](./rust.md#worker-interceptors) の SDK インターセプターと同じです。
 
 次の監査インターセプターは、すべてのワークフロータスクの結果とアクティビティ試行をログに記録します。
 

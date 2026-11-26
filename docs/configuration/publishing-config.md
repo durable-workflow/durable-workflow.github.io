@@ -243,7 +243,7 @@ Every export also includes an `integrity` block computed after redaction. The ch
 
 ## Worker interceptors {#worker-interceptors}
 
-Worker interceptors are available from the next Workflow package release.
+Worker interceptors are available in Workflow 2.42.0 and later.
 Embedded Durable Workflow runs ordered worker interceptors around the workflow
 tasks, activities, queries and update validations it executes in your
 application's processes. Use them for audit logging, metric tags, tenant context or tracing that you want to

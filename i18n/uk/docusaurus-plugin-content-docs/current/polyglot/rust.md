@@ -281,7 +281,7 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 ## Перехоплювачі worker {#worker-interceptors}
 
-Перехоплювачі worker доступні починаючи з наступного випуску Rust SDK. Вони один
+Перехоплювачі worker доступні починаючи з Rust SDK 4.25.0. Вони один
 раз додають наскрізну поведінку, як-от журнал аудиту, мітки метрик чи контекст
 tenant, для кожного завдання, яке виконує worker. Реалізуйте `WorkerInterceptor` і
 зареєструйте його через `Worker::interceptor` або кілька через `Worker::interceptors`.

@@ -300,8 +300,7 @@ para una comparación más amplia de límites del runtime.
 
 ## Interceptores de worker {#worker-interceptors}
 
-Los interceptores de worker están disponibles a partir de la próxima versión del
-SDK de PHP. Pasa `interceptors` ordenados a `Worker::create()` (o al constructor
+Los interceptores de worker están disponibles a partir del SDK de PHP 3.32.0. Pasa `interceptors` ordenados a `Worker::create()` (o al constructor
 de `Worker`) para añadir una sola vez registros de auditoría, etiquetas de
 métricas, contexto de tenant o trazas alrededor de cada tarea, en lugar de
 hacerlo en cada manejador. Cada interceptor implementa

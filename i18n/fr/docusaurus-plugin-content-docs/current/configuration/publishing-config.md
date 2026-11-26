@@ -243,7 +243,7 @@ Chaque export inclut aussi un bloc `integrity` calculé après masquage. La somm
 
 ## Intercepteurs worker {#worker-interceptors}
 
-Les intercepteurs worker sont disponibles à partir de la prochaine version du paquet Workflow.
+Les intercepteurs worker sont disponibles à partir de Workflow 2.42.0.
 Durable Workflow embarqué exécute des intercepteurs worker ordonnés autour des tâches de workflow,
 des activités, des requêtes et des validations de mises à jour qu'il exécute dans les processus de votre application. Utilisez-les
 pour la journalisation d'audit, les tags de métriques, le contexte de tenant ou le traçage que vous voulez

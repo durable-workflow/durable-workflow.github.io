@@ -302,7 +302,7 @@ Laufzeitgrenzen umfassender.
 
 ## Worker-Interceptors {#worker-interceptors}
 
-Worker-Interceptors sind ab dem nächsten Release des PHP SDK verfügbar. Übergeben
+Worker-Interceptors sind ab PHP SDK 3.32.0 verfügbar. Übergeben
 Sie geordnete `interceptors` an `Worker::create()` (oder den `Worker`-Konstruktor),
 um Audit-Logging, Metrik-Tags, Mandantenkontext oder Tracing einmal um jeden Task
 herum hinzuzufügen, statt in jedem Handler. Jeder Interceptor implementiert

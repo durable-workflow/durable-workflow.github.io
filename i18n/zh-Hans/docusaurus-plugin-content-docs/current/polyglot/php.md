@@ -194,7 +194,7 @@ Worker 会自动声明 `workflow_entry_arguments_validation`。在配套 Server 
 
 ## Worker 拦截器 {#worker-interceptors}
 
-Worker 拦截器将从下一个 PHP SDK 版本开始提供。向 `Worker::create()`（或 `Worker` 构造函数）传入有序的 `interceptors`，即可围绕每个任务统一添加审计日志、指标标签、租户上下文或追踪，而无需在每个处理器中分别实现。每个拦截器都实现 `DurableWorkflow\Worker\Interceptor\WorkerInterceptor`；继承 `PassthroughWorkerInterceptor` 即可只实现所需的钩子。钩子的形式与 [Python](./python.md#worker-interceptors) 和 [Rust](./rust.md#worker-interceptors) SDK 拦截器一致。
+Worker 拦截器从 PHP SDK 3.32.0 开始提供。向 `Worker::create()`（或 `Worker` 构造函数）传入有序的 `interceptors`，即可围绕每个任务统一添加审计日志、指标标签、租户上下文或追踪，而无需在每个处理器中分别实现。每个拦截器都实现 `DurableWorkflow\Worker\Interceptor\WorkerInterceptor`；继承 `PassthroughWorkerInterceptor` 即可只实现所需的钩子。钩子的形式与 [Python](./python.md#worker-interceptors) 和 [Rust](./rust.md#worker-interceptors) SDK 拦截器一致。
 
 下面的审计拦截器会记录每个工作流任务的结果和每次活动尝试：
 

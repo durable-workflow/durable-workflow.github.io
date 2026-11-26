@@ -304,7 +304,7 @@ mais ampla dos limites de runtime.
 
 ## Interceptadores de worker {#worker-interceptors}
 
-Os interceptadores de worker estão disponíveis a partir da próxima versão do SDK PHP. Passe
+Os interceptadores de worker estão disponíveis a partir do SDK PHP 3.32.0. Passe
 `interceptors` ordenados para `Worker::create()` (ou para o construtor de `Worker`) para adicionar
 logs de auditoria, tags de métricas, contexto de tenant ou tracing em torno de cada tarefa uma única vez,
 em vez de em cada handler. Cada interceptador implementa

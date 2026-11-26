@@ -244,8 +244,7 @@ Cada exportação também inclui um bloco `integrity` calculado após a ocultaç
 
 ## Interceptadores de worker {#worker-interceptors}
 
-Os interceptadores de worker estão disponíveis a partir da próxima versão do
-pacote Workflow. O Durable Workflow embarcado executa interceptadores de worker
+Os interceptadores de worker estão disponíveis a partir do Workflow 2.42.0. O Durable Workflow embarcado executa interceptadores de worker
 ordenados em torno das tarefas de workflow, atividades, consultas e validações
 de atualizações que executa nos processos da sua aplicação. Use-os para logs de
 auditoria, tags de métricas, contexto de tenant ou tracing que você queira

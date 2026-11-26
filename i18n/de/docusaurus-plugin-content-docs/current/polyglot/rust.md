@@ -283,7 +283,7 @@ Für OpenTelemetry-Metriken implementieren Sie den Recorder mit Ihrem vorhandene
 
 ## Worker-Interceptors {#worker-interceptors}
 
-Worker-Interceptors sind ab dem nächsten Release des Rust SDK verfügbar. Sie fügen
+Worker-Interceptors sind ab Rust SDK 4.25.0 verfügbar. Sie fügen
 querschnittliches Verhalten wie Audit-Logging, Metrik-Tags oder Mandantenkontext
 einmal für jeden Task hinzu, den ein Worker ausführt. Implementieren Sie
 `WorkerInterceptor` und registrieren Sie ihn mit `Worker::interceptor`, oder

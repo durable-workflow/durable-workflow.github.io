@@ -221,7 +221,7 @@ OpenTelemetry のメトリクスには既存 meter で recorder を実装し、�
 
 ## Worker インターセプター {#worker-interceptors}
 
-Worker インターセプターは次の Rust SDK リリースから利用できます。監査ログ、メトリクスタグ、テナントコンテキストなどの横断的な処理を、Worker が実行するすべてのタスクに対して一度だけ追加できます。`WorkerInterceptor` を実装して `Worker::interceptor` で登録するか、複数を `Worker::interceptors` で登録します。すべてのフックはデフォルトで呼び出しをそのまま次に渡すため、必要なフックだけを実装します。`PassthroughWorkerInterceptor` は何もしないインターセプターです。フックの形は [Python](./python.md#worker-interceptors) と [PHP](./php.md#worker-interceptors) の SDK インターセプターと同じです。
+Worker インターセプターは Rust SDK 4.25.0 以降で利用できます。監査ログ、メトリクスタグ、テナントコンテキストなどの横断的な処理を、Worker が実行するすべてのタスクに対して一度だけ追加できます。`WorkerInterceptor` を実装して `Worker::interceptor` で登録するか、複数を `Worker::interceptors` で登録します。すべてのフックはデフォルトで呼び出しをそのまま次に渡すため、必要なフックだけを実装します。`PassthroughWorkerInterceptor` は何もしないインターセプターです。フックの形は [Python](./python.md#worker-interceptors) と [PHP](./php.md#worker-interceptors) の SDK インターセプターと同じです。
 
 次の監査インターセプターは、すべてのワークフロータスクの結果とアクティビティ試行をログに記録します。
 

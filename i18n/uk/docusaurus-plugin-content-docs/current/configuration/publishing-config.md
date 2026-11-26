@@ -333,7 +333,7 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 
 ## Перехоплювачі worker {#worker-interceptors}
 
-Перехоплювачі worker доступні починаючи з наступного випуску пакета Workflow.
+Перехоплювачі worker доступні починаючи з Workflow 2.42.0.
 Вбудований Durable Workflow запускає впорядковані перехоплювачі worker навколо
 завдань workflow, activity, query та валідацій update, які він виконує в
 процесах вашого застосунку. Використовуйте їх для журналу аудиту, міток метрик,

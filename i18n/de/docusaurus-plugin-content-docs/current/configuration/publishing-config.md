@@ -351,7 +351,7 @@ Prüfer Schlüssel unterscheiden müssen.
 
 ## Worker-Interceptors {#worker-interceptors}
 
-Worker-Interceptors sind ab dem nächsten Release des Workflow-Pakets verfügbar.
+Worker-Interceptors sind ab Workflow 2.42.0 verfügbar.
 Das eingebettete Durable Workflow führt geordnete Worker-Interceptors um die
 Workflow-Tasks, Aktivitäten, Abfragen und Update-Validierungen aus, die es in
 den Prozessen Ihrer Anwendung ausführt. Verwenden Sie sie für Audit-Logging,

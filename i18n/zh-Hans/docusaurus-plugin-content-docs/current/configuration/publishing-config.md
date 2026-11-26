@@ -240,7 +240,7 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 
 ## Worker 拦截器 {#worker-interceptors}
 
-Worker 拦截器将从下一个 Workflow 包版本开始提供。嵌入式 Durable Workflow 会围绕它在应用进程中执行的工作流任务、活动、查询和更新验证运行有序的 Worker 拦截器。审计日志、指标标签、租户上下文或追踪等逻辑只需编写一次，而无需在每个工作流和活动中重复实现。钩子的形式与 [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors) 和 [Rust](../polyglot/rust.md#worker-interceptors) SDK 拦截器一致。
+Worker 拦截器从 Workflow 2.42.0 开始提供。嵌入式 Durable Workflow 会围绕它在应用进程中执行的工作流任务、活动、查询和更新验证运行有序的 Worker 拦截器。审计日志、指标标签、租户上下文或追踪等逻辑只需编写一次，而无需在每个工作流和活动中重复实现。钩子的形式与 [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors) 和 [Rust](../polyglot/rust.md#worker-interceptors) SDK 拦截器一致。
 
 在 `config/workflows.php` 的 `workflows.v2.interceptors` 下列出拦截器类。它们从 Laravel 容器中解析，因此支持构造函数注入，并按列出的顺序运行；第一个是最外层包装。
 

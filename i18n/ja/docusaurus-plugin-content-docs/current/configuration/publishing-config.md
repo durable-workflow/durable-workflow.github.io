@@ -240,7 +240,7 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 
 ## Worker インターセプター {#worker-interceptors}
 
-Worker インターセプターは次の Workflow パッケージリリースから利用できます。組み込み Durable Workflow は、アプリケーションのプロセス内で実行するワークフロータスク、アクティビティ、クエリ、更新の検証の前後で、順序付きの Worker インターセプターを実行します。監査ログ、メトリクスタグ、テナントコンテキスト、トレースなど、各ワークフローやアクティビティではなく一度だけ書きたい処理に使用します。フックの形は [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors)、[Rust](../polyglot/rust.md#worker-interceptors) の SDK インターセプターと同じです。
+Worker インターセプターは Workflow 2.42.0 以降で利用できます。組み込み Durable Workflow は、アプリケーションのプロセス内で実行するワークフロータスク、アクティビティ、クエリ、更新の検証の前後で、順序付きの Worker インターセプターを実行します。監査ログ、メトリクスタグ、テナントコンテキスト、トレースなど、各ワークフローやアクティビティではなく一度だけ書きたい処理に使用します。フックの形は [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors)、[Rust](../polyglot/rust.md#worker-interceptors) の SDK インターセプターと同じです。
 
 インターセプタークラスを `config/workflows.php` の `workflows.v2.interceptors` に列挙します。これらは Laravel コンテナから解決されるためコンストラクターインジェクションが使え、列挙した順に実行されます。最初のものが最も外側のラッパーです。
 
