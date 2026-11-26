@@ -151,6 +151,66 @@ Remote workers register workflow, activity, query, and update handlers through
 Use the generated [PHP SDK API reference](https://php.durable-workflow.com/api/)
 for complete parameters and return types.
 
+## Update validators {#update-validators}
+
+PHP SDK 3.32.0 and later let a workflow refuse an update before it is accepted. Put `#[UpdateValidator]` on a method of the workflow class, next to its `#[Update]` handler. The low-level form is `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`, called after `registerUpdate()`.
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+The validator takes a `QueryContext` with the run's committed history, followed by the update's arguments. The worker advertises the validator to the Server and polls workflow and update-validation tasks together. Registration is refused with `update_validation_tasks_unavailable` when the Server doesn't advertise synchronous update validation. For each validation task, the worker runs only the validator:
+
+- Returning normally approves the update, and the Server accepts it.
+- Throwing, or returning `false`, rejects it with `update_validator_rejected`, the exception message and class, and any field errors from an `errors()` method on the exception. The update is never accepted and its handler never runs. The Server records the rejection only as an `UpdateRejected` audit event.
+- Trying to schedule durable work is refused with `UpdateValidatorCommandRefused`, which rejects the update.
+
+On the client, `updateWorkflow()` throws `UpdateFailed`. `rejectedByValidator()` identifies a validator rejection and `validationErrors()` returns its field errors. `validationFailed()` is true when the Server couldn't get a decision in time; nothing was accepted, so retry with the same request ID.
+
+Validators never run during replay. Each validation sees only the history committed before its own task, so two validations running at the same time can both pass a check that only one of them should. A validator worker doesn't use carried workflow polls. Worker interceptors wrap update validation tasks through `executeUpdateValidation()`; they see the validator's decision but can't change it.
+
+## Replay-aware workflow logging {#workflow-logging}
+
+The worker replays a workflow from its history on every workflow task, so an ordinary log call in workflow code repeats once for every completed step. PHP SDK 3.32.0 and later provide `$context->logger()`. It returns a PSR-3 logger that writes through the logger you pass to the `Worker` (the named `logger` argument), and only when the code runs past the run's committed history:
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+Each line carries `namespace`, `workflow_type`, `workflow_id` and `workflow_run_id`. `$context->replayState()` returns `WorkflowReplayState::Replaying`, `Executing` or `Unavailable`, and `isReplaying()` is its boolean form. Use them for diagnostics only; never choose workflow commands from them.
+
+Lines are written only after the Worker submits the workflow task that ran the code and the Server accepts it. A superseded replay, a speculative replay the Server declines and a refused completion write nothing. Code that parks on a pending child or operation handle without recording a step logs once, in the task that moves past the wait. A `logger()` call inside a side-effect closure writes nothing.
+
+If the worker dies between the Server's acceptance and the write, those lines are lost. This is a process logger, not an outbox for business effects. Keep log handlers fast and non-blocking: a handler that waits on the network stalls the worker and can cost it the task lease. Logger failures are caught and never change the workflow's commands.
+
 ## Activity retry context and owning run {#activity-retry-context}
 
 PHP SDK **3.6.1 or later** exposes `$context->retryInfo`, `$context->workflowId` and `$context->runId` in service-mode activities. Check `$context->retryInfo->isLastConfiguredAttempt() === true` for the final configured attempt of a bounded policy. `attemptNumber` preserves the original received attempt number.
@@ -312,6 +372,153 @@ same representative Laravel use case across v1, v2 embedded, and this shipped
 service-mode bridge, including drain and rollback. Use
 [Deployment Modes](/docs/polyglot/deployment-modes/) for the wider runtime
 boundary comparison.
+
+## Worker interceptors {#worker-interceptors}
+
+Worker interceptors are available in PHP SDK 3.32.0 and later. Pass ordered
+`interceptors` to `Worker::create()` (or the `Worker` constructor) to add audit
+logging, metric tags, tenant context or tracing around every task once,
+instead of in each handler. Each interceptor implements
+`DurableWorkflow\Worker\Interceptor\WorkerInterceptor`; extend
+`PassthroughWorkerInterceptor` to implement only the hooks you need. The hook
+shape matches the [Python](./python.md#worker-interceptors) and
+[Rust](./rust.md#worker-interceptors) SDK interceptors.
+
+This audit interceptor logs every workflow task outcome and activity attempt:
+
+```php
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\Interceptor\ActivityInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\PassthroughWorkerInterceptor;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskOutcome;
+use Psr\Log\LoggerInterface;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'workflow_type' => $context->workflowType,
+            'attempt' => $context->workflowTaskAttempt,
+            'replayed_history' => $context->replaying,
+            'commands' => $outcome->commandTypes(),
+        ]);
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+
+$worker = Worker::create($client, 'orders', container: $container,
+    interceptors: [AuditInterceptor::class]);
+```
+
+| Hook | Context | `$next` returns |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (also `replayState()`), `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` with a copy of the commands |
+| `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | the activity result |
+| `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | the query result |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `UpdateValidationOutcome` with `approved`, `reason`, `message`, `failureType`, `validationErrors` |
+
+Interceptors run in the order you list them. The first interceptor is the
+outermost wrapper: it runs first before the task and last after it. Each hook
+calls `$next($context)` to continue the chain. When tracing is configured, the
+built-in worker spans stay outermost, so interceptors run inside the active
+task span.
+
+Workflow-task interceptors cannot break determinism:
+
+- `executeWorkflowTask` wraps the workflow code that produces one workflow
+  task's commands, once per task attempt. `replaying` is `true` when earlier
+  workflow tasks already recorded commands, so the workflow code re-ran that
+  committed prefix first. The outcome holds only the commands this task adds;
+  replayed commands are never resubmitted.
+- `replayState()` reports the same thing as the `WorkflowReplayState` that
+  `WorkflowContext::replayState()` uses: `Replaying` or `Executing`.
+- A retried attempt (`workflowTaskAttempt > 1`) can repeat an outcome whose task
+  failed, so make external audit writes idempotent.
+- Update tasks (`updateId` set) run the update handler against committed state
+  without re-running the workflow body; for them `replaying` only reports that
+  earlier commands exist.
+- The worker submits exactly the commands the workflow code produced. The
+  outcome is a copy; returning a different outcome, or passing a different
+  context to `$next`, changes nothing.
+- A failure from the workflow code reaches the worker unchanged, even if an
+  interceptor catches it and returns normally.
+- An exception thrown by an interceptor fails the workflow task. Nothing is
+  recorded and the Server retries the task. Skipping `$next`, or calling it more
+  than once, fails the task with `WorkflowTaskInterceptorViolation`.
+
+Update-validation interceptors (`executeUpdateValidation()`) wrap the run of an
+update's validator before the Server accepts the update. They see the decision
+as a read-only `UpdateValidationOutcome` and cannot change the decision, the
+update's arguments or the history the validator reads: the validator always
+runs read-only in its own Fiber with the worker's copy of the task, and the
+worker answers with the validator's own decision. An exception from the
+interceptor, or skipping `$next` or calling it more than once
+(`UpdateValidationInterceptorViolation`), answers the task with
+`update_validation_worker_failed`, so the update is not accepted and the caller
+can retry.
+
+Activity and query interceptors may change arguments with
+`$context->withArguments(...)` and may change the returned value, because
+activity results are recorded once and queries record nothing. Activity
+exceptions pass through every interceptor unless one handles them. Activity
+interceptors wrap remote and local activities; `local` tells them apart. With
+cooperative cancellation, remote, cooperative local and prepared local activity
+callbacks and their interceptors run in the activity's child process, so memory
+changes there do not reach the worker process.
+
+### Container and framework configuration {#worker-interceptor-configuration}
+
+Pass interceptor instances or class names. Class names are resolved from the
+PSR-11 container passed to the worker, the same way attributed handlers are.
+Without a container, a class name must have no required constructor arguments.
+
+In Laravel and Symfony service mode, list interceptor classes under
+`worker.interceptors`. They are resolved from the framework container in that
+order:
+
+```php
+// config/durable-workflow.php
+'worker' => [
+    'interceptors' => [App\Durable\AuditInterceptor::class],
+],
+```
+
+```yaml
+# config/packages/durable_workflow.yaml
+durable_workflow:
+  worker:
+    interceptors:
+      - App\Durable\AuditInterceptor
+```
+
+Embedded Laravel workflows configure their own interceptors under
+`workflows.v2.interceptors`; see
+[embedded worker interceptors](../configuration/publishing-config.md#worker-interceptors).
+The [PHP SDK reference](https://github.com/durable-workflow/sdk-php/blob/main/docs/sdk-reference.md#worker-interceptors)
+has the full interceptor contract.
 
 ## Query results with binary values {#query-binary-results}
 

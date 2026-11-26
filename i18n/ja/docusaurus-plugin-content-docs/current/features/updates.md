@@ -14,6 +14,7 @@ sidebar_position: 3
 - 履歴と Webhook ルーティングには宣言した永続更新名を使います。`#[UpdateMethod('mark-approved')]` は PHP メソッド名を変更しても公開呼び出し名を維持します。
 - 過去や終了済みの実行に対しては、現在の実行を黙って変更せず拒否します。
 - ハンドラー実行前に、未宣言の名前を `rejected_unknown_update`、契約に合わない引数を機械可読な `validation_errors` 付きの `rejected_invalid_arguments` で拒否します。
+- [更新バリデーター](#validate-updates-before-acceptance)が拒否したリクエストを、受理前に `update_validator_rejected` として拒否します。
 
 クエリと同じく、更新はまずコミット済み履歴をリプレイします。クエリとは異なり、安全にリプレイできる状態を変更して値を返せます。
 
@@ -110,6 +111,53 @@ $latest->closedAt();     // null until the lifecycle closes
 ```
 
 `inspectUpdate()` はワークフロー実行を待ちません。保存された永続ライフサイクルを再読込し、現在の `UpdateResult` を返します。
+
+## 受理前に更新を検証する {#validate-updates-before-acceptance}
+
+バリデーターがない場合、業務ルールに反する更新はいったん受理されてから失敗します。失敗した更新として記録され、呼び出し側は不正なリクエストと失敗した操作を区別できません。バリデーターを宣言すると、受理前にリクエストを拒否できます。バリデーターには Workflow 2.42.0 以降が必要です。
+
+```php
+use Workflow\UpdateMethod;
+use Workflow\UpdateValidator;
+use Workflow\V2\Workflow;
+
+final class CartWorkflow extends Workflow
+{
+    private array $items = [];
+
+    #[UpdateMethod('add-item')]
+    public function addItem(string $item): array
+    {
+        $this->items[] = $item;
+
+        return $this->items;
+    }
+
+    #[UpdateValidator('add-item')]
+    public function validateAddItem(string $item): void
+    {
+        if (count($this->items) >= 10) {
+            throw new \RuntimeException('The cart is full.');
+        }
+    }
+}
+```
+
+`#[UpdateValidator]` は、更新を永続名で指定します。更新にエイリアスがない場合はメソッド名で指定します。バリデーターは更新と同じ引数を受け取ります。更新を受理する前に、エンジンは履歴から実行の状態を再構築し、バリデーターだけを呼び出します。
+
+- 通常どおり戻った場合、更新はいつもどおり受理・適用されます。
+- 例外を投げるか `false` を返した場合、更新は理由 `update_validator_rejected`、結果 `rejected_invalid_arguments` で拒否されます。`rejectedByValidator()` は true になり、`rejectionMessage()` は例外メッセージを、`validationErrors()` は Laravel の `ValidationException` のエラーを返します。`update()` は理由とバリデーターのメッセージを含む `LogicException` を投げます。
+- 拒否された更新は受理されず、ハンドラーも実行されず、ワークフローも起こされません。ほかの拒否と同様に、記録されるのは監査イベント `UpdateRejected` だけで、リプレイはこれを無視します。
+
+バリデーターは読み取り専用です。再構築されたワークフロー状態は読めますが、永続的な呼び出し（アクティビティ、タイマー、子ワークフロー、シグナル、side effect、`await`、`getVersion()`、`patched()`、continue-as-new、memo または検索属性の upsert）はすべて `UpdateValidatorCommandException` を投げ、更新を拒否します。バリデーターが再構築された状態に加えた変更は破棄されます。ジェネレーターのバリデーターは本体が実行されないため、拒否されます。
+
+バリデーターは履歴に記録されず、リプレイ中にも実行されないため、決定性に影響しません。バリデーターが見るのは確定済み履歴の状態です。受理済みでまだ適用されていない更新は見えません。リプレイとバリデーターは、更新の受理処理が実行のロックを保持している間に動くため、バリデーターは高速に保ってください。
+
+状態を再構築できない場合や、バリデーターがデータベースエラーに遭遇した場合は、`UpdateValidationFailedException` が投げられ、何も記録されません。更新用の webhook ルートは、再試行可能な `503` と `update_validation_failed` で応答します。同じリクエスト ID で再試行してください。
+
+拒否された更新をキー付きで再試行すると、バリデーターを再実行せずに保持済みの拒否が返ります。
+
+Worker のインターセプターは `executeUpdateValidation()` を通じて更新検証をラップします。バリデーターの判定は見えますが、変更はできません。
 
 ## 応答が不確かな場合の復旧 {#recover-after-an-uncertain-response}
 

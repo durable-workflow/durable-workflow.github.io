@@ -214,6 +214,92 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 使用 OpenTelemetry 指标时，通过现有 meter 实现 recorder：计数器单位为 `1`，直方图单位为秒 `s`，名称和标签严格使用上述值。provider、聚合、资源标签及 exporter 生命周期由应用负责。它与执行 tracing 独立。参见 [recorder API](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html)、[Prometheus API](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html) 和[发布的指标契约](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics)。
 
+## Worker 拦截器 {#worker-interceptors}
+
+Worker 拦截器从 Rust SDK 4.25.0 开始提供。它们为 Worker 运行的每个任务统一添加审计日志、指标标签或租户上下文等横切行为。实现 `WorkerInterceptor`，并通过 `Worker::interceptor` 注册，或通过 `Worker::interceptors` 注册多个。每个钩子默认直接传递调用，因此只需实现所需的钩子；`PassthroughWorkerInterceptor` 是不执行任何操作的拦截器。钩子的形式与 [Python](./python.md#worker-interceptors) 和 [PHP](./php.md#worker-interceptors) SDK 拦截器一致。
+
+下面的审计拦截器会记录每个工作流任务的结果和每次活动尝试：
+
+```rust
+use durable_workflow::interceptors::{
+    ActivityInterceptorContext, ActivityNext, InterceptorFuture,
+    WorkflowTaskInterceptorContext, WorkflowTaskNext, WorkflowTaskOutcome,
+};
+use durable_workflow::{AvroValue, Result, Worker, WorkerInterceptor};
+
+struct AuditLog;
+
+impl WorkerInterceptor for AuditLog {
+    fn execute_workflow_task<'a>(
+        &'a self,
+        context: &'a WorkflowTaskInterceptorContext,
+        next: WorkflowTaskNext<'a>,
+    ) -> InterceptorFuture<'a, Result<WorkflowTaskOutcome>> {
+        Box::pin(async move {
+            let outcome = next.run().await;
+            match &outcome {
+                // The commands are new for this task even when it replayed
+                // history first. A retry of a failed task has attempt > 1.
+                Ok(outcome) => tracing::info!(
+                    workflow_id = context.workflow_id(),
+                    task_id = context.task_id(),
+                    attempt = context.attempt(),
+                    commands = outcome.commands().len(),
+                    "workflow task completed"
+                ),
+                Err(error) => tracing::warn!(%error, "workflow task failed"),
+            }
+            outcome
+        })
+    }
+
+    fn execute_activity(
+        &self,
+        context: ActivityInterceptorContext,
+        next: ActivityNext,
+    ) -> InterceptorFuture<'_, Result<AvroValue>> {
+        Box::pin(async move {
+            let activity_type = context.activity_type().to_owned();
+            let attempt = context.attempt();
+            let result = next.run(context).await;
+            tracing::info!(%activity_type, attempt, ok = result.is_ok(), "activity attempt");
+            result
+        })
+    }
+}
+
+let worker = Worker::new(client, "orders").interceptor(AuditLog);
+```
+
+仓库中的 [`audit_interceptor` 示例](https://github.com/durable-workflow/sdk-rust/blob/main/examples/audit_interceptor.rs)针对自托管 Server 运行同一个拦截器。
+
+| 钩子 | 包裹范围 | 上下文 | `next` |
+| --- | --- | --- | --- |
+| `execute_workflow_task` | 一个工作流任务，包括重放 | `WorkflowTaskInterceptorContext` | `next.run()` 返回只读的 `WorkflowTaskOutcome` |
+| `execute_activity` | 一次活动或本地活动尝试 | `ActivityInterceptorContext` | `next.run(context)` 返回活动结果 |
+| `execute_query_task` | 一个查询任务 | `QueryTaskInterceptorContext` | `next.run()` 返回查询结果或 `QueryTaskFailure` |
+| `execute_update_validation_task` | 一个更新验证任务 | `UpdateValidationInterceptorContext` | `next.run()` 返回只读的 `UpdateValidationOutcome` |
+
+上下文是只读的。它们携带 Worker ID、任务队列、命名空间以及任务标识：任务 ID、工作流 ID、运行 ID、工作流或活动类型、尝试次数；对于工作流任务，还包括历史长度、任务的追踪载体和重放状态。活动上下文还提供已解码的参数、该尝试是否为本地活动，以及处理器收到的 `ActivityContext`。更新验证上下文携带验证任务的 ID 和尝试次数、工作流 ID、运行 ID、工作流类型、更新名称以及追踪载体。
+
+拦截器按注册顺序运行。最先注册的拦截器位于最外层：它在任务之前最先运行，在任务之后最后运行。每个钩子都必须调用 `next` 继续链；最内层的 `next` 运行 SDK 自身的处理逻辑。任务产生的错误会原样穿过每个拦截器向外传递，除非某个活动或查询拦截器有意处理它。活动拦截器可以通过 `context.with_args(..)` 修改参数并转换结果，活动和查询拦截器也可以不调用 `next` 直接作答。内置的 `ExecutionTelemetry` span 始终位于整个链的最外层。
+
+工作流任务拦截器无法改变工作流记录的内容：
+
+- `next.run()` 不接受输入，因此任务始终按收到的内容运行。
+- Worker 准确提交工作流生成的命令。结果是这些命令的只读视图。
+- 如果任务失败，即使拦截器返回 `Ok`，Worker 也会报告该失败。拦截器看到的是 `Error::WorkflowTaskFailed`，这是一个只读描述，提供 `.kind()`、`.message()` 和 `.debug()`；Worker 保留原始错误。
+- 任务成功后拦截器返回错误，或未运行 `next` 就返回，会使工作流任务以 `Error::WorkflowTaskInterceptor` 失败。不会记录任何内容，Server 会重试该任务。工作流本身不会失败。
+- 拦截器在每个工作流任务上运行。当任务在新的执行之前重新运行了之前任务已提交的命令时，`context.replay_state()` 为 `Replaying`；对于没有已提交历史的任务，则为 `Executing`。Worker 绝不会重新提交重放的命令，因此结果中的命令对该任务而言始终是新的：无论重放状态如何，都应审计每个成功的结果。
+- 如果任务在拦截器观察到它之后失败，其重试可能重复同一个结果；`context.attempt()` 大于 1 表示重试，因此外部审计写入应保持幂等。
+
+更新验证拦截器无法改变更新是否被接受：
+
+- `next.run()` 不接受输入，因此验证器始终按收到的任务运行，Worker 发送验证器自身的批准或拒绝。结果是只读视图：`is_approved()`、`is_rejected()`、`is_worker_failure()`、`reason()` 和 `rejection()`。
+- 拦截器返回错误、未运行 `next` 就返回或失败，或者中途丢弃验证，都会使 Worker 改为报告 `update_validation_worker_failed`。更新不会被接受，调用方使用相同请求 ID 重试时会再次询问验证器。
+
+离线 `WorkflowEnvironment` 会运行在其包装的 Worker 上注册的活动拦截器。它没有工作流任务或查询任务，因此这些钩子不会在那里运行。完整的拦截器契约见 [Rust SDK README](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors)。
+
 ## Worker 任务并发 {#worker-task-concurrency}
 
 以下有界执行通道需要 Rust SDK **4.3.1 或更高版本**。使用前检查 `Cargo.lock` 中的版本：上方的安装固定版本属于另一组已验证构件，可能选择较旧的 SDK。[已发布包验收](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863)验证了三个配置槽位、释放槽位后第四次回调才被接纳，以及七个完成的工作流，其中包括已处理的活动失败。前述 Server 协议要求仍然适用。
@@ -763,6 +849,29 @@ match handle.result(WorkflowResultOptions::default()).await {
 Rust 在应用客户端、选定句柄及 Worker 编写角色中均支持持久更新。JSON 兼容值使用 `Client::update_workflow` 或 `WorkflowHandle::update`，显式类型化 Avro 值使用对应的 `update_workflow_avro_value` 或 `update_avro_value` 方法。
 
 Worker 用 `Worker::register_update` 注册具名处理器；处理器直接消费和返回 Avro 值时，使用 `register_update_avro_value`。更新是持久的、带结果的工作流变更，区别于发送后无需等待的信号和只读的经重放查询。
+
+### 更新验证器 {#update-validators}
+
+从 Rust SDK 4.25.0 起，Worker 可以在接受更新之前拒绝它。在同名的更新处理程序之后，使用 `Worker::register_update_validator` 注册验证器：
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` 接收 Avro 值。基于重放状态的验证器 `register_replayed_update_validator::<S>` 读取工作流重放状态的一份分离副本；它必须使用与被重放工作流相同的状态类型。Worker 会声明验证器，在 Server 未声明同步更新验证时拒绝注册，并同时轮询工作流任务和更新验证任务。对每个验证任务，它只运行验证器：
+
+- `Ok(())` 批准更新，Server 随后接受它。
+- `UpdateRejection` 以 `update_validator_rejected`、消息、类型和验证错误拒绝更新。更新永远不会被接受，其处理程序也永远不会运行。Server 只把拒绝记录为审计事件 `UpdateRejected`。
+- 添加工作流命令的验证器会被 `UpdateValidatorCommandRefused` 拒绝；panic 或重放失败会报告 `update_validation_worker_failed`。
+
+在客户端，`Error::update_validator_rejection()` 返回拒绝的消息、验证错误和 ID，`Error::is_update_validation_failed()` 涵盖超时和 Worker 失败。普通的失败更新不匹配这两者中的任何一个。验证器从不在重放期间运行。Worker 拦截器通过 `execute_update_validation_task` 包裹更新验证任务，能看到验证器的决定，但无法更改。
 
 ## 负载封装 {#payload-envelope}
 

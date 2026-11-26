@@ -154,6 +154,66 @@ Bootstrap звільняє користувача від вибору шляху
 та `registerUpdate`. Повні параметри й типи результатів наведено
 у [згенерованому довіднику PHP SDK API](https://php.durable-workflow.com/api/).
 
+## Валідатори update {#update-validators}
+
+Починаючи з PHP SDK 3.32.0, workflow може відхилити update ще до його прийняття. Додайте `#[UpdateValidator]` до методу класу workflow поруч з його обробником `#[Update]`. Низькорівнева форма — `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`, яку викликають після `registerUpdate()`.
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+Валідатор отримує `QueryContext` із зафіксованою історією запуску, а за ним — аргументи update. Worker оголошує валідатор Server і опитує задачі workflow та валідації update разом. Реєстрацію відхилено з `update_validation_tasks_unavailable`, якщо Server не оголошує синхронну валідацію update. Для кожної задачі валідації worker виконує лише валідатор:
+
+- Якщо він завершується звичайно, він схвалює update, і Server його приймає.
+- Якщо він кидає виняток або повертає `false`, update відхиляється з `update_validator_rejected`, повідомленням і класом винятку та помилками полів із методу `errors()` винятку. Update ніколи не приймається, і його обробник ніколи не виконується. Server записує відхилення лише як аудиторську подію `UpdateRejected`.
+- Спробу запланувати довговічну роботу відхилено з `UpdateValidatorCommandRefused`, що відхиляє update.
+
+На клієнті `updateWorkflow()` кидає `UpdateFailed`. `rejectedByValidator()` визначає відхилення валідатором, а `validationErrors()` повертає його помилки полів. `validationFailed()` повертає true, коли Server не зміг вчасно отримати рішення; нічого не прийнято, тож повторіть запит із тим самим ідентифікатором.
+
+Валідатори ніколи не виконуються під час replay. Кожна валідація бачить лише історію, зафіксовану до її власної задачі, тож дві одночасні валідації можуть обидві пройти перевірку, яку мала б пройти лише одна. Worker із валідаторами не використовує перенесені опитування workflow. Interceptor-и worker обгортають задачі валідації update через `executeUpdateValidation()`; вони бачать рішення валідатора, але не можуть його змінити.
+
+## Логування workflow з урахуванням replay {#workflow-logging}
+
+Worker відтворює workflow з історії в кожній задачі workflow, тож звичайний виклик логування в коді workflow повторюється для кожного завершеного кроку. PHP SDK 3.32.0 і новіші надають `$context->logger()`. Він повертає PSR-3 логер, що пише через логер, переданий у `Worker` (іменований аргумент `logger`), і лише тоді, коли код виконується за межами зафіксованої історії запуску:
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+Кожен рядок містить `namespace`, `workflow_type`, `workflow_id` і `workflow_run_id`. `$context->replayState()` повертає `WorkflowReplayState::Replaying`, `Executing` або `Unavailable`, а `isReplaying()` — його булеву форму. Використовуйте їх лише для діагностики; ніколи не обирайте команди workflow на їхній основі.
+
+Рядки записуються лише після того, як Worker надішле задачу workflow, що виконала код, і Server її прийме. Замінений replay, спекулятивний replay, який Server відхилив, і відхилене завершення нічого не пишуть. Код, що чекає на незавершеному дескрипторі дочірнього workflow чи операції без запису кроку, логує один раз — у задачі, яка проходить це очікування. Виклик `logger()` усередині замикання side effect нічого не пише.
+
+Якщо worker завершиться між прийняттям Server і записом, ці рядки буде втрачено. Це логер процесу, а не outbox для бізнес-ефектів. Тримайте обробники логів швидкими й неблокувальними: обробник, що чекає на мережу, зупиняє worker і може коштувати йому оренди задачі. Збої логера перехоплюються й ніколи не змінюють команди workflow.
+
 ## Контекст повторних спроб і вихідний запуск активності {#activity-retry-context}
 
 PHP SDK **3.6.1 або новіший** надає `$context->retryInfo`, `$context->workflowId` і `$context->runId` в активностях у сервісному режимі. Перевірка `$context->retryInfo->isLastConfiguredAttempt() === true` визначає останню налаштовану спробу політики з обмеженням кількості спроб. `attemptNumber` зберігає початковий отриманий номер спроби.
@@ -316,6 +376,152 @@ durable-стану та виконання через черги Laravel.
 service mode, включно з drain і rollback.
 Ширше порівняння меж runtime наведено в
 [режимах розгортання](/docs/polyglot/deployment-modes/).
+
+## Перехоплювачі worker {#worker-interceptors}
+
+Перехоплювачі worker доступні починаючи з PHP SDK 3.32.0. Передайте
+впорядкований список `interceptors` у `Worker::create()` (або конструктор `Worker`),
+щоб один раз додати журнал аудиту, мітки метрик, контекст tenant чи трасування
+навколо кожного завдання, а не в кожному обробнику. Кожен перехоплювач реалізує
+`DurableWorkflow\Worker\Interceptor\WorkerInterceptor`; розширте
+`PassthroughWorkerInterceptor`, щоб реалізувати лише потрібні hook. Форма hook
+відповідає перехоплювачам [Python](./python.md#worker-interceptors) і
+[Rust](./rust.md#worker-interceptors) SDK.
+
+Цей перехоплювач аудиту журналює результат кожного завдання workflow і кожну спробу activity:
+
+```php
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\Interceptor\ActivityInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\PassthroughWorkerInterceptor;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskOutcome;
+use Psr\Log\LoggerInterface;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'workflow_type' => $context->workflowType,
+            'attempt' => $context->workflowTaskAttempt,
+            'replayed_history' => $context->replaying,
+            'commands' => $outcome->commandTypes(),
+        ]);
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+
+$worker = Worker::create($client, 'orders', container: $container,
+    interceptors: [AuditInterceptor::class]);
+```
+
+| Hook | Контекст | Повертає `$next` |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (також `replayState()`), `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` з копією команд |
+| `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | результат activity |
+| `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | результат query |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `UpdateValidationOutcome` з `approved`, `reason`, `message`, `failureType`, `validationErrors` |
+
+Перехоплювачі працюють у порядку, в якому ви їх перелічили. Перший перехоплювач є
+зовнішньою обгорткою: він виконується першим перед завданням і останнім після нього.
+Кожен hook викликає `$next($context)`, щоб продовжити ланцюжок. Коли налаштовано
+трасування, вбудовані span worker залишаються зовнішніми, тож перехоплювачі
+виконуються всередині активного span завдання.
+
+Перехоплювачі завдань workflow не можуть порушити детермінованість:
+
+- `executeWorkflowTask` обгортає код workflow, який створює команди одного
+  завдання workflow, один раз на кожну спробу завдання. `replaying` має значення
+  `true`, коли попередні завдання workflow уже записали команди, тож код workflow
+  спершу повторно виконав цей зафіксований префікс. Результат містить лише команди,
+  які додає це завдання; команди з replay ніколи не надсилаються повторно.
+- `replayState()` повідомляє те саме у вигляді `WorkflowReplayState`, який
+  використовує `WorkflowContext::replayState()`: `Replaying` або `Executing`.
+- Повторна спроба (`workflowTaskAttempt > 1`) може повторити результат, завдання
+  якого завершилося помилкою, тому робіть зовнішні записи аудиту ідемпотентними.
+- Завдання update (із заданим `updateId`) виконують обробник update над
+  зафіксованим станом без повторного виконання тіла workflow; для них `replaying`
+  лише повідомляє, що попередні команди існують.
+- Worker надсилає рівно ті команди, які створив код workflow. Результат є копією;
+  повернення іншого результату чи передавання іншого контексту в `$next` нічого
+  не змінює.
+- Помилка з коду workflow доходить до worker без змін, навіть якщо перехоплювач
+  перехоплює її та повертається звичайним чином.
+- Виняток, кинутий перехоплювачем, спричиняє збій завдання workflow. Нічого не
+  записується, і Server повторює завдання. Пропуск `$next` або його виклик більше
+  одного разу спричиняє збій завдання з `WorkflowTaskInterceptorViolation`.
+
+Перехоплювачі валідації update (`executeUpdateValidation()`) обгортають запуск
+валідатора update до того, як Server прийме update. Вони бачать рішення як
+`UpdateValidationOutcome` лише для читання і не можуть змінити ні рішення, ні
+аргументи update, ні історію, яку читає валідатор: валідатор завжди працює лише
+для читання у власному Fiber з копією завдання, що належить worker, а worker
+відповідає власним рішенням валідатора. Виняток із перехоплювача, пропуск
+`$next` або його виклик більше одного разу
+(`UpdateValidationInterceptorViolation`) дає відповідь на завдання з
+`update_validation_worker_failed`, тож update не приймається, і викликач може
+повторити спробу.
+
+Перехоплювачі activity та query можуть змінювати аргументи через
+`$context->withArguments(...)` і змінювати повернене значення, оскільки результати
+activity записуються один раз, а query нічого не записують. Винятки activity
+проходять крізь кожен перехоплювач, якщо жоден із них їх не обробить. Перехоплювачі
+activity обгортають віддалені та локальні activity; `local` розрізняє їх. За
+кооперативного скасування callback віддалених, кооперативних локальних і
+підготовлених локальних activity та їхні перехоплювачі виконуються в дочірньому
+процесі activity, тож зміни пам’яті там не доходять до процесу worker.
+
+### Налаштування контейнера й фреймворку {#worker-interceptor-configuration}
+
+Передавайте екземпляри перехоплювачів або назви класів. Назви класів розв’язуються
+з PSR-11 контейнера, переданого worker, так само як обробники з атрибутами. Без
+контейнера клас не повинен мати обов’язкових аргументів конструктора.
+
+У сервісному режимі Laravel і Symfony перелічіть класи перехоплювачів у
+`worker.interceptors`. Вони розв’язуються з контейнера фреймворку в такому порядку:
+
+```php
+// config/durable-workflow.php
+'worker' => [
+    'interceptors' => [App\Durable\AuditInterceptor::class],
+],
+```
+
+```yaml
+# config/packages/durable_workflow.yaml
+durable_workflow:
+  worker:
+    interceptors:
+      - App\Durable\AuditInterceptor
+```
+
+Вбудовані workflow Laravel налаштовують власні перехоплювачі в
+`workflows.v2.interceptors`; див.
+[перехоплювачі вбудованого worker](../configuration/publishing-config.md#worker-interceptors).
+[Довідник PHP SDK](https://github.com/durable-workflow/sdk-php/blob/main/docs/sdk-reference.md#worker-interceptors)
+містить повний контракт перехоплювачів.
 
 ## Результати запитів із бінарними значеннями {#query-binary-results}
 

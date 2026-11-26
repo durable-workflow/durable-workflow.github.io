@@ -287,6 +287,139 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 Pour les métriques OpenTelemetry, implémentez le recorder avec votre meter existant : compteurs d’unité `1`, histogrammes en secondes `s`, noms/tags exacts ci-dessus. Provider, agrégation, labels de ressources et cycle de l’exporter restent applicatifs. Cela est distinct du tracing d’exécution. Voir l’[API recorder](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html), l’[API Prometheus](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html) et le [contrat publié](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics).
 
+## Intercepteurs worker {#worker-interceptors}
+
+Les intercepteurs worker sont disponibles à partir du SDK Rust 4.25.0. Ils ajoutent
+un comportement transversal, comme la journalisation d'audit, des tags de métriques ou un contexte de tenant,
+une seule fois pour chaque tâche exécutée par un worker. Implémentez `WorkerInterceptor` et enregistrez-le
+avec `Worker::interceptor`, ou plusieurs avec `Worker::interceptors`. Chaque hook
+transmet l'appel par défaut ; n'implémentez donc que les hooks dont vous avez besoin.
+`PassthroughWorkerInterceptor` est un intercepteur sans effet. La forme des hooks correspond à celle
+des intercepteurs des SDK [Python](./python.md#worker-interceptors) et
+[PHP](./php.md#worker-interceptors).
+
+Cet intercepteur d'audit journalise chaque résultat de tâche de workflow et chaque tentative d'activité :
+
+```rust
+use durable_workflow::interceptors::{
+    ActivityInterceptorContext, ActivityNext, InterceptorFuture,
+    WorkflowTaskInterceptorContext, WorkflowTaskNext, WorkflowTaskOutcome,
+};
+use durable_workflow::{AvroValue, Result, Worker, WorkerInterceptor};
+
+struct AuditLog;
+
+impl WorkerInterceptor for AuditLog {
+    fn execute_workflow_task<'a>(
+        &'a self,
+        context: &'a WorkflowTaskInterceptorContext,
+        next: WorkflowTaskNext<'a>,
+    ) -> InterceptorFuture<'a, Result<WorkflowTaskOutcome>> {
+        Box::pin(async move {
+            let outcome = next.run().await;
+            match &outcome {
+                // The commands are new for this task even when it replayed
+                // history first. A retry of a failed task has attempt > 1.
+                Ok(outcome) => tracing::info!(
+                    workflow_id = context.workflow_id(),
+                    task_id = context.task_id(),
+                    attempt = context.attempt(),
+                    commands = outcome.commands().len(),
+                    "workflow task completed"
+                ),
+                Err(error) => tracing::warn!(%error, "workflow task failed"),
+            }
+            outcome
+        })
+    }
+
+    fn execute_activity(
+        &self,
+        context: ActivityInterceptorContext,
+        next: ActivityNext,
+    ) -> InterceptorFuture<'_, Result<AvroValue>> {
+        Box::pin(async move {
+            let activity_type = context.activity_type().to_owned();
+            let attempt = context.attempt();
+            let result = next.run(context).await;
+            tracing::info!(%activity_type, attempt, ok = result.is_ok(), "activity attempt");
+            result
+        })
+    }
+}
+
+let worker = Worker::new(client, "orders").interceptor(AuditLog);
+```
+
+L'[exemple `audit_interceptor`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/audit_interceptor.rs)
+du dépôt exécute le même intercepteur contre un Server auto-hébergé.
+
+| Hook | S'exécute autour de | Contexte | `next` |
+| --- | --- | --- | --- |
+| `execute_workflow_task` | une tâche de workflow, relecture comprise | `WorkflowTaskInterceptorContext` | `next.run()` renvoie un `WorkflowTaskOutcome` en lecture seule |
+| `execute_activity` | une tentative d'activité ou d'activité locale | `ActivityInterceptorContext` | `next.run(context)` renvoie le résultat de l'activité |
+| `execute_query_task` | une tâche de requête | `QueryTaskInterceptorContext` | `next.run()` renvoie le résultat de la requête ou `QueryTaskFailure` |
+| `execute_update_validation_task` | une tâche de validation de mise à jour | `UpdateValidationInterceptorContext` | `next.run()` renvoie un `UpdateValidationOutcome` en lecture seule |
+
+Les contextes sont en lecture seule. Ils portent l'identifiant du worker, la file de tâches, le namespace et
+l'identité de la tâche : identifiant de tâche, identifiant de workflow, identifiant d'exécution, type de workflow ou d'activité,
+tentative et, pour les tâches de workflow, la longueur de l'historique, le porteur de trace de la tâche et
+l'état de relecture. Un contexte d'activité expose aussi les arguments décodés, indique si
+la tentative est une activité locale, et fournit l'`ActivityContext` que reçoit le handler.
+Un contexte de validation de mise à jour porte l'identifiant et la tentative de
+la tâche de validation, l'identifiant, l'identifiant d'exécution et le type du
+workflow, le nom de la mise à jour et le porteur de trace.
+
+Les intercepteurs s'exécutent dans l'ordre d'enregistrement. Le premier enregistré est le plus
+extérieur : il s'exécute en premier avant la tâche et en dernier après elle. Chaque hook doit appeler
+`next` pour poursuivre la chaîne ; le `next` le plus intérieur exécute le traitement propre du SDK.
+Les erreurs de la tâche remontent inchangées à travers chaque intercepteur, sauf si
+un intercepteur d'activité ou de requête les gère délibérément. Les intercepteurs
+d'activité peuvent modifier les arguments avec `context.with_args(..)` et transformer les
+résultats, et les intercepteurs d'activité et de requête peuvent répondre sans appeler `next`.
+Les spans intégrés `ExecutionTelemetry` restent les plus extérieurs autour de toute la chaîne.
+
+Les intercepteurs de tâche de workflow ne peuvent pas modifier ce qu'un workflow enregistre :
+
+- `next.run()` ne prend aucune entrée ; la tâche s'exécute donc toujours telle qu'elle a été reçue.
+- Le worker soumet exactement les commandes produites par le workflow. Le résultat en est
+  une vue en lecture seule.
+- Si la tâche échoue, le worker signale cet échec même lorsqu'un intercepteur
+  renvoie `Ok`. Les intercepteurs le voient sous la forme `Error::WorkflowTaskFailed`, une
+  description en lecture seule avec `.kind()`, `.message()` et `.debug()` ; le worker conserve
+  l'erreur d'origine.
+- Une erreur d'intercepteur après la réussite de la tâche, ou un retour sans exécuter
+  `next`, fait échouer la tâche de workflow avec `Error::WorkflowTaskInterceptor`. Rien
+  n'est enregistré et le Server relance la tâche. Le workflow n'échoue pas.
+- Les intercepteurs s'exécutent sur chaque tâche de workflow. `context.replay_state()` vaut
+  `Replaying` lorsque la tâche a rejoué des commandes validées par des tâches antérieures avant
+  toute nouvelle exécution, et `Executing` pour une tâche sans historique validé. Le
+  worker ne soumet jamais à nouveau les commandes rejouées ; les commandes d'un résultat sont donc toujours
+  nouvelles pour cette tâche : auditez chaque résultat réussi, quel que soit l'état de relecture.
+- Si une tâche échoue après qu'un intercepteur l'a observée, sa relance peut répéter le
+  même résultat ; une valeur de `context.attempt()` supérieure à 1 identifie une relance, donc rendez
+  idempotentes les écritures d'audit externes.
+
+Les intercepteurs de validation de mise à jour ne peuvent pas modifier
+l'acceptation d'une mise à jour :
+
+- `next.run()` ne prend aucune entrée : le validateur s'exécute donc toujours
+  sur la tâche telle qu'elle a été reçue, et le worker envoie l'approbation ou
+  le rejet propre au validateur. Le résultat est une vue en lecture seule :
+  `is_approved()`, `is_rejected()`, `is_worker_failure()`, `reason()` et
+  `rejection()`.
+- Une erreur d'intercepteur, un retour ou un échec sans exécuter `next`, ou
+  l'abandon de la validation en cours de route amène le worker à signaler
+  `update_validation_worker_failed` à la place. La mise à jour n'est pas
+  acceptée, et une nouvelle tentative de l'appelant avec le même identifiant de
+  requête interroge de nouveau le validateur.
+
+Le `WorkflowEnvironment` hors ligne exécute les intercepteurs d'activité enregistrés sur le
+worker qu'il enveloppe. Il n'a ni tâches de workflow ni tâches de requête ; ces hooks ne s'y exécutent donc
+pas. Consultez le
+[README du SDK Rust](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors)
+pour le contrat complet des intercepteurs.
+
 ## Concurrence des tâches du worker {#worker-task-concurrency}
 
 Les voies bornées ci-dessous nécessitent Rust SDK **4.3.1 ou ultérieur**. Vérifiez la version dans `Cargo.lock` : l’installation fixée plus haut appartient à une autre combinaison qualifiée et peut sélectionner un ancien SDK. La [vérification du paquet publié](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) confirme trois emplacements configurés, un quatrième callback admis après libération d’un emplacement et sept workflows terminés, dont un échec d’activité traité. Les exigences de protocole Server précédentes restent applicables.
@@ -1006,6 +1139,49 @@ le gestionnaire consomme et retourne directement des valeurs Avro.
 Une mise à jour est une mutation durable de workflow qui produit un résultat.
 Elle se distingue des signaux sans attente de réponse et des requêtes de
 lecture relues sans mutation.
+
+### Validateurs de mise à jour {#update-validators}
+
+À partir du Rust SDK 4.25.0, un worker peut refuser une mise à jour avant
+qu’elle soit acceptée. Enregistrez un validateur avec
+`Worker::register_update_validator`, après le handler de mise à jour du même nom :
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` reçoit des valeurs Avro. Un validateur à
+état relu, `register_replayed_update_validator::<S>`, lit une copie détachée de
+l’état relu du workflow ; il doit utiliser le même type d’état que le workflow
+relu. Le worker annonce le validateur, refuse l’enregistrement lorsque le Server
+n’annonce pas la validation synchrone des mises à jour et interroge ensemble les
+tâches de workflow et de validation de mise à jour. Pour chaque tâche de
+validation, il n’exécute que le validateur :
+
+- `Ok(())` approuve la mise à jour et le Server l’accepte.
+- Un `UpdateRejection` la rejette avec `update_validator_rejected`, le message,
+  le type et les erreurs de validation. La mise à jour n’est jamais acceptée et
+  son handler ne s’exécute jamais. Le Server n’enregistre le rejet que sous la
+  forme d’un événement d’audit `UpdateRejected`.
+- Un validateur qui ajoute une commande de workflow est refusé avec
+  `UpdateValidatorCommandRefused`, et une panique ou un échec de relecture
+  signale `update_validation_worker_failed`.
+
+Côté client, `Error::update_validator_rejection()` retourne le message, les
+erreurs de validation et les identifiants du rejet, et
+`Error::is_update_validation_failed()` couvre les délais dépassés et les échecs du
+worker. Une mise à jour en échec ordinaire ne correspond à aucun des deux. Les
+validateurs ne s’exécutent jamais pendant la relecture. Les intercepteurs du
+worker enveloppent les tâches de validation de mise à jour via
+`execute_update_validation_task` ; ils voient la décision du validateur, mais ne
+peuvent pas la modifier.
 
 ## Enveloppe de données utiles {#payload-envelope}
 

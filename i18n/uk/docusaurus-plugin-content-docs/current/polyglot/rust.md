@@ -279,6 +279,138 @@ cargo run --features metrics-prometheus --example metrics_prometheus
 
 Для OpenTelemetry реалізуйте recorder через наявний meter: лічильники з одиницею `1` і гістограми секунд `s` з точними назвами/тегами вище. Provider, aggregation, resource labels і життєвий цикл exporter належать застосунку. Це окремо від execution tracing. Див. [recorder API](https://rust.durable-workflow.com/durable_workflow/metrics/trait.MetricsRecorder.html), [Prometheus API](https://rust.durable-workflow.com/durable_workflow/metrics/struct.PrometheusMetrics.html) і [опублікований контракт](https://github.com/durable-workflow/sdk-rust/blob/4.7.0/README.md#client-and-worker-metrics).
 
+## Перехоплювачі worker {#worker-interceptors}
+
+Перехоплювачі worker доступні починаючи з Rust SDK 4.25.0. Вони один
+раз додають наскрізну поведінку, як-от журнал аудиту, мітки метрик чи контекст
+tenant, для кожного завдання, яке виконує worker. Реалізуйте `WorkerInterceptor` і
+зареєструйте його через `Worker::interceptor` або кілька через `Worker::interceptors`.
+Кожен hook типово передає виклик далі, тож реалізуйте лише потрібні hook;
+`PassthroughWorkerInterceptor` є перехоплювачем, що нічого не робить. Форма hook
+відповідає перехоплювачам [Python](./python.md#worker-interceptors) і
+[PHP](./php.md#worker-interceptors) SDK.
+
+Цей перехоплювач аудиту журналює результат кожного завдання workflow і кожну спробу activity:
+
+```rust
+use durable_workflow::interceptors::{
+    ActivityInterceptorContext, ActivityNext, InterceptorFuture,
+    WorkflowTaskInterceptorContext, WorkflowTaskNext, WorkflowTaskOutcome,
+};
+use durable_workflow::{AvroValue, Result, Worker, WorkerInterceptor};
+
+struct AuditLog;
+
+impl WorkerInterceptor for AuditLog {
+    fn execute_workflow_task<'a>(
+        &'a self,
+        context: &'a WorkflowTaskInterceptorContext,
+        next: WorkflowTaskNext<'a>,
+    ) -> InterceptorFuture<'a, Result<WorkflowTaskOutcome>> {
+        Box::pin(async move {
+            let outcome = next.run().await;
+            match &outcome {
+                // The commands are new for this task even when it replayed
+                // history first. A retry of a failed task has attempt > 1.
+                Ok(outcome) => tracing::info!(
+                    workflow_id = context.workflow_id(),
+                    task_id = context.task_id(),
+                    attempt = context.attempt(),
+                    commands = outcome.commands().len(),
+                    "workflow task completed"
+                ),
+                Err(error) => tracing::warn!(%error, "workflow task failed"),
+            }
+            outcome
+        })
+    }
+
+    fn execute_activity(
+        &self,
+        context: ActivityInterceptorContext,
+        next: ActivityNext,
+    ) -> InterceptorFuture<'_, Result<AvroValue>> {
+        Box::pin(async move {
+            let activity_type = context.activity_type().to_owned();
+            let attempt = context.attempt();
+            let result = next.run(context).await;
+            tracing::info!(%activity_type, attempt, ok = result.is_ok(), "activity attempt");
+            result
+        })
+    }
+}
+
+let worker = Worker::new(client, "orders").interceptor(AuditLog);
+```
+
+[Приклад `audit_interceptor`](https://github.com/durable-workflow/sdk-rust/blob/main/examples/audit_interceptor.rs)
+у репозиторії запускає той самий перехоплювач із самостійно розгорнутим Server.
+
+| Hook | Що обгортає | Контекст | `next` |
+| --- | --- | --- | --- |
+| `execute_workflow_task` | одне завдання workflow, включно з replay | `WorkflowTaskInterceptorContext` | `next.run()` повертає `WorkflowTaskOutcome` лише для читання |
+| `execute_activity` | одну спробу activity або local activity | `ActivityInterceptorContext` | `next.run(context)` повертає результат activity |
+| `execute_query_task` | одне завдання query | `QueryTaskInterceptorContext` | `next.run()` повертає результат query або `QueryTaskFailure` |
+| `execute_update_validation_task` | одне завдання валідації update | `UpdateValidationInterceptorContext` | `next.run()` повертає `UpdateValidationOutcome` лише для читання |
+
+Контексти доступні лише для читання. Вони містять id worker, task queue, namespace
+та ідентичність завдання: id завдання, id workflow, id run, тип workflow чи
+activity, спробу, а для завдань workflow — довжину історії, trace carrier завдання
+та стан replay. Контекст activity також надає декодовані аргументи, ознаку того, чи
+є спроба local activity, і `ActivityContext`, який отримує обробник.
+Контекст валідації update містить id та спробу завдання валідації, id workflow,
+id run і тип workflow, назву update та trace carrier.
+
+Перехоплювачі виконуються в порядку реєстрації. Перший зареєстрований є зовнішнім:
+він виконується першим перед завданням і останнім після нього. Кожен hook має
+викликати `next`, щоб продовжити ланцюжок; найглибший `next` запускає власну обробку
+SDK. Помилки завдання повертаються назовні крізь кожен перехоплювач без змін, якщо
+перехоплювач activity чи query навмисно їх не обробить. Перехоплювачі activity
+можуть змінювати аргументи через `context.with_args(..)` і перетворювати результати,
+а перехоплювачі activity та query можуть відповідати без виклику `next`.
+Вбудовані span `ExecutionTelemetry` залишаються зовнішніми навколо всього ланцюжка.
+
+Перехоплювачі завдань workflow не можуть змінити те, що записує workflow:
+
+- `next.run()` не приймає вхідних даних, тож завдання завжди виконується таким,
+  яким його отримано.
+- Worker надсилає рівно ті команди, які створив workflow. Результат є поданням
+  цих команд лише для читання.
+- Якщо завдання завершується помилкою, worker повідомляє про цю помилку, навіть
+  коли перехоплювач повертає `Ok`. Перехоплювачі бачать її як
+  `Error::WorkflowTaskFailed` — опис лише для читання з `.kind()`, `.message()` і
+  `.debug()`; worker зберігає початкову помилку.
+- Помилка перехоплювача після успішного завдання або повернення без виконання
+  `next` спричиняє збій завдання workflow з `Error::WorkflowTaskInterceptor`.
+  Нічого не записується, і Server повторює завдання. Workflow не завершується помилкою.
+- Перехоплювачі виконуються для кожного завдання workflow. `context.replay_state()`
+  має значення `Replaying`, коли завдання перед новим виконанням повторно виконало
+  команди, зафіксовані попередніми завданнями, і `Executing` для завдання без
+  зафіксованої історії. Worker ніколи не надсилає повторно команди з replay, тож
+  команди результату завжди нові для цього завдання: аудитуйте кожен успішний
+  результат незалежно від стану replay.
+- Якщо завдання завершується помилкою після того, як перехоплювач його спостеріг,
+  його повторна спроба може повторити той самий результат; `context.attempt()`
+  більше 1 позначає повторну спробу, тому робіть зовнішні записи аудиту
+  ідемпотентними.
+
+Перехоплювачі валідації update не можуть змінити те, чи буде update прийнято:
+
+- `next.run()` не приймає вхідних даних, тому валідатор завжди працює із
+  завданням у тому вигляді, в якому його отримано, а worker надсилає власне
+  схвалення чи відхилення валідатора. Результат є поданням лише для читання:
+  `is_approved()`, `is_rejected()`, `is_worker_failure()`, `reason()` та
+  `rejection()`.
+- Помилка перехоплювача, повернення чи збій без запуску `next` або переривання
+  валідації на півдорозі змушують worker натомість повідомити
+  `update_validation_worker_failed`. Update не приймається, а повторна спроба
+  викликача з тим самим id запиту знову звертається до валідатора.
+
+Офлайн-`WorkflowEnvironment` запускає перехоплювачі activity, зареєстровані на
+worker, який він обгортає. У ньому немає завдань workflow чи query, тож ці hook там
+не виконуються. Повний контракт перехоплювачів див. у
+[README Rust SDK](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors).
+
 ## Паралельність завдань worker {#worker-task-concurrency}
 
 Описані нижче обмежені лінії виконання потребують Rust SDK **4.3.1 або новішого**. Перевірте версію в `Cargo.lock`: наведена вище фіксація встановлення належить окремому кваліфікованому набору артефактів і може обирати старіший SDK. [Перевірка опублікованого пакета](https://github.com/durable-workflow/sdk-rust/issues/107#issuecomment-6360719863) підтверджує три налаштовані слоти, допуск четвертого виклику після звільнення слота і сім завершених workflow, зокрема з обробленою помилкою activity. Вимоги протоколу Server вище залишаються чинними.
@@ -993,6 +1125,46 @@ Workers реєструють іменовані обробники через `W
 приймає та повертає Avro-значення. Update є durable-зміною workflow
 з результатом. Він відрізняється від signals без очікування відповіді
 та read-only queries із replay.
+
+### Валідатори update {#update-validators}
+
+Починаючи з Rust SDK 4.25.0, worker може відхилити update ще до його прийняття.
+Зареєструйте валідатор через `Worker::register_update_validator` після
+обробника update з тим самим іменем:
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` приймає значення Avro. Валідатор із
+відновленим станом, `register_replayed_update_validator::<S>`, читає від'єднану
+копію відновленого стану workflow; він має використовувати той самий тип стану,
+що й відновлений workflow. Worker оголошує валідатор, відхиляє реєстрацію, якщо
+Server не оголошує синхронну валідацію update, і опитує задачі workflow та
+валідації update разом. Для кожної задачі валідації він виконує лише валідатор:
+
+- `Ok(())` схвалює update, і Server його приймає.
+- `UpdateRejection` відхиляє його з `update_validator_rejected`, повідомленням,
+  типом і помилками валідації. Update ніколи не приймається, і його обробник
+  ніколи не виконується. Server записує відхилення лише як аудиторську подію
+  `UpdateRejected`.
+- Валідатор, що додає команду workflow, відхиляється з
+  `UpdateValidatorCommandRefused`, а panic чи збій replay повідомляє
+  `update_validation_worker_failed`.
+
+На клієнті `Error::update_validator_rejection()` повертає повідомлення, помилки
+валідації та ідентифікатори відхилення, а `Error::is_update_validation_failed()`
+охоплює тайм-аути та збої worker. Звичайний невдалий update не відповідає жодному
+з них. Валідатори ніколи не виконуються під час replay. Interceptor-и worker обгортають
+задачі валідації update через `execute_update_validation_task`; вони бачать
+рішення валідатора, але не можуть його змінити.
 
 ## Оболонка payload {#payload-envelope}
 

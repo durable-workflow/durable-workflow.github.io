@@ -237,3 +237,100 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 脱敏器接收当前值，以及 `path`、`category`、`workflow_instance_id`、`workflow_run_id` 和 `workflow_type` 等上下文。导出会对工作流参数／输出载荷、历史事件载荷、命令载荷／上下文、更新载荷、任务载荷、活动载荷，以及故障消息／文件／堆栈诊断调用它。生成的包包含 `redaction.applied`、`redaction.policy` 和 `redaction.paths`，便于下游工具了解产物应用了哪种策略。
 
 每次导出还包含脱敏后计算的 `integrity` 块。校验和使用 `canonicalization = json-recursive-ksort-v1` 和 `checksum_algorithm = sha256`；配置 `signing_key` 后，同一规范化载荷以 `signature_algorithm = hmac-sha256` 签名，可选的 `signing_key_id` 则报告为 `key_id`。签名密钥应保存在导出产物之外，下游验证器需要区分密钥时，应更新密钥 ID。
+
+## Worker 拦截器 {#worker-interceptors}
+
+Worker 拦截器从 Workflow 2.42.0 开始提供。嵌入式 Durable Workflow 会围绕它在应用进程中执行的工作流任务、活动、查询和更新验证运行有序的 Worker 拦截器。审计日志、指标标签、租户上下文或追踪等逻辑只需编写一次，而无需在每个工作流和活动中重复实现。钩子的形式与 [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors) 和 [Rust](../polyglot/rust.md#worker-interceptors) SDK 拦截器一致。
+
+在 `config/workflows.php` 的 `workflows.v2.interceptors` 下列出拦截器类。它们从 Laravel 容器中解析，因此支持构造函数注入，并按列出的顺序运行；第一个是最外层包装。
+
+```php
+'v2' => [
+    // ...
+    'interceptors' => [
+        App\Workflows\AuditInterceptor::class,
+    ],
+],
+```
+
+每个拦截器都实现 `Workflow\V2\Interceptors\WorkerInterceptor`。继承 `Workflow\V2\Interceptors\PassthroughWorkerInterceptor` 即可只实现所需的钩子，并调用 `$next($context)` 继续链。下面的审计拦截器会记录每个已提交的工作流任务和每次活动尝试：
+
+```php
+namespace App\Workflows;
+
+use Illuminate\Support\Facades\DB;
+use Psr\Log\LoggerInterface;
+use Workflow\V2\Interceptors\ActivityInterceptorContext;
+use Workflow\V2\Interceptors\PassthroughWorkerInterceptor;
+use Workflow\V2\Interceptors\WorkflowTaskInterceptorContext;
+use Workflow\V2\Interceptors\WorkflowTaskOutcome;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        // The task commits after the chain returns; log only once it has.
+        DB::afterCommit(fn () => $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'run_id' => $context->runId,
+            'attempt' => $context->workflowTaskAttempt,
+            'recorded' => $outcome->historyEventTypes,
+        ]));
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+```
+
+容器会为每个任务构建配置的拦截器。如果拦截器必须在任务之间保留状态，请将其绑定为单例。
+
+| 钩子 | 上下文 | `$next` 返回 |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（另有 `replayState()`） | 包含 `historyEventTypes`、`runStatus`、`nextTaskId` 的 `WorkflowTaskOutcome` |
+| `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | 活动结果 |
+| `executeQueryTask($context, $next)` | `workerId`（始终为 null）, `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（始终为 `Replaying`） | 查询结果 |
+| `executeUpdateValidation($context, $next)` | `workerId`（始终为 null）, `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（始终为 `Replaying`） | 包含 `approved`、`rejectionMessage`、`exceptionType`、`validationErrors` 的 `UpdateValidationOutcome` |
+
+`task` 是已认领任务行的数组快照，绝不是模型本身。`workerId` 通过主机和进程 ID 标识队列 Worker 进程。查询和更新验证在调用方进程中运行，因此其 `workerId` 为 null。
+
+工作流任务拦截器无法改变工作流记录的内容：
+
+- `executeWorkflowTask` 在工作流任务的数据库事务内包裹该任务，每次任务尝试运行一次。当之前的工作流任务已为该运行记录命令时，`replaying` 为 `true`。它不是去重键：`historyEventTypes` 只列出本任务追加的事件。
+- `replayState()` 以 `Workflow\V2\Enums\WorkflowReplayState`（即 `Workflow::replayState()` 所用的枚举）给出相同的答案；拦截器看到的值在该任务内固定不变。
+- 钩子的副作用在任务提交之前运行，并且在尝试被重试时可能重复，因此请使用 `DB::afterCommit()` 延迟执行，或以 `taskId` 和 `workflowTaskAttempt` 作为键。
+- 引擎提交工作流代码生成的历史。结果是只读视图；返回不同的结果，或向 `$next` 传入不同的上下文，都不会产生任何改变。
+- 工作流代码产生的失败会原样到达引擎，即使拦截器捕获了它并正常返回。
+- 如果拦截器从链中抛出异常、跳过 `$next` 或多次调用它，任务的事务会回滚，因此不会记录任何内容。任务会以 `WorkflowTaskInterceptorFailed` 作为最后错误被释放，并在常规修复退避之后重试。外层拦截器仍可捕获内层拦截器在 `$next` 之后抛出的异常并让任务提交；跳过或重复调用 `$next` 则始终会使任务失败。
+- 钩子在运行行和任务行被锁定期间运行，因此请保持简短。钩子不得提交或回滚外层事务，也不得向其包裹的运行发送信号等命令；改变该运行的已记录状态会使任务在每次尝试中都失败。
+- 本地活动在工作流任务内运行，因此在 `$next` 之后持续失败的钩子会使每次重试都再次运行这些本地活动。
+
+更新验证拦截器包裹在带有 `#[UpdateValidator]` 的更新被接受之前运行的重放和验证器调用。没有验证器的更新不会运行该钩子。钩子只能观察判定结果，无法改变它：
+
+- 引擎依据验证器自身的结果行事。返回不同的 `UpdateValidationOutcome`，或向 `$next` 传入不同的参数，都不会产生任何改变；验证器始终收到更新的参数。
+- 如果钩子抛出异常、跳过 `$next` 或多次调用它，更新会以 `UpdateValidationFailedException` 被拒绝，且不会记录任何内容，因此钩子绝不可能让未经验证的更新通过。
+- 钩子在更新的准入事务内运行，此时该运行的行已被锁定，因此请保持简短。请使用 `DB::afterCommit()` 延迟副作用；钩子所做的写入会随准入一起提交或回滚。钩子代码在工作流 Fiber 之外运行，因此无法为该运行调度持久工作。
+
+活动拦截器和查询拦截器可以通过 `$context->withArguments(...)` 修改参数，也可以修改返回值，因为活动结果只记录一次，而查询不记录任何内容。改写后的查询参数会再次根据查询契约进行校验。活动异常会穿过所有拦截器，除非某个拦截器处理了它，然后按活动的常规重试策略处理。活动拦截器包裹队列活动和本地活动；`local` 用于区分二者。`WorkflowStub::fake()` 中被模拟的活动不会运行拦截器。
+
+启用[嵌入式追踪](../monitoring.md#embedded-tracing)后，内置的工作流和活动 span 始终位于最外层，因此拦截器在当前活动的 span 内运行，并可添加属性或子 span。
+
+拦截器包裹本包运行的队列作业、本地活动和查询。通过 Worker 任务桥接交给外部 SDK Worker 的任务，在该 SDK 自己的拦截器下运行。Worker 桥接的 `execute` 路由会为桥接调用方在进程内运行已认领的工作流任务，它不会运行工作流任务拦截器。`workflows.v2.interceptors` 中无法解析的条目会在各条路径上以各自的方式失败：队列中的工作流任务会被释放并重试，活动尝试会按其重试策略失败，查询则会向调用方抛出异常。部署时请检查该列表。完整契约见[嵌入式拦截器指南](https://github.com/durable-workflow/workflow/blob/main/docs/worker-interceptors.md)。

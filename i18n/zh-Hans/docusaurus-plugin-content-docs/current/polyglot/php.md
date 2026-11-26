@@ -89,6 +89,66 @@ SDK 维护的快速入门创建干净的 Composer 项目，定义带特性的工
 
 远程 Worker 通过 `registerWorkflow`、`registerActivity`、`registerQuery` 和 `registerUpdate` 注册工作流、活动、查询及更新处理器。完整参数及返回类型见生成的 [PHP SDK API 参考](https://php.durable-workflow.com/api/)。
 
+## 更新验证器 {#update-validators}
+
+从 PHP SDK 3.32.0 起，工作流可以在接受更新之前拒绝它。在工作流类的方法上、紧挨其 `#[Update]` 处理程序添加 `#[UpdateValidator]`。底层形式是 `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`，需在 `registerUpdate()` 之后调用。
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+验证器接收一个包含运行已提交历史的 `QueryContext`，后面跟着更新的参数。Worker 会向 Server 声明验证器，并同时轮询工作流任务和更新验证任务。如果 Server 没有声明同步更新验证，注册会以 `update_validation_tasks_unavailable` 被拒绝。对每个验证任务，Worker 只运行验证器：
+
+- 正常返回即批准更新，Server 随后接受它。
+- 抛出异常或返回 `false` 时，会以 `update_validator_rejected`、异常消息和类名，以及异常 `errors()` 方法返回的字段错误拒绝更新。更新永远不会被接受，其处理程序也永远不会运行。Server 只把拒绝记录为审计事件 `UpdateRejected`。
+- 尝试调度持久工作会被 `UpdateValidatorCommandRefused` 拒绝，从而拒绝该更新。
+
+在客户端，`updateWorkflow()` 会抛出 `UpdateFailed`。`rejectedByValidator()` 用于识别验证器拒绝，`validationErrors()` 返回其字段错误。当 Server 未能及时得到决定时，`validationFailed()` 为 true；此时没有任何内容被接受，请使用同一个请求 ID 重试。
+
+验证器从不在重放期间运行。每次验证只能看到在其自身任务之前提交的历史，因此两个同时进行的验证可能都通过一项本应只有一个通过的检查。带验证器的 Worker 不使用携带的工作流轮询。Worker 拦截器通过 `executeUpdateValidation()` 包裹更新验证任务，能看到验证器的决定，但无法更改。
+
+## 感知重放的工作流日志 {#workflow-logging}
+
+Worker 在每个工作流任务中都会从历史重放工作流，因此工作流代码中的普通日志调用会为每个已完成的步骤重复一次。PHP SDK 3.32.0 及更高版本提供 `$context->logger()`。它返回一个 PSR-3 日志记录器，通过你传给 `Worker` 的日志记录器（命名参数 `logger`）写入，并且只在代码运行到运行的已提交历史之外时写入：
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+每一行都包含 `namespace`、`workflow_type`、`workflow_id` 和 `workflow_run_id`。`$context->replayState()` 返回 `WorkflowReplayState::Replaying`、`Executing` 或 `Unavailable`，`isReplaying()` 是其布尔形式。它们仅用于诊断；切勿据此选择工作流命令。
+
+只有在 Worker 提交运行该代码的工作流任务并且 Server 接受之后，才会写入日志行。被取代的重放、被 Server 拒绝的推测性重放以及被拒绝的完成都不会写入任何内容。在未记录步骤的情况下等待挂起的子工作流或操作句柄的代码只记录一次，由越过该等待的任务写入。在 side effect 闭包内调用 `logger()` 不会写入任何内容。
+
+如果 Worker 在 Server 接受与写入之间终止，这些日志行会丢失。这是一个进程日志记录器，而不是用于业务效果的 outbox。请让日志处理程序保持快速且非阻塞：等待网络的处理程序会阻塞 Worker，并可能使其丢失任务租约。日志记录器的失败会被捕获，绝不会改变工作流的命令。
+
 ## 活动重试上下文与所属运行 {#activity-retry-context}
 
 PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retryInfo`、`$context->workflowId` 和 `$context->runId`。对于有次数上限的策略，使用 `$context->retryInfo->isLastConfiguredAttempt() === true` 判断是否已到达配置的最后一次尝试。`attemptNumber` 保留最初收到的尝试编号。
@@ -204,6 +264,105 @@ Worker 会自动声明 `workflow_entry_arguments_validation`。在配套 Server 
 同一个包提供第一方 [Laravel 服务模式](https://github.com/durable-workflow/sdk-php#laravel-service-mode) 和 [Symfony 服务模式](https://github.com/durable-workflow/sdk-php#symfony-service-mode) 桥接。连接 Cloud 或 Server 时，它们保留框架依赖注入、配置、日志、控制台 Worker 和测试替身。
 
 这些桥接不同于[嵌入式 Laravel 工作流](/docs/installation/)；后者通过 `durable-workflow/workflow` 使 Laravel 应用自身管理持久状态并通过 Laravel 队列执行。参见 [Laravel 采用与运行时迁移](/docs/laravel-adoption/)，了解同一个典型 Laravel 用例如何使用 v1、v2 嵌入式及已提供的服务模式桥接，包括排空和回滚。更全面的运行时边界比较见[部署模式](/docs/polyglot/deployment-modes/)。
+
+## Worker 拦截器 {#worker-interceptors}
+
+Worker 拦截器从 PHP SDK 3.32.0 开始提供。向 `Worker::create()`（或 `Worker` 构造函数）传入有序的 `interceptors`，即可围绕每个任务统一添加审计日志、指标标签、租户上下文或追踪，而无需在每个处理器中分别实现。每个拦截器都实现 `DurableWorkflow\Worker\Interceptor\WorkerInterceptor`；继承 `PassthroughWorkerInterceptor` 即可只实现所需的钩子。钩子的形式与 [Python](./python.md#worker-interceptors) 和 [Rust](./rust.md#worker-interceptors) SDK 拦截器一致。
+
+下面的审计拦截器会记录每个工作流任务的结果和每次活动尝试：
+
+```php
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\Interceptor\ActivityInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\PassthroughWorkerInterceptor;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskOutcome;
+use Psr\Log\LoggerInterface;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'workflow_type' => $context->workflowType,
+            'attempt' => $context->workflowTaskAttempt,
+            'replayed_history' => $context->replaying,
+            'commands' => $outcome->commandTypes(),
+        ]);
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+
+$worker = Worker::create($client, 'orders', container: $container,
+    interceptors: [AuditInterceptor::class]);
+```
+
+| 钩子 | 上下文 | `$next` 返回 |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（另有 `replayState()`）, `updateId`, `observabilitySupported` | 包含命令副本的 `WorkflowTaskOutcome` |
+| `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | 活动结果 |
+| `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | 查询结果 |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | 包含 `approved`、`reason`、`message`、`failureType`、`validationErrors` 的 `UpdateValidationOutcome` |
+
+拦截器按列出的顺序运行。首个拦截器是最外层包装：它在任务之前最先运行，在任务之后最后运行。每个钩子调用 `$next($context)` 继续链。配置追踪后，内置 Worker span 始终位于最外层，因此拦截器在当前活动的任务 span 内运行。
+
+工作流任务拦截器不会破坏确定性：
+
+- `executeWorkflowTask` 包裹生成一个工作流任务命令的工作流代码，每次任务尝试运行一次。当之前的工作流任务已记录命令时，`replaying` 为 `true`，此时工作流代码会先重新运行这段已提交的前缀。结果只包含本任务新增的命令；重放的命令绝不会被重新提交。
+- `replayState()` 以 `WorkflowContext::replayState()` 所用的 `WorkflowReplayState` 报告同样的信息：`Replaying` 或 `Executing`。
+- 重试的尝试（`workflowTaskAttempt > 1`）可能重复一个任务失败的结果，因此外部审计写入应保持幂等。
+- 更新任务（设置了 `updateId`）针对已提交状态运行更新处理器，不会重新运行工作流主体；对于这类任务，`replaying` 只表示之前已有命令。
+- Worker 准确提交工作流代码生成的命令。结果是一个副本；返回不同的结果，或向 `$next` 传入不同的上下文，都不会产生任何改变。
+- 工作流代码产生的失败会原样到达 Worker，即使拦截器捕获了它并正常返回。
+- 拦截器抛出的异常会使工作流任务失败。不会记录任何内容，Server 会重试该任务。跳过 `$next` 或多次调用它，会使任务以 `WorkflowTaskInterceptorViolation` 失败。
+
+更新验证拦截器（`executeUpdateValidation()`）包裹在 Server 接受更新之前运行的更新验证器。它们以只读的 `UpdateValidationOutcome` 查看判定结果，但无法改变判定、更新的参数或验证器读取的历史：验证器始终使用 Worker 持有的任务副本，在自己的 Fiber 中以只读方式运行，Worker 以验证器自身的判定作答。拦截器抛出异常，或跳过 `$next`、多次调用它（`UpdateValidationInterceptorViolation`），都会以 `update_validation_worker_failed` 应答该任务，因此更新不会被接受，调用方可以重试。
+
+活动拦截器和查询拦截器可以通过 `$context->withArguments(...)` 修改参数，也可以修改返回值，因为活动结果只记录一次，而查询不记录任何内容。活动异常会穿过所有拦截器，除非某个拦截器处理了它。活动拦截器包裹远程活动和本地活动；`local` 用于区分二者。启用协作式取消时，远程活动、协作式本地活动和预备本地活动的回调及其拦截器在活动的子进程中运行，因此那里的内存变更不会传回 Worker 进程。
+
+### 容器与框架配置 {#worker-interceptor-configuration}
+
+可以传入拦截器实例或类名。类名通过传给 Worker 的 PSR-11 容器解析，方式与带属性的处理器相同。没有容器时，类名对应的类不能有必需的构造函数参数。
+
+在 Laravel 和 Symfony 服务模式中，在 `worker.interceptors` 下列出拦截器类。它们会按该顺序从框架容器中解析：
+
+```php
+// config/durable-workflow.php
+'worker' => [
+    'interceptors' => [App\Durable\AuditInterceptor::class],
+],
+```
+
+```yaml
+# config/packages/durable_workflow.yaml
+durable_workflow:
+  worker:
+    interceptors:
+      - App\Durable\AuditInterceptor
+```
+
+嵌入式 Laravel 工作流在 `workflows.v2.interceptors` 下配置自己的拦截器；参见[嵌入式 Worker 拦截器](../configuration/publishing-config.md#worker-interceptors)。完整的拦截器契约见 [PHP SDK 参考](https://github.com/durable-workflow/sdk-php/blob/main/docs/sdk-reference.md#worker-interceptors)。
 
 ## 含二进制值的查询结果 {#query-binary-results}
 

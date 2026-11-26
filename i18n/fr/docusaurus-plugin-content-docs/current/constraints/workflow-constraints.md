@@ -17,9 +17,35 @@ Dans le corps d’un workflow :
 
 ## Journaliser depuis le code de workflow {#workflow-logging}
 
-Un worker reconstruit l’historique validé du workflow après les activations et remplacements à froid ; la journalisation ordinaire de l’application peut donc répéter les messages précédents. Utilisez le logger conscient du replay documenté pour votre binding lorsqu’il existe. Le mode service Rust fournit le [logger de workflow de Rust SDK 4.17](../polyglot/rust.md#workflow-logging) ; les autres bindings conservent leurs contrats documentés séparément.
+Le moteur relit un workflow à partir de son historique à chaque réveil ; un appel de journalisation ordinaire dans le code du workflow est donc réécrit pour chaque étape terminée. Un workflow de 50 étapes journalise sa première ligne 50 fois. Utilisez plutôt le logger conscient de la relecture. Il n’écrit que lorsque le code s’exécute pour la première fois. Les loggers des workflows embarqués, du PHP SDK et de Rust ajoutent en outre l’identité de l’exécution à chaque ligne :
 
-La journalisation est une observation du processus. Gardez les commandes durables indépendantes des observations du replay et de la livraison des logs. Même un logger conscient du replay peut répéter un message d’une tentative non validée après un crash ou un retry ; ce n’est pas une outbox garantissant exactement une fois. Les handlers hôtes doivent rester bornés et non bloquants pour ne pas immobiliser le worker. Placez les effets métier durables dans l’activité ou l’opération de workflow enregistrée appropriée.
+- Workflows embarqués (Workflow 2.42.0 ou ultérieur) : `$this->logger()` retourne un logger PSR-3 qui écrit via le logger Laravel, ou via le canal que vous passez, comme dans `$this->logger('workflow')`. Chaque ligne contient `workflow_instance_id`, `workflow_run_id`, `workflow_type` et `namespace`. `$this->replayState()` retourne `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` ou `Unavailable`), et `$this->isReplaying()` en est la forme booléenne.
+- PHP SDK : `$context->logger()` écrit via le logger PSR-3 du `Worker`. Voir le [guide du PHP SDK](../polyglot/php.md#workflow-logging).
+- Rust SDK : `ctx.logger()`. Voir le [logger de workflow du Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
+- Python SDK : `ctx.logger`, silencieux pendant la relecture mais sans identité d’exécution.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Les requêtes de lecture et les validateurs de mise à jour ne journalisent jamais, car ils sont toujours une relecture.
+
+Dans les workflows embarqués, les lignes sont écrites après la validation de la transaction de base de données de la tâche de workflow ; une tâche annulée n’écrit donc rien. Le code qui attend sur un handle `select()` en suspens sans enregistrer d’étape journalise une seule fois, dans la tâche qui dépasse l’attente. Les lignes d’un handler de mise à jour exécuté en direct sont écrites lorsque la mise à jour est appliquée. Dans le PHP SDK, les lignes sont écrites après que le Server a accepté la tâche de workflow ; voir le [guide du PHP SDK](../polyglot/php.md#workflow-logging).
+
+La journalisation est une observation du processus. Gardez les commandes durables du workflow indépendantes des observations de l’état de relecture et de la livraison des journaux. Un logger conscient de la relecture n’est pas une outbox exactly-once : si un worker embarqué ou du PHP SDK meurt entre la validation ou l’acceptation et l’écriture, ces lignes sont perdues, et le logger Rust peut répéter un message issu d’une tentative non validée après un plantage ou une nouvelle tentative. Gardez les handlers de l’hôte bornés et non bloquants pour que la journalisation ne bloque pas le worker. Placez plutôt les effets métier durables dans l’activité appropriée ou une opération de workflow enregistrée.
 
 ## Contrôles au démarrage {#boot-time-guardrails}
 

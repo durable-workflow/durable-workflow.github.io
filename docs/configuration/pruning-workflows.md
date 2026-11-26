@@ -77,11 +77,13 @@ qualify a full application replay or restoration of external objects.
    windows and deduplicate by namespace and run id. Do not overwrite a verified
    full bundle with a later incomplete export.
 
-These are application-owned steps, not a supported self-contained archive
-operation. [Server #520](https://github.com/durable-workflow/server/issues/520)
-tracks the missing product workflow that copies, retains and cold-verifies all
-required external bytes. A successful reference-only export or manual checksum
-check does not complete that requirement.
+These are application-owned steps for embedded exports. An embedded export
+keeps references to external payloads, so a successful export or checksum
+check does not preserve the external bytes. On native Server 3.0.3 or
+later, `dw` 2.13.0 or later with an admin credential writes a
+[self-contained verified history archive](../polyglot/cli-reference.md#history-archives)
+instead. That archive copies every referenced external object under the
+Server's backup hold, then cold-verifies the bytes.
 
 :::warning Pruning is irreversible without a recovery copy
 

@@ -71,7 +71,7 @@ Deixe margem em relação aos limites normais de solicitações e payloads. O li
 - **Integridade do replay.** Um valor só é decodificado após buscar e verificar seus bytes. Preserve os objetos ainda necessários a qualquer execução retida.
 - **Cache de buscas verificadas.** `ExternalPayloadStorage` limita seu cache de bytes verificados. Limpá-lo não exclui o objeto nem altera sua propriedade.
 - **Retenção.** A limpeza do runtime considera proprietários retidos e objetos compartilhados. Falhas de armazenamento, retenções para backup ou referências restantes podem atrasar a exclusão. Executar a retenção não garante ausência de objetos órfãos.
-- **Exportação do histórico.** Uma exportação pode preservar metadados de referências sem buscar o objeto. Seu checksum ou `history_complete` não comprova a existência dos bytes externos nem que o arquivo pode ser reproduzido. Respeite o [limite de backup e restauração](../configuration/pruning-workflows.md#export-before-pruning) e verifique objetos separadamente. Arquivos autossuficientes continuam em [Server #520](https://github.com/durable-workflow/server/issues/520).
+- **Exportação do histórico.** Uma exportação pode preservar metadados de referências sem buscar o objeto. Seu checksum ou `history_complete` não comprova a existência dos bytes externos nem que o arquivo pode ser reproduzido. Respeite o [limite de backup e restauração](../configuration/pruning-workflows.md#export-before-pruning) e verifique objetos separadamente. Exportações incorporadas continuam contendo apenas referências. No Server native, `dw workflow:history-archive` copia os bytes para um [arquivo autossuficiente verificado](../polyglot/cli-reference.md#history-archives).
 
 ## Uso por código {#using-it-from-code}
 
