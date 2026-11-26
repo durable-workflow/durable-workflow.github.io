@@ -305,6 +305,7 @@ del repositorio ejecuta el mismo interceptor contra un Server autohospedado.
 | `execute_workflow_task` | una tarea de workflow, incluida la reproducción | `WorkflowTaskInterceptorContext` | `next.run()` devuelve un `WorkflowTaskOutcome` de solo lectura |
 | `execute_activity` | un intento de actividad o de actividad local | `ActivityInterceptorContext` | `next.run(context)` devuelve el resultado de la actividad |
 | `execute_query_task` | una tarea de consulta | `QueryTaskInterceptorContext` | `next.run()` devuelve el resultado de la consulta o `QueryTaskFailure` |
+| `execute_update_validation_task` | una tarea de validación de actualización | `UpdateValidationInterceptorContext` | `next.run()` devuelve un `UpdateValidationOutcome` de solo lectura |
 
 Los contextos son de solo lectura. Contienen el id del worker, la cola de
 tareas, el espacio de nombres y la identidad de la tarea: id de tarea, id de
@@ -313,6 +314,9 @@ tareas de workflow, la longitud del historial, el portador de trazas de la tarea
 y el estado de reproducción. Un contexto de actividad también expone los
 argumentos decodificados, si el intento es una actividad local y el
 `ActivityContext` que recibe el manejador.
+Un contexto de validación de actualización contiene el id y el intento de la
+tarea de validación, el id, el id de ejecución y el tipo del workflow, el nombre
+de la actualización y el portador de trazas.
 
 Los interceptores se ejecutan en orden de registro. El primero registrado es el
 más externo: se ejecuta el primero antes de la tarea y el último después de
@@ -352,6 +356,20 @@ workflow:
   reintento puede repetir el mismo resultado; un `context.attempt()` mayor que 1
   identifica un reintento, así que haz que las escrituras de auditoría externas
   sean idempotentes.
+
+Los interceptores de validación de actualizaciones no pueden cambiar si se
+acepta una actualización:
+
+- `next.run()` no recibe ninguna entrada, así que el validador siempre se
+  ejecuta sobre la tarea tal como se recibió, y el worker envía la aprobación o
+  el rechazo del propio validador. El resultado es una vista de solo lectura:
+  `is_approved()`, `is_rejected()`, `is_worker_failure()`, `reason()` y
+  `rejection()`.
+- Un error del interceptor, volver o fallar sin ejecutar `next`, o abandonar la
+  validación a medias hace que el worker informe
+  `update_validation_worker_failed` en su lugar. La actualización no se acepta,
+  y el reintento de quien llama con el mismo id de solicitud vuelve a consultar
+  al validador.
 
 El `WorkflowEnvironment` sin conexión ejecuta los interceptores de actividades
 registrados en el worker que envuelve. No tiene tareas de workflow ni de

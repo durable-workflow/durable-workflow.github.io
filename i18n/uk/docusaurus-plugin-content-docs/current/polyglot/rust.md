@@ -351,12 +351,15 @@ let worker = Worker::new(client, "orders").interceptor(AuditLog);
 | `execute_workflow_task` | одне завдання workflow, включно з replay | `WorkflowTaskInterceptorContext` | `next.run()` повертає `WorkflowTaskOutcome` лише для читання |
 | `execute_activity` | одну спробу activity або local activity | `ActivityInterceptorContext` | `next.run(context)` повертає результат activity |
 | `execute_query_task` | одне завдання query | `QueryTaskInterceptorContext` | `next.run()` повертає результат query або `QueryTaskFailure` |
+| `execute_update_validation_task` | одне завдання валідації update | `UpdateValidationInterceptorContext` | `next.run()` повертає `UpdateValidationOutcome` лише для читання |
 
 Контексти доступні лише для читання. Вони містять id worker, task queue, namespace
 та ідентичність завдання: id завдання, id workflow, id run, тип workflow чи
 activity, спробу, а для завдань workflow — довжину історії, trace carrier завдання
 та стан replay. Контекст activity також надає декодовані аргументи, ознаку того, чи
 є спроба local activity, і `ActivityContext`, який отримує обробник.
+Контекст валідації update містить id та спробу завдання валідації, id workflow,
+id run і тип workflow, назву update та trace carrier.
 
 Перехоплювачі виконуються в порядку реєстрації. Перший зареєстрований є зовнішнім:
 він виконується першим перед завданням і останнім після нього. Кожен hook має
@@ -390,6 +393,18 @@ SDK. Помилки завдання повертаються назовні к�
   його повторна спроба може повторити той самий результат; `context.attempt()`
   більше 1 позначає повторну спробу, тому робіть зовнішні записи аудиту
   ідемпотентними.
+
+Перехоплювачі валідації update не можуть змінити те, чи буде update прийнято:
+
+- `next.run()` не приймає вхідних даних, тому валідатор завжди працює із
+  завданням у тому вигляді, в якому його отримано, а worker надсилає власне
+  схвалення чи відхилення валідатора. Результат є поданням лише для читання:
+  `is_approved()`, `is_rejected()`, `is_worker_failure()`, `reason()` та
+  `rejection()`.
+- Помилка перехоплювача, повернення чи збій без запуску `next` або переривання
+  валідації на півдорозі змушують worker натомість повідомити
+  `update_validation_worker_failed`. Update не приймається, а повторна спроба
+  викликача з тим самим id запиту знову звертається до валідатора.
 
 Офлайн-`WorkflowEnvironment` запускає перехоплювачі activity, зареєстровані на
 worker, який він обгортає. У ньому немає завдань workflow чи query, тож ці hook там

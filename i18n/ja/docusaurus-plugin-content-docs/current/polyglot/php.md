@@ -250,20 +250,24 @@ $worker = Worker::create($client, 'orders', container: $container,
 
 | フック | コンテキスト | `$next` の戻り値 |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | コマンドのコピーを持つ `WorkflowTaskOutcome` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（`replayState()` も）, `updateId`, `observabilitySupported` | コマンドのコピーを持つ `WorkflowTaskOutcome` |
 | `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | アクティビティの結果 |
 | `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | クエリの結果 |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `approved`、`reason`、`message`、`failureType`、`validationErrors` を持つ `UpdateValidationOutcome` |
 
 インターセプターは列挙した順に実行されます。最初のインターセプターが最も外側のラッパーで、タスクの前では最初に、タスクの後では最後に実行されます。各フックはチェーンを続けるために `$next($context)` を呼び出します。トレースが設定されている場合、組み込みの Worker スパンが最も外側に留まるため、インターセプターはアクティブなタスクスパンの内側で実行されます。
 
 ワークフロータスクのインターセプターは決定性を壊せません。
 
 - `executeWorkflowTask` は、1つのワークフロータスクのコマンドを生成するワークフローコードを、タスク試行ごとに一度ラップします。それ以前のワークフロータスクがすでにコマンドを記録している場合、`replaying` は `true` になり、ワークフローコードはまずそのコミット済みの部分を再実行しています。結果には、このタスクが追加するコマンドだけが含まれます。リプレイされたコマンドが再送信されることはありません。
+- `replayState()` は同じ情報を、`WorkflowContext::replayState()` が使う `WorkflowReplayState`（`Replaying` または `Executing`）として返します。
 - 再試行された試行（`workflowTaskAttempt > 1`）では、タスクが失敗した結果が繰り返される可能性があるため、外部への監査書き込みは冪等にしてください。
 - Update タスク（`updateId` が設定されたもの）は、ワークフロー本体を再実行せずに、コミット済みの状態に対して Update ハンドラーを実行します。このタスクでは、`replaying` はそれ以前のコマンドが存在することを示すだけです。
 - Worker は、ワークフローコードが生成したコマンドをそのまま送信します。結果はコピーです。別の結果を返したり、別のコンテキストを `$next` に渡したりしても、何も変わりません。
 - ワークフローコードからの失敗は、インターセプターがそれを捕捉して正常に戻った場合でも、そのまま Worker に届きます。
 - インターセプターが例外をスローすると、ワークフロータスクは失敗します。何も記録されず、Server がタスクを再試行します。`$next` を呼ばなかったり、複数回呼び出したりすると、タスクは `WorkflowTaskInterceptorViolation` で失敗します。
+
+Update 検証インターセプター（`executeUpdateValidation()`）は、Server が Update を受理する前に行われる、Update のバリデーターの実行をラップします。インターセプターは判定を読み取り専用の `UpdateValidationOutcome` として参照できますが、判定、Update の引数、バリデーターが読む履歴は変更できません。バリデーターは常に Worker が持つタスクのコピーを使って独自の Fiber 内で読み取り専用で実行され、Worker はバリデーター自身の判定で応答します。インターセプターが例外をスローした場合、または `$next` を呼ばなかったり複数回呼び出したりした場合（`UpdateValidationInterceptorViolation`）、タスクには `update_validation_worker_failed` で応答します。そのため Update は受理されず、呼び出し元は再試行できます。
 
 アクティビティとクエリのインターセプターは、`$context->withArguments(...)` で引数を変更でき、戻り値も変更できます。アクティビティの結果は一度だけ記録され、クエリは何も記録しないためです。アクティビティの例外は、いずれかのインターセプターが処理しない限り、すべてのインターセプターを通過します。アクティビティのインターセプターはリモートアクティビティとローカルアクティビティの両方をラップし、`local` で両者を区別できます。協調的キャンセルを使う場合、リモート、協調的ローカル、準備済みローカルの各アクティビティのコールバックとそのインターセプターはアクティビティの子プロセスで実行されるため、そこでのメモリの変更は Worker プロセスに反映されません。
 

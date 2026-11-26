@@ -353,11 +353,11 @@ Prüfer Schlüssel unterscheiden müssen.
 
 Worker-Interceptors sind ab dem nächsten Release des Workflow-Pakets verfügbar.
 Das eingebettete Durable Workflow führt geordnete Worker-Interceptors um die
-Workflow-Tasks, Aktivitäten und Abfragen aus, die es in den Prozessen Ihrer
-Anwendung ausführt. Verwenden Sie sie für Audit-Logging, Metrik-Tags,
-Mandantenkontext oder Tracing, das Sie einmal schreiben möchten statt in jedem
-Workflow und jeder Aktivität. Die Form der Hooks entspricht den Interceptors des
-[Python](../polyglot/python.md#worker-interceptors)-,
+Workflow-Tasks, Aktivitäten, Abfragen und Update-Validierungen aus, die es in
+den Prozessen Ihrer Anwendung ausführt. Verwenden Sie sie für Audit-Logging,
+Metrik-Tags, Mandantenkontext oder Tracing, das Sie einmal schreiben möchten
+statt in jedem Workflow und jeder Aktivität. Die Form der Hooks entspricht den
+Interceptors des [Python](../polyglot/python.md#worker-interceptors)-,
 [PHP](../polyglot/php.md#worker-interceptors)- und
 [Rust](../polyglot/rust.md#worker-interceptors)-SDK.
 
@@ -432,14 +432,15 @@ einen als Singleton, wenn er zwischen Tasks Zustand behalten muss.
 
 | Hook | Kontext | Rückgabe von `$next` |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` mit `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (auch `replayState()`) | `WorkflowTaskOutcome` mit `historyEventTypes`, `runStatus`, `nextTaskId` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | das Aktivitätsergebnis |
-| `executeQueryTask($context, $next)` | `workerId` (immer null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | das Abfrageergebnis |
+| `executeQueryTask($context, $next)` | `workerId` (immer null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (immer `Replaying`) | das Abfrageergebnis |
+| `executeUpdateValidation($context, $next)` | `workerId` (immer null), `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (immer `Replaying`) | `UpdateValidationOutcome` mit `approved`, `rejectionMessage`, `exceptionType`, `validationErrors` |
 
 `task` ist ein Array-Snapshot der beanspruchten Task-Zeile, niemals das Modell
 selbst. `workerId` identifiziert den Queue-Worker-Prozess anhand von Host und
-Prozess-ID. Abfragen laufen im aufrufenden Prozess, daher ist ihre `workerId`
-null.
+Prozess-ID. Abfragen und Update-Validierungen laufen im aufrufenden Prozess,
+daher ist ihre `workerId` null.
 
 Interceptors für Workflow-Tasks können nicht ändern, was ein Workflow aufzeichnet:
 
@@ -448,6 +449,10 @@ Interceptors für Workflow-Tasks können nicht ändern, was ein Workflow aufzeic
   frühere Workflow-Tasks bereits Befehle für den Lauf aufgezeichnet haben. Es ist
   kein Deduplizierungsschlüssel: `historyEventTypes` listet nur die Ereignisse
   auf, die dieser Task angehängt hat.
+- `replayState()` liefert dieselbe Antwort als
+  `Workflow\V2\Enums\WorkflowReplayState`, die Enum, die auch
+  `Workflow::replayState()` verwendet; der Wert des Interceptors steht für den
+  Task fest.
 - Seiteneffekte von Hooks laufen, bevor der Task festgeschrieben wird, und können
   sich wiederholen, wenn ein Versuch wiederholt wird; verschieben Sie sie daher
   mit `DB::afterCommit()` oder verknüpfen Sie sie mit `taskId` und
@@ -473,6 +478,24 @@ Interceptors für Workflow-Tasks können nicht ändern, was ein Workflow aufzeic
 - Lokale Aktivitäten laufen innerhalb des Workflow-Tasks, daher führt ein Hook,
   der nach `$next` wiederholt fehlschlägt, diese lokalen Aktivitäten bei jeder
   Wiederholung erneut aus.
+
+Update-Validierungs-Interceptors umschließen das Replay und den Aufruf des
+Validators, die laufen, bevor ein Update mit einem `#[UpdateValidator]`
+angenommen wird. Updates ohne Validator führen den Hook nicht aus. Die Hooks
+beobachten die Entscheidung; ändern können sie sie nicht:
+
+- Die Engine handelt nach dem eigenen Ergebnis des Validators. Die Rückgabe
+  eines anderen `UpdateValidationOutcome` oder die Übergabe anderer Argumente an
+  `$next` ändert nichts; der Validator erhält immer die Argumente des Updates.
+- Wirft ein Hook, überspringt er `$next` oder ruft er es mehr als einmal auf,
+  wird das Update mit `UpdateValidationFailedException` abgelehnt und nichts
+  aufgezeichnet; ein Hook kann ein Update also nie unvalidiert durchlassen.
+- Der Hook läuft innerhalb der Annahmetransaktion des Updates, während die
+  Zeilen des Laufs gesperrt sind, halten Sie ihn daher kurz. Verschieben Sie
+  Seiteneffekte mit `DB::afterCommit()`; Schreibvorgänge eines Hooks werden
+  zusammen mit der Annahme festgeschrieben oder zurückgerollt. Hook-Code läuft
+  außerhalb der Workflow-Fiber und kann daher keine dauerhafte Arbeit für den
+  Lauf einplanen.
 
 Aktivitäts- und Abfrage-Interceptors dürfen Argumente mit
 `$context->withArguments(...)` ändern und den Rückgabewert verändern, weil ein

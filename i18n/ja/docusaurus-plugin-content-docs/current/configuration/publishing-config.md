@@ -240,7 +240,7 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 
 ## Worker インターセプター {#worker-interceptors}
 
-Worker インターセプターは次の Workflow パッケージリリースから利用できます。組み込み Durable Workflow は、アプリケーションのプロセス内で実行するワークフロータスク、アクティビティ、クエリの前後で、順序付きの Worker インターセプターを実行します。監査ログ、メトリクスタグ、テナントコンテキスト、トレースなど、各ワークフローやアクティビティではなく一度だけ書きたい処理に使用します。フックの形は [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors)、[Rust](../polyglot/rust.md#worker-interceptors) の SDK インターセプターと同じです。
+Worker インターセプターは次の Workflow パッケージリリースから利用できます。組み込み Durable Workflow は、アプリケーションのプロセス内で実行するワークフロータスク、アクティビティ、クエリ、更新の検証の前後で、順序付きの Worker インターセプターを実行します。監査ログ、メトリクスタグ、テナントコンテキスト、トレースなど、各ワークフローやアクティビティではなく一度だけ書きたい処理に使用します。フックの形は [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors)、[Rust](../polyglot/rust.md#worker-interceptors) の SDK インターセプターと同じです。
 
 インターセプタークラスを `config/workflows.php` の `workflows.v2.interceptors` に列挙します。これらは Laravel コンテナから解決されるためコンストラクターインジェクションが使え、列挙した順に実行されます。最初のものが最も外側のラッパーです。
 
@@ -305,21 +305,29 @@ final class AuditInterceptor extends PassthroughWorkerInterceptor
 
 | フック | コンテキスト | `$next` の戻り値 |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `historyEventTypes`、`runStatus`、`nextTaskId` を持つ `WorkflowTaskOutcome` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（`replayState()` も） | `historyEventTypes`、`runStatus`、`nextTaskId` を持つ `WorkflowTaskOutcome` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | アクティビティの結果 |
-| `executeQueryTask($context, $next)` | `workerId`（常に null）, `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | クエリの結果 |
+| `executeQueryTask($context, $next)` | `workerId`（常に null）, `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（常に `Replaying`） | クエリの結果 |
+| `executeUpdateValidation($context, $next)` | `workerId`（常に null）, `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（常に `Replaying`） | `approved`、`rejectionMessage`、`exceptionType`、`validationErrors` を持つ `UpdateValidationOutcome` |
 
-`task` は取得したタスク行の配列スナップショットであり、モデルそのものではありません。`workerId` はホストとプロセス ID でキュー Worker プロセスを識別します。クエリは呼び出し元のプロセスで実行されるため、その `workerId` は null です。
+`task` は取得したタスク行の配列スナップショットであり、モデルそのものではありません。`workerId` はホストとプロセス ID でキュー Worker プロセスを識別します。クエリと更新の検証は呼び出し元のプロセスで実行されるため、その `workerId` は null です。
 
 ワークフロータスクのインターセプターは、ワークフローが記録する内容を変更できません。
 
 - `executeWorkflowTask` は、ワークフロータスクをそのデータベーストランザクションの内側で、タスク試行ごとに一度ラップします。それ以前のワークフロータスクがその実行に対してすでにコマンドを記録している場合、`replaying` は `true` になります。これは重複排除のキーではありません。`historyEventTypes` には、このタスクが追加したイベントだけが列挙されます。
+- `replayState()` は同じ答えを、`Workflow::replayState()` が使う列挙型 `Workflow\V2\Enums\WorkflowReplayState` として返します。インターセプターが見る値はそのタスクの間は固定です。
 - フックの副作用はタスクのコミット前に実行され、試行が再試行されると繰り返される可能性があります。そのため、`DB::afterCommit()` で遅延させるか、`taskId` と `workflowTaskAttempt` をキーにしてください。
 - エンジンは、ワークフローコードが生成した履歴をコミットします。結果は読み取り専用のビューです。別の結果を返したり、別のコンテキストを `$next` に渡したりしても、何も変わりません。
 - ワークフローコードからの失敗は、インターセプターがそれを捕捉して正常に戻った場合でも、そのままエンジンに届きます。
 - インターセプターがチェーンの外に例外をスローした場合、`$next` を呼ばなかった場合、または複数回呼び出した場合、タスクのトランザクションはロールバックされるため、何も記録されません。タスクは `WorkflowTaskInterceptorFailed` を最後のエラーとして解放され、通常の修復バックオフの後に再試行されます。内側のインターセプターが `$next` の後にスローした例外を外側のインターセプターが捕捉し、タスクをコミットさせることはできます。ただし、`$next` を呼ばなかった場合や繰り返し呼び出した場合は、常にタスクが失敗します。
 - フックは実行行とタスク行がロックされている間に実行されるため、短く保ってください。フックは周囲のトランザクションをコミットまたはロールバックしてはならず、ラップしている実行に対してシグナルなどのコマンドを送信してはなりません。実行の記録済み状態を変更すると、すべての試行でタスクが失敗します。
 - ローカルアクティビティはワークフロータスクの内側で実行されるため、`$next` の後に失敗し続けるフックがあると、再試行のたびにそれらのローカルアクティビティが再度実行されます。
+
+更新検証のインターセプターは、`#[UpdateValidator]` を持つ更新が受理される前に実行されるリプレイとバリデーター呼び出しをラップします。バリデーターのない更新ではこのフックは実行されません。フックは判定を観察するだけで、変更はできません。
+
+- エンジンはバリデーター自身の結果に従って動作します。別の `UpdateValidationOutcome` を返したり、別の引数を `$next` に渡したりしても、何も変わりません。バリデーターは常に更新の引数を受け取ります。
+- フックが例外をスローした場合、`$next` を呼ばなかった場合、または複数回呼び出した場合、更新は `UpdateValidationFailedException` で拒否され、何も記録されません。そのため、フックが検証されていない更新を通すことはありません。
+- フックは更新の受理トランザクションの内側で、実行の行がロックされている間に実行されるため、短く保ってください。副作用は `DB::afterCommit()` で遅延させてください。フックによる書き込みは、受理とともにコミットまたはロールバックされます。フックのコードはワークフローの Fiber の外側で実行されるため、その実行に対して永続的な処理をスケジュールすることはできません。
 
 アクティビティとクエリのインターセプターは、`$context->withArguments(...)` で引数を変更でき、戻り値も変更できます。アクティビティの結果は一度だけ記録され、クエリは何も記録しないためです。書き換えられたクエリの引数は、クエリの契約に対して再度検証されます。アクティビティの例外は、いずれかのインターセプターが処理しない限り、すべてのインターセプターを通過し、その後アクティビティの通常のリトライポリシーに従います。アクティビティのインターセプターはキューに入れられたアクティビティとローカルアクティビティの両方をラップし、`local` で両者を区別できます。`WorkflowStub::fake()` でモックしたアクティビティでは、インターセプターは実行されません。
 

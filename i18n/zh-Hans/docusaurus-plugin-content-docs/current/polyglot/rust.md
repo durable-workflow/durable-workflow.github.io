@@ -278,8 +278,9 @@ let worker = Worker::new(client, "orders").interceptor(AuditLog);
 | `execute_workflow_task` | 一个工作流任务，包括重放 | `WorkflowTaskInterceptorContext` | `next.run()` 返回只读的 `WorkflowTaskOutcome` |
 | `execute_activity` | 一次活动或本地活动尝试 | `ActivityInterceptorContext` | `next.run(context)` 返回活动结果 |
 | `execute_query_task` | 一个查询任务 | `QueryTaskInterceptorContext` | `next.run()` 返回查询结果或 `QueryTaskFailure` |
+| `execute_update_validation_task` | 一个更新验证任务 | `UpdateValidationInterceptorContext` | `next.run()` 返回只读的 `UpdateValidationOutcome` |
 
-上下文是只读的。它们携带 Worker ID、任务队列、命名空间以及任务标识：任务 ID、工作流 ID、运行 ID、工作流或活动类型、尝试次数；对于工作流任务，还包括历史长度、任务的追踪载体和重放状态。活动上下文还提供已解码的参数、该尝试是否为本地活动，以及处理器收到的 `ActivityContext`。
+上下文是只读的。它们携带 Worker ID、任务队列、命名空间以及任务标识：任务 ID、工作流 ID、运行 ID、工作流或活动类型、尝试次数；对于工作流任务，还包括历史长度、任务的追踪载体和重放状态。活动上下文还提供已解码的参数、该尝试是否为本地活动，以及处理器收到的 `ActivityContext`。更新验证上下文携带验证任务的 ID 和尝试次数、工作流 ID、运行 ID、工作流类型、更新名称以及追踪载体。
 
 拦截器按注册顺序运行。最先注册的拦截器位于最外层：它在任务之前最先运行，在任务之后最后运行。每个钩子都必须调用 `next` 继续链；最内层的 `next` 运行 SDK 自身的处理逻辑。任务产生的错误会原样穿过每个拦截器向外传递，除非某个活动或查询拦截器有意处理它。活动拦截器可以通过 `context.with_args(..)` 修改参数并转换结果，活动和查询拦截器也可以不调用 `next` 直接作答。内置的 `ExecutionTelemetry` span 始终位于整个链的最外层。
 
@@ -291,6 +292,11 @@ let worker = Worker::new(client, "orders").interceptor(AuditLog);
 - 任务成功后拦截器返回错误，或未运行 `next` 就返回，会使工作流任务以 `Error::WorkflowTaskInterceptor` 失败。不会记录任何内容，Server 会重试该任务。工作流本身不会失败。
 - 拦截器在每个工作流任务上运行。当任务在新的执行之前重新运行了之前任务已提交的命令时，`context.replay_state()` 为 `Replaying`；对于没有已提交历史的任务，则为 `Executing`。Worker 绝不会重新提交重放的命令，因此结果中的命令对该任务而言始终是新的：无论重放状态如何，都应审计每个成功的结果。
 - 如果任务在拦截器观察到它之后失败，其重试可能重复同一个结果；`context.attempt()` 大于 1 表示重试，因此外部审计写入应保持幂等。
+
+更新验证拦截器无法改变更新是否被接受：
+
+- `next.run()` 不接受输入，因此验证器始终按收到的任务运行，Worker 发送验证器自身的批准或拒绝。结果是只读视图：`is_approved()`、`is_rejected()`、`is_worker_failure()`、`reason()` 和 `rejection()`。
+- 拦截器返回错误、未运行 `next` 就返回或失败，或者中途丢弃验证，都会使 Worker 改为报告 `update_validation_worker_failed`。更新不会被接受，调用方使用相同请求 ID 重试时会再次询问验证器。
 
 离线 `WorkflowEnvironment` 会运行在其包装的 Worker 上注册的活动拦截器。它没有工作流任务或查询任务，因此这些钩子不会在那里运行。完整的拦截器契约见 [Rust SDK README](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors)。
 

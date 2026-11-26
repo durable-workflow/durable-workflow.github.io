@@ -283,8 +283,9 @@ let worker = Worker::new(client, "orders").interceptor(AuditLog);
 | `execute_workflow_task` | リプレイを含む1つのワークフロータスク | `WorkflowTaskInterceptorContext` | `next.run()` は読み取り専用の `WorkflowTaskOutcome` を返す |
 | `execute_activity` | 1回のアクティビティまたはローカルアクティビティの試行 | `ActivityInterceptorContext` | `next.run(context)` はアクティビティの結果を返す |
 | `execute_query_task` | 1つのクエリタスク | `QueryTaskInterceptorContext` | `next.run()` はクエリの結果または `QueryTaskFailure` を返す |
+| `execute_update_validation_task` | 1つの更新検証タスク | `UpdateValidationInterceptorContext` | `next.run()` は読み取り専用の `UpdateValidationOutcome` を返す |
 
-コンテキストは読み取り専用です。Worker ID、タスクキュー、名前空間と、タスクの識別情報（タスク ID、ワークフロー ID、実行 ID、ワークフローまたはアクティビティの型、試行回数、およびワークフロータスクの場合は履歴の長さ、タスクのトレースキャリア、リプレイ状態）を保持します。アクティビティのコンテキストは、デコード済みの引数、その試行がローカルアクティビティかどうか、ハンドラーが受け取る `ActivityContext` も公開します。
+コンテキストは読み取り専用です。Worker ID、タスクキュー、名前空間と、タスクの識別情報（タスク ID、ワークフロー ID、実行 ID、ワークフローまたはアクティビティの型、試行回数、およびワークフロータスクの場合は履歴の長さ、タスクのトレースキャリア、リプレイ状態）を保持します。アクティビティのコンテキストは、デコード済みの引数、その試行がローカルアクティビティかどうか、ハンドラーが受け取る `ActivityContext` も公開します。更新検証のコンテキストは、検証タスクの ID と試行回数、ワークフロー ID、実行 ID、ワークフローの型、更新名、トレースキャリアを保持します。
 
 インターセプターは登録順に実行されます。最初に登録したものが最も外側になり、タスクの前では最初に、タスクの後では最後に実行されます。各フックはチェーンを続けるために `next` を呼び出す必要があります。最も内側の `next` が SDK 自身の処理を実行します。タスクからのエラーは、アクティビティまたはクエリのインターセプターが意図的に処理しない限り、すべてのインターセプターをそのまま通って外側に戻ります。アクティビティのインターセプターは `context.with_args(..)` で引数を変更し、結果を変換できます。また、アクティビティとクエリのインターセプターは `next` を呼ばずに応答できます。組み込みの `ExecutionTelemetry` スパンは、チェーン全体を囲む最も外側に留まります。
 
@@ -296,6 +297,11 @@ let worker = Worker::new(client, "orders").interceptor(AuditLog);
 - タスクが成功した後のインターセプターのエラー、または `next` を実行せずに戻ることは、ワークフロータスクを `Error::WorkflowTaskInterceptor` で失敗させます。何も記録されず、Server がタスクを再試行します。ワークフローは失敗しません。
 - インターセプターはすべてのワークフロータスクで実行されます。`context.replay_state()` は、タスクが新しい実行の前に以前のタスクでコミットされたコマンドを再実行した場合は `Replaying`、コミット済みの履歴がないタスクでは `Executing` になります。Worker はリプレイされたコマンドを再送信しないため、結果のコマンドは常にそのタスクにとって新しいものです。リプレイ状態にかかわらず、成功したすべての結果を監査してください。
 - インターセプターが観察した後にタスクが失敗した場合、その再試行で同じ結果が繰り返される可能性があります。`context.attempt()` が 1 より大きければ再試行であることを示すため、外部への監査書き込みは冪等にしてください。
+
+更新検証のインターセプターは、更新が受理されるかどうかを変更できません。
+
+- `next.run()` は入力を受け取らないため、バリデーターは常に受信したとおりのタスクで実行され、Worker はバリデーター自身の承認または拒否を送信します。結果は読み取り専用のビューで、`is_approved()`、`is_rejected()`、`is_worker_failure()`、`reason()`、`rejection()` を提供します。
+- インターセプターがエラーを返した場合、`next` を実行せずに戻ったり失敗したりした場合、または検証を途中で破棄した場合、Worker は代わりに `update_validation_worker_failed` を報告します。更新は受理されず、呼び出し元が同じリクエスト ID で再試行すると、バリデーターにもう一度問い合わせます。
 
 オフラインの `WorkflowEnvironment` は、ラップする Worker に登録されたアクティビティのインターセプターを実行します。ワークフロータスクやクエリタスクはないため、それらのフックはそこでは実行されません。インターセプターの完全な契約については、[Rust SDK README](https://github.com/durable-workflow/sdk-rust/blob/main/README.md#worker-interceptors) を参照してください。
 

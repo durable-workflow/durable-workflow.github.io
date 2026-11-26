@@ -244,12 +244,14 @@ Cada exportação também inclui um bloco `integrity` calculado após a ocultaç
 
 ## Interceptadores de worker {#worker-interceptors}
 
-Os interceptadores de worker estão disponíveis a partir da próxima versão do pacote Workflow.
-O Durable Workflow embarcado executa interceptadores de worker ordenados em torno das tarefas
-de workflow, atividades e consultas que executa nos processos da sua aplicação. Use-os
-para logs de auditoria, tags de métricas, contexto de tenant ou tracing que você queira
-escrever uma única vez, em vez de em cada workflow e atividade. O formato dos hooks corresponde aos
-interceptadores dos SDKs [Python](../polyglot/python.md#worker-interceptors),
+Os interceptadores de worker estão disponíveis a partir da próxima versão do
+pacote Workflow. O Durable Workflow embarcado executa interceptadores de worker
+ordenados em torno das tarefas de workflow, atividades, consultas e validações
+de atualizações que executa nos processos da sua aplicação. Use-os para logs de
+auditoria, tags de métricas, contexto de tenant ou tracing que você queira
+escrever uma única vez, em vez de em cada workflow e atividade. O formato dos
+hooks corresponde aos interceptadores dos SDKs
+[Python](../polyglot/python.md#worker-interceptors),
 [PHP](../polyglot/php.md#worker-interceptors) e
 [Rust](../polyglot/rust.md#worker-interceptors).
 
@@ -323,13 +325,15 @@ singleton quando ele precisar manter estado entre tarefas.
 
 | Hook | Contexto | Retorno de `$next` |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` com `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (também `replayState()`) | `WorkflowTaskOutcome` com `historyEventTypes`, `runStatus`, `nextTaskId` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | o resultado da atividade |
-| `executeQueryTask($context, $next)` | `workerId` (sempre null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | o resultado da consulta |
+| `executeQueryTask($context, $next)` | `workerId` (sempre null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (sempre `Replaying`) | o resultado da consulta |
+| `executeUpdateValidation($context, $next)` | `workerId` (sempre null), `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (sempre `Replaying`) | `UpdateValidationOutcome` com `approved`, `rejectionMessage`, `exceptionType`, `validationErrors` |
 
-`task` é um snapshot em array da linha da tarefa adquirida, nunca o próprio model.
-`workerId` identifica o processo do worker de fila pelo host e pelo ID do processo. Consultas
-executam no processo chamador, então o `workerId` delas é null.
+`task` é um snapshot em array da linha da tarefa adquirida, nunca o próprio
+model. `workerId` identifica o processo do worker de fila pelo host e pelo ID do
+processo. Consultas e validações de atualizações executam no processo chamador,
+então o `workerId` delas é null.
 
 Interceptadores de tarefa de workflow não conseguem alterar o que um workflow registra:
 
@@ -338,6 +342,9 @@ Interceptadores de tarefa de workflow não conseguem alterar o que um workflow r
   workflow anteriores já registraram comandos para a execução. Ele não é uma
   chave de deduplicação: `historyEventTypes` lista apenas os eventos que esta tarefa
   acrescentou.
+- `replayState()` dá a mesma resposta como um
+  `Workflow\V2\Enums\WorkflowReplayState`, o enum que `Workflow::replayState()`
+  usa; o valor do interceptador é fixo para a tarefa.
 - Os efeitos colaterais dos hooks executam antes de a tarefa ser confirmada e podem se repetir quando uma tentativa
   é executada novamente, então adie-os com `DB::afterCommit()` ou use `taskId` e
   `workflowTaskAttempt` como chave.
@@ -358,6 +365,26 @@ Interceptadores de tarefa de workflow não conseguem alterar o que um workflow r
   registrado da execução faz a tarefa falhar em todas as tentativas.
 - Atividades locais executam dentro da tarefa de workflow, então um hook que continua falhando
   depois de `$next` faz cada nova tentativa executar essas atividades locais novamente.
+
+Interceptadores de validação de atualização envolvem o replay e a chamada ao
+validador que executam antes que uma atualização com um `#[UpdateValidator]`
+seja aceita. Atualizações sem validador não executam o hook. Os hooks observam a
+decisão; não conseguem alterá-la:
+
+- O engine age conforme o resultado do próprio validador. Retornar um
+  `UpdateValidationOutcome` diferente, ou passar argumentos diferentes para
+  `$next`, não muda nada; o validador sempre recebe os argumentos da
+  atualização.
+- Se um hook lançar uma exceção, pular `$next` ou chamá-lo mais de uma vez, a
+  atualização é recusada com `UpdateValidationFailedException` e nada é
+  registrado, então um hook nunca consegue deixar uma atualização passar sem
+  validação.
+- O hook executa dentro da transação de admissão da atualização, enquanto as
+  linhas da execução estão bloqueadas, então mantenha-o curto. Adie efeitos
+  colaterais com `DB::afterCommit()`; as gravações feitas por um hook são
+  confirmadas ou revertidas junto com a admissão. O código do hook executa fora
+  da fiber do workflow, então não consegue agendar trabalho durável para a
+  execução.
 
 Interceptadores de atividade e de consulta podem alterar argumentos com
 `$context->withArguments(...)` e podem alterar o valor retornado, porque um

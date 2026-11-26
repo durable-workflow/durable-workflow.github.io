@@ -368,12 +368,15 @@ runs the same interceptor against a self-hosted Server.
 | `execute_workflow_task` | one workflow task, including replay | `WorkflowTaskInterceptorContext` | `next.run()` returns a read-only `WorkflowTaskOutcome` |
 | `execute_activity` | one activity or local activity attempt | `ActivityInterceptorContext` | `next.run(context)` returns the activity result |
 | `execute_query_task` | one query task | `QueryTaskInterceptorContext` | `next.run()` returns the query result or `QueryTaskFailure` |
+| `execute_update_validation_task` | one update-validation task | `UpdateValidationInterceptorContext` | `next.run()` returns a read-only `UpdateValidationOutcome` |
 
 Contexts are read-only. They carry the worker id, task queue, namespace and the
 task's identity: task id, workflow id, run id, workflow or activity type,
 attempt and, for workflow tasks, history length, the task's trace carrier and
 replay state. An activity context also exposes the decoded arguments, whether
 the attempt is a local activity, and the `ActivityContext` the handler receives.
+An update-validation context carries the validation task id and attempt, the
+workflow id, run id and type, the update name and the trace carrier.
 
 Interceptors run in registration order. The first one registered is the
 outermost: it runs first before the task and last after it. Each hook must call
@@ -404,6 +407,17 @@ Workflow-task interceptors cannot change what a workflow records:
 - If a task fails after an interceptor observed it, its retry can repeat the
   same outcome; `context.attempt()` above 1 identifies a retry, so make external
   audit writes idempotent.
+
+Update-validation interceptors cannot change whether an update is accepted:
+
+- `next.run()` takes no input, so the validator always runs on the task as
+  received, and the worker sends the validator's own approval or rejection.
+  The outcome is a read-only view: `is_approved()`, `is_rejected()`,
+  `is_worker_failure()`, `reason()` and `rejection()`.
+- An interceptor error, returning or failing without running `next`, or
+  dropping the validation partway makes the worker report
+  `update_validation_worker_failed` instead. The update is not accepted, and
+  the caller's retry with the same request id asks the validator again.
 
 The offline `WorkflowEnvironment` runs activity interceptors registered on the
 worker it wraps. It has no workflow or query tasks, so those hooks do not run

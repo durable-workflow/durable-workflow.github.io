@@ -335,10 +335,10 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 
 Перехоплювачі worker доступні починаючи з наступного випуску пакета Workflow.
 Вбудований Durable Workflow запускає впорядковані перехоплювачі worker навколо
-завдань workflow, activity та query, які він виконує в процесах вашого застосунку.
-Використовуйте їх для журналу аудиту, міток метрик, контексту tenant чи трасування,
-які ви хочете написати один раз, а не в кожному workflow та activity. Форма hook
-відповідає перехоплювачам
+завдань workflow, activity, query та валідацій update, які він виконує в
+процесах вашого застосунку. Використовуйте їх для журналу аудиту, міток метрик,
+контексту tenant чи трасування, які ви хочете написати один раз, а не в кожному
+workflow та activity. Форма hook відповідає перехоплювачам
 [Python](../polyglot/python.md#worker-interceptors),
 [PHP](../polyglot/php.md#worker-interceptors) і
 [Rust](../polyglot/rust.md#worker-interceptors) SDK.
@@ -414,13 +414,15 @@ final class AuditInterceptor extends PassthroughWorkerInterceptor
 
 | Hook | Контекст | Повертає `$next` |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` з `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (також `replayState()`) | `WorkflowTaskOutcome` з `historyEventTypes`, `runStatus`, `nextTaskId` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | результат activity |
-| `executeQueryTask($context, $next)` | `workerId` (завжди null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | результат query |
+| `executeQueryTask($context, $next)` | `workerId` (завжди null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (завжди `Replaying`) | результат query |
+| `executeUpdateValidation($context, $next)` | `workerId` (завжди null), `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (завжди `Replaying`) | `UpdateValidationOutcome` з `approved`, `rejectionMessage`, `exceptionType`, `validationErrors` |
 
 `task` є знімком узятого рядка завдання у вигляді масиву, а не самою моделлю.
-`workerId` ідентифікує процес queue worker за хостом та ID процесу. Query
-виконуються у викликальному процесі, тому їхній `workerId` дорівнює null.
+`workerId` ідентифікує процес queue worker за хостом та ID процесу. Query та
+валідації update виконуються у викликальному процесі, тому їхній `workerId`
+дорівнює null.
 
 Перехоплювачі завдань workflow не можуть змінити те, що записує workflow:
 
@@ -428,6 +430,9 @@ final class AuditInterceptor extends PassthroughWorkerInterceptor
   даних, один раз на кожну спробу завдання. `replaying` має значення `true`, коли
   попередні завдання workflow уже записали команди для run. Це не ключ
   дедуплікації: `historyEventTypes` перелічує лише події, які додало це завдання.
+- `replayState()` дає ту саму відповідь у вигляді
+  `Workflow\V2\Enums\WorkflowReplayState`, enum, який використовує
+  `Workflow::replayState()`; значення перехоплювача незмінне протягом завдання.
 - Побічні ефекти hook виконуються до фіксації завдання й можуть повторитися під час
   повторної спроби, тож відкладайте їх через `DB::afterCommit()` або прив’язуйте їх
   до ключа з `taskId` і `workflowTaskAttempt`.
@@ -450,6 +455,23 @@ final class AuditInterceptor extends PassthroughWorkerInterceptor
 - Local activity виконуються всередині завдання workflow, тож hook, який постійно
   завершується помилкою після `$next`, змушує кожну повторну спробу знову
   виконувати ці local activity.
+
+Перехоплювачі валідації update обгортають replay і виклик валідатора, які
+виконуються до прийняття update з `#[UpdateValidator]`. Для update без
+валідатора hook не запускається. Hook спостерігають за рішенням, але не можуть
+його змінити:
+
+- Рушій діє за власним результатом валідатора. Повернення іншого
+  `UpdateValidationOutcome` або передавання інших аргументів у `$next` нічого не
+  змінює; валідатор завжди отримує аргументи update.
+- Якщо hook кидає виняток, пропускає `$next` або викликає його більше одного
+  разу, update відхиляється з `UpdateValidationFailedException` і нічого не
+  записується, тож hook ніколи не може пропустити update без валідації.
+- Hook виконується всередині транзакції приймання update, поки рядки run
+  заблоковані, тому робіть його коротким. Відкладайте побічні ефекти через
+  `DB::afterCommit()`; записи, які робить hook, фіксуються або відкочуються
+  разом із прийманням. Код hook виконується поза fiber workflow, тому не може
+  планувати durable-роботу для run.
 
 Перехоплювачі activity та query можуть змінювати аргументи через
 `$context->withArguments(...)` і змінювати повернене значення, оскільки результат

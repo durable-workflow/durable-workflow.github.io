@@ -356,6 +356,7 @@ des Repositorys führt denselben Interceptor gegen einen selbst gehosteten Serve
 | `execute_workflow_task` | einen Workflow-Task, einschließlich Replay | `WorkflowTaskInterceptorContext` | `next.run()` gibt ein schreibgeschütztes `WorkflowTaskOutcome` zurück |
 | `execute_activity` | einen Versuch einer Aktivität oder lokalen Aktivität | `ActivityInterceptorContext` | `next.run(context)` gibt das Aktivitätsergebnis zurück |
 | `execute_query_task` | einen Abfrage-Task | `QueryTaskInterceptorContext` | `next.run()` gibt das Abfrageergebnis oder `QueryTaskFailure` zurück |
+| `execute_update_validation_task` | einen Update-Validierungs-Task | `UpdateValidationInterceptorContext` | `next.run()` gibt ein schreibgeschütztes `UpdateValidationOutcome` zurück |
 
 Kontexte sind schreibgeschützt. Sie enthalten Worker-ID, Task-Queue, Namespace und
 die Identität des Tasks: Task-ID, Workflow-ID, Lauf-ID, Workflow- oder
@@ -363,6 +364,9 @@ Aktivitätstyp, Versuch sowie bei Workflow-Tasks die Historienlänge, den
 Trace-Carrier des Tasks und den Replay-Zustand. Ein Aktivitätskontext stellt
 außerdem die decodierten Argumente bereit, ob der Versuch eine lokale Aktivität
 ist, und den `ActivityContext`, den der Handler erhält.
+Ein Update-Validierungs-Kontext enthält die ID und den Versuch des
+Validierungs-Tasks, Workflow-ID, Lauf-ID und Workflow-Typ, den Update-Namen und
+den Trace-Carrier.
 
 Interceptors laufen in der Reihenfolge ihrer Registrierung. Der zuerst
 registrierte ist der äußerste: Er läuft vor dem Task als erster und nach ihm als
@@ -399,6 +403,20 @@ Interceptors für Workflow-Tasks können nicht ändern, was ein Workflow aufzeic
   Wiederholung dasselbe Ergebnis wiederholen; `context.attempt()` über 1
   kennzeichnet eine Wiederholung, gestalten Sie externe Audit-Schreibvorgänge
   daher idempotent.
+
+Update-Validierungs-Interceptors können nicht ändern, ob ein Update angenommen
+wird:
+
+- `next.run()` nimmt keine Eingabe entgegen, daher läuft der Validator immer auf
+  dem Task, wie er empfangen wurde, und der Worker sendet die eigene Zustimmung
+  oder Ablehnung des Validators. Das Ergebnis ist eine schreibgeschützte Sicht:
+  `is_approved()`, `is_rejected()`, `is_worker_failure()`, `reason()` und
+  `rejection()`.
+- Ein Interceptor-Fehler, ein Zurückkehren oder Scheitern, ohne `next`
+  auszuführen, oder ein Abbruch der Validierung mittendrin lässt den Worker
+  stattdessen `update_validation_worker_failed` melden. Das Update wird nicht
+  angenommen, und ein erneuter Versuch des Aufrufers mit derselben Request-ID
+  fragt den Validator erneut.
 
 Die Offline-`WorkflowEnvironment` führt Aktivitäts-Interceptors aus, die auf dem
 von ihr umschlossenen Worker registriert sind. Sie hat keine Workflow- oder

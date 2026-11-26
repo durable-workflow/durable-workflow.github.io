@@ -245,7 +245,7 @@ Chaque export inclut aussi un bloc `integrity` calculé après masquage. La somm
 
 Les intercepteurs worker sont disponibles à partir de la prochaine version du paquet Workflow.
 Durable Workflow embarqué exécute des intercepteurs worker ordonnés autour des tâches de workflow,
-des activités et des requêtes qu'il exécute dans les processus de votre application. Utilisez-les
+des activités, des requêtes et des validations de mises à jour qu'il exécute dans les processus de votre application. Utilisez-les
 pour la journalisation d'audit, les tags de métriques, le contexte de tenant ou le traçage que vous voulez
 écrire une seule fois plutôt que dans chaque workflow et chaque activité. La forme des hooks correspond à celle
 des intercepteurs des SDK
@@ -323,13 +323,14 @@ singleton lorsqu'il doit conserver un état entre les tâches.
 
 | Hook | Contexte | Retour de `$next` |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` avec `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (aussi `replayState()`) | `WorkflowTaskOutcome` avec `historyEventTypes`, `runStatus`, `nextTaskId` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | le résultat de l'activité |
-| `executeQueryTask($context, $next)` | `workerId` (toujours null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | le résultat de la requête |
+| `executeQueryTask($context, $next)` | `workerId` (toujours null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (toujours `Replaying`) | le résultat de la requête |
+| `executeUpdateValidation($context, $next)` | `workerId` (toujours null), `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (toujours `Replaying`) | `UpdateValidationOutcome` avec `approved`, `rejectionMessage`, `exceptionType`, `validationErrors` |
 
 `task` est un instantané sous forme de tableau de la ligne de tâche réclamée, jamais le modèle lui-même.
 `workerId` identifie le processus worker de file par hôte et identifiant de processus. Les requêtes
-s'exécutent dans le processus appelant ; leur `workerId` est donc null.
+et les validations de mises à jour s'exécutent dans le processus appelant ; leur `workerId` est donc null.
 
 Les intercepteurs de tâche de workflow ne peuvent pas modifier ce qu'un workflow enregistre :
 
@@ -337,6 +338,10 @@ Les intercepteurs de tâche de workflow ne peuvent pas modifier ce qu'un workflo
   données, une fois par tentative de tâche. `replaying` vaut `true` lorsque des tâches de workflow
   antérieures ont déjà enregistré des commandes pour l'exécution. Ce n'est pas une clé de
   déduplication : `historyEventTypes` ne liste que les événements ajoutés par cette tâche.
+- `replayState()` donne la même réponse sous la forme d'un
+  `Workflow\V2\Enums\WorkflowReplayState`, l'enum qu'utilise
+  `Workflow::replayState()` ; la valeur vue par l'intercepteur est fixe pour la
+  tâche.
 - Les effets de bord des hooks s'exécutent avant la validation de la tâche et peuvent se répéter lorsqu'une tentative
   est relancée ; différez-les donc avec `DB::afterCommit()` ou indexez-les sur `taskId` et
   `workflowTaskAttempt`.
@@ -357,6 +362,25 @@ Les intercepteurs de tâche de workflow ne peuvent pas modifier ce qu'un workflo
   enregistré de l'exécution fait échouer la tâche à chaque tentative.
 - Les activités locales s'exécutent à l'intérieur de la tâche de workflow ; un hook qui continue d'échouer
   après `$next` fait donc réexécuter ces activités locales à chaque nouvelle tentative.
+
+Les intercepteurs de validation de mise à jour enveloppent la relecture et
+l'appel du validateur qui s'exécutent avant l'acceptation d'une mise à jour
+dotée d'un `#[UpdateValidator]`. Les mises à jour sans validateur n'exécutent
+pas le hook. Les hooks observent la décision ; ils ne peuvent pas la modifier :
+
+- Le moteur agit selon le résultat propre du validateur. Renvoyer un autre
+  `UpdateValidationOutcome`, ou passer d'autres arguments à `$next`, ne change
+  rien ; le validateur reçoit toujours les arguments de la mise à jour.
+- Si un hook lève une exception, omet `$next` ou l'appelle plus d'une fois, la
+  mise à jour est refusée avec `UpdateValidationFailedException` et rien n'est
+  enregistré : un hook ne peut donc jamais laisser passer une mise à jour non
+  validée.
+- Le hook s'exécute dans la transaction d'admission de la mise à jour, pendant
+  que les lignes de l'exécution sont verrouillées ; gardez-le donc court.
+  Différez les effets de bord avec `DB::afterCommit()` ; les écritures d'un hook
+  sont validées ou annulées avec l'admission. Le code du hook s'exécute hors de
+  la fiber du workflow et ne peut donc pas planifier de travail durable pour
+  l'exécution.
 
 Les intercepteurs d'activité et de requête peuvent modifier les arguments avec
 `$context->withArguments(...)` et modifier la valeur renvoyée, car un

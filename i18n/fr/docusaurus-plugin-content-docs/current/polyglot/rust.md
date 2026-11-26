@@ -359,12 +359,16 @@ du dépôt exécute le même intercepteur contre un Server auto-hébergé.
 | `execute_workflow_task` | une tâche de workflow, relecture comprise | `WorkflowTaskInterceptorContext` | `next.run()` renvoie un `WorkflowTaskOutcome` en lecture seule |
 | `execute_activity` | une tentative d'activité ou d'activité locale | `ActivityInterceptorContext` | `next.run(context)` renvoie le résultat de l'activité |
 | `execute_query_task` | une tâche de requête | `QueryTaskInterceptorContext` | `next.run()` renvoie le résultat de la requête ou `QueryTaskFailure` |
+| `execute_update_validation_task` | une tâche de validation de mise à jour | `UpdateValidationInterceptorContext` | `next.run()` renvoie un `UpdateValidationOutcome` en lecture seule |
 
 Les contextes sont en lecture seule. Ils portent l'identifiant du worker, la file de tâches, le namespace et
 l'identité de la tâche : identifiant de tâche, identifiant de workflow, identifiant d'exécution, type de workflow ou d'activité,
 tentative et, pour les tâches de workflow, la longueur de l'historique, le porteur de trace de la tâche et
 l'état de relecture. Un contexte d'activité expose aussi les arguments décodés, indique si
 la tentative est une activité locale, et fournit l'`ActivityContext` que reçoit le handler.
+Un contexte de validation de mise à jour porte l'identifiant et la tentative de
+la tâche de validation, l'identifiant, l'identifiant d'exécution et le type du
+workflow, le nom de la mise à jour et le porteur de trace.
 
 Les intercepteurs s'exécutent dans l'ordre d'enregistrement. Le premier enregistré est le plus
 extérieur : il s'exécute en premier avant la tâche et en dernier après elle. Chaque hook doit appeler
@@ -395,6 +399,20 @@ Les intercepteurs de tâche de workflow ne peuvent pas modifier ce qu'un workflo
 - Si une tâche échoue après qu'un intercepteur l'a observée, sa relance peut répéter le
   même résultat ; une valeur de `context.attempt()` supérieure à 1 identifie une relance, donc rendez
   idempotentes les écritures d'audit externes.
+
+Les intercepteurs de validation de mise à jour ne peuvent pas modifier
+l'acceptation d'une mise à jour :
+
+- `next.run()` ne prend aucune entrée : le validateur s'exécute donc toujours
+  sur la tâche telle qu'elle a été reçue, et le worker envoie l'approbation ou
+  le rejet propre au validateur. Le résultat est une vue en lecture seule :
+  `is_approved()`, `is_rejected()`, `is_worker_failure()`, `reason()` et
+  `rejection()`.
+- Une erreur d'intercepteur, un retour ou un échec sans exécuter `next`, ou
+  l'abandon de la validation en cours de route amène le worker à signaler
+  `update_validation_worker_failed` à la place. La mise à jour n'est pas
+  acceptée, et une nouvelle tentative de l'appelant avec le même identifiant de
+  requête interroge de nouveau le validateur.
 
 Le `WorkflowEnvironment` hors ligne exécute les intercepteurs d'activité enregistrés sur le
 worker qu'il enveloppe. Il n'a ni tâches de workflow ni tâches de requête ; ces hooks ne s'y exécutent donc

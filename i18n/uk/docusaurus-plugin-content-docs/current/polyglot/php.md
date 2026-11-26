@@ -359,9 +359,10 @@ $worker = Worker::create($client, 'orders', container: $container,
 
 | Hook | Контекст | Повертає `$next` |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` з копією команд |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (також `replayState()`), `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` з копією команд |
 | `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | результат activity |
 | `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | результат query |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `UpdateValidationOutcome` з `approved`, `reason`, `message`, `failureType`, `validationErrors` |
 
 Перехоплювачі працюють у порядку, в якому ви їх перелічили. Перший перехоплювач є
 зовнішньою обгорткою: він виконується першим перед завданням і останнім після нього.
@@ -376,6 +377,8 @@ $worker = Worker::create($client, 'orders', container: $container,
   `true`, коли попередні завдання workflow уже записали команди, тож код workflow
   спершу повторно виконав цей зафіксований префікс. Результат містить лише команди,
   які додає це завдання; команди з replay ніколи не надсилаються повторно.
+- `replayState()` повідомляє те саме у вигляді `WorkflowReplayState`, який
+  використовує `WorkflowContext::replayState()`: `Replaying` або `Executing`.
 - Повторна спроба (`workflowTaskAttempt > 1`) може повторити результат, завдання
   якого завершилося помилкою, тому робіть зовнішні записи аудиту ідемпотентними.
 - Завдання update (із заданим `updateId`) виконують обробник update над
@@ -389,6 +392,17 @@ $worker = Worker::create($client, 'orders', container: $container,
 - Виняток, кинутий перехоплювачем, спричиняє збій завдання workflow. Нічого не
   записується, і Server повторює завдання. Пропуск `$next` або його виклик більше
   одного разу спричиняє збій завдання з `WorkflowTaskInterceptorViolation`.
+
+Перехоплювачі валідації update (`executeUpdateValidation()`) обгортають запуск
+валідатора update до того, як Server прийме update. Вони бачать рішення як
+`UpdateValidationOutcome` лише для читання і не можуть змінити ні рішення, ні
+аргументи update, ні історію, яку читає валідатор: валідатор завжди працює лише
+для читання у власному Fiber з копією завдання, що належить worker, а worker
+відповідає власним рішенням валідатора. Виняток із перехоплювача, пропуск
+`$next` або його виклик більше одного разу
+(`UpdateValidationInterceptorViolation`) дає відповідь на завдання з
+`update_validation_worker_failed`, тож update не приймається, і викликач може
+повторити спробу.
 
 Перехоплювачі activity та query можуть змінювати аргументи через
 `$context->withArguments(...)` і змінювати повернене значення, оскільки результати

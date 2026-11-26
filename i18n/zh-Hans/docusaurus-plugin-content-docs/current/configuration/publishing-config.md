@@ -240,7 +240,7 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 
 ## Worker 拦截器 {#worker-interceptors}
 
-Worker 拦截器将从下一个 Workflow 包版本开始提供。嵌入式 Durable Workflow 会围绕它在应用进程中执行的工作流任务、活动和查询运行有序的 Worker 拦截器。审计日志、指标标签、租户上下文或追踪等逻辑只需编写一次，而无需在每个工作流和活动中重复实现。钩子的形式与 [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors) 和 [Rust](../polyglot/rust.md#worker-interceptors) SDK 拦截器一致。
+Worker 拦截器将从下一个 Workflow 包版本开始提供。嵌入式 Durable Workflow 会围绕它在应用进程中执行的工作流任务、活动、查询和更新验证运行有序的 Worker 拦截器。审计日志、指标标签、租户上下文或追踪等逻辑只需编写一次，而无需在每个工作流和活动中重复实现。钩子的形式与 [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors) 和 [Rust](../polyglot/rust.md#worker-interceptors) SDK 拦截器一致。
 
 在 `config/workflows.php` 的 `workflows.v2.interceptors` 下列出拦截器类。它们从 Laravel 容器中解析，因此支持构造函数注入，并按列出的顺序运行；第一个是最外层包装。
 
@@ -305,21 +305,29 @@ final class AuditInterceptor extends PassthroughWorkerInterceptor
 
 | 钩子 | 上下文 | `$next` 返回 |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | 包含 `historyEventTypes`、`runStatus`、`nextTaskId` 的 `WorkflowTaskOutcome` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（另有 `replayState()`） | 包含 `historyEventTypes`、`runStatus`、`nextTaskId` 的 `WorkflowTaskOutcome` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | 活动结果 |
-| `executeQueryTask($context, $next)` | `workerId`（始终为 null）, `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | 查询结果 |
+| `executeQueryTask($context, $next)` | `workerId`（始终为 null）, `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（始终为 `Replaying`） | 查询结果 |
+| `executeUpdateValidation($context, $next)` | `workerId`（始终为 null）, `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（始终为 `Replaying`） | 包含 `approved`、`rejectionMessage`、`exceptionType`、`validationErrors` 的 `UpdateValidationOutcome` |
 
-`task` 是已认领任务行的数组快照，绝不是模型本身。`workerId` 通过主机和进程 ID 标识队列 Worker 进程。查询在调用方进程中运行，因此其 `workerId` 为 null。
+`task` 是已认领任务行的数组快照，绝不是模型本身。`workerId` 通过主机和进程 ID 标识队列 Worker 进程。查询和更新验证在调用方进程中运行，因此其 `workerId` 为 null。
 
 工作流任务拦截器无法改变工作流记录的内容：
 
 - `executeWorkflowTask` 在工作流任务的数据库事务内包裹该任务，每次任务尝试运行一次。当之前的工作流任务已为该运行记录命令时，`replaying` 为 `true`。它不是去重键：`historyEventTypes` 只列出本任务追加的事件。
+- `replayState()` 以 `Workflow\V2\Enums\WorkflowReplayState`（即 `Workflow::replayState()` 所用的枚举）给出相同的答案；拦截器看到的值在该任务内固定不变。
 - 钩子的副作用在任务提交之前运行，并且在尝试被重试时可能重复，因此请使用 `DB::afterCommit()` 延迟执行，或以 `taskId` 和 `workflowTaskAttempt` 作为键。
 - 引擎提交工作流代码生成的历史。结果是只读视图；返回不同的结果，或向 `$next` 传入不同的上下文，都不会产生任何改变。
 - 工作流代码产生的失败会原样到达引擎，即使拦截器捕获了它并正常返回。
 - 如果拦截器从链中抛出异常、跳过 `$next` 或多次调用它，任务的事务会回滚，因此不会记录任何内容。任务会以 `WorkflowTaskInterceptorFailed` 作为最后错误被释放，并在常规修复退避之后重试。外层拦截器仍可捕获内层拦截器在 `$next` 之后抛出的异常并让任务提交；跳过或重复调用 `$next` 则始终会使任务失败。
 - 钩子在运行行和任务行被锁定期间运行，因此请保持简短。钩子不得提交或回滚外层事务，也不得向其包裹的运行发送信号等命令；改变该运行的已记录状态会使任务在每次尝试中都失败。
 - 本地活动在工作流任务内运行，因此在 `$next` 之后持续失败的钩子会使每次重试都再次运行这些本地活动。
+
+更新验证拦截器包裹在带有 `#[UpdateValidator]` 的更新被接受之前运行的重放和验证器调用。没有验证器的更新不会运行该钩子。钩子只能观察判定结果，无法改变它：
+
+- 引擎依据验证器自身的结果行事。返回不同的 `UpdateValidationOutcome`，或向 `$next` 传入不同的参数，都不会产生任何改变；验证器始终收到更新的参数。
+- 如果钩子抛出异常、跳过 `$next` 或多次调用它，更新会以 `UpdateValidationFailedException` 被拒绝，且不会记录任何内容，因此钩子绝不可能让未经验证的更新通过。
+- 钩子在更新的准入事务内运行，此时该运行的行已被锁定，因此请保持简短。请使用 `DB::afterCommit()` 延迟副作用；钩子所做的写入会随准入一起提交或回滚。钩子代码在工作流 Fiber 之外运行，因此无法为该运行调度持久工作。
 
 活动拦截器和查询拦截器可以通过 `$context->withArguments(...)` 修改参数，也可以修改返回值，因为活动结果只记录一次，而查询不记录任何内容。改写后的查询参数会再次根据查询契约进行校验。活动异常会穿过所有拦截器，除非某个拦截器处理了它，然后按活动的常规重试策略处理。活动拦截器包裹队列活动和本地活动；`local` 用于区分二者。`WorkflowStub::fake()` 中被模拟的活动不会运行拦截器。
 

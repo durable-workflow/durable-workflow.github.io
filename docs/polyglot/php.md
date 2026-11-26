@@ -355,9 +355,10 @@ $worker = Worker::create($client, 'orders', container: $container,
 
 | Hook | Context | `$next` returns |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` with a copy of the commands |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (also `replayState()`), `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` with a copy of the commands |
 | `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | the activity result |
 | `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | the query result |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `UpdateValidationOutcome` with `approved`, `reason`, `message`, `failureType`, `validationErrors` |
 
 Interceptors run in the order you list them. The first interceptor is the
 outermost wrapper: it runs first before the task and last after it. Each hook
@@ -372,6 +373,8 @@ Workflow-task interceptors cannot break determinism:
   workflow tasks already recorded commands, so the workflow code re-ran that
   committed prefix first. The outcome holds only the commands this task adds;
   replayed commands are never resubmitted.
+- `replayState()` reports the same thing as the `WorkflowReplayState` that
+  `WorkflowContext::replayState()` uses: `Replaying` or `Executing`.
 - A retried attempt (`workflowTaskAttempt > 1`) can repeat an outcome whose task
   failed, so make external audit writes idempotent.
 - Update tasks (`updateId` set) run the update handler against committed state
@@ -385,6 +388,17 @@ Workflow-task interceptors cannot break determinism:
 - An exception thrown by an interceptor fails the workflow task. Nothing is
   recorded and the Server retries the task. Skipping `$next`, or calling it more
   than once, fails the task with `WorkflowTaskInterceptorViolation`.
+
+Update-validation interceptors (`executeUpdateValidation()`) wrap the run of an
+update's validator before the Server accepts the update. They see the decision
+as a read-only `UpdateValidationOutcome` and cannot change the decision, the
+update's arguments or the history the validator reads: the validator always
+runs read-only in its own Fiber with the worker's copy of the task, and the
+worker answers with the validator's own decision. An exception from the
+interceptor, or skipping `$next` or calling it more than once
+(`UpdateValidationInterceptorViolation`), answers the task with
+`update_validation_worker_failed`, so the update is not accepted and the caller
+can retry.
 
 Activity and query interceptors may change arguments with
 `$context->withArguments(...)` and may change the returned value, because

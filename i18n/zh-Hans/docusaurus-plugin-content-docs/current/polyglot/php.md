@@ -247,20 +247,24 @@ $worker = Worker::create($client, 'orders', container: $container,
 
 | 钩子 | 上下文 | `$next` 返回 |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | 包含命令副本的 `WorkflowTaskOutcome` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（另有 `replayState()`）, `updateId`, `observabilitySupported` | 包含命令副本的 `WorkflowTaskOutcome` |
 | `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | 活动结果 |
 | `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | 查询结果 |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | 包含 `approved`、`reason`、`message`、`failureType`、`validationErrors` 的 `UpdateValidationOutcome` |
 
 拦截器按列出的顺序运行。首个拦截器是最外层包装：它在任务之前最先运行，在任务之后最后运行。每个钩子调用 `$next($context)` 继续链。配置追踪后，内置 Worker span 始终位于最外层，因此拦截器在当前活动的任务 span 内运行。
 
 工作流任务拦截器不会破坏确定性：
 
 - `executeWorkflowTask` 包裹生成一个工作流任务命令的工作流代码，每次任务尝试运行一次。当之前的工作流任务已记录命令时，`replaying` 为 `true`，此时工作流代码会先重新运行这段已提交的前缀。结果只包含本任务新增的命令；重放的命令绝不会被重新提交。
+- `replayState()` 以 `WorkflowContext::replayState()` 所用的 `WorkflowReplayState` 报告同样的信息：`Replaying` 或 `Executing`。
 - 重试的尝试（`workflowTaskAttempt > 1`）可能重复一个任务失败的结果，因此外部审计写入应保持幂等。
 - 更新任务（设置了 `updateId`）针对已提交状态运行更新处理器，不会重新运行工作流主体；对于这类任务，`replaying` 只表示之前已有命令。
 - Worker 准确提交工作流代码生成的命令。结果是一个副本；返回不同的结果，或向 `$next` 传入不同的上下文，都不会产生任何改变。
 - 工作流代码产生的失败会原样到达 Worker，即使拦截器捕获了它并正常返回。
 - 拦截器抛出的异常会使工作流任务失败。不会记录任何内容，Server 会重试该任务。跳过 `$next` 或多次调用它，会使任务以 `WorkflowTaskInterceptorViolation` 失败。
+
+更新验证拦截器（`executeUpdateValidation()`）包裹在 Server 接受更新之前运行的更新验证器。它们以只读的 `UpdateValidationOutcome` 查看判定结果，但无法改变判定、更新的参数或验证器读取的历史：验证器始终使用 Worker 持有的任务副本，在自己的 Fiber 中以只读方式运行，Worker 以验证器自身的判定作答。拦截器抛出异常，或跳过 `$next`、多次调用它（`UpdateValidationInterceptorViolation`），都会以 `update_validation_worker_failed` 应答该任务，因此更新不会被接受，调用方可以重试。
 
 活动拦截器和查询拦截器可以通过 `$context->withArguments(...)` 修改参数，也可以修改返回值，因为活动结果只记录一次，而查询不记录任何内容。活动异常会穿过所有拦截器，除非某个拦截器处理了它。活动拦截器包裹远程活动和本地活动；`local` 用于区分二者。启用协作式取消时，远程活动、协作式本地活动和预备本地活动的回调及其拦截器在活动的子进程中运行，因此那里的内存变更不会传回 Worker 进程。
 

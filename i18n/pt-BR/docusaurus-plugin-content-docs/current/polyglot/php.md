@@ -364,9 +364,10 @@ $worker = Worker::create($client, 'orders', container: $container,
 
 | Hook | Contexto | Retorno de `$next` |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`, `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` com uma cópia dos comandos |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (também `replayState()`), `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` com uma cópia dos comandos |
 | `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | o resultado da atividade |
 | `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | o resultado da consulta |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `UpdateValidationOutcome` com `approved`, `reason`, `message`, `failureType`, `validationErrors` |
 
 Os interceptadores executam na ordem em que você os lista. O primeiro interceptador é o
 wrapper mais externo: ele executa primeiro antes da tarefa e por último depois dela. Cada hook
@@ -381,6 +382,8 @@ Interceptadores de tarefa de workflow não conseguem quebrar o determinismo:
   anteriores já registraram comandos, de modo que o código do workflow reexecutou primeiro esse
   prefixo confirmado. O resultado contém apenas os comandos que esta tarefa adiciona;
   comandos reproduzidos nunca são reenviados.
+- `replayState()` informa o mesmo como o `WorkflowReplayState` que
+  `WorkflowContext::replayState()` usa: `Replaying` ou `Executing`.
 - Uma tentativa repetida (`workflowTaskAttempt > 1`) pode repetir um resultado cuja tarefa
   falhou, portanto torne idempotentes as gravações de auditoria externas.
 - Tarefas de atualização (com `updateId` definido) executam o handler de atualização sobre o estado confirmado
@@ -394,6 +397,18 @@ Interceptadores de tarefa de workflow não conseguem quebrar o determinismo:
 - Uma exceção lançada por um interceptador faz a tarefa de workflow falhar. Nada é
   registrado e o Server tenta executar a tarefa novamente. Pular `$next`, ou chamá-lo mais
   de uma vez, faz a tarefa falhar com `WorkflowTaskInterceptorViolation`.
+
+Interceptadores de validação de atualização (`executeUpdateValidation()`)
+envolvem a execução do validador de uma atualização antes que o Server aceite a
+atualização. Eles veem a decisão como um `UpdateValidationOutcome` somente
+leitura e não podem alterar a decisão, os argumentos da atualização nem o
+histórico que o validador lê: o validador sempre executa em modo somente leitura
+na sua própria Fiber, com a cópia da tarefa mantida pelo worker, e o worker
+responde com a decisão do próprio validador. Uma exceção do interceptador, ou
+pular `$next` ou chamá-lo mais de uma vez
+(`UpdateValidationInterceptorViolation`), responde à tarefa com
+`update_validation_worker_failed`, então a atualização não é aceita e quem
+chamou pode tentar novamente.
 
 Interceptadores de atividade e de consulta podem alterar argumentos com
 `$context->withArguments(...)` e podem alterar o valor retornado, porque

@@ -245,8 +245,8 @@ Every export also includes an `integrity` block computed after redaction. The ch
 
 Worker interceptors are available from the next Workflow package release.
 Embedded Durable Workflow runs ordered worker interceptors around the workflow
-tasks, activities and queries it executes in your application's processes. Use
-them for audit logging, metric tags, tenant context or tracing that you want to
+tasks, activities, queries and update validations it executes in your
+application's processes. Use them for audit logging, metric tags, tenant context or tracing that you want to
 write once instead of in every workflow and activity. The hook shape matches the
 [Python](../polyglot/python.md#worker-interceptors),
 [PHP](../polyglot/php.md#worker-interceptors) and
@@ -322,13 +322,14 @@ singleton when it must keep state between tasks.
 
 | Hook | Context | `$next` returns |
 | --- | --- | --- |
-| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` | `WorkflowTaskOutcome` with `historyEventTypes`, `runStatus`, `nextTaskId` |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (also `replayState()`) | `WorkflowTaskOutcome` with `historyEventTypes`, `runStatus`, `nextTaskId` |
 | `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | the activity result |
-| `executeQueryTask($context, $next)` | `workerId` (always null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments` | the query result |
+| `executeQueryTask($context, $next)` | `workerId` (always null), `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (always `Replaying`) | the query result |
+| `executeUpdateValidation($context, $next)` | `workerId` (always null), `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()` (always `Replaying`) | `UpdateValidationOutcome` with `approved`, `rejectionMessage`, `exceptionType`, `validationErrors` |
 
 `task` is an array snapshot of the claimed task row, never the model itself.
 `workerId` identifies the queue worker process by host and process ID. Queries
-run in the calling process, so their `workerId` is null.
+and update validations run in the calling process, so their `workerId` is null.
 
 Workflow-task interceptors cannot change what a workflow records:
 
@@ -337,6 +338,9 @@ Workflow-task interceptors cannot change what a workflow records:
   workflow tasks already recorded commands for the run. It is not a
   deduplication key: `historyEventTypes` lists only the events this task
   appended.
+- `replayState()` gives the same answer as a
+  `Workflow\V2\Enums\WorkflowReplayState`, the enum `Workflow::replayState()`
+  uses; the interceptor's value is fixed for the task.
 - Hook side effects run before the task commits and can repeat when an attempt
   is retried, so defer them with `DB::afterCommit()` or key them on `taskId` and
   `workflowTaskAttempt`.
@@ -357,6 +361,22 @@ Workflow-task interceptors cannot change what a workflow records:
   recorded state fails the task on every attempt.
 - Local activities run inside the workflow task, so a hook that keeps failing
   after `$next` makes each retry run those local activities again.
+
+Update-validation interceptors wrap the replay and the validator call that run
+before an update with an `#[UpdateValidator]` is accepted. Updates without a
+validator don't run the hook. The hooks observe the decision; they cannot
+change it:
+
+- The engine acts on the validator's own outcome. Returning a different
+  `UpdateValidationOutcome`, or passing different arguments to `$next`, changes
+  nothing; the validator always receives the update's arguments.
+- If a hook throws, skips `$next` or calls it more than once, the update is
+  refused with `UpdateValidationFailedException` and nothing is recorded, so a
+  hook can never let an update through unvalidated.
+- The hook runs inside the update's admission transaction, while the run's rows
+  are locked, so keep it short. Defer side effects with `DB::afterCommit()`;
+  writes a hook makes commit or roll back with the admission. Hook code runs
+  outside the workflow fiber, so it cannot schedule durable work for the run.
 
 Activity and query interceptors may change arguments with
 `$context->withArguments(...)` and may change the returned value, because an
