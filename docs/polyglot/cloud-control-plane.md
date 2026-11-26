@@ -42,9 +42,9 @@ terms below are planned terms, not current purchase offers.
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Single host, no SLA | $0.075/hour, $2 active-month minimum, $50/month cap |
 | Cloud Standard | 2 vCPU, 4 GB RAM | 25 GB | Planned single-region HA, 99.99% SLA | $0.45/hour, $10 active-month minimum, $300/month cap |
-| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | Planned multi-region HA, 99.99% SLA | $0.60/hour, $15 active-month minimum, $400/month cap |
-| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Planned single-region HA, 99.99% SLA | $2.25/hour, $50 active-month minimum, $1,500/month cap |
-| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Planned multi-region HA, 99.99% SLA | $3.00/hour, $75 active-month minimum, $2,000/month cap |
+| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | Planned multi-region HA, 99.99% SLA | $0.525/hour, $13 active-month minimum, $350/month cap |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Planned single-region HA, 99.99% SLA | $0.90/hour, $20 active-month minimum, $600/month cap |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Planned multi-region HA, 99.99% SLA | $1.125/hour, $28 active-month minimum, $750/month cap |
 
 Capacity covers the managed runtime components, not customer worker compute.
 For planned HA plans, replication and standby capacity are included in the price; the table

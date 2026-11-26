@@ -44,9 +44,9 @@ Kapazitäten, Verfügbarkeit und SLA-Bedingungen sind geplant, keine aktuellen K
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU, 1 GB RAM | 5 GB | Ein Host, kein SLA | $0.075/Stunde, $2 Mindestbetrag je aktivem Monat, $50/Monat Obergrenze |
 | Cloud Standard | 2 vCPU, 4 GB RAM | 25 GB | Geplante HA in einer Region, 99.99% SLA | $0.45/Stunde, $10 Mindestbetrag je aktivem Monat, $300/Monat Obergrenze |
-| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | Geplante HA über mehrere Regionen, 99.99% SLA | $0.60/Stunde, $15 Mindestbetrag je aktivem Monat, $400/Monat Obergrenze |
-| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Geplante HA in einer Region, 99.99% SLA | $2.25/Stunde, $50 Mindestbetrag je aktivem Monat, $1,500/Monat Obergrenze |
-| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Geplante HA über mehrere Regionen, 99.99% SLA | $3.00/Stunde, $75 Mindestbetrag je aktivem Monat, $2,000/Monat Obergrenze |
+| Cloud Multi-Region | 2 vCPU, 4 GB RAM | 25 GB | Geplante HA über mehrere Regionen, 99.99% SLA | $0.525/Stunde, $13 Mindestbetrag je aktivem Monat, $350/Monat Obergrenze |
+| Cloud Business | 4 vCPU, 8 GB RAM | 100 GB | Geplante HA in einer Region, 99.99% SLA | $0.90/Stunde, $20 Mindestbetrag je aktivem Monat, $600/Monat Obergrenze |
+| Cloud Business Multi-Region | 4 vCPU, 8 GB RAM | 100 GB | Geplante HA über mehrere Regionen, 99.99% SLA | $1.125/Stunde, $28 Mindestbetrag je aktivem Monat, $750/Monat Obergrenze |
 
 Kapazität umfasst verwaltete Laufzeitkomponenten, nicht die Rechenleistung Ihrer
 Worker. Bei geplanten HA-Plänen sind Replikation und Standby-Kapazität im Preis

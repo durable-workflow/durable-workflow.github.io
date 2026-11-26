@@ -33,9 +33,9 @@ Cloud Dev 现已可用。四种 HA 套餐仍在资格验证中，尚不能购买
 | --- | --- | --- | --- | --- |
 | Cloud Dev | 1 vCPU，1 GB RAM | 5 GB | 单主机，无 SLA | $0.075/小时，活跃月最低 $2，每月上限 $50 |
 | Cloud Standard | 2 vCPU，4 GB RAM | 25 GB | 计划提供单区域 HA，99.99% SLA | $0.45/小时，活跃月最低 $10，每月上限 $300 |
-| Cloud Multi-Region | 2 vCPU，4 GB RAM | 25 GB | 计划提供多区域 HA，99.99% SLA | $0.60/小时，活跃月最低 $15，每月上限 $400 |
-| Cloud Business | 4 vCPU，8 GB RAM | 100 GB | 计划提供单区域 HA，99.99% SLA | $2.25/小时，活跃月最低 $50，每月上限 $1,500 |
-| Cloud Business Multi-Region | 4 vCPU，8 GB RAM | 100 GB | 计划提供多区域 HA，99.99% SLA | $3.00/小时，活跃月最低 $75，每月上限 $2,000 |
+| Cloud Multi-Region | 2 vCPU，4 GB RAM | 25 GB | 计划提供多区域 HA，99.99% SLA | $0.525/小时，活跃月最低 $13，每月上限 $350 |
+| Cloud Business | 4 vCPU，8 GB RAM | 100 GB | 计划提供单区域 HA，99.99% SLA | $0.90/小时，活跃月最低 $20，每月上限 $600 |
+| Cloud Business Multi-Region | 4 vCPU，8 GB RAM | 100 GB | 计划提供多区域 HA，99.99% SLA | $1.125/小时，活跃月最低 $28，每月上限 $750 |
 
 容量涵盖托管运行时组件，不包含客户 Worker 计算资源。对于计划中的 HA 套餐，价格包含复制和备用容量；表中不会把副本累加为额外工作流执行容量。每个套餐都包含 Managed Waterline、基本加密备份、升级及稳定运行时 URL。
 
