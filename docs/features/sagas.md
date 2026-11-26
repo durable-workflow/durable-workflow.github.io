@@ -60,10 +60,11 @@ also provide no cleanup window.
 
 The separate [experimental timeout-cleanup option](./timeouts.md#timeout-cleanup)
 can reserve time for an interruption-driven compensation handler inside the
-original hard cap. It is experimental embedded queue support, available in
-Workflow 2.29.0 and later with no backward-compatibility promise yet; service
-and poll-mode starts refuse it. It does not make compensation automatic or
-guarantee an effect when workers are unavailable.
+original hard cap. It is experimental, with no backward-compatibility promise
+yet. Embedded queue workers support it from Workflow 2.29.0 (embedded poll-mode
+starts refuse it), and service mode supports it from native Server 3.30.0 with
+supporting SDK workers. It does not make compensation automatic or guarantee an
+effect when workers are unavailable.
 
 Use an earlier application deadline when timeout should undo completed work.
 This embedded workflow reserves a resource, then waits up to 30 seconds for a

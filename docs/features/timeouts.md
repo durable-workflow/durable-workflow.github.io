@@ -153,17 +153,18 @@ or run deadline. See [Cancel and Terminate](./cancel-and-terminate.md) and
 
 ## Experimental deadline-triggered cleanup {#timeout-cleanup}
 
-**Experimental embedded support.** Available in Workflow 2.29.0 and later for
-embedded queue workers only; service and poll-mode starts refuse it. The option
+**Experimental.** Embedded queue workers support this option from Workflow
+2.29.0; embedded poll-mode starts refuse it. Service mode supports it from
+native Server 3.30.0 with supporting workers, as described below. The option
 is an `experimental` surface under the
 [stability levels](../compatibility.md#stability-levels), with no
 backward-compatibility promise yet. Runs that do not opt in keep the default
 hard-timeout behavior above.
 
-Before enabling this option, install Workflow 2.29.0 or later, run the application
-migrations, and deploy compatible embedded queue workers. The new migration
-adds `workflow_runs.timeout_cleanup_work_deadline_at`; it does not opt existing
-runs in. Do not enable the option before the migration completes.
+Before enabling this option in embedded mode, install Workflow 2.29.0 or later,
+run the application migrations, and deploy compatible embedded queue workers.
+The new migration adds `workflow_runs.timeout_cleanup_work_deadline_at`; it
+does not opt existing runs in. Do not enable the option before the migration completes.
 
 ```bash
 php artisan migrate
@@ -224,18 +225,49 @@ hard-deadline time.
 Read the cleanup outcome from history. The `timeout_cleanup` payload on the
 terminal `WorkflowTimedOut`, `WorkflowTerminated` or `WorkflowCancelled` event,
 also included in `php artisan workflow:v2:history-export` output, is the
-authoritative record. Control-plane describe output and the run summary carry
-no cleanup outcome, and run detail shows at most a note such as "Timeout
-cleanup failed." (nothing for `preempted`).
+authoritative record. From Workflow 2.40.0, and on native Server 3.30.0 and
+later, describe reports the recorded state under `run.timeout_cleanup`, and run
+detail and the bounded run observation that Waterline reads report it as
+top-level `timeout_cleanup`. While cleanup is open, it shows `outcome: running`
+with `cause: timeout`, the timeout kind, the detection time and the work and
+cleanup deadlines. After closure, it shows the terminal outcome, with
+`failure_id` for `failed`. The field is omitted when no cleanup was recorded.
 
 Unavailable or delayed workers cannot guarantee an external cleanup effect;
 keep compensation idempotent and reconcile uncertain effects in your application.
 
-This increment supports embedded queue workers only. Poll-mode and service
-starts refuse the option, and bridge workers cannot claim an opted-in embedded
-run. Native admission and SDK runtime delivery remain pending under
-[Server #1201](https://github.com/durable-workflow/server/issues/1201); parser
-support alone does not implement timeout cleanup.
+In embedded mode, bridge workers cannot claim an opted-in run; the claim
+returns `timeout_cleanup_not_supported` without taking the lease.
+
+**Service mode.** Native Server 3.30.0 and later accepts
+`timeout_cleanup_seconds` on service starts and `start_child_workflow`
+commands, with the same limits as the embedded allowance, and advertises `timeout_cleanup: {supported: true, version: 1}`.
+It admits an opted-in start only when a live worker on the task queue
+advertises the capability. Otherwise it answers
+`422 timeout_cleanup_not_supported`, writes nothing and never falls back to a
+plain hard timeout. Workers with cooperative cancellation enabled advertise
+the capability from PHP SDK 3.31.0 (3.32.0 for the stricter marker rule
+below), Python SDK 2.24.0 and Rust SDK 4.25.0. Workflow code receives the
+SDK's cooperative-cancellation interruption with `cause: timeout`. See
+[Cooperative Cancellation](../polyglot/cancellation.md).
+
+For SDK authors: a service worker reports an uncaught or rethrown cleanup
+interruption with `fail_workflow.failure.interruption: "timeout_cleanup"`, and
+only for the interruption it delivered for the run's root timeout request (no
+parent request, no scope). Anything else, including an application-built or
+wrapped interruption, records `failed`. Server accepts the marker only while
+the run's engine-owned timeout request is active and only from a claim that
+negotiated `timeout_cleanup`. Workflow 2.42.0 states this rule in the
+[portable contract](https://github.com/durable-workflow/workflow/blob/main/docs/architecture/timeout-cleanup.md).
+
+**Mixed queues.** Admission checks only that at least one live worker on the
+task queue advertises `timeout_cleanup`; any worker on the queue can claim the
+cleanup turn. Server refuses the marker from a worker that did not advertise
+the capability, so an interruption that escapes there is recorded as `failed`
+or `expired`. But such a worker may never deliver the interruption: if its
+workflow code returns, the run records cleanup `completed` although no cleanup
+ran. Before starting opted-in runs on a queue, upgrade every worker on it to a
+supporting SDK with cooperative cancellation enabled.
 
 ## Workflow-task lease {#workflow-task-lease}
 

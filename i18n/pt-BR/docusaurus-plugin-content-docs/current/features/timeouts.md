@@ -137,9 +137,9 @@ Os comandos imediatos `cancel()` e `terminate()` também encerram a execução s
 
 ## Limpeza experimental acionada pelo prazo {#timeout-cleanup}
 
-**Suporte embutido experimental.** Disponível no Workflow 2.29.0 e posteriores apenas para workers de fila embutidos; inícios em modo de serviço e poll recusam a opção. A opção é uma superfície `experimental` segundo os [níveis de estabilidade](../compatibility.md#stability-levels), ainda sem promessa de compatibilidade retroativa. Runs que não a ativam mantêm o timeout rígido padrão descrito acima.
+**Experimental.** Workers de fila embutidos suportam esta opção a partir do Workflow 2.29.0; inícios embutidos em modo poll a recusam. O modo de serviço a suporta a partir do Server nativo 3.30.0 com workers compatíveis, como descrito abaixo. A opção é uma superfície `experimental` segundo os [níveis de estabilidade](../compatibility.md#stability-levels), ainda sem promessa de compatibilidade retroativa. Runs que não a ativam mantêm o timeout rígido padrão descrito acima.
 
-Antes de ativar a opção, instale o Workflow 2.29.0 ou posterior, execute as migrações da aplicação e implante workers de fila embutidos compatíveis. A nova migração adiciona `workflow_runs.timeout_cleanup_work_deadline_at`; não ativa a opção em runs existentes. Não habilite antes de a migração terminar.
+Antes de ativar a opção no modo embutido, instale o Workflow 2.29.0 ou posterior, execute as migrações da aplicação e implante workers de fila embutidos compatíveis. A nova migração adiciona `workflow_runs.timeout_cleanup_work_deadline_at`; não ativa a opção em runs existentes. Não habilite antes de a migração terminar.
 
 ```bash
 php artisan migrate
@@ -176,11 +176,17 @@ A limpeza tem um `timeout_cleanup.outcome` separado:
 
 Limpeza concluída, falha ou expirada ainda termina com status de negócio `failed`, `closed_reason = timed_out` e `WorkflowTimedOut`. Compensar com sucesso não transforma o timeout em workflow bem-sucedido. Quando a limpeza termina antes, o run fecha imediatamente, mas a mensagem de timeout ainda cita o horário do prazo rígido original.
 
-Leia o resultado da limpeza no histórico. O payload `timeout_cleanup` do evento terminal `WorkflowTimedOut`, `WorkflowTerminated` ou `WorkflowCancelled`, também incluído na saída de `php artisan workflow:v2:history-export`, é o registro oficial. A saída de describe do control plane e o resumo do run não trazem o resultado da limpeza, e o detalhe do run mostra no máximo uma nota como "Timeout cleanup failed." (nada para `preempted`).
+Leia o resultado da limpeza no histórico. O payload `timeout_cleanup` do evento terminal `WorkflowTimedOut`, `WorkflowTerminated` ou `WorkflowCancelled`, também incluído na saída de `php artisan workflow:v2:history-export`, é o registro oficial. A partir do Workflow 2.40.0, e no Server nativo 3.30.0 ou posterior, describe informa o estado registrado em `run.timeout_cleanup`, e o detalhe do run e a observação limitada do run que o Waterline lê o informam como `timeout_cleanup` de nível superior. Enquanto a limpeza está aberta, ele mostra `outcome: running` com `cause: timeout`, o tipo de timeout, o horário da detecção e os prazos de trabalho e de limpeza. Após o encerramento, mostra o resultado terminal, com `failure_id` para `failed`. O campo é omitido quando nenhuma limpeza foi registrada.
 
 Workers indisponíveis ou atrasados não garantem um efeito externo de limpeza; mantenha compensações idempotentes e reconcilie efeitos incertos na aplicação.
 
-Este incremento só suporta workers de fila embutidos. Inícios poll e de serviço recusam a opção; workers bridge não podem reclamar um run embutido com ela ativada. Admissão nativa e entrega de runtime pelos SDKs seguem pendentes em [Server #1201](https://github.com/durable-workflow/server/issues/1201); suporte ao parser sozinho não implementa limpeza por timeout.
+No modo embutido, workers bridge não podem reclamar um run com a opção ativada; a reclamação retorna `timeout_cleanup_not_supported` sem assumir o lease.
+
+**Modo de serviço.** O Server nativo 3.30.0 e posteriores aceita `timeout_cleanup_seconds` em inícios de serviço e em comandos `start_child_workflow`, com os mesmos limites da reserva embutida, e anuncia `timeout_cleanup: {supported: true, version: 1}`. Ele só admite um início com a opção quando um worker ativo na fila de tarefas anuncia a capacidade. Caso contrário, responde `422 timeout_cleanup_not_supported`, não grava nada e nunca recorre a um timeout rígido simples. Workers com cancelamento cooperativo habilitado anunciam a capacidade a partir do PHP SDK 3.31.0 (3.32.0 para a regra de marcador mais estrita abaixo), Python SDK 2.24.0 e Rust SDK 4.25.0. O código do workflow recebe a interrupção de cancelamento cooperativo do SDK com `cause: timeout`. Veja [Cancelamento cooperativo](../polyglot/cancellation.md).
+
+Para autores de SDK: um worker de serviço informa uma interrupção de limpeza não capturada ou relançada com `fail_workflow.failure.interruption: "timeout_cleanup"`, e somente para a interrupção que entregou para a solicitação de timeout raiz do run (sem solicitação pai e sem scope). Qualquer outra coisa, inclusive uma interrupção construída pela aplicação ou encapsulada, registra `failed`. O Server aceita o marcador somente enquanto a solicitação de timeout pertencente ao engine estiver ativa e somente de uma reclamação que negociou `timeout_cleanup`. O Workflow 2.42.0 descreve essa regra no [contrato portável](https://github.com/durable-workflow/workflow/blob/main/docs/architecture/timeout-cleanup.md).
+
+**Filas mistas.** A admissão verifica apenas se pelo menos um worker ativo na fila de tarefas anuncia `timeout_cleanup`; qualquer worker da fila pode reclamar o turno de limpeza. O Server recusa o marcador de um worker que não anunciou a capacidade, então uma interrupção que escapa ali é registrada como `failed` ou `expired`. Mas esse worker pode nunca entregar a interrupção: se o código do workflow retornar, o run registra a limpeza como `completed` embora nenhuma limpeza tenha sido executada. Antes de iniciar runs com a opção em uma fila, atualize todos os workers dela para um SDK compatível com o cancelamento cooperativo habilitado.
 
 ## Lease de uma tarefa de workflow {#workflow-task-lease}
 

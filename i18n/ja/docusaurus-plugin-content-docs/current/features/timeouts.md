@@ -135,9 +135,9 @@ $description['run']['run_deadline_at'];       // ISO 8601 timestamp
 
 ## 期限による実験的なタイムアウトクリーンアップ {#timeout-cleanup}
 
-**実験的な embedded サポート。** Workflow 2.29.0 以降で embedded queue worker のみに提供され、service と poll mode の開始はオプションを拒否します。このオプションは[安定性レベル](../compatibility.md#stability-levels)の `experimental` サーフェスで、後方互換性はまだ約束されていません。オプションを有効にしない run は上記の既定のハードタイムアウトを維持します。
+**実験的。** embedded queue worker は Workflow 2.29.0 以降でこのオプションをサポートし、embedded の poll mode の開始はこれを拒否します。service mode では、下記のとおり native Server 3.30.0 以降で対応 worker と組み合わせてサポートされます。このオプションは[安定性レベル](../compatibility.md#stability-levels)の `experimental` サーフェスで、後方互換性はまだ約束されていません。オプションを有効にしない run は上記の既定のハードタイムアウトを維持します。
 
-有効化する前に、Workflow 2.29.0 以降をインストールし、アプリケーションの migration を実行し、互換性のある embedded queue worker を配置してください。新しい migration は `workflow_runs.timeout_cleanup_work_deadline_at` を追加しますが、既存の run でオプションを有効にはしません。migration の完了前に有効化しないでください。
+embedded mode で有効化する前に、Workflow 2.29.0 以降をインストールし、アプリケーションの migration を実行し、互換性のある embedded queue worker を配置してください。新しい migration は `workflow_runs.timeout_cleanup_work_deadline_at` を追加しますが、既存の run でオプションを有効にはしません。migration の完了前に有効化しないでください。
 
 ```bash
 php artisan migrate
@@ -174,11 +174,17 @@ worker が作業期限を検出すると、run は一度だけクリーンアッ
 
 クリーンアップの完了、失敗、期限切れのいずれでも、業務状態は `failed`、`closed_reason = timed_out`、`WorkflowTimedOut` です。補償が成功しても、タイムアウトが workflow の成功には変わりません。クリーンアップが早く完了すると run はすぐに閉じますが、タイムアウトのメッセージには元のハード期限の時刻が記載されます。
 
-クリーンアップ結果は履歴で確認してください。終端イベント `WorkflowTimedOut`、`WorkflowTerminated`、`WorkflowCancelled` の `timeout_cleanup` ペイロードが正式な記録で、`php artisan workflow:v2:history-export` の出力にも含まれます。control plane の describe 出力と run summary にはクリーンアップ結果がなく、run detail には「Timeout cleanup failed.」のような注記が出る程度です（`preempted` では何も出ません）。
+クリーンアップ結果は履歴で確認してください。終端イベント `WorkflowTimedOut`、`WorkflowTerminated`、`WorkflowCancelled` の `timeout_cleanup` ペイロードが正式な記録で、`php artisan workflow:v2:history-export` の出力にも含まれます。Workflow 2.40.0 以降と native Server 3.30.0 以降では、describe は記録されたクリーンアップ状態を `run.timeout_cleanup` で返し、run detail と Waterline が読む bounded run observation はトップレベルの `timeout_cleanup` で返します。クリーンアップ中は `outcome: running` と `cause: timeout`、タイムアウトの種類、検出時刻、作業期限、クリーンアップ期限を示します。終了後は終端の結果を示し、`failed` の場合は `failure_id` も含みます。クリーンアップが記録されていない場合、このフィールドは省略されます。
 
 不在または遅延した worker は外部クリーンアップの効果を保証できません。補償を冪等にし、効果が不明な場合はアプリケーションで照合してください。
 
-この実装は embedded queue worker のみを対象とします。poll mode と service の開始はオプションを拒否し、bridge worker は有効化された embedded run を claim できません。native admission と SDK の runtime delivery は [Server #1201](https://github.com/durable-workflow/server/issues/1201)で対応待ちです。parser の対応だけではタイムアウトクリーンアップは実装されません。
+embedded mode では、bridge worker は有効化された run を claim できません。claim はリースを取得せずに `timeout_cleanup_not_supported` を返します。
+
+**service mode。** native Server 3.30.0 以降は、service の開始と `start_child_workflow` コマンドで `timeout_cleanup_seconds` を embedded の割り当てと同じ制限で受け付け、`timeout_cleanup: {supported: true, version: 1}` を広告します。有効化された開始は、タスクキュー上の live worker がこの capability を広告している場合にのみ受け付けます。それ以外の場合は `422 timeout_cleanup_not_supported` を返して何も書き込まず、通常のハードタイムアウトにフォールバックすることもありません。協調的キャンセルを有効にした worker は、PHP SDK 3.31.0（下記のより厳密なマーカー規則は 3.32.0）、Python SDK 2.24.0、Rust SDK 4.25.0 以降でこの capability を広告します。workflow コードは SDK の協調的キャンセル割り込みを `cause: timeout` 付きで受け取ります。[協調的キャンセル](../polyglot/cancellation.md)を参照してください。
+
+SDK 作成者向け: service worker は、捕捉されなかった、または再送出されたクリーンアップ割り込みを `fail_workflow.failure.interruption: "timeout_cleanup"` で報告します。対象は、run のルートのタイムアウト要求（親要求もスコープもない）に対して worker が配信した割り込みだけです。アプリケーションが作成した割り込みやラップされた割り込みを含め、それ以外はすべて `failed` として記録されます。Server がマーカーを受け付けるのは、run のエンジン所有のタイムアウト要求が有効な間だけで、`timeout_cleanup` をネゴシエートした claim からのものに限られます。Workflow 2.42.0 はこの規則を[ポータブル契約](https://github.com/durable-workflow/workflow/blob/main/docs/architecture/timeout-cleanup.md)に記載しています。
+
+**混在キュー。** 受け付け時には、タスクキュー上の live worker のうち少なくとも 1 つが `timeout_cleanup` を広告していることだけを確認し、キュー上のどの worker もクリーンアップのターンを claim できます。Server は capability を広告していない worker からのマーカーを拒否するため、そこで割り込みが外に出ると `failed` または `expired` として記録されます。しかし、そのような worker は割り込みを一切配信しない可能性があります。その workflow コードが return すると、クリーンアップが実行されていなくても run はクリーンアップを `completed` として記録します。キューで有効化された run を開始する前に、そのキューのすべての worker を、協調的キャンセルを有効にした対応 SDK にアップグレードしてください。
 
 ## ワークフロータスクのリース {#workflow-task-lease}
 
