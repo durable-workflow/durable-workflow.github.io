@@ -14,6 +14,7 @@ Update дають змогу одночасно отримати інформа�
 - Використовує оголошену стійку назву update в історії команд і маршрутизації webhook. `#[UpdateMethod('mark-approved')]` зберігає публічну назву виклику за перейменування PHP-методу.
 - Відхиляється для історичних або вже закритих запусків замість непомітної зміни поточного запуску.
 - До виконання обробника відхиляє неоголошені назви методів як `rejected_unknown_update`, а аргументи, що порушують контракт, як `rejected_invalid_arguments` із машиночитаними `validation_errors`.
+- Відхиляє як `update_validator_rejected` ще до прийняття запит, який відхиляє ваш [валідатор update](#validate-updates-before-acceptance).
 
 Як і query, update спочатку відтворюють зафіксовану історію. На відміну від query, update можуть змінювати безпечний щодо replay стан workflow і повертати значення.
 
@@ -110,6 +111,53 @@ $latest->closedAt();     // null until the lifecycle closes
 ```
 
 `inspectUpdate()` не очікує на виконання workflow. Він повторно завантажує збережений стійкий життєвий цикл і повертає поточний `UpdateResult`.
+
+## Валідація update до прийняття {#validate-updates-before-acceptance}
+
+Без валідатора update, що порушує бізнес-правило, спочатку приймається, а потім завершується помилкою. Він записується як невдалий update, і викликач не може відрізнити хибний запит від невдалої операції. Оголосіть валідатор, щоб відхилити запит ще до прийняття. Валідатори потребують Workflow 2.42.0 або новішої версії.
+
+```php
+use Workflow\UpdateMethod;
+use Workflow\UpdateValidator;
+use Workflow\V2\Workflow;
+
+final class CartWorkflow extends Workflow
+{
+    private array $items = [];
+
+    #[UpdateMethod('add-item')]
+    public function addItem(string $item): array
+    {
+        $this->items[] = $item;
+
+        return $this->items;
+    }
+
+    #[UpdateValidator('add-item')]
+    public function validateAddItem(string $item): void
+    {
+        if (count($this->items) >= 10) {
+            throw new \RuntimeException('The cart is full.');
+        }
+    }
+}
+```
+
+`#[UpdateValidator]` вказує update за його довговічним іменем або за іменем методу, якщо update не має псевдоніма. Валідатор отримує ті самі аргументи, що й update. Перед прийняттям update рушій відновлює стан запуску з його історії та викликає лише валідатор:
+
+- Якщо він завершується звичайно, update приймається й застосовується як завжди.
+- Якщо він кидає виняток або повертає `false`, update відхиляється з причиною `update_validator_rejected` і результатом `rejected_invalid_arguments`. `rejectedByValidator()` повертає true, `rejectionMessage()` повертає повідомлення винятку, а `validationErrors()` повертає помилки Laravel `ValidationException`. `update()` кидає `LogicException`, що містить причину й повідомлення валідатора.
+- Відхилений update ніколи не приймається, його обробник ніколи не виконується, і workflow не пробуджується. Як і будь-яке інше відхилення, він записується лише як аудиторська подія `UpdateRejected`, яку replay ігнорує.
+
+Валідатори доступні лише для читання. Вони можуть читати відновлений стан workflow, але будь-який довговічний виклик (activity, timer, дочірній workflow, signal, side effect, `await`, `getVersion()`, `patched()`, continue-as-new або upsert memo чи атрибутів пошуку) кидає `UpdateValidatorCommandException` і відхиляє update. Зміни, які валідатор вносить у відновлений стан, відкидаються. Валідатор-генератор відхиляється, бо його тіло ніколи не виконується.
+
+Валідатори не записуються в історію й ніколи не виконуються під час replay, тож не впливають на детермінізм. Вони бачать стан із зафіксованої історії: update, який уже прийнято, але ще не застосовано, для них невидимий. Replay і валідатор виконуються, поки прийняття update утримує блокування запуску, тому валідатори мають бути швидкими.
+
+Якщо стан не вдається відновити або валідатор натрапляє на помилку бази даних, кидається `UpdateValidationFailedException` і нічого не записується. Webhook-маршрути update відповідають на це повторюваним `503` з `update_validation_failed`. Повторіть запит із тим самим ідентифікатором запиту.
+
+Повторний запит із ключем для відхиленого update повертає збережене відхилення без повторного виконання валідатора.
+
+Interceptor-и worker обгортають валідацію update через `executeUpdateValidation()`. Вони бачать рішення валідатора, але не можуть його змінити.
 
 ## Відновлення після невизначеної відповіді {#recover-after-an-uncertain-response}
 

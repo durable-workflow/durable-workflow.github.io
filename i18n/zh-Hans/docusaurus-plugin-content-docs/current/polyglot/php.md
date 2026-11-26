@@ -89,6 +89,66 @@ SDK 维护的快速入门创建干净的 Composer 项目，定义带特性的工
 
 远程 Worker 通过 `registerWorkflow`、`registerActivity`、`registerQuery` 和 `registerUpdate` 注册工作流、活动、查询及更新处理器。完整参数及返回类型见生成的 [PHP SDK API 参考](https://php.durable-workflow.com/api/)。
 
+## 更新验证器 {#update-validators}
+
+从 PHP SDK 3.32.0 起，工作流可以在接受更新之前拒绝它。在工作流类的方法上、紧挨其 `#[Update]` 处理程序添加 `#[UpdateValidator]`。底层形式是 `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`，需在 `registerUpdate()` 之后调用。
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+验证器接收一个包含运行已提交历史的 `QueryContext`，后面跟着更新的参数。Worker 会向 Server 声明验证器，并同时轮询工作流任务和更新验证任务。如果 Server 没有声明同步更新验证，注册会以 `update_validation_tasks_unavailable` 被拒绝。对每个验证任务，Worker 只运行验证器：
+
+- 正常返回即批准更新，Server 随后接受它。
+- 抛出异常或返回 `false` 时，会以 `update_validator_rejected`、异常消息和类名，以及异常 `errors()` 方法返回的字段错误拒绝更新。更新永远不会被接受，其处理程序也永远不会运行。Server 只把拒绝记录为审计事件 `UpdateRejected`。
+- 尝试调度持久工作会被 `UpdateValidatorCommandRefused` 拒绝，从而拒绝该更新。
+
+在客户端，`updateWorkflow()` 会抛出 `UpdateFailed`。`rejectedByValidator()` 用于识别验证器拒绝，`validationErrors()` 返回其字段错误。当 Server 未能及时得到决定时，`validationFailed()` 为 true；此时没有任何内容被接受，请使用同一个请求 ID 重试。
+
+验证器从不在重放期间运行。每次验证只能看到在其自身任务之前提交的历史，因此两个同时进行的验证可能都通过一项本应只有一个通过的检查。带验证器的 Worker 不使用携带的工作流轮询。Worker 拦截器通过 `executeUpdateValidation()` 包裹更新验证任务，能看到验证器的决定，但无法更改。
+
+## 感知重放的工作流日志 {#workflow-logging}
+
+Worker 在每个工作流任务中都会从历史重放工作流，因此工作流代码中的普通日志调用会为每个已完成的步骤重复一次。PHP SDK 3.32.0 及更高版本提供 `$context->logger()`。它返回一个 PSR-3 日志记录器，通过你传给 `Worker` 的日志记录器（命名参数 `logger`）写入，并且只在代码运行到运行的已提交历史之外时写入：
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+每一行都包含 `namespace`、`workflow_type`、`workflow_id` 和 `workflow_run_id`。`$context->replayState()` 返回 `WorkflowReplayState::Replaying`、`Executing` 或 `Unavailable`，`isReplaying()` 是其布尔形式。它们仅用于诊断；切勿据此选择工作流命令。
+
+只有在 Worker 提交运行该代码的工作流任务并且 Server 接受之后，才会写入日志行。被取代的重放、被 Server 拒绝的推测性重放以及被拒绝的完成都不会写入任何内容。在未记录步骤的情况下等待挂起的子工作流或操作句柄的代码只记录一次，由越过该等待的任务写入。在 side effect 闭包内调用 `logger()` 不会写入任何内容。
+
+如果 Worker 在 Server 接受与写入之间终止，这些日志行会丢失。这是一个进程日志记录器，而不是用于业务效果的 outbox。请让日志处理程序保持快速且非阻塞：等待网络的处理程序会阻塞 Worker，并可能使其丢失任务租约。日志记录器的失败会被捕获，绝不会改变工作流的命令。
+
 ## 活动重试上下文与所属运行 {#activity-retry-context}
 
 PHP SDK **3.6.1 及以上版本**在服务模式活动中提供 `$context->retryInfo`、`$context->workflowId` 和 `$context->runId`。对于有次数上限的策略，使用 `$context->retryInfo->isLastConfiguredAttempt() === true` 判断是否已到达配置的最后一次尝试。`attemptNumber` 保留最初收到的尝试编号。

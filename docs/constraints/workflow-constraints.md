@@ -15,9 +15,35 @@ Here are some examples of things you shouldn't do inside of a workflow class:
 
 ## Logging from workflow code {#workflow-logging}
 
-A worker reconstructs committed workflow history after activations and cold replacement, so ordinary application logging can repeat earlier messages. Use the replay-aware logger documented for your binding when available. Rust service mode provides the [Rust SDK 4.17 workflow logger](../polyglot/rust.md#workflow-logging); other bindings retain their separately documented contracts.
+The engine replays a workflow from its history every time it wakes up, so an ordinary log call in workflow code is written again for every completed step. A workflow with 50 steps logs its opening line 50 times. Use the replay-aware logger instead. It writes only when the code runs for the first time. The embedded, PHP SDK and Rust loggers also add the run's identity to each line:
 
-Logging is a process observation. Keep durable workflow commands independent of replay-state observations and log delivery. Even a replay-aware logger can repeat a message from an uncommitted attempt after a crash or retry; it is not an exactly-once outbox. Keep host handlers bounded and nonblocking so logging does not stall the worker. Put durable business effects behind the appropriate activity or recorded workflow operation instead.
+- Embedded workflows (Workflow 2.42.0 or later): `$this->logger()` returns a PSR-3 logger that writes through the Laravel logger, or through the channel you pass, as in `$this->logger('workflow')`. Each line carries `workflow_instance_id`, `workflow_run_id`, `workflow_type` and `namespace`. `$this->replayState()` returns `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` or `Unavailable`), and `$this->isReplaying()` is its boolean form.
+- PHP SDK: `$context->logger()` writes through the `Worker`'s PSR-3 logger. See the [PHP SDK guide](../polyglot/php.md#workflow-logging).
+- Rust SDK: `ctx.logger()`. See the [Rust SDK 4.17 workflow logger](../polyglot/rust.md#workflow-logging).
+- Python SDK: `ctx.logger`, which is silent during replay but adds no run identity.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Queries and update validators never log, because they always replay.
+
+In embedded workflows, the lines are written after the workflow task's database transaction commits, so a task that rolls back writes nothing. Code that parks on a pending `select()` handle without recording a step logs once, in the task that moves past the await. Lines from a live update handler are written when the update is applied. In the PHP SDK, lines are written after the Server accepts the workflow task; see the [PHP SDK guide](../polyglot/php.md#workflow-logging).
+
+Logging is a process observation. Keep durable workflow commands independent of replay-state observations and log delivery. A replay-aware logger is not an exactly-once outbox: if an embedded or PHP SDK worker dies between the commit or acceptance and the write, those lines are lost, and the Rust logger can repeat a message from an uncommitted attempt after a crash or retry. Keep host handlers bounded and nonblocking so logging does not stall the worker. Put durable business effects behind the appropriate activity or recorded workflow operation instead.
 
 ## Boot-Time Guardrails
 
