@@ -982,19 +982,18 @@ fleets:
 - On the embedded engine, `Workflow::now()` moves to the step's recorded time.
 - On the external-worker runner (the embedded package's worker-protocol
   `WorkflowFiberRunner`, which external PHP workers use through the bridge),
-  side effects and memo and search-attribute updates keep the previous
-  boundary time. A version marker also keeps the previous boundary time on
-  first execution, while a replay reads the marker's recorded time. This
-  version-marker divergence is kept deliberately: superseding the pinned
-  `repeated-version-legacy-clock-boundaries` replay fixture would change the
-  replay output of runs already in flight.
-- Mixed fleets, where the embedded engine runs the first execution and an
-  external worker replays the same run, are unsupported for clock reads right
-  after side effects and memo or search-attribute updates.
+  side effects, memo and search-attribute updates, and version markers behave
+  alike: a first execution keeps the previous boundary time, while a replay
+  reads the step's recorded time. For version markers this divergence is kept
+  deliberately: superseding the pinned `repeated-version-legacy-clock-boundaries`
+  replay fixture would change the replay output of runs already in flight.
+- The read therefore differs whenever the first execution ran on the
+  external-worker runner, including in a fleet of only external workers, and
+  whenever a run may move between runners, because embedded and external first
+  executions read different times.
 
-If a workflow runs, or may replay, on more than one runner, do not rely on a
-clock read right after an inline step. Read the clock after the next durable
-step instead.
+Do not rely on a clock read immediately after an inline step: read the clock
+after the next durable step.
 
 Python and Rust rebuild the workflow from history to answer a query or a
 pre-accept update validation. If the rebuilt workflow reads the clock at entry

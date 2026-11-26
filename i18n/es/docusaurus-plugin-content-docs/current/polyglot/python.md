@@ -900,21 +900,20 @@ flotas mixtas:
 - En el motor integrado, `Workflow::now()` pasa a la hora registrada del paso.
 - En el runner de workers externos (el `WorkflowFiberRunner` del protocolo de
   workers del paquete integrado, que los workers PHP externos usan a través del
-  bridge), los efectos secundarios y las actualizaciones de memo y de atributos
-  de búsqueda conservan la hora del límite anterior. Un marcador de versión
-  también conserva la hora del límite anterior en la primera ejecución,
-  mientras que un replay lee la hora registrada del marcador. Esta divergencia
-  de los marcadores de versión se mantiene a propósito: sustituir el fixture de
-  replay fijado `repeated-version-legacy-clock-boundaries` cambiaría la salida
-  del replay de los runs que ya están en curso.
-- Las flotas mixtas, en las que el motor integrado hace la primera ejecución y
-  un worker externo reproduce el mismo run, no son compatibles con lecturas del
-  reloj justo después de efectos secundarios o de actualizaciones de memo o de
-  atributos de búsqueda.
+  bridge), los efectos secundarios, las actualizaciones de memo y de atributos
+  de búsqueda y los marcadores de versión se comportan igual: una primera
+  ejecución conserva la hora del límite anterior, mientras que un replay lee la
+  hora registrada del paso. En los marcadores de versión esta divergencia se
+  mantiene a propósito: sustituir el fixture de replay fijado
+  `repeated-version-legacy-clock-boundaries` cambiaría la salida del replay de
+  los runs que ya están en curso.
+- Por eso la lectura difiere siempre que la primera ejecución se hizo en el
+  runner de workers externos, incluso en una flota formada solo por workers
+  externos, y siempre que un run pueda pasar de un runner a otro, porque las
+  primeras ejecuciones integradas y externas leen horas distintas.
 
-Si un workflow se ejecuta, o puede reproducirse, en más de un runner, no
-dependas de una lectura del reloj justo después de un paso en línea. Lee el
-reloj después del siguiente paso duradero.
+No dependas de una lectura del reloj inmediatamente después de un paso en
+línea: lee el reloj después del siguiente paso duradero.
 
 Python y Rust reconstruyen el workflow a partir del historial para responder a
 una consulta o a una validación de actualización previa a la aceptación. Si el

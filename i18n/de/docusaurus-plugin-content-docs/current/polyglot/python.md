@@ -924,22 +924,19 @@ Schritt weder zwischen Runnern noch in gemischten Flotten portabel:
   des Schritts.
 - Im External-Worker-Runner (dem Worker-Protokoll-`WorkflowFiberRunner` des
   eingebetteten Pakets, den externe PHP-Worker über die Bridge verwenden)
-  behalten Seiteneffekte sowie Memo- und Suchattribut-Aktualisierungen die
-  vorherige Grenzzeit. Ein Versionsmarker behält bei der ersten Ausführung
-  ebenfalls die vorherige Grenzzeit, während ein Replay die aufgezeichnete Zeit
-  des Markers liest. Diese Abweichung bei Versionsmarkern wird bewusst
-  beibehalten: Die gepinnte Replay-Fixture
-  `repeated-version-legacy-clock-boundaries` abzulösen, würde die
+  verhalten sich Seiteneffekte, Memo- und Suchattribut-Aktualisierungen sowie
+  Versionsmarker gleich: Eine erste Ausführung behält die vorherige Grenzzeit,
+  während ein Replay die aufgezeichnete Zeit des Schritts liest. Bei
+  Versionsmarkern wird diese Abweichung bewusst beibehalten: Die gepinnte
+  Replay-Fixture `repeated-version-legacy-clock-boundaries` abzulösen, würde die
   Replay-Ausgabe bereits laufender Runs ändern.
-- Gemischte Flotten, in denen die eingebettete Engine die erste Ausführung
-  übernimmt und ein externer Worker denselben Run erneut abspielt, werden für
-  Uhrlesungen direkt nach Seiteneffekten sowie Memo- oder
-  Suchattribut-Aktualisierungen nicht unterstützt.
+- Die Lesung weicht daher immer ab, wenn die erste Ausführung im
+  External-Worker-Runner lief, auch in einer Flotte nur aus externen Workern,
+  und immer dann, wenn ein Run zwischen Runnern wechseln kann, weil eingebettete
+  und externe erste Ausführungen unterschiedliche Zeiten lesen.
 
-Wenn ein Workflow auf mehr als einem Runner läuft oder dort erneut abgespielt
-werden kann, verlassen Sie sich nicht auf eine Uhrlesung direkt nach einem
-Inline-Schritt. Lesen Sie die Uhr stattdessen nach dem nächsten dauerhaften
-Schritt.
+Verlassen Sie sich nicht auf eine Uhrlesung unmittelbar nach einem
+Inline-Schritt: Lesen Sie die Uhr nach dem nächsten dauerhaften Schritt.
 
 Python und Rust bauen den Workflow aus der Historie neu auf, um eine Query oder
 eine Update-Validierung vor der Annahme zu beantworten. Liest der neu

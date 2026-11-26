@@ -925,21 +925,21 @@ flottes mixtes :
   l'étape.
 - Dans le runner des workers externes (le `WorkflowFiberRunner` du protocole
   worker du paquet intégré, que les workers PHP externes utilisent via le
-  bridge), les effets de bord et les mises à jour de mémo et d'attributs de
-  recherche conservent l'heure de la limite précédente. Un marqueur de version
-  conserve lui aussi l'heure de la limite précédente lors de la première
-  exécution, tandis qu'une relecture lit l'heure enregistrée du marqueur. Cette
-  divergence des marqueurs de version est conservée délibérément : remplacer la
-  fixture de relecture épinglée `repeated-version-legacy-clock-boundaries`
-  modifierait la sortie de relecture des runs déjà en cours.
-- Les flottes mixtes, où le moteur intégré effectue la première exécution et un
-  worker externe relit le même run, ne sont pas prises en charge pour les
-  lectures d'horloge juste après des effets de bord ou des mises à jour de mémo
-  ou d'attributs de recherche.
+  bridge), les effets de bord, les mises à jour de mémo et d'attributs de
+  recherche et les marqueurs de version se comportent de la même façon : une
+  première exécution conserve l'heure de la limite précédente, tandis qu'une
+  relecture lit l'heure enregistrée de l'étape. Pour les marqueurs de version,
+  cette divergence est conservée délibérément : remplacer la fixture de
+  relecture épinglée `repeated-version-legacy-clock-boundaries` modifierait la
+  sortie de relecture des runs déjà en cours.
+- La lecture diffère donc chaque fois que la première exécution a eu lieu dans
+  le runner des workers externes, y compris dans une flotte composée uniquement
+  de workers externes, et chaque fois qu'un run peut passer d'un runner à
+  l'autre, car les premières exécutions intégrées et externes lisent des heures
+  différentes.
 
-Si un workflow s'exécute, ou peut être relu, sur plus d'un runner, ne vous fiez
-pas à une lecture d'horloge juste après une étape en ligne. Lisez plutôt
-l'horloge après l'étape durable suivante.
+Ne vous fiez pas à une lecture d'horloge immédiatement après une étape en
+ligne : lisez l'horloge après l'étape durable suivante.
 
 Python et Rust reconstruisent le workflow à partir de l'historique pour
 répondre à une requête ou à une validation de mise à jour avant acceptation. Si

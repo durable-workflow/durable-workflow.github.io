@@ -921,20 +921,18 @@ horário persistido para eles, uma leitura do relógio logo depois de um deles n
 - No motor embutido, `Workflow::now()` passa para o horário registrado do passo.
 - No runner de workers externos (o `WorkflowFiberRunner` do protocolo de workers
   do pacote embutido, que workers PHP externos usam por meio do bridge), efeitos
-  colaterais e atualizações de memo e de atributos de pesquisa mantêm o horário
-  do limite anterior. Um marcador de versão também mantém o horário do limite
-  anterior na primeira execução, enquanto um replay lê o horário registrado do
-  marcador. Essa divergência dos marcadores de versão é mantida de propósito:
-  substituir o fixture de replay fixado
-  `repeated-version-legacy-clock-boundaries` mudaria a saída do replay de runs
-  que já estão em andamento.
-- Frotas mistas, em que o motor embutido faz a primeira execução e um worker
-  externo faz o replay do mesmo run, não são suportadas para leituras do relógio
-  logo depois de efeitos colaterais ou de atualizações de memo ou de atributos
-  de pesquisa.
+  colaterais, atualizações de memo e de atributos de pesquisa e marcadores de
+  versão se comportam da mesma forma: uma primeira execução mantém o horário do
+  limite anterior, enquanto um replay lê o horário registrado do passo. Nos
+  marcadores de versão, essa divergência é mantida de propósito: substituir o
+  fixture de replay fixado `repeated-version-legacy-clock-boundaries` mudaria a
+  saída do replay de runs que já estão em andamento.
+- Por isso, a leitura diverge sempre que a primeira execução rodou no runner de
+  workers externos, inclusive em uma frota só de workers externos, e sempre que
+  um run puder passar de um runner para outro, porque primeiras execuções
+  embutidas e externas leem horários diferentes.
 
-Se um workflow roda, ou pode passar por replay, em mais de um runner, não
-dependa de uma leitura do relógio logo depois de um passo inline. Leia o
+Não dependa de uma leitura do relógio logo depois de um passo inline: leia o
 relógio depois do próximo passo durável.
 
 Python e Rust reconstroem o workflow a partir do histórico para responder a uma
