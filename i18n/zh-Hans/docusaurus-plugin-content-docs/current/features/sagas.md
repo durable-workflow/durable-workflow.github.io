@@ -51,7 +51,7 @@ class BookingSagaWorkflow extends Workflow
 
 默认硬超时策略下，引擎[工作流超时](./timeouts.md#timeout-outcome-and-cleanup)会在工作流代码运行补偿前关闭运行。`catch` 或 `finally` 不会改变该行为。立即执行的 `cancel()` 与 `terminate()` 也不提供清理窗口。
 
-独立的[实验性超时清理选项](./timeouts.md#timeout-cleanup)可在原始硬上限内为中断驱动的补偿处理器预留时间。它是仅支持嵌入式队列 worker 的实验性功能，从 Workflow 2.29.0 起提供，目前不承诺向后兼容；service 和 poll 模式启动会拒绝它。它不会使补偿自动发生，也不会在 worker 不可用时保证外部效果。
+独立的[实验性超时清理选项](./timeouts.md#timeout-cleanup)可在原始硬上限内为中断驱动的补偿处理器预留时间。它是实验性功能，目前不承诺向后兼容。嵌入式队列 worker 从 Workflow 2.29.0 起支持它（嵌入式 poll 模式启动会拒绝它），service 模式从原生 Server 3.30.0 起在有受支持的 SDK worker 时支持它。它不会使补偿自动发生，也不会在 worker 不可用时保证外部效果，而且清理结果 `completed` [不能证明清理代码已运行](./timeouts.md#timeout-cleanup)。
 
 如果超时应撤销已完成工作，请使用更早的应用截止时间。此嵌入式工作流先预订资源，再最多等待确认信号 30 秒。等待到期后，工作流代码恢复，释放预订，然后返回 `expired` 业务结果：
 

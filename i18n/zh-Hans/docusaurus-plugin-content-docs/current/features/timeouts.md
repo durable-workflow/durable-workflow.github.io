@@ -135,9 +135,9 @@ $description['run']['run_deadline_at'];       // ISO 8601 timestamp
 
 ## 截止时间触发的实验性清理 {#timeout-cleanup}
 
-**实验性嵌入式支持。** 从 Workflow 2.29.0 起提供，仅适用于嵌入式队列 worker；service 和 poll 模式启动会拒绝此选项。该选项按[稳定性级别](../compatibility.md#stability-levels)属于 `experimental` 接口，目前不承诺向后兼容。未启用该选项的运行继续使用上述默认硬超时行为。
+**实验性。** 嵌入式队列 worker 从 Workflow 2.29.0 起支持此选项；嵌入式 poll 模式启动会拒绝它。service 模式从原生 Server 3.30.0 起在有支持的 worker 时提供此选项，详见下文。该选项按[稳定性级别](../compatibility.md#stability-levels)属于 `experimental` 接口，目前不承诺向后兼容。未启用该选项的运行继续使用上述默认硬超时行为。
 
-启用前，先安装 Workflow 2.29.0 或更高版本，运行应用 migration，并部署兼容的嵌入式队列 worker。新 migration 添加 `workflow_runs.timeout_cleanup_work_deadline_at`，不会为已有运行启用选项。migration 完成前不要启用。
+在嵌入式模式下启用前，先安装 Workflow 2.29.0 或更高版本，运行应用 migration，并部署兼容的嵌入式队列 worker。新 migration 添加 `workflow_runs.timeout_cleanup_work_deadline_at`，不会为已有运行启用选项。migration 完成前不要启用。
 
 ```bash
 php artisan migrate
@@ -161,24 +161,32 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 
 本例为普通工作提供 60 秒，清理可使用原始 70 秒硬上限内的最后 10 秒。预留绝不在硬上限后增加时间。若两个硬截止时间都适用，较早的一个限制清理。延迟检测、重试、worker 替换和 lease 续期都不重置任何截止时间。continue-as-new 和 redrive 保留已接纳的预留及原始 execution 时钟；每个 run 推导自己的时钟。
 
-worker 发现已到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。如果在硬截止时间前没有 worker 发现，则不会写入该事件，`expired` 结果也没有 `started_at`。兼容代码收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
+worker 发现已到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。如果在硬截止时间前没有 worker 发现，则不会写入该事件，`expired` 结果也没有 `started_at`。兼容代码会在下一个未解决的持久等待处收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
 
 清理具有独立的 `timeout_cleanup.outcome`：
 
 | 结果 | 含义 |
 |---|---|
-| `completed` | 清理在截止时间前返回或重新抛出超时中断。返回值不会成为业务结果。 |
+| `completed` | 工作流代码在清理截止时间前返回，或重新抛出超时中断。这不能证明清理代码已运行。返回值不会成为业务结果。 |
 | `failed` | 清理抛出其他异常；`failure_id` 链接清理失败。 |
 | `expired` | 硬上限先于清理完成到达，包括没有 worker 能运行清理的情况。 |
-| `preempted` | 立即 `cancel()` 或 `terminate()` 中断清理；对应的取消/终止结果仍为终态。 |
+| `preempted` | 立即 `cancel()` 或 `terminate()`，或早于清理截止时间的硬截止时间中断了清理；抢先发生的结果仍为终态。 |
+
+无论嵌入式模式还是 service 模式，`completed` 都不能证明清理代码已运行。中断会在下一个持久等待（activity、timer、child、signal、condition 或 selection）处投递，前提是该等待的结果在清理开始时尚未写入历史；它绝不会在 side effect 中或 `cancellationShield()` 内投递。如果工作流正在阻塞的等待已经解决，例如 timer 已触发或 activity 已完成，工作流代码可能未收到中断就返回，结果仍为 `completed`。此时历史中有 `WorkflowTimeoutCleanupStarted`，其后没有 `CooperativeCancellationDelivered`。必须始终运行的补偿应保持幂等，并在工作截止时间之后可能返回的每条路径上运行，而不只是在中断处理器中运行，例如将工作流时间与运行接纳时的截止时间进行比较。
 
 清理完成、失败或过期后，业务状态仍是 `failed`、`closed_reason = timed_out` 和 `WorkflowTimedOut`。补偿成功不会把超时变为 workflow 成功。清理提前完成时，运行会立即关闭，但超时消息仍引用原始硬截止时间。
 
-请从历史读取清理结果。终止事件 `WorkflowTimedOut`、`WorkflowTerminated` 或 `WorkflowCancelled` 上的 `timeout_cleanup` 载荷是权威记录，也包含在 `php artisan workflow:v2:history-export` 的输出中。control plane 的 describe 输出和运行摘要不包含清理结果，run detail 最多显示类似“Timeout cleanup failed.”的说明（`preempted` 时不显示）。
+请从历史读取清理结果。终止事件 `WorkflowTimedOut`、`WorkflowTerminated` 或 `WorkflowCancelled` 上的 `timeout_cleanup` 载荷是权威记录，也包含在 `php artisan workflow:v2:history-export` 的输出中。从 Workflow 2.40.0 起，以及在原生 Server 3.30.0 及更高版本上，describe 在 `run.timeout_cleanup` 下报告已记录的清理状态，run detail 和 Waterline 读取的有界运行观察则以顶层 `timeout_cleanup` 报告。清理进行中时，它显示 `outcome: running`、`cause: timeout`、超时类型、检测时间以及工作截止时间和清理截止时间。关闭后，它显示终态结果，`failed` 时附带 `failure_id`。未记录清理时省略该字段。列表视图尚不显示清理状态，请打开 run detail 查看。
 
 不可用或延迟的 worker 无法保证外部清理效果；补偿必须幂等，并由应用核对不确定的效果。
 
-本增量仅支持嵌入式队列 worker。poll 和 service 启动会拒绝此选项；bridge worker 无法 claim 已启用的嵌入式运行。原生接纳及 SDK runtime 交付仍由 [Server #1201](https://github.com/durable-workflow/server/issues/1201) 跟踪；仅有 parser 支持不代表实现超时清理。
+在嵌入式模式下，bridge worker 无法 claim 已启用的运行；claim 会返回 `timeout_cleanup_not_supported`，且不获取租约。
+
+**Service 模式。** 原生 Server 3.30.0 及更高版本在 service 启动和 `start_child_workflow` 命令中接受 `timeout_cleanup_seconds`，限制与嵌入式预留相同，并宣告 `timeout_cleanup: {supported: true, version: 1}`。只有当任务队列上有在线 worker 宣告该能力时，它才接纳启用此选项的启动。否则返回 `422 timeout_cleanup_not_supported`，不写入任何内容，也绝不回退为普通硬超时。启用协作式取消的 worker 从 PHP SDK 3.31.0（下文更严格的标记规则需要 3.32.0）、Python SDK 2.24.0 和 Rust SDK 4.25.0 起宣告该能力。工作流代码会收到 SDK 的协作式取消中断，其 `cause` 为 `timeout`。参见[协作式取消](../polyglot/cancellation.md)。
+
+面向 SDK 作者：service worker 用 `fail_workflow.failure.interruption: "timeout_cleanup"` 报告未捕获或重新抛出的清理中断，且仅针对它为运行的根超时请求（无父请求、无 scope）投递的那个中断。其他任何情况，包括应用自行构造或包装后的中断，都记录为 `failed`。Server 仅在运行中由引擎拥有的超时请求仍处于活动状态时，且仅从协商了 `timeout_cleanup` 的 claim 接受该标记。Workflow 2.42.0 在[可移植契约](https://github.com/durable-workflow/workflow/blob/main/docs/architecture/timeout-cleanup.md)中说明了这一规则。
+
+**混合队列。** 接纳只检查任务队列上是否至少有一个在线 worker 宣告 `timeout_cleanup`；队列上的任何 worker 都可以 claim 清理回合。Server 会拒绝未宣告该能力的 worker 发送的标记，因此在那里逃逸的中断会记录为 `failed` 或 `expired`。但这样的 worker 可能根本不会投递该中断：如果其工作流代码直接返回，运行会把清理记录为 `completed`，尽管并未执行任何清理。在某个队列上启动启用此选项的运行之前，请将该队列上的所有 worker 升级到启用协作式取消的受支持 SDK。
 
 ## 工作流任务租约 {#workflow-task-lease}
 

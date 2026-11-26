@@ -51,7 +51,7 @@ class BookingSagaWorkflow extends Workflow
 
 既定のハードタイムアウトの方針では、エンジンの[ワークフロータイムアウト](./timeouts.md#timeout-outcome-and-cleanup)は、ワークフローコードが補償を実行する前に実行を閉じます。`catch` や `finally` はこの動作を変えません。即時の `cancel()` と `terminate()` にもクリーンアップ猶予はありません。
 
-別の[実験的なタイムアウトクリーンアップオプション](./timeouts.md#timeout-cleanup)は、元のハード上限内に、割り込みで起動する補償ハンドラーの時間を予約できます。Workflow 2.29.0 以降で使える embedded queue worker 向けの実験的サポートで、後方互換性はまだ約束されていません。service と poll mode の開始はこのオプションを拒否します。補償を自動化したり、worker 不在時の効果を保証したりするものではありません。
+別の[実験的なタイムアウトクリーンアップオプション](./timeouts.md#timeout-cleanup)は、元のハード上限内に、割り込みで起動する補償ハンドラーの時間を予約できます。これは実験的な機能で、後方互換性はまだ約束されていません。embedded queue worker は Workflow 2.29.0 以降でサポートし（embedded の poll mode の開始は拒否します）、service mode は native Server 3.30.0 以降で対応 SDK の worker と組み合わせてサポートします。補償を自動化したり、worker 不在時の効果を保証したりするものではなく、クリーンアップ結果 `completed` は[クリーンアップコードが実行されたことを証明しません](./timeouts.md#timeout-cleanup)。
 
 タイムアウト時に完了済み作業を取り消したい場合は、アプリケーション側に早い期限を設けます。この組み込みワークフローはリソースを予約し、確認シグナルを最大 30 秒待ちます。待機が期限切れになるとコードが再開し、予約を解放してから業務結果 `expired` を返します。
 
