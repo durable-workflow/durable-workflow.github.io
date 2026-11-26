@@ -483,8 +483,12 @@ curl -X POST "$SERVER/api/activities" \
 | `POST` | `/api/namespaces` | 创建命名空间。 |
 | `GET` | `/api/namespaces/{namespace}` | 描述命名空间保留期、元数据及存储策略。 |
 | `PUT` | `/api/namespaces/{namespace}` | 更新命名空间元数据或保留期。 |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | 预览拟议的保留策略而不应用。原生 Server 3.30.0 及更高版本。 |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | 仅在计划仍然有效时应用计划中的保留策略。原生 Server 3.30.0 及更高版本。 |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | 配置命名空间外部负载存储策略。 |
 | `POST` | `/api/storage/test` | 通过配置的外部存储驱动，往返测试小型和大型负载。 |
+
+保留计划和应用路由要求 admin 角色。计划不写入任何内容。应用会拒绝过期或不匹配的计划，并要求对追溯清理进行明确确认。`PUT /api/namespaces/{namespace}` 仍会立即激活保留策略。操作流程、响应字段和拒绝情况见[预览并应用保留策略变更](./server.md#preview-and-apply-a-retention-change)。
 
 外部负载存储策略允许大型负载封装携带稳定引用，代替原始字节。本地策略通过配置的文件系统路径解析。`s3`、`gcs` 和 `azure` 等对象存储策略使用 Server 上显式配置的文件系统磁盘和桶/前缀设置。
 

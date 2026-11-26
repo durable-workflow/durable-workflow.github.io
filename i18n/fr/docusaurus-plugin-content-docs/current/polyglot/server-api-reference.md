@@ -681,8 +681,12 @@ routes de modification et celles de stockage externe exigent le rôle admin.
 | `POST` | `/api/namespaces` | Créer un espace de noms. |
 | `GET` | `/api/namespaces/{namespace}` | Décrire la rétention, les métadonnées et la politique de stockage d'un espace de noms. |
 | `PUT` | `/api/namespaces/{namespace}` | Mettre à jour ses métadonnées ou sa rétention. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | Prévisualiser une politique de rétention proposée sans l’appliquer. Server natif 3.30.0 et versions ultérieures. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | Appliquer une politique de rétention planifiée seulement tant que le plan reste valable. Server natif 3.30.0 et versions ultérieures. |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | Configurer sa politique de stockage externe des charges utiles. |
 | `POST` | `/api/storage/test` | Effectuer un aller-retour de petite et grande charge utile via le pilote de stockage externe configuré. |
+
+Les routes de plan et d’application de la rétention exigent le rôle admin. Le plan n’écrit rien. L’application refuse un plan périmé ou non concordant et exige une confirmation explicite pour la suppression rétroactive. `PUT /api/namespaces/{namespace}` active toujours une politique de rétention immédiatement. Consultez [Prévisualiser et appliquer une modification de conservation](./server.md#preview-and-apply-a-retention-change) pour le parcours, les champs de réponse et les refus.
 
 Les politiques de stockage externe permettent aux grandes enveloppes de
 porter des références stables plutôt que des octets bruts. Les politiques
