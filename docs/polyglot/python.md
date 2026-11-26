@@ -928,15 +928,13 @@ processing time nor elapsed wall time in Python.
 The Rust (`WorkflowContext::replay_now()`) and PHP service-mode
 (`WorkflowContext::replayNow()`) SDKs provide the same clock.
 
-- At ordinary workflow entry, before any durable step, it returns the run's
-  canonical start. Server 3.6.0 and later sends that instant on each workflow
+- At ordinary workflow entry, before any durable step, it returns the run's canonical start (for a redrive successor, the original run's start). Server 3.6.0 and later sends that instant on each workflow
   task as `replay_clock`. History insertion, dispatch and lease times are never
   used instead.
 - After a supported durable step it returns that step's recorded time:
   activities, timers and child workflows in every SDK, signal and condition
   waits where the SDK supports them, and validated groups.
-- Repeated reads between durable steps return the same value, and every replay
-  of the run returns the same values.
+- Repeated reads between durable steps return the same value, and every replay of the run returns the same values. The clock is not guaranteed to be monotonic: a later proved boundary can carry an earlier recorded time.
 
 A deadline loop around a durable timer therefore terminates, and the
 difference between reads after two durable steps measures their recorded
@@ -966,7 +964,8 @@ Where the SDK cannot prove the time, `ctx.replay_now()` raises
 - after inline and local operations, such as side effects, version markers,
   local activities and memos. These stay unavailable until Core defines a
   persisted time for those steps;
-- after other group modes, inside query handlers and in cancellation scopes.
+- after other group modes and in cancellation scopes;
+- in query handlers: always in PHP, and in Python and Rust unless the queried history ends at a supported scalar boundary (grouped boundaries give no query time).
 
 An unhandled `ReplayClockUnavailable` fails the workflow like any other
 exception.
@@ -978,14 +977,14 @@ release never send on those tasks, the query or validation fails rather than
 answering with state the workflow task never computed. The PHP SDK never
 rebuilds the workflow body for queries or updates.
 
-**Release status.** The entry value and the query and validation rule ship in
-the next Python, Rust and PHP SDK releases and need Server 3.6.0 or later. The
+Offline replay (`replay()`, `Replayer.replay()`, `replay_history()`) takes the task's object as `replay_clock_entry`. The in-memory `WorkflowEnvironment` supplies no carrier, so entry reads there are unavailable.
+
+**Release status.** The entry value (all three SDKs) and the query and validation rule (Python and Rust) ship in the next Python, Rust and PHP SDK releases and need Server 3.6.0 or later. The
 carrier on query and validation tasks ships in the next Server release.
 Earlier SDK releases report entry as unavailable.
 
 **Upgrading.** A running workflow whose code branches on the entry read being
-unavailable, for example by catching `ReplayClockUnavailable`, takes the other
-branch on replay after the upgrade. Put such code behind `ctx.get_version(...)`
+unavailable, for example by catching `ReplayClockUnavailable`, takes the other branch on replay after the upgrade, during a rolling deploy that mixes old and new workers, or after a Server upgrade to 3.6.0. Put such code behind `ctx.get_version(...)`
 or drain those runs first. `ctx.now()` keeps its fixed start time, so runs that
 read it replay unchanged.
 
@@ -1001,8 +1000,7 @@ These APIs are deterministic where provided, but they do not share one clock:
 | PHP service-mode `WorkflowContext::replayNow()` | Same semantics as Python `ctx.replay_now()`. | Starts at the successor run's own start. |
 | Rust service-mode `WorkflowContext::replay_now()` | Same semantics as Python `ctx.replay_now()`. | Starts at the successor run's own start. |
 
-The service-mode clocks share one contract. On replay, embedded
-`Workflow::now()` also moves to the recorded time of an inline step such as a
+The service-mode clocks share one contract. Embedded `Workflow::now()` also moves to the recorded time of an inline step such as a
 side effect, where the service-mode clocks report the time as unavailable. Port
 the durable operation and deadline policy rather than assuming that every clock
 helper behaves identically.

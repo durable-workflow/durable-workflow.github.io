@@ -866,14 +866,13 @@ consumido. Os SDKs de Rust (`WorkflowContext::replay_now()`) e de PHP no modo
 de serviço (`WorkflowContext::replayNow()`) oferecem o mesmo relógio.
 
 - Na entrada normal do workflow, antes de qualquer passo durável, ele retorna o
-  início canônico do run. O Server 3.6.0 e versões posteriores enviam esse
+  início canônico do run (para um sucessor de redrive, o início do run original). O Server 3.6.0 e versões posteriores enviam esse
   instante em cada tarefa de workflow como `replay_clock`. Os horários de
   inserção no histórico, de despacho e de lease nunca são usados no lugar dele.
 - Depois de um passo durável compatível, ele retorna o horário registrado desse
   passo: atividades, temporizadores e workflows filhos em todos os SDKs, esperas
   de sinais e condições onde o SDK as suporta, e grupos validados.
-- Leituras repetidas entre passos duráveis retornam o mesmo valor, e cada
-  replay do run retorna os mesmos valores.
+- Leituras repetidas entre passos duráveis retornam o mesmo valor, e cada replay do run retorna os mesmos valores. Não há garantia de que o relógio seja monotônico: um limite comprovado posterior pode trazer um horário registrado anterior.
 
 Por isso, um loop com prazo em torno de um temporizador durável termina, e a
 diferença entre leituras feitas após dois passos duráveis mede o tempo
@@ -903,8 +902,8 @@ Quando o SDK não consegue comprovar o horário, `ctx.replay_now()` lança
 - depois de operações inline e locais, como efeitos colaterais, marcadores de
   versão, atividades locais e memos. Elas continuam indisponíveis até que o
   Core defina um horário persistido para esses passos;
-- depois de outros modos de grupo, dentro de handlers de consulta e em escopos
-  de cancelamento.
+- depois de outros modos de grupo e em escopos de cancelamento;
+- em handlers de consulta: sempre no PHP, e no Python e no Rust a menos que o histórico consultado termine em um limite escalar compatível (limites agrupados não fornecem horário de consulta).
 
 Um `ReplayClockUnavailable` não tratado faz o workflow falhar como qualquer
 outra exceção.
@@ -917,15 +916,16 @@ consulta ou a validação falha em vez de responder com um estado que a tarefa d
 workflow nunca calculou. O SDK de PHP nunca reconstrói o corpo do workflow para
 consultas ou atualizações.
 
-**Status de lançamento.** O valor de entrada e a regra para consultas e
-validações chegam nas próximas versões dos SDKs de Python, Rust e PHP e exigem
+O replay offline (`replay()`, `Replayer.replay()`, `replay_history()`) recebe o objeto da tarefa como `replay_clock_entry`. O `WorkflowEnvironment` em memória não fornece portador, então leituras na entrada ficam indisponíveis nele.
+
+**Status de lançamento.** O valor de entrada (os três SDKs) e a regra para consultas e validações (Python e Rust) chegam nas próximas versões dos SDKs de Python, Rust e PHP e exigem
 Server 3.6.0 ou posterior. O portador nas tarefas de consulta e validação chega
 na próxima versão do Server. Versões anteriores dos SDKs informam a entrada
 como indisponível.
 
 **Atualização.** Um workflow em execução cujo código se ramifica conforme a
 leitura de entrada esteja indisponível, por exemplo capturando
-`ReplayClockUnavailable`, segue o outro ramo no replay depois da atualização.
+`ReplayClockUnavailable`, segue o outro ramo no replay depois da atualização, durante um deploy gradual que mistura workers antigos e novos, ou depois de atualizar o Server para 3.6.0.
 Coloque esse código atrás de `ctx.get_version(...)` ou deixe esses runs
 terminarem antes. `ctx.now()` mantém seu horário de início fixo, então os runs
 que o leem fazem replay sem mudanças.
@@ -942,8 +942,7 @@ Essas APIs são determinísticas quando disponíveis, mas não compartilham um �
 | PHP no modo de serviço `WorkflowContext::replayNow()` | A mesma semântica de Python `ctx.replay_now()`. | Começa no início próprio do run sucessor. |
 | Rust no modo de serviço `WorkflowContext::replay_now()` | A mesma semântica de Python `ctx.replay_now()`. | Começa no início próprio do run sucessor. |
 
-Os relógios do modo de serviço compartilham um contrato. No replay,
-`Workflow::now()` embutido também passa para o horário registrado de um passo
+Os relógios do modo de serviço compartilham um contrato. `Workflow::now()` embutido também passa para o horário registrado de um passo
 inline, como um efeito colateral, onde os relógios do modo de serviço informam
 o horário como indisponível. Leve a operação durável e a política de prazo em
 vez de presumir que todo helper de relógio se comporta igual.

@@ -763,7 +763,7 @@ Rust SDK 4.17.0 додає `ctx.logger().info("message")` для спостер�
 ## Безпечний для replay час workflow {#replay-safe-workflow-time}
 
 `WorkflowContext::replay_now()` повертає безпечний для replay бізнес-час UTC як
-`Result<DateTime<Utc>>`. На звичайному вході це початок run з `replay_clock`
+`Result<DateTime<Utc>>`. На звичайному вході це початок run (для наступника redrive — початок початкового run) з `replay_clock`
 завдання (Server 3.6.0 і новіші). Після кожного підтримуваного спожитого
 стійкого кроку (activity, timer, дочірні workflow, очікування сигналів і умов,
 перевірені групи) це записаний час цього кроку. Повторні читання між стійкими

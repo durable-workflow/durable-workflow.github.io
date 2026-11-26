@@ -277,7 +277,7 @@ lista todas as unidades.
 ## Horário do workflow seguro para replay {#replay-safe-workflow-time}
 
 `WorkflowContext::replayNow()` retorna o horário de negócio UTC seguro para
-replay como `DateTimeImmutable`. Na entrada normal, é o início do run vindo do
+replay como `DateTimeImmutable`. Na entrada normal, é o início do run (para um sucessor de redrive, o início do run original) vindo do
 `replay_clock` da tarefa (Server 3.6.0 e posteriores). Depois de cada passo
 durável consumido compatível (atividades, temporizadores, workflows filhos,
 esperas de condições, grupos validados), é o horário registrado desse passo.

@@ -867,14 +867,14 @@ Historie fortschreitet. Die SDKs für Rust (`WorkflowContext::replay_now()`) und
 PHP im Service-Modus (`WorkflowContext::replayNow()`) bieten dieselbe Uhr.
 
 - Beim normalen Workflow-Einstieg, vor jedem dauerhaften Schritt, liefert sie
-  den kanonischen Start des Runs. Server 3.6.0 und neuer sendet diesen
+  den kanonischen Start des Runs (bei einem Redrive-Nachfolger den Start des ursprünglichen Runs). Server 3.6.0 und neuer sendet diesen
   Zeitpunkt mit jeder Workflow-Aufgabe als `replay_clock`. Einfüge-, Dispatch-
   und Lease-Zeiten der Historie werden nie stattdessen verwendet.
 - Nach einem unterstützten dauerhaften Schritt liefert sie dessen aufgezeichnete
   Zeit: Aktivitäten, Timer und Child-Workflows in jedem SDK, Signal- und
   Bedingungswartevorgänge, wo das SDK sie unterstützt, sowie validierte Gruppen.
 - Wiederholte Lesevorgänge zwischen dauerhaften Schritten liefern denselben
-  Wert, und jedes Replay des Runs liefert dieselben Werte.
+  Wert, und jedes Replay des Runs liefert dieselben Werte. Die Uhr ist nicht garantiert monoton: Eine spätere nachgewiesene Grenze kann eine frühere aufgezeichnete Zeit tragen.
 
 Eine Fristschleife um einen dauerhaften Timer endet daher, und die Differenz
 zwischen Lesevorgängen nach zwei dauerhaften Schritten misst deren
@@ -904,7 +904,8 @@ Wo das SDK die Zeit nicht nachweisen kann, löst `ctx.replay_now()`
 - nach Inline- und lokalen Operationen wie Seiteneffekten, Versionsmarkern,
   lokalen Aktivitäten und Memos. Diese bleiben nicht verfügbar, bis Core für
   diese Schritte eine gespeicherte Zeit festlegt;
-- nach anderen Gruppenmodi, in Query-Handlern und in Abbruchbereichen.
+- nach anderen Gruppenmodi und in Abbruchbereichen;
+- in Query-Handlern: in PHP immer, in Python und Rust, sofern die abgefragte Historie nicht an einer unterstützten skalaren Grenze endet (gruppierte Grenzen liefern keine Query-Zeit).
 
 Ein nicht behandeltes `ReplayClockUnavailable` lässt den Workflow wie jede
 andere Ausnahme fehlschlagen.
@@ -917,15 +918,16 @@ Aufgaben nie –, schlägt die Query oder Validierung fehl, statt mit einem Zust
 zu antworten, den die Workflow-Aufgabe nie berechnet hat. Das PHP-SDK baut den
 Workflow-Körper für Queries oder Updates nie neu auf.
 
-**Release-Status.** Der Einstiegswert und die Regel für Queries und
-Validierungen erscheinen in den nächsten Releases der SDKs für Python, Rust und
+Offline-Replay (`replay()`, `Replayer.replay()`, `replay_history()`) übernimmt das Objekt der Aufgabe als `replay_clock_entry`. Das In-Memory-`WorkflowEnvironment` liefert keinen Träger, daher sind Einstiegslesevorgänge dort nicht verfügbar.
+
+**Release-Status.** Der Einstiegswert (alle drei SDKs) und die Regel für Queries und Validierungen (Python und Rust) erscheinen in den nächsten Releases der SDKs für Python, Rust und
 PHP und benötigen Server 3.6.0 oder neuer. Der Träger bei Query- und
 Validierungsaufgaben erscheint im nächsten Server-Release. Frühere SDK-Releases
 melden den Einstieg als nicht verfügbar.
 
 **Upgrade.** Ein laufender Workflow, dessen Code davon abhängig verzweigt, dass
 der Einstiegswert nicht verfügbar ist – etwa indem er `ReplayClockUnavailable`
-abfängt –, nimmt nach dem Upgrade beim Replay den anderen Zweig. Stellen Sie
+abfängt –, nimmt nach dem Upgrade, während eines Rolling Deployments mit alten und neuen Workern oder nach einem Server-Upgrade auf 3.6.0 beim Replay den anderen Zweig. Stellen Sie
 solchen Code hinter `ctx.get_version(...)` oder lassen Sie diese Runs vorher
 auslaufen. `ctx.now()` behält seine feste Startzeit, sodass Runs, die es lesen,
 unverändert wiedergegeben werden.
@@ -942,8 +944,7 @@ Diese APIs sind, soweit vorhanden, deterministisch, teilen aber keine gemeinsame
 | PHP im Service-Modus `WorkflowContext::replayNow()` | Dieselbe Semantik wie Python `ctx.replay_now()`. | Beginnt beim eigenen Start des Nachfolger-Runs. |
 | Rust im Service-Modus `WorkflowContext::replay_now()` | Dieselbe Semantik wie Python `ctx.replay_now()`. | Beginnt beim eigenen Start des Nachfolger-Runs. |
 
-Die Uhren im Service-Modus teilen einen Vertrag. Beim Replay springt das
-eingebettete `Workflow::now()` außerdem zur aufgezeichneten Zeit eines
+Die Uhren im Service-Modus teilen einen Vertrag. Das eingebettete `Workflow::now()` springt außerdem zur aufgezeichneten Zeit eines
 Inline-Schritts wie eines Seiteneffekts, wo die Uhren im Service-Modus die Zeit
 als nicht verfügbar melden. Übertragen Sie die dauerhafte Operation und
 Fristenregel, statt anzunehmen, dass sich jeder Uhrhelfer gleich verhält.

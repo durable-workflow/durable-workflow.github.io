@@ -279,8 +279,7 @@ répertorie toutes les unités.
 ## Heure du workflow sûre pour le replay {#replay-safe-workflow-time}
 
 `WorkflowContext::replayNow()` renvoie l'heure métier UTC sûre pour le replay
-sous la forme d'un `DateTimeImmutable`. À l'entrée ordinaire, c'est le début du
-run issu du `replay_clock` de la tâche (Server 3.6.0 et ultérieur). Après chaque
+sous la forme d'un `DateTimeImmutable`. À l'entrée ordinaire, c'est le début du run (pour un successeur de redrive, le début du run d'origine) issu du `replay_clock` de la tâche (Server 3.6.0 et ultérieur). Après chaque
 étape durable consommée prise en charge (activités, temporisateurs, workflows
 enfants, attentes de conditions, groupes validés), c'est l'heure enregistrée de
 cette étape. Les lectures répétées entre étapes durables renvoient la même

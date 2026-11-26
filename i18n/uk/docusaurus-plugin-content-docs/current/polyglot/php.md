@@ -272,7 +272,7 @@ PHP SDK 3.9.0 додає `nesbot/carbon` (`^2.72.6|^3.8.4`) як обов'язк
 ## Безпечний для replay час workflow {#replay-safe-workflow-time}
 
 `WorkflowContext::replayNow()` повертає безпечний для replay бізнес-час UTC як
-`DateTimeImmutable`. На звичайному вході це початок run з `replay_clock`
+`DateTimeImmutable`. На звичайному вході це початок run (для наступника redrive — початок початкового run) з `replay_clock`
 завдання (Server 3.6.0 і новіші). Після кожного підтримуваного спожитого
 стійкого кроку (activity, timer, дочірні workflow, очікування умов, перевірені
 групи) це записаний час цього кроку. Повторні читання між стійкими кроками

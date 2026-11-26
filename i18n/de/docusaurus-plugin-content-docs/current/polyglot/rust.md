@@ -767,8 +767,7 @@ Siehe den [veröffentlichten Logging-Guide](https://github.com/durable-workflow/
 ## Replay-sichere Workflow-Zeit {#replay-safe-workflow-time}
 
 `WorkflowContext::replay_now()` liefert replay-sichere UTC-Geschäftszeit als
-`Result<DateTime<Utc>>`. Beim normalen Einstieg ist es der Start des Runs aus
-dem `replay_clock` der Aufgabe (Server 3.6.0 und neuer). Nach jedem
+`Result<DateTime<Utc>>`. Beim normalen Einstieg ist es der Start des Runs (bei einem Redrive-Nachfolger der Start des ursprünglichen Runs) aus dem `replay_clock` der Aufgabe (Server 3.6.0 und neuer). Nach jedem
 unterstützten verarbeiteten dauerhaften Schritt (Aktivitäten, Timer,
 Child-Workflows, Signal- und Bedingungswartevorgänge, validierte Gruppen) ist
 es dessen aufgezeichnete Zeit. Wiederholte Lesevorgänge zwischen dauerhaften

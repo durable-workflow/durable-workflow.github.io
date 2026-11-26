@@ -766,8 +766,7 @@ See the [published logging guide](https://github.com/durable-workflow/sdk-rust/b
 ## Replay-safe workflow time {#replay-safe-workflow-time}
 
 `WorkflowContext::replay_now()` returns replay-safe UTC business time as
-`Result<DateTime<Utc>>`. At ordinary entry it is the run's start from the
-task's `replay_clock` (Server 3.6.0 and later). After each supported consumed
+`Result<DateTime<Utc>>`. At ordinary entry it is the run's start (for a redrive successor, the original run's start) from the task's `replay_clock` (Server 3.6.0 and later). After each supported consumed
 durable step (activities, timers, child workflows, signal and condition waits,
 validated groups) it is that step's recorded time. Repeated reads between
 durable steps return the same value, and every replay returns the same values.

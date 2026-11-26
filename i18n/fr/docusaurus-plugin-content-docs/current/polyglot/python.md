@@ -866,7 +866,7 @@ l'historique consommé. Les SDK Rust (`WorkflowContext::replay_now()`) et PHP en
 mode service (`WorkflowContext::replayNow()`) fournissent la même horloge.
 
 - À l'entrée ordinaire du workflow, avant toute étape durable, elle renvoie le
-  début canonique du run. Server 3.6.0 et versions ultérieures envoient cet
+  début canonique du run (pour un successeur de redrive, le début du run d'origine). Server 3.6.0 et versions ultérieures envoient cet
   instant avec chaque tâche de workflow sous la forme `replay_clock`. Les heures
   d'insertion dans l'historique, de distribution et de bail ne sont jamais
   utilisées à la place.
@@ -874,8 +874,7 @@ mode service (`WorkflowContext::replayNow()`) fournissent la même horloge.
   cette étape : activités, temporisateurs et workflows enfants dans chaque SDK,
   attentes de signaux et de conditions là où le SDK les prend en charge, et
   groupes validés.
-- Les lectures répétées entre étapes durables renvoient la même valeur, et
-  chaque replay du run renvoie les mêmes valeurs.
+- Les lectures répétées entre étapes durables renvoient la même valeur, et chaque replay du run renvoie les mêmes valeurs. L'horloge n'est pas garantie monotone : une limite prouvée ultérieure peut porter une heure enregistrée antérieure.
 
 Une boucle à échéance autour d'un temporisateur durable se termine donc, et
 l'écart entre des lectures effectuées après deux étapes durables mesure leur
@@ -906,8 +905,8 @@ Lorsque le SDK ne peut pas prouver l'heure, `ctx.replay_now()` lève
   marqueurs de version, les activités locales et les mémos. Elles restent
   indisponibles jusqu'à ce que Core définisse une heure persistée pour ces
   étapes ;
-- après d'autres modes de groupe, dans les gestionnaires de requête et dans les
-  portées d'annulation.
+- après d'autres modes de groupe et dans les portées d'annulation ;
+- dans les gestionnaires de requête : toujours en PHP, et en Python et Rust sauf si l'historique interrogé se termine sur une limite scalaire prise en charge (les limites groupées ne donnent pas d'heure de requête).
 
 Une `ReplayClockUnavailable` non gérée fait échouer le workflow comme toute
 autre exception.
@@ -920,16 +919,16 @@ l'envoient jamais sur ces tâches), la requête ou la validation échoue au lieu
 répondre avec un état que la tâche de workflow n'a jamais calculé. Le SDK PHP ne
 reconstruit jamais le corps du workflow pour les requêtes ou les mises à jour.
 
-**État de publication.** La valeur d'entrée et la règle pour les requêtes et
-les validations arrivent dans les prochaines versions des SDK Python, Rust et
+Le replay hors ligne (`replay()`, `Replayer.replay()`, `replay_history()`) reçoit l'objet de la tâche sous la forme `replay_clock_entry`. Le `WorkflowEnvironment` en mémoire ne fournit pas de porteur ; les lectures d'entrée y sont donc indisponibles.
+
+**État de publication.** La valeur d'entrée (les trois SDK) et la règle pour les requêtes et les validations (Python et Rust) arrivent dans les prochaines versions des SDK Python, Rust et
 PHP et nécessitent Server 3.6.0 ou ultérieur. Le porteur sur les tâches de
 requête et de validation arrive dans la prochaine version de Server. Les
 versions antérieures des SDK signalent l'entrée comme indisponible.
 
 **Mise à niveau.** Un workflow en cours dont le code bifurque selon que la
 lecture d'entrée est indisponible, par exemple en interceptant
-`ReplayClockUnavailable`, prend l'autre branche au replay après la mise à
-niveau. Placez ce code derrière `ctx.get_version(...)` ou laissez ces runs se
+`ReplayClockUnavailable`, prend l'autre branche au replay après la mise à niveau, pendant un déploiement progressif qui mélange anciens et nouveaux workers, ou après une mise à niveau de Server vers 3.6.0. Placez ce code derrière `ctx.get_version(...)` ou laissez ces runs se
 terminer d'abord. `ctx.now()` conserve son heure de début fixe : les runs qui le
 lisent sont rejoués sans changement.
 
@@ -945,8 +944,7 @@ Ces API sont déterministes lorsqu'elles existent, mais ne partagent pas une mê
 | PHP en mode service `WorkflowContext::replayNow()` | Même sémantique que Python `ctx.replay_now()`. | Commence au début propre du run successeur. |
 | Rust en mode service `WorkflowContext::replay_now()` | Même sémantique que Python `ctx.replay_now()`. | Commence au début propre du run successeur. |
 
-Les horloges du mode service partagent un contrat. Au replay, `Workflow::now()`
-intégré passe aussi à l'heure enregistrée d'une étape en ligne comme un effet
+Les horloges du mode service partagent un contrat. `Workflow::now()` intégré passe aussi à l'heure enregistrée d'une étape en ligne comme un effet
 de bord, là où les horloges du mode service signalent l'heure comme
 indisponible. Transposez l'opération durable et la politique d'échéance plutôt
 que de supposer que chaque assistant d'horloge se comporte de la même façon.

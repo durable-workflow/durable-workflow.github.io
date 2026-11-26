@@ -592,8 +592,7 @@ Consulte la [guía de logging publicada](https://github.com/durable-workflow/sdk
 ## Hora del workflow segura para replay {#replay-safe-workflow-time}
 
 `WorkflowContext::replay_now()` devuelve la hora de negocio UTC segura para
-replay como `Result<DateTime<Utc>>`. En la entrada normal es el inicio del run
-tomado del `replay_clock` de la tarea (Server 3.6.0 y posteriores). Después de
+replay como `Result<DateTime<Utc>>`. En la entrada normal es el inicio del run (para un sucesor de redrive, el inicio del run original) tomado del `replay_clock` de la tarea (Server 3.6.0 y posteriores). Después de
 cada paso duradero consumido compatible (actividades, temporizadores, workflows
 hijos, esperas de señales y condiciones, grupos validados) es la hora registrada
 de ese paso. Las lecturas repetidas entre pasos duraderos devuelven el mismo

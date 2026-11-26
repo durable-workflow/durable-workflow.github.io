@@ -268,7 +268,7 @@ class PollDemo:
 
 两个示例均已在发布的 Server **2.9.7 / Core 2.7.2** 和正常安装的 Python **2.6.1** 上以测试输入 `[2, 1]` 执行。两者都在两次运行中完成两次真实检查。Continue-as-new 重置单次运行的历史，增加运行与链接开销，并保留整个执行最初的截止时间。它不会提供无限生命周期。
 
-这里使用相对持久等待。Python 的推进式时钟和重放稳定的历史预算读取，仍分别属于[时钟](https://github.com/durable-workflow/.github/issues/215)与[预算](https://github.com/durable-workflow/workflow/issues/859)任务。本示例不根据 `ctx.now()` 或重新计算的历史长度分支。不要把 `DW_MAX_HISTORY_EVENTS` 当作强制执行的自动切换机制：[Server #504](https://github.com/durable-workflow/server/issues/504) 正在跟踪这一缺口。
+这里使用相对持久等待。从下一个版本起，`ctx.replay_now()` 是会前进的、对重放安全的时钟（参见[会前进的重放时钟](./python.md#advancing-replay-clock)）；重放稳定的历史预算读取仍属于单独的[预算](https://github.com/durable-workflow/workflow/issues/859)任务。本示例不根据 `ctx.now()` 或重新计算的历史长度分支。不要把 `DW_MAX_HISTORY_EVENTS` 当作强制执行的自动切换机制：[Server #504](https://github.com/durable-workflow/server/issues/504) 正在跟踪这一缺口。
 
 ## 中断并核对外部结果 {#interrupt-and-reconcile}
 
