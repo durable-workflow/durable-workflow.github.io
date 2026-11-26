@@ -103,8 +103,8 @@ all locales with `npm run build` before submitting a change.
 When changing or adding an English guide, review and update all seven
 translations in the same delivery. Review the prose for fluent
 language and the technical contract for accuracy. Keep executable code blocks
-identical to the English source. The build checks this for Spanish, Brazilian
-Portuguese, Simplified Chinese, Japanese, French and German. A missing translation
+identical to the English source. The build checks this for German, Spanish,
+French, Brazilian Portuguese, Ukrainian, Japanese and Simplified Chinese. A missing translation
 or English fallback does not satisfy a changed guide's acceptance. Artifact
 version placeholders stay shared with English and update automatically.
 
