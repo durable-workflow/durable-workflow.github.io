@@ -67,7 +67,7 @@ Waterline підтримує англійську, бразильську пор
 Laravel-застосунку або контейнера сервісу:
 
 ```dotenv
-WATERLINE_LOCALE=uk
+WATERLINE_LOCALE=es
 ```
 
 | Мова | Налаштування |

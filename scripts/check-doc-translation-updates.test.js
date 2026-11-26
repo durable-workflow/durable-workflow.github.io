@@ -4,7 +4,12 @@ const os = require('node:os');
 const path = require('node:path');
 const {createHash} = require('node:crypto');
 const {test} = require('node:test');
-const {checkTranslationUpdates, checkCurrentTranslations} = require('./check-doc-translation-updates');
+const {
+  locales,
+  checkTranslationUpdates,
+  checkCurrentTranslations,
+  checkCodeBlocks,
+} = require('./check-doc-translation-updates');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-translation-updates-'));
 const relative = 'features/timers.md';
@@ -118,4 +123,25 @@ test('full inventory requires all seven offered non-English locales', t => {
     translate(directory, 'uk', file, english, '# Вступ\n');
   }
   assert.equal(checkCurrentTranslations(directory), 2);
+});
+
+test('code block check covers every offered locale, including Ukrainian', t => {
+  const directory = inventoryFixture(t);
+  const english = '# Locale\n\nSet it:\n\n```dotenv\nWATERLINE_LOCALE=es\n```\n';
+  const localized = '# Localized\n\nSet it:\n\n```dotenv\nWATERLINE_LOCALE=es\n```\n';
+  write(path.join(directory, 'docs/locale.md'), english);
+  for (const locale of locales) {
+    translate(directory, locale, 'locale.md', english, localized);
+  }
+
+  assert.deepEqual(locales, ['de', 'es', 'fr', 'pt-BR', 'uk', 'ja', 'zh-Hans']);
+  const hashes = checkCodeBlocks(directory);
+  assert.deepEqual(Object.keys(hashes), locales);
+  assert.equal(hashes.uk['locale.md'], createHash('sha256').update(english).digest('hex'));
+
+  write(path.join(directory, 'i18n/uk/docusaurus-plugin-content-docs/current/locale.md'),
+    localized.replace('WATERLINE_LOCALE=es', 'WATERLINE_LOCALE=uk'));
+  assert.throws(() => checkCodeBlocks(directory),
+    /Ukrainian executable examples differ from English: locale\.md/);
+  assert.equal(Object.keys(checkCodeBlocks(directory, ['de'])).length, 1);
 });

@@ -1,9 +1,19 @@
+const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {createHash} = require('node:crypto');
 const {execFileSync} = require('node:child_process');
 
-const locales = ['de', 'es', 'fr', 'pt-BR', 'uk', 'ja', 'zh-Hans'];
+const localeLabels = {
+  de: 'German',
+  es: 'Spanish',
+  fr: 'French',
+  'pt-BR': 'Brazilian Portuguese',
+  uk: 'Ukrainian',
+  ja: 'Japanese',
+  'zh-Hans': 'Simplified Chinese',
+};
+const locales = Object.keys(localeLabels);
 
 function translationFailures(root, locale, relative, source, hash) {
   const localeRoot = path.join(root, 'i18n', locale);
@@ -83,4 +93,46 @@ function checkTranslationUpdatesFromGit(root) {
   console.log(`Translation updates match reviewed English sources for ${count} changed guides in all seven other locales.`);
 }
 
-module.exports = {checkTranslationUpdates, checkCurrentTranslations, checkTranslationUpdatesFromGit};
+function codeBlocks(file) {
+  const text = fs.readFileSync(file, 'utf8');
+  return [...text.matchAll(/^```[^\n]*\n[\s\S]*?^```\s*$/gm)].map(match => match[0].trimEnd());
+}
+
+// Every offered locale keeps its executable examples identical to English.
+// Returns, per locale, the current English source hash of each checked guide.
+function checkCodeBlocks(root, languages = locales) {
+  const hashes = {};
+  for (const locale of languages) {
+    const label = localeLabels[locale] ?? locale;
+    const translatedRoot = path.join(root, 'i18n', locale, 'docusaurus-plugin-content-docs/current');
+    const current = {};
+
+    function visit(directory) {
+      for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
+        const file = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          visit(file);
+        } else if (entry.isFile() && /\.mdx?$/.test(entry.name)) {
+          const relative = path.relative(translatedRoot, file).split(path.sep).join('/');
+          const source = path.join(root, 'docs', relative);
+          assert.deepEqual(codeBlocks(file), codeBlocks(source),
+            `${label} executable examples differ from English: ${relative}`);
+          current[relative] = createHash('sha256').update(fs.readFileSync(source)).digest('hex');
+        }
+      }
+    }
+
+    visit(translatedRoot);
+    hashes[locale] = current;
+  }
+  return hashes;
+}
+
+module.exports = {
+  locales,
+  localeLabels,
+  checkTranslationUpdates,
+  checkCurrentTranslations,
+  checkTranslationUpdatesFromGit,
+  checkCodeBlocks,
+};
