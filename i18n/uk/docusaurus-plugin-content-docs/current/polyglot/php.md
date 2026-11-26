@@ -357,6 +357,152 @@ service mode, включно з drain і rollback.
 Ширше порівняння меж runtime наведено в
 [режимах розгортання](/docs/polyglot/deployment-modes/).
 
+## Перехоплювачі worker {#worker-interceptors}
+
+Перехоплювачі worker доступні починаючи з PHP SDK 3.32.0. Передайте
+впорядкований список `interceptors` у `Worker::create()` (або конструктор `Worker`),
+щоб один раз додати журнал аудиту, мітки метрик, контекст tenant чи трасування
+навколо кожного завдання, а не в кожному обробнику. Кожен перехоплювач реалізує
+`DurableWorkflow\Worker\Interceptor\WorkerInterceptor`; розширте
+`PassthroughWorkerInterceptor`, щоб реалізувати лише потрібні hook. Форма hook
+відповідає перехоплювачам [Python](./python.md#worker-interceptors) і
+[Rust](./rust.md#worker-interceptors) SDK.
+
+Цей перехоплювач аудиту журналює результат кожного завдання workflow і кожну спробу activity:
+
+```php
+use DurableWorkflow\Worker;
+use DurableWorkflow\Worker\Interceptor\ActivityInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\PassthroughWorkerInterceptor;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskInterceptorContext;
+use DurableWorkflow\Worker\Interceptor\WorkflowTaskOutcome;
+use Psr\Log\LoggerInterface;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'workflow_type' => $context->workflowType,
+            'attempt' => $context->workflowTaskAttempt,
+            'replayed_history' => $context->replaying,
+            'commands' => $outcome->commandTypes(),
+        ]);
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+
+$worker = Worker::create($client, 'orders', container: $container,
+    interceptors: [AuditInterceptor::class]);
+```
+
+| Hook | Контекст | Повертає `$next` |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying` (також `replayState()`), `updateId`, `observabilitySupported` | `WorkflowTaskOutcome` з копією команд |
+| `executeActivity($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `activityType`, `arguments`, `attemptNumber`, `taskId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activityContext`, `observabilitySupported` | результат activity |
+| `executeQueryTask($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `queryName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | результат query |
+| `executeUpdateValidation($context, $next)` | `workerId`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `updateName`, `workflowId`, `runId`, `arguments`, `queryContext`, `observabilitySupported` | `UpdateValidationOutcome` з `approved`, `reason`, `message`, `failureType`, `validationErrors` |
+
+Перехоплювачі працюють у порядку, в якому ви їх перелічили. Перший перехоплювач є
+зовнішньою обгорткою: він виконується першим перед завданням і останнім після нього.
+Кожен hook викликає `$next($context)`, щоб продовжити ланцюжок. Коли налаштовано
+трасування, вбудовані span worker залишаються зовнішніми, тож перехоплювачі
+виконуються всередині активного span завдання.
+
+Перехоплювачі завдань workflow не можуть порушити детермінованість:
+
+- `executeWorkflowTask` обгортає код workflow, який створює команди одного
+  завдання workflow, один раз на кожну спробу завдання. `replaying` має значення
+  `true`, коли попередні завдання workflow уже записали команди, тож код workflow
+  спершу повторно виконав цей зафіксований префікс. Результат містить лише команди,
+  які додає це завдання; команди з replay ніколи не надсилаються повторно.
+- `replayState()` повідомляє те саме у вигляді `WorkflowReplayState`, який
+  використовує `WorkflowContext::replayState()`: `Replaying` або `Executing`.
+- Повторна спроба (`workflowTaskAttempt > 1`) може повторити результат, завдання
+  якого завершилося помилкою, тому робіть зовнішні записи аудиту ідемпотентними.
+- Завдання update (із заданим `updateId`) виконують обробник update над
+  зафіксованим станом без повторного виконання тіла workflow; для них `replaying`
+  лише повідомляє, що попередні команди існують.
+- Worker надсилає рівно ті команди, які створив код workflow. Результат є копією;
+  повернення іншого результату чи передавання іншого контексту в `$next` нічого
+  не змінює.
+- Помилка з коду workflow доходить до worker без змін, навіть якщо перехоплювач
+  перехоплює її та повертається звичайним чином.
+- Виняток, кинутий перехоплювачем, спричиняє збій завдання workflow. Нічого не
+  записується, і Server повторює завдання. Пропуск `$next` або його виклик більше
+  одного разу спричиняє збій завдання з `WorkflowTaskInterceptorViolation`.
+
+Перехоплювачі валідації update (`executeUpdateValidation()`) обгортають запуск
+валідатора update до того, як Server прийме update. Вони бачать рішення як
+`UpdateValidationOutcome` лише для читання і не можуть змінити ні рішення, ні
+аргументи update, ні історію, яку читає валідатор: валідатор завжди працює лише
+для читання у власному Fiber з копією завдання, що належить worker, а worker
+відповідає власним рішенням валідатора. Виняток із перехоплювача, пропуск
+`$next` або його виклик більше одного разу
+(`UpdateValidationInterceptorViolation`) дає відповідь на завдання з
+`update_validation_worker_failed`, тож update не приймається, і викликач може
+повторити спробу.
+
+Перехоплювачі activity та query можуть змінювати аргументи через
+`$context->withArguments(...)` і змінювати повернене значення, оскільки результати
+activity записуються один раз, а query нічого не записують. Винятки activity
+проходять крізь кожен перехоплювач, якщо жоден із них їх не обробить. Перехоплювачі
+activity обгортають віддалені та локальні activity; `local` розрізняє їх. За
+кооперативного скасування callback віддалених, кооперативних локальних і
+підготовлених локальних activity та їхні перехоплювачі виконуються в дочірньому
+процесі activity, тож зміни пам’яті там не доходять до процесу worker.
+
+### Налаштування контейнера й фреймворку {#worker-interceptor-configuration}
+
+Передавайте екземпляри перехоплювачів або назви класів. Назви класів розв’язуються
+з PSR-11 контейнера, переданого worker, так само як обробники з атрибутами. Без
+контейнера клас не повинен мати обов’язкових аргументів конструктора.
+
+У сервісному режимі Laravel і Symfony перелічіть класи перехоплювачів у
+`worker.interceptors`. Вони розв’язуються з контейнера фреймворку в такому порядку:
+
+```php
+// config/durable-workflow.php
+'worker' => [
+    'interceptors' => [App\Durable\AuditInterceptor::class],
+],
+```
+
+```yaml
+# config/packages/durable_workflow.yaml
+durable_workflow:
+  worker:
+    interceptors:
+      - App\Durable\AuditInterceptor
+```
+
+Вбудовані workflow Laravel налаштовують власні перехоплювачі в
+`workflows.v2.interceptors`; див.
+[перехоплювачі вбудованого worker](../configuration/publishing-config.md#worker-interceptors).
+[Довідник PHP SDK](https://github.com/durable-workflow/sdk-php/blob/main/docs/sdk-reference.md#worker-interceptors)
+містить повний контракт перехоплювачів.
+
 ## Результати запитів із бінарними значеннями {#query-binary-results}
 
 PHP SDK 3.18.2 виправляє завершення запитів для коректних результатів Avro із вкладеними байтами `AvroBinaryValue`. `result_envelope` залишається авторитетним поданням. SDK пропускає лише необов’язкову просту проєкцію `result`, коли її неможливо закодувати в JSON; звичайні JSON-сумісні результати зберігають цю проєкцію.
