@@ -157,6 +157,66 @@ requêtes de lecture et mises à jour via `registerWorkflow`,
 La [référence d’API générée du SDK PHP](https://php.durable-workflow.com/api/)
 donne tous les paramètres et types de retour.
 
+## Validateurs de mise à jour {#update-validators}
+
+À partir du PHP SDK 3.32.0, un workflow peut refuser une mise à jour avant qu’elle soit acceptée. Placez `#[UpdateValidator]` sur une méthode de la classe du workflow, à côté de son handler `#[Update]`. La forme de bas niveau est `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`, appelée après `registerUpdate()`.
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+Le validateur reçoit un `QueryContext` contenant l’historique validé de l’exécution, suivi des arguments de la mise à jour. Le worker annonce le validateur au Server et interroge ensemble les tâches de workflow et de validation de mise à jour. L’enregistrement est refusé avec `update_validation_tasks_unavailable` lorsque le Server n’annonce pas la validation synchrone des mises à jour. Pour chaque tâche de validation, le worker n’exécute que le validateur :
+
+- S’il retourne normalement, il approuve la mise à jour et le Server l’accepte.
+- S’il lève une exception ou retourne `false`, il la rejette avec `update_validator_rejected`, le message et la classe de l’exception, ainsi que les erreurs de champ d’une méthode `errors()` de l’exception. La mise à jour n’est jamais acceptée et son handler ne s’exécute jamais. Le Server n’enregistre le rejet que sous la forme d’un événement d’audit `UpdateRejected`.
+- Toute tentative de planifier un travail durable est refusée avec `UpdateValidatorCommandRefused`, ce qui rejette la mise à jour.
+
+Côté client, `updateWorkflow()` lève `UpdateFailed`. `rejectedByValidator()` identifie un rejet du validateur et `validationErrors()` retourne ses erreurs de champ. `validationFailed()` est vrai lorsque le Server n’a pas pu obtenir de décision à temps ; rien n’a été accepté, réessayez donc avec le même identifiant de requête.
+
+Les validateurs ne s’exécutent jamais pendant la relecture. Chaque validation ne voit que l’historique validé avant sa propre tâche ; deux validations simultanées peuvent donc toutes deux réussir un contrôle qu’une seule devrait réussir. Un worker avec validateurs n’utilise pas les interrogations de workflow transportées. Les intercepteurs du worker enveloppent les tâches de validation de mise à jour via `executeUpdateValidation()` ; ils voient la décision du validateur, mais ne peuvent pas la modifier.
+
+## Journalisation de workflow consciente de la relecture {#workflow-logging}
+
+Le worker relit un workflow à partir de son historique à chaque tâche de workflow ; un appel de journalisation ordinaire dans le code du workflow se répète donc une fois par étape terminée. Le PHP SDK 3.32.0 et versions ultérieures fournissent `$context->logger()`. Il retourne un logger PSR-3 qui écrit via le logger que vous passez au `Worker` (l’argument nommé `logger`), et uniquement lorsque le code s’exécute au-delà de l’historique validé de l’exécution :
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+Chaque ligne contient `namespace`, `workflow_type`, `workflow_id` et `workflow_run_id`. `$context->replayState()` retourne `WorkflowReplayState::Replaying`, `Executing` ou `Unavailable`, et `isReplaying()` en est la forme booléenne. Utilisez-les uniquement pour le diagnostic ; ne choisissez jamais de commandes de workflow d’après elles.
+
+Les lignes ne sont écrites qu’après que le Worker a soumis la tâche de workflow qui a exécuté le code et que le Server l’a acceptée. Une relecture remplacée, une relecture spéculative que le Server décline et une complétion refusée n’écrivent rien. Le code qui attend sur un handle d’enfant ou d’opération en suspens sans enregistrer d’étape journalise une seule fois, dans la tâche qui dépasse l’attente. Un appel à `logger()` dans une closure de side effect n’écrit rien.
+
+Si le worker meurt entre l’acceptation par le Server et l’écriture, ces lignes sont perdues. C’est un logger de processus, pas une outbox pour les effets métier. Gardez les handlers de journalisation rapides et non bloquants : un handler qui attend le réseau bloque le worker et peut lui coûter le bail de la tâche. Les échecs du logger sont interceptés et ne modifient jamais les commandes du workflow.
+
 ## Contexte de reprise et exécution propriétaire d’une activité {#activity-retry-context}
 
 Le SDK PHP **3.6.1 ou ultérieur** expose `$context->retryInfo`, `$context->workflowId` et `$context->runId` dans les activités en mode service. Vérifiez `$context->retryInfo->isLastConfiguredAttempt() === true` pour reconnaître la dernière tentative configurée d’une politique limitée. `attemptNumber` conserve le numéro de tentative reçu à l’origine.

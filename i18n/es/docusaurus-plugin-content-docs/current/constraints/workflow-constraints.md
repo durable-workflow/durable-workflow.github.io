@@ -26,9 +26,35 @@ Ten en cuenta estas reglas al escribir un workflow:
 
 ## Logging desde el código del workflow {#workflow-logging}
 
-Un worker reconstruye el historial confirmado del workflow tras activaciones y reemplazos en frío, por lo que el logging normal de la aplicación puede repetir mensajes anteriores. Use el logger consciente del replay documentado para su binding cuando esté disponible. El modo servicio Rust ofrece el [logger de workflow de Rust SDK 4.17](../polyglot/rust.md#workflow-logging); los demás bindings conservan sus contratos documentados por separado.
+El motor reproduce un workflow a partir de su historial cada vez que se despierta, así que una llamada de log ordinaria en el código del workflow se vuelve a escribir por cada paso completado. Un workflow con 50 pasos registra su primera línea 50 veces. Usa en su lugar el logger consciente de la reproducción. Solo escribe cuando el código se ejecuta por primera vez. Los loggers de los workflows embebidos, del PHP SDK y de Rust también añaden la identidad de la ejecución a cada línea:
 
-El logging es una observación del proceso. Mantenga los comandos durables del workflow independientes de las observaciones de replay y de la entrega de logs. Incluso un logger consciente del replay puede repetir un mensaje de un intento no confirmado tras un fallo o retry; no es un outbox exactamente una vez. Los handlers del host deben estar acotados y no bloquear para no detener al worker. Sitúe los efectos de negocio durables en la actividad u operación de workflow registrada adecuada.
+- Workflows embebidos (Workflow 2.42.0 o posterior): `$this->logger()` devuelve un logger PSR-3 que escribe a través del logger de Laravel, o del canal que indiques, como en `$this->logger('workflow')`. Cada línea incluye `workflow_instance_id`, `workflow_run_id`, `workflow_type` y `namespace`. `$this->replayState()` devuelve `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` o `Unavailable`), y `$this->isReplaying()` es su forma booleana.
+- PHP SDK: `$context->logger()` escribe a través del logger PSR-3 del `Worker`. Consulta la [guía del PHP SDK](../polyglot/php.md#workflow-logging).
+- Rust SDK: `ctx.logger()`. Consulta el [logger de workflow del Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
+- Python SDK: `ctx.logger`, que guarda silencio durante la reproducción pero no añade la identidad de la ejecución.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Las consultas y los validadores de actualización nunca registran logs, porque siempre son una reproducción.
+
+En los workflows embebidos, las líneas se escriben después de que se confirme la transacción de base de datos de la tarea de workflow, así que una tarea que se revierte no escribe nada. El código que espera en un handle `select()` pendiente sin registrar un paso registra una sola vez, en la tarea que supera la espera. Las líneas de un handler de actualización en vivo se escriben cuando se aplica la actualización. En el PHP SDK, las líneas se escriben después de que el Server acepta la tarea de workflow; consulta la [guía del PHP SDK](../polyglot/php.md#workflow-logging).
+
+El logging es una observación del proceso. Mantén los comandos durables del workflow independientes de las observaciones del estado de reproducción y de la entrega de logs. Un logger consciente de la reproducción no es un outbox exactly-once: si un worker embebido o del PHP SDK muere entre la confirmación o la aceptación y la escritura, esas líneas se pierden, y el logger de Rust puede repetir un mensaje de un intento no confirmado tras una caída o un reintento. Mantén los handlers del host acotados y no bloqueantes para que el logging no detenga el worker. Coloca los efectos de negocio durables en la actividad adecuada o en una operación de workflow registrada.
 
 ## Comprobaciones al iniciar la aplicación {#boot-time-guardrails}
 

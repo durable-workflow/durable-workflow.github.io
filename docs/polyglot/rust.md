@@ -974,6 +974,47 @@ Workers register named handlers with `Worker::register_update`; use
 directly. An update is a durable, result-bearing workflow mutation. It is
 separate from fire-and-forget signals and read-only replayed queries.
 
+### Update validators {#update-validators}
+
+Rust SDK 4.25.0 and later let a worker refuse an update before it is
+accepted. Register a validator with `Worker::register_update_validator`, after
+the update handler of the same name:
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` takes Avro values. A replayed-state validator,
+`register_replayed_update_validator::<S>`, reads a detached copy of the
+workflow's replayed state; it must use the same state type as the replayed
+workflow. The worker advertises the validator, refuses registration when the
+Server doesn't advertise synchronous update validation, and polls workflow and
+update-validation tasks together. For each validation task, it runs only the
+validator:
+
+- `Ok(())` approves the update and the Server accepts it.
+- An `UpdateRejection` rejects it with `update_validator_rejected`, the
+  message, type and validation errors. The update is never accepted and its
+  handler never runs. The Server records the rejection only as an
+  `UpdateRejected` audit event.
+- A validator that adds a workflow command is refused with
+  `UpdateValidatorCommandRefused`, and a panic or replay failure reports
+  `update_validation_worker_failed`.
+
+On the client, `Error::update_validator_rejection()` returns the rejection's
+message, validation errors and IDs, and `Error::is_update_validation_failed()`
+covers timeouts and worker failures. An ordinary failed update matches neither.
+Validators never run during replay. Worker interceptors wrap update validation
+tasks through `execute_update_validation_task`; they see the validator's decision
+but can't change it.
+
 ## Payload envelope
 
 Workflow input, signals, activities, queries, and results use the published

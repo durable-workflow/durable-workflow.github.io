@@ -28,9 +28,35 @@ sidebar_position: 2
 
 ## Журналювання з коду workflow {#workflow-logging}
 
-Worker відновлює зафіксовану історію workflow після активацій і холодної заміни, тому звичайне журналювання застосунку може повторювати попередні повідомлення. За наявності використовуйте документований для вашого binding logger з урахуванням replay. Rust service mode надає [logger workflow у Rust SDK 4.17](../polyglot/rust.md#workflow-logging); інші binding зберігають окремо документовані контракти.
+Рушій відтворює workflow з його історії щоразу, коли той пробуджується, тож звичайний виклик логування в коді workflow записується повторно для кожного завершеного кроку. Workflow із 50 кроками записує свій перший рядок 50 разів. Натомість використовуйте логер, що враховує replay. Він пише лише тоді, коли код виконується вперше. Логери вбудованих workflow, PHP SDK і Rust також додають до кожного рядка ідентичність запуску:
 
-Журналювання — це спостереження процесу. Довговічні команди workflow мають бути незалежними від спостережень replay-state та доставки журналу. Навіть logger з урахуванням replay може повторити повідомлення незафіксованої спроби після збою чи retry; це не outbox із гарантією exactly-once. Обробники хоста мають бути обмеженими й неблокувальними, щоб журналювання не затримувало worker. Довговічні бізнес-ефекти розміщуйте у відповідній activity або записаній операції workflow.
+- Вбудовані workflow (Workflow 2.42.0 або новіший): `$this->logger()` повертає PSR-3 логер, що пише через логер Laravel або через переданий канал, як-от `$this->logger('workflow')`. Кожен рядок містить `workflow_instance_id`, `workflow_run_id`, `workflow_type` і `namespace`. `$this->replayState()` повертає `Workflow\V2\Enums\WorkflowReplayState` (`Replaying`, `Executing` або `Unavailable`), а `$this->isReplaying()` — його булеву форму.
+- PHP SDK: `$context->logger()` пише через PSR-3 логер `Worker`. Див. [посібник PHP SDK](../polyglot/php.md#workflow-logging).
+- Rust SDK: `ctx.logger()`. Див. [логер workflow у Rust SDK 4.17](../polyglot/rust.md#workflow-logging).
+- Python SDK: `ctx.logger`, який мовчить під час replay, але не додає ідентичності запуску.
+
+```php
+use function Workflow\V2\activity;
+use Workflow\V2\Workflow;
+
+final class ShipOrderWorkflow extends Workflow
+{
+    public function handle(string $orderId): string
+    {
+        $this->logger()->info('Shipping started', ['order_id' => $orderId]);
+        $label = activity(PrintLabelActivity::class, $orderId);
+        $this->logger()->info('Label printed', ['label' => $label]);
+
+        return $label;
+    }
+}
+```
+
+Query і валідатори update ніколи не логують, бо завжди є replay.
+
+У вбудованих workflow рядки записуються після фіксації транзакції бази даних задачі workflow, тож задача, яку відкочено, нічого не пише. Код, що чекає на незавершеному дескрипторі `select()` без запису кроку, логує один раз — у задачі, яка проходить це очікування. Рядки з обробника update, виконаного наживо, записуються, коли update застосовано. У PHP SDK рядки записуються після того, як Server прийме задачу workflow; див. [посібник PHP SDK](../polyglot/php.md#workflow-logging).
+
+Логування — це спостереження за процесом. Тримайте довговічні команди workflow незалежними від спостережень за станом replay і від доставки логів. Логер, що враховує replay, не є exactly-once outbox: якщо вбудований worker або worker PHP SDK завершиться між фіксацією чи прийняттям і записом, ці рядки буде втрачено, а логер Rust може повторити повідомлення з незафіксованої спроби після збою чи повтору. Тримайте обробники хоста обмеженими й неблокувальними, щоб логування не зупиняло worker. Розміщуйте довговічні бізнес-ефекти у відповідній activity або записаній операції workflow.
 
 ## Перевірки під час запуску застосунку {#boot-time-guardrails}
 

@@ -986,6 +986,49 @@ Une mise à jour est une mutation durable de workflow qui produit un résultat.
 Elle se distingue des signaux sans attente de réponse et des requêtes de
 lecture relues sans mutation.
 
+### Validateurs de mise à jour {#update-validators}
+
+À partir du Rust SDK 4.25.0, un worker peut refuser une mise à jour avant
+qu’elle soit acceptée. Enregistrez un validateur avec
+`Worker::register_update_validator`, après le handler de mise à jour du même nom :
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` reçoit des valeurs Avro. Un validateur à
+état relu, `register_replayed_update_validator::<S>`, lit une copie détachée de
+l’état relu du workflow ; il doit utiliser le même type d’état que le workflow
+relu. Le worker annonce le validateur, refuse l’enregistrement lorsque le Server
+n’annonce pas la validation synchrone des mises à jour et interroge ensemble les
+tâches de workflow et de validation de mise à jour. Pour chaque tâche de
+validation, il n’exécute que le validateur :
+
+- `Ok(())` approuve la mise à jour et le Server l’accepte.
+- Un `UpdateRejection` la rejette avec `update_validator_rejected`, le message,
+  le type et les erreurs de validation. La mise à jour n’est jamais acceptée et
+  son handler ne s’exécute jamais. Le Server n’enregistre le rejet que sous la
+  forme d’un événement d’audit `UpdateRejected`.
+- Un validateur qui ajoute une commande de workflow est refusé avec
+  `UpdateValidatorCommandRefused`, et une panique ou un échec de relecture
+  signale `update_validation_worker_failed`.
+
+Côté client, `Error::update_validator_rejection()` retourne le message, les
+erreurs de validation et les identifiants du rejet, et
+`Error::is_update_validation_failed()` couvre les délais dépassés et les échecs du
+worker. Une mise à jour en échec ordinaire ne correspond à aucun des deux. Les
+validateurs ne s’exécutent jamais pendant la relecture. Les intercepteurs du
+worker enveloppent les tâches de validation de mise à jour via
+`execute_update_validation_task` ; ils voient la décision du validateur, mais ne
+peuvent pas la modifier.
+
 ## Enveloppe de données utiles {#payload-envelope}
 
 Les entrées de workflow, signaux, activités, requêtes de lecture et résultats
