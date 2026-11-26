@@ -275,7 +275,7 @@ listet alle Einheiten auf.
 ## Replay-sichere Workflow-Zeit {#replay-safe-workflow-time}
 
 `WorkflowContext::replayNow()` liefert replay-sichere UTC-Geschäftszeit als
-`DateTimeImmutable`. Beim normalen Einstieg ist es der Start des Runs aus dem
+`DateTimeImmutable`. Beim normalen Einstieg ist es der Start des Runs (bei einem Redrive-Nachfolger der Start des ursprünglichen Runs) aus dem
 `replay_clock` der Aufgabe (Server 3.6.0 und neuer). Nach jedem unterstützten
 verarbeiteten dauerhaften Schritt (Aktivitäten, Timer, Child-Workflows,
 Bedingungswartevorgänge, validierte Gruppen) ist es dessen aufgezeichnete Zeit.

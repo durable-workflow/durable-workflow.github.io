@@ -268,7 +268,7 @@ class PollDemo:
 
 両方の例を公開済みの Server **2.9.7 / Core 2.7.2** と通常インストールした Python **2.6.1**、テスト入力 `[2, 1]` で実行しました。どちらも2つの run にまたがって2回の実際の確認を完了しました。Continue-as-new は run の履歴を新しくし、run とリンクのコストを追加しますが、実行全体の元の期限は維持します。寿命が無制限になるわけではありません。
 
-ここでは相対的な永続待機を使用します。次回のリリースから、`ctx.replay_now()` は進行するリプレイ安全な時計になります（[進行するリプレイ時計](./python.md#advancing-replay-clock)を参照）。リプレイ時にも安定した履歴予算の読み取りは、引き続き[予算](https://github.com/durable-workflow/workflow/issues/859)の別の課題です。このレシピは `ctx.now()` や再計算した履歴長で分岐しません。`DW_MAX_HISTORY_EVENTS` を強制的な自動切り替えとして扱わないでください。この不足は [Server #504](https://github.com/durable-workflow/server/issues/504) で追跡しています。
+ここでは相対的な永続待機を使用します。`ctx.replay_now()`（Python SDK 2.15.0 以降）は消費した永続ステップとともに進み、次回のリリースからはエントリーでも値を持ちます（[進行するリプレイ時計](./python.md#advancing-replay-clock)を参照）。リプレイ時にも安定した履歴予算の読み取りは、引き続き[予算](https://github.com/durable-workflow/workflow/issues/859)の別の課題です。このレシピは `ctx.now()` や再計算した履歴長で分岐しません。`DW_MAX_HISTORY_EVENTS` を強制的な自動切り替えとして扱わないでください。この不足は [Server #504](https://github.com/durable-workflow/server/issues/504) で追跡しています。
 
 ## 中断して外部状態を照合する {#interrupt-and-reconcile}
 
