@@ -231,7 +231,9 @@ der Laufzeitumgebung statt in der Profildatei bleiben.
 | `dw workflow:list-runs <workflow-id>` | Läufe einer Workflow-Instanz auflisten. | `--json` |
 | `dw workflow:show-run <workflow-id> <run-id>` | Einen Lauf anzeigen. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Historienereignisse eines Laufs lesen. | `--follow`, `--page-size`, `--json` |
-| `dw workflow:history-export <workflow-id> <run-id>` | Archivnutzlast der Laufhistorie exportieren. | `--output-file`, globale Optionen |
+| `dw workflow:history-export <workflow-id> <run-id>` | Bundle der Laufhistorie exportieren. Externe Payloads bleiben Referenzen. | `--output-file`, globale Optionen |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Eigenständiges, verifiziertes Archiv eines geschlossenen Laufs schreiben, einschließlich der Bytes jeder externen Payload (nativer Server). | `--hold-ttl`, `--json`, globale Optionen |
+| `dw workflow:history-archive-check <directory>` | Ein Historienarchiv allein anhand seiner Dateien prüfen. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Signal senden. | `--request-id`, `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Schreibgeschützte Workflow-Abfrage ausführen. | `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Workflow-Update übermitteln oder ausführen. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, Eingabeoptionen, `--json` |
@@ -313,6 +315,64 @@ einer Sekunde. Ein fehlgeschlagenes Update endet mit Exitcode 2. Eine unbekannte
 oder entfernte Update-ID endet mit 5. Das beweist nicht, dass das Update nie
 angenommen wurde. Ohne die Fähigkeit, auch bei PHP Server 2.x, endet der Befehl
 mit 8, bevor eine Ergebnisanfrage gesendet wird.
+
+### Historienarchive {#history-archives}
+
+`dw workflow:history-archive` (dw 2.13.0 oder neuer, nativer Server
+3.0.3 oder neuer, Admin-Zugangsdaten) schreibt einen geschlossenen Lauf
+in ein Verzeichnis. Der Befehl verwendet die Server-Routen für den
+Historienexport, den Abruf externer Payloads und die Backup-Sperre. Das Verzeichnis enthält den Historienexport des Servers, die
+exakten Bytes jeder externen Payload, auf die der Export verweist, eine
+`manifest.json` mit Codec, Länge und SHA-256 jedes Objekts sowie eine
+`receipt.json`.
+
+Die Kopie läuft so ab:
+
+1. dw erwirbt die Backup-Sperre des Servers für externe Payloads, damit während
+   der Kopie keine Payload entfernt wird.
+2. dw ruft jedes Objekt einmal ab und prüft Länge und Digest.
+3. dw prüft das gesamte Verzeichnis von der Festplatte.
+4. dw bestätigt, dass die Sperre nie abgelaufen ist.
+5. Erst dann schreibt dw die Quittung.
+
+Die Sperre wird auf jedem Weg freigegeben. Das gilt auch für Ctrl-C (Exitcode
+130) und unter Unix für SIGTERM (Exitcode 143). Nach einem Signal wird keine
+Quittung geschrieben.
+
+`--hold-ttl` legt die Laufzeit der Sperre in Sekunden fest: standardmäßig 900,
+zulässig von 60 bis 3600. Jedes Objekt muss innerhalb der halben Laufzeit
+eintreffen; erhöhen Sie den Wert daher für große Objekte.
+
+Der Befehl meldet eines von drei Ergebnissen:
+
+| Ergebnis | Exitcode | Bedeutung |
+| --- | --- | --- |
+| `verified` | 0 | Das Archiv ist vollständig. |
+| `incomplete` | 1 | Es wurde keine Quittung geschrieben. Führen Sie denselben Befehl erneut aus, um fortzusetzen. |
+| `refused` | 2 | Es wurde nichts kopiert. Der Lauf ist offen, bereinigt oder geschwärzt, seine Historie hat eine Sequenzlücke, oder er enthält eine Referenz, die der Laufzeittransport nicht abrufen kann. |
+
+Andere Backups verwenden dieselbe Sperre. Solange eines sie hält, wird eine
+Kopie mit HTTP 409 abgelehnt (Exitcode 2); versuchen Sie es später erneut. Ein
+Token ohne Admin-Rechte erhält HTTP 403 (Exitcode 4), und es wird nichts
+kopiert. Ein Server ohne die Route für die Backup-Sperre oder ein ungültiger
+Wert für `--hold-ttl` führt zu Exitcode 1. Andere Verbindungs-,
+Authentifizierungs- und Serverfehler behalten ihre üblichen Exitcodes.
+
+`dw workflow:history-archive-check <directory>` benötigt keinen Server. Der
+Befehl liest jede Datei zurück und meldet `verified`, `incomplete` mit einem
+codierten Befund für jede fehlgeschlagene Prüfung oder `refused`.
+
+Der native Server 3.30.0 ergänzt nur einen Offline-Prüfer,
+`durable-workflow-server history-archive verify <directory>`, den
+`dw workflow:history-archive` nicht benötigt. Der Prüfer liest
+nur das Verzeichnis, gibt den JSON-Bericht aus und endet nur beim Ergebnis
+`verified` mit 0.
+
+Ein Archiv umfasst nur den ausgewählten Lauf. Es ist kein Datenbank-Backup. Es
+wird unverschlüsselt geschrieben, und seine Lebensdauer liegt bei der Anwendung.
+Format, Umfang und Befundcodes stehen im
+[Leitfaden zu Historienarchiven](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)
+des Servers.
 
 ## Dienstaufrufe untersuchen {#service-call-inspection}
 

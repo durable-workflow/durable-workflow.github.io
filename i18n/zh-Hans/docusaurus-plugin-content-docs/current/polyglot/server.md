@@ -351,7 +351,7 @@ curl -sS "$DURABLE_WORKFLOW_SERVER_URL/api/system/retention?limit=100" \
 
 清理移除历史、相关明细及符合条件的外部载荷，之后延长策略无法恢复。[嵌入式清理指南](../configuration/pruning-workflows.md)描述应用负责的独立流程，其清理 API 不应用 Server 命名空间保留策略。其他运行时应先验证保留行为，再应用此 PHP Server 流程。
 
-当前历史导出保留外部引用，而不是对象的独立副本。[Server #520](https://github.com/durable-workflow/server/issues/520) 请求提供自包含且经过验证的归档流程；导出加校验和并不提供该能力。还应拒绝已清理的历史，不要信任其 `history_complete` 标记；已知的错误完整性问题仍在 [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) 中保持未解决状态。
+历史导出保留外部引用，而不是对象的独立副本。在 native Server 3.0.3 或更高版本上，`dw workflow:history-archive`（dw 2.13.0 或更高版本、管理员凭据）可写出自包含且经过验证的归档。归档包含导出、导出所引用的每个外部对象的确切字节、记录这些对象摘要的清单以及回执。保留策略清理该运行之后，或在没有 Server 及其载荷存储的情况下，归档仍可读取。参见[历史归档命令](./cli-reference.md#history-archives)和 Server 的[归档格式指南](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)。native Server 3.30.0 仅新增离线验证命令 `durable-workflow-server history-archive verify`。还应拒绝已清理的历史，不要信任其 `history_complete` 标记；已知的错误完整性问题仍在 [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) 中保持未解决状态。
 
 ### 命名空间 {#namespaces}
 
