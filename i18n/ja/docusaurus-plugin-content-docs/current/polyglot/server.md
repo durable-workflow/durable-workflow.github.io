@@ -282,7 +282,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `exclusions` | 提案した境界より古いアーカイブ済み実行（`archived`）、`forever` の提案で保持される終了済み実行（`forever`）、未終了の実行（`not_terminal`）。さらに、削除対象でも現時点では削除がスキップされる実行。原因は、放棄されたまま開いているアクティビティ（`detached_activity_hold`）、Server が解決できないペイロード参照（`external_payload_cleanup_unavailable`）、有効なオンラインバックアップの保持（`backup_hold`）です。 |
 | `policy_revision`、`plan_revision` | 適用時に送り返す値。`policy_revision` は Namespace の現在のポリシーを識別します。`plan_revision` は計画をそのポリシーとこの提案そのものに結び付けます。 |
 
-各件数には `count`、`lower_bound`、`complete` があります。走査上限に達した件数は `count: null` と `complete: false` になり、計画の `incomplete` 一覧にその名前が載ります。そのような件数は正確な値ではなく最小値として扱ってください。保持モードや日数の変更は必ず新しい `policy_revision` を生みます。説明の変更など、その他の Namespace 更新も通常は新しいリビジョンを生みます。リビジョンには、データベースのタイムスタンプ精度での Namespace の `updated_at` が含まれます。PostgreSQL と MySQL は秒単位で保存するため、直前の Namespace 書き込みと同じ秒に行われたそのような更新では、リビジョンは変わりません。
+各件数には `count`、`lower_bound`、`complete` があります。走査上限に達した件数は `count: null` と `complete: false` になり、計画の `incomplete` 一覧にその名前が載ります。そのような件数は正確な値ではなく最小値として扱ってください。保持モードや日数の変更は必ず新しい `policy_revision` を生みます。説明の変更など、その他の Namespace 更新も `updated_at` を変えるため、通常は新しいリビジョンを生みますが、それは保存される精度の範囲に限られます。PostgreSQL と MySQL は `updated_at` を最も近い整数秒に丸め、MariaDB は秒未満を切り捨てます。そのため、直前の Namespace 書き込みと同じ秒が保存される更新では、リビジョンは変わりません。Server は SQLite の時刻をミリ秒付きで書き込みます。
 
 計画はある時点の走査であり、削除対象の確定集合ではありません。1 つのスナップショットを読み、その時点だけを表します。次の保持処理までに、実行が終了する、境界を過ぎる、アーカイブされる、保持条件が付く・外れることがあり、ポリシー自体も変わり得ます。計画は、後の削除で消える実行の固定一覧ではありません。
 
@@ -305,7 +305,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `422 retention_pruning_confirmation_required` | 提案が遡及的で、`confirm_retroactive_pruning` が `true` ではありません。 | 新たに削除対象になる実行とバックアップを確認してから承認します。 |
 | `422` 検証エラー、`422 invalid_namespace_definition` | リビジョンがないか、提案が Namespace 更新の規則に反しています。 | リクエストを修正し、提案が変わる場合は再度計画します。 |
 
-受け付けられた適用は、スキーマ `durable-workflow.v2.retention-apply.v1` で応答します。`applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` とその `previous_policy_revision`、適用された `policy` とその新しい `policy_revision` を返します。リビジョンが変わるため、同じ計画を 2 回適用することはできません。
+受け付けられた適用は、スキーマ `durable-workflow.v2.retention-apply.v1` で応答します。`applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` とその `previous_policy_revision`、適用された `policy` とその新しい `policy_revision` を返します。保持モードや日数を変える計画は、適用するとリビジョンが変わるため、2 回適用できません。現在のポリシーを提案する計画は何も変えず、再度適用しても同じポリシーを書き直すだけです。
 
 適用で変わるのは Namespace のポリシーだけです。実行に印を付けたり、アーカイブしたり、削除したりはせず、猶予期間も始まりません。ポリシーは `applied_at` から有効です。その後の各保持処理は、その時点の境界より古い、アーカイブされていない終了済み実行を削除します。計画の後に終了した実行や境界を過ぎた実行も含まれる場合があり、その時点でアーカイブ済みまたは保持中の実行はスキップされます。
 

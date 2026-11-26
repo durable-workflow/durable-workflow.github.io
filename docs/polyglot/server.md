@@ -394,11 +394,12 @@ Each count carries `count`, `lower_bound` and `complete`. A count that reaches
 its scan bound has `count: null` and `complete: false`, and the plan's
 `incomplete` list names it. Treat such a count as a minimum, not an exact
 figure. Any change to retention mode or days produces a new `policy_revision`.
-Other namespace updates, such as a description change, usually do too. The
-revision includes the namespace's `updated_at` at the database's timestamp
-precision. PostgreSQL and MySQL store it to the whole second, so such an
-update made in the same second as the previous namespace write leaves the
-revision unchanged there.
+Other namespace updates, such as a description change, move `updated_at` too,
+so they usually produce a new revision, but only at the stored precision.
+PostgreSQL and MySQL round `updated_at` to the nearest whole second and
+MariaDB truncates it to the second, so an update that stores the same second
+as the previous namespace write leaves the revision unchanged. The Server
+writes SQLite times with milliseconds.
 
 The plan is a point-in-time scan, not a deletion set. It reads one snapshot
 and describes that moment only. Before the next retention pass, runs can
@@ -432,8 +433,10 @@ policy change can land in between. The apply changes nothing and refuses when:
 An accepted apply answers with schema `durable-workflow.v2.retention-apply.v1`.
 It reports `applied_at`, `retroactive`, `confirmed_retroactive_pruning`, the
 `previous_policy` with its `previous_policy_revision`, and the applied
-`policy` with its new `policy_revision`. Because the revision changes, the
-same plan cannot be applied twice.
+`policy` with its new `policy_revision`. A plan that changes the retention
+mode or days cannot be applied twice, because applying it changes the
+revision. A plan that proposes the current policy changes nothing, and
+applying it again rewrites the same policy.
 
 The apply changes only the namespace's policy. It marks, archives and prunes
 no run, and it does not start a grace period. The policy is active from

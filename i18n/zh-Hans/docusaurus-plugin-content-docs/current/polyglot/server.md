@@ -281,7 +281,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `exclusions` | 早于拟议截止时间的已归档运行（`archived`）、`forever` 拟议策略保留的已关闭运行（`forever`）以及未关闭的运行（`not_terminal`）。还包括可清理但当前清理会跳过的运行，原因是仍未结束的被放弃活动（`detached_activity_hold`）、Server 无法处理的载荷引用（`external_payload_cleanup_unavailable`）或有效的在线备份保留约束（`backup_hold`）。 |
 | `policy_revision`、`plan_revision` | 应用时必须回传的值。`policy_revision` 标识命名空间的当前策略。`plan_revision` 将计划绑定到该策略和这一确切的拟议策略。 |
 
-每项计数都包含 `count`、`lower_bound` 和 `complete`。达到扫描上限的计数为 `count: null` 和 `complete: false`，并会列在计划的 `incomplete` 列表中。应将此类计数视为最小值，而非精确数字。任何保留模式或天数的变更都会产生新的 `policy_revision`。其他命名空间更新（例如修改描述）通常也会产生。修订值包含命名空间的 `updated_at`，精度取决于数据库的时间戳精度。PostgreSQL 和 MySQL 按整秒存储，因此在与上一次命名空间写入同一秒内进行的此类更新，在这些数据库上不会改变修订值。
+每项计数都包含 `count`、`lower_bound` 和 `complete`。达到扫描上限的计数为 `count: null` 和 `complete: false`，并会列在计划的 `incomplete` 列表中。应将此类计数视为最小值，而非精确数字。任何保留模式或天数的变更都会产生新的 `policy_revision`。其他命名空间更新（例如修改描述）也会改变 `updated_at`，因此通常会产生新的修订值，但仅限于存储精度。PostgreSQL 和 MySQL 将 `updated_at` 四舍五入到最接近的整秒，MariaDB 则截断到秒，因此存储的秒值与上一次命名空间写入相同的更新不会改变修订值。Server 写入 SQLite 的时间带有毫秒。
 
 计划是某一时刻的扫描，而不是删除集合。它读取一个快照，只描述那一刻。在下一次保留清理之前，运行可能关闭、超过截止时间、被归档，或获得和失去保留约束，策略本身也可能改变。计划不是之后清理将删除的运行的固定列表。
 
@@ -304,7 +304,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `422 retention_pruning_confirmation_required` | 拟议策略具有追溯性，且 `confirm_retroactive_pruning` 不为 `true`。 | 检查新变为可清理的运行和备份，然后确认。 |
 | `422` 验证错误、`422 invalid_namespace_definition` | 缺少修订值，或拟议策略违反命名空间更新的规则。 | 更正请求，若拟议策略改变则重新生成计划。 |
 
-被接受的应用以 `durable-workflow.v2.retention-apply.v1` 模式响应。它报告 `applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` 及其 `previous_policy_revision`，以及已应用的 `policy` 及其新的 `policy_revision`。由于修订值会改变，同一计划不能应用两次。
+被接受的应用以 `durable-workflow.v2.retention-apply.v1` 模式响应。它报告 `applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` 及其 `previous_policy_revision`，以及已应用的 `policy` 及其新的 `policy_revision`。更改保留模式或天数的计划不能应用两次，因为应用它会改变修订值。提议当前策略的计划不会更改任何内容，再次应用只会重写相同的策略。
 
 应用只更改命名空间的策略。它不标记、不归档也不清理任何运行，也不会开始宽限期。策略从 `applied_at` 起生效。之后每次保留清理都会删除早于当时截止时间的已关闭、未归档运行。这可能包括计划之后才关闭或超过期限的运行，并会跳过当时已归档或受保留约束的运行。
 
