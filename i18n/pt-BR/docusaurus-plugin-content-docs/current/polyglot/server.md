@@ -268,7 +268,60 @@ Por exemplo, em **19 de outubro às 12:00 UTC**, uma execução encerrada em **1
 
 Antes de reduzir a retenção, revise os instantes de encerramento e preserve o histórico necessário. Exporte execuções importantes pela [API de exportação de histórico](./server-api-reference.md#workflow-control-plane) e mantenha cópias recuperáveis do banco de dados e dos payloads externos. Uma exportação de replay precisa dos objetos referenciados e não substitui um backup do banco de dados e do armazenamento.
 
-Atualize o namespace com uma credencial de administrador:
+##### Visualizar e aplicar uma alteração de retenção {#preview-and-apply-a-retention-change}
+
+O Server nativo 3.30.0 e posteriores pode mostrar o impacto de uma política proposta antes que ela entre em vigor e aplicá-la somente enquanto essa prévia ainda for válida. As duas rotas exigem uma credencial de administrador. O PHP Server 2.x e versões nativas anteriores não as oferecem. `PUT /api/namespaces/{namespace}`, descrito abaixo, não muda. Ele continua ativando uma política imediatamente, sem plano nem confirmação, então os clientes existentes continuam funcionando.
+
+Solicite um plano com os valores propostos de `retention_mode` e `retention_days`. Os campos seguem as regras da atualização do namespace, e um campo omitido mantém o valor atual. O parâmetro opcional `scan_limit` (padrão 1000, no máximo 10000) limita cada contagem. O parâmetro opcional `hold_scan_limit` (padrão 100, no máximo 1000) limita quantas execuções são verificadas quanto a bloqueios.
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+O plano não grava nada. Ele não altera nenhuma política, não marca nenhuma execução, não busca nenhum objeto de payload e não remove nada. Revise estes campos da resposta `durable-workflow.v2.retention-plan.v1` antes de aplicá-lo:
+
+| Campo | O que indica |
+| --- | --- |
+| `current_policy`, `proposed_policy` | Cada política com seu instante de corte. |
+| `retroactive` | `true` quando a proposta torna elegíveis para remoção execuções encerradas que a política atual mantém, por exemplo com menos dias ou com uma política limitada que substitui `forever`. |
+| `changes` | Execuções encerradas e não arquivadas que se tornam elegíveis (`newly_eligible`), deixam de ser (`no_longer_eligible`), continuam elegíveis (`unchanged_eligible`) ou continuam retidas (`unchanged_retained`). Cada grupo lista até cinco execuções de exemplo, as mais antigas primeiro. |
+| `exclusions` | Execuções arquivadas além do corte proposto (`archived`), execuções encerradas que uma proposta `forever` mantém (`forever`) e execuções abertas (`not_terminal`). Também execuções elegíveis que uma remoção ignoraria agora por causa de uma atividade abandonada ainda aberta (`detached_activity_hold`), de uma referência de payload que o Server não consegue resolver (`external_payload_cleanup_unavailable`) ou de um bloqueio ativo de backup online (`backup_hold`). |
+| `policy_revision`, `plan_revision` | Os valores que a aplicação deve devolver. `policy_revision` identifica a política atual do namespace. `plan_revision` vincula o plano a essa política e a esta proposta exata. |
+
+Cada contagem traz `count`, `lower_bound` e `complete`. Uma contagem que atinge seu limite de busca tem `count: null` e `complete: false`, e a lista `incomplete` do plano a nomeia. Trate essa contagem como um mínimo, não como um número exato. Qualquer alteração do modo ou dos dias de retenção gera uma nova `policy_revision`. Outras atualizações do namespace, como uma mudança de descrição, também alteram `updated_at`, então normalmente geram uma nova revisão, mas apenas na precisão armazenada. PostgreSQL e MySQL arredondam `updated_at` para o segundo inteiro mais próximo e o MariaDB o trunca no segundo, então uma atualização que armazena o mesmo segundo da escrita anterior do namespace deixa a revisão inalterada. O Server grava os horários do SQLite com milissegundos.
+
+O plano é uma busca de um instante, não um conjunto de remoção. Ele lê um único snapshot e descreve apenas aquele momento. Antes da próxima passagem de retenção, execuções podem ser encerradas, passar do corte, ser arquivadas ou ganhar e perder bloqueios, e a própria política pode mudar. O plano não é uma lista fixa das execuções que uma passagem posterior removerá.
+
+Para aplicar o plano, envie a mesma proposta com `policy_revision` e `plan_revision` do plano. Uma proposta retroativa também precisa de `"confirm_retroactive_pruning": true`, porque a remoção é irreversível. Substitua as duas revisões deste exemplo pelos valores do seu plano:
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan/apply" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7,"policy_revision":"sha256:…","plan_revision":"sha256:…","confirm_retroactive_pruning":true}'
+```
+
+As verificações e a atualização da política rodam em uma única transação de escrita, então nenhuma outra alteração de política pode ocorrer entre elas. A aplicação não altera nada e é recusada quando:
+
+| Status e motivo | Causa | Próximo passo |
+| --- | --- | --- |
+| `409 retention_policy_revision_stale` | O namespace mudou depois do plano. A resposta traz a `policy_revision` atual. | Solicite e revise um novo plano. |
+| `409 retention_plan_revision_mismatch` | A política enviada não é a política planejada. | Envie a política planejada ou planeje esta política primeiro. |
+| `422 retention_pruning_confirmation_required` | A proposta é retroativa e `confirm_retroactive_pruning` não é `true`. | Revise as execuções que se tornam elegíveis e seus backups, depois confirme. |
+| Erros de validação `422`, `422 invalid_namespace_definition` | Falta uma revisão ou a proposta viola as regras da atualização do namespace. | Corrija a requisição e planeje novamente se a proposta mudar. |
+
+Uma aplicação aceita responde com o schema `durable-workflow.v2.retention-apply.v1`. Ela informa `applied_at`, `retroactive`, `confirmed_retroactive_pruning`, a `previous_policy` com sua `previous_policy_revision` e a `policy` aplicada com sua nova `policy_revision`. Um plano que altera o modo ou os dias de retenção não pode ser aplicado duas vezes, porque aplicá-lo muda a revisão. Um plano que propõe o modo e os dias atuais deixa a política inalterada, mas ainda altera `updated_at`, o que pode deixar desatualizados outros planos pendentes do namespace. Aplicá-lo de novo só é aceito se o `updated_at` armazenado não mudou (no PostgreSQL, MySQL e MariaDB, o mesmo segundo armazenado), e então regrava a mesma política. Caso contrário, é recusado como desatualizado.
+
+A aplicação altera apenas a política do namespace. Ela não marca, arquiva nem remove nenhuma execução, e não inicia um período de carência. A política fica ativa a partir de `applied_at`. Cada passagem de retenção posterior remove as execuções encerradas e não arquivadas além do corte vigente nessa passagem. Isso pode incluir execuções encerradas ou envelhecidas depois do plano, e ignora as que estiverem arquivadas ou bloqueadas nesse momento.
+
+##### Atualizar a política diretamente {#update-the-retention-policy-directly}
+
+Sem um plano, atualize o namespace com uma credencial de administrador. A nova política fica ativa imediatamente:
 
 ```bash
 curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \

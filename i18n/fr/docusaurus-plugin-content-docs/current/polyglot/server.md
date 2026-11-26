@@ -268,7 +268,60 @@ Par exemple, le **19 octobre à 12:00 UTC**, un run fermé le **1er octobre à 1
 
 Avant de raccourcir la rétention, examinez les dates de fermeture et préservez l’historique requis. Exportez les runs importants via l’[API d’export](./server-api-reference.md#workflow-control-plane) et conservez des sauvegardes récupérables de la base et des payloads externes. Un export de relecture doit conserver ses objets référencés et ne remplace pas une sauvegarde de la base et du stockage.
 
-Modifiez le namespace avec un identifiant administrateur :
+##### Prévisualiser et appliquer une modification de conservation {#preview-and-apply-a-retention-change}
+
+Le Server natif 3.30.0 et versions ultérieures peut montrer l’effet d’une politique proposée avant son entrée en vigueur, puis ne l’appliquer que tant que cette prévisualisation reste valable. Les deux routes exigent un identifiant administrateur. PHP Server 2.x et les versions natives antérieures ne les proposent pas. `PUT /api/namespaces/{namespace}`, décrit plus bas, ne change pas. Il active toujours une politique immédiatement, sans plan ni confirmation, si bien que les clients existants continuent de fonctionner.
+
+Demandez un plan avec les valeurs proposées de `retention_mode` et `retention_days`. Les champs suivent les règles de la mise à jour du namespace, et un champ omis garde sa valeur actuelle. Le paramètre facultatif `scan_limit` (1000 par défaut, 10000 au plus) borne chaque décompte. Le paramètre facultatif `hold_scan_limit` (100 par défaut, 1000 au plus) borne le nombre de runs vérifiés pour les blocages.
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+Le plan n’écrit rien. Il ne modifie aucune politique, ne marque aucun run, ne récupère aucun objet de payload et ne supprime rien. Examinez ces champs de la réponse `durable-workflow.v2.retention-plan.v1` avant de l’appliquer :
+
+| Champ | Ce qu’il indique |
+| --- | --- |
+| `current_policy`, `proposed_policy` | Chaque politique avec sa date limite. |
+| `retroactive` | `true` lorsque la proposition rend éligibles à la suppression des runs fermés que la politique actuelle conserve, par exemple avec moins de jours ou une politique bornée qui remplace `forever`. |
+| `changes` | Runs fermés et non archivés qui deviennent éligibles (`newly_eligible`), ne le sont plus (`no_longer_eligible`), le restent (`unchanged_eligible`) ou restent conservés (`unchanged_retained`). Chaque groupe cite jusqu’à cinq runs d’exemple, les plus anciens d’abord. |
+| `exclusions` | Runs archivés au-delà de la date limite proposée (`archived`), runs fermés qu’une proposition `forever` conserve (`forever`) et runs ouverts (`not_terminal`). Aussi les runs éligibles qu’une suppression ignorerait actuellement à cause d’une activité abandonnée encore ouverte (`detached_activity_hold`), d’une référence de payload que le Server ne peut pas régler (`external_payload_cleanup_unavailable`) ou d’un blocage actif de sauvegarde en ligne (`backup_hold`). |
+| `policy_revision`, `plan_revision` | Les valeurs que l’application doit renvoyer. `policy_revision` identifie la politique actuelle du namespace. `plan_revision` lie le plan à cette politique et à cette proposition exacte. |
+
+Chaque décompte porte `count`, `lower_bound` et `complete`. Un décompte qui atteint sa borne a `count: null` et `complete: false`, et la liste `incomplete` du plan le nomme. Traitez ce décompte comme un minimum, pas comme un chiffre exact. Toute modification du mode ou des jours de rétention produit une nouvelle `policy_revision`. Les autres mises à jour du namespace, comme un changement de description, modifient aussi `updated_at` et produisent donc généralement une nouvelle révision, mais seulement à la précision stockée. PostgreSQL et MySQL arrondissent `updated_at` à la seconde entière la plus proche et MariaDB le tronque à la seconde. Une mise à jour qui stocke la même seconde que l’écriture précédente du namespace laisse donc la révision inchangée. Le Server écrit les horodatages SQLite avec les millisecondes.
+
+Le plan est un relevé à un instant donné, pas un ensemble de suppression. Il lit un seul instantané et ne décrit que ce moment. Avant le prochain passage de rétention, des runs peuvent se fermer, dépasser la date limite, être archivés ou gagner et perdre des blocages, et la politique elle-même peut changer. Le plan n’est pas une liste figée des runs qu’un passage ultérieur supprimera.
+
+Pour appliquer le plan, envoyez la même proposition avec les valeurs `policy_revision` et `plan_revision` du plan. Une proposition rétroactive exige aussi `"confirm_retroactive_pruning": true`, car la suppression est irréversible. Remplacez les deux révisions de cet exemple par les valeurs de votre plan :
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan/apply" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7,"policy_revision":"sha256:…","plan_revision":"sha256:…","confirm_retroactive_pruning":true}'
+```
+
+Les vérifications et la mise à jour de la politique s’exécutent dans une seule transaction d’écriture, si bien qu’aucune autre modification de politique ne peut s’intercaler. L’application ne change rien et refuse lorsque :
+
+| Statut et motif | Cause | Étape suivante |
+| --- | --- | --- |
+| `409 retention_policy_revision_stale` | Le namespace a changé après le plan. La réponse porte la `policy_revision` actuelle. | Demandez et examinez un nouveau plan. |
+| `409 retention_plan_revision_mismatch` | La politique envoyée n’est pas celle qui a été planifiée. | Envoyez la politique planifiée, ou planifiez d’abord cette politique. |
+| `422 retention_pruning_confirmation_required` | La proposition est rétroactive et `confirm_retroactive_pruning` ne vaut pas `true`. | Examinez les runs nouvellement éligibles et vos sauvegardes, puis confirmez. |
+| Erreurs de validation `422`, `422 invalid_namespace_definition` | Une révision manque, ou la proposition enfreint les règles de la mise à jour du namespace. | Corrigez la requête et planifiez de nouveau si la proposition change. |
+
+Une application acceptée répond avec le schéma `durable-workflow.v2.retention-apply.v1`. Elle indique `applied_at`, `retroactive`, `confirmed_retroactive_pruning`, la `previous_policy` avec sa `previous_policy_revision`, et la `policy` appliquée avec sa nouvelle `policy_revision`. Un plan qui modifie le mode ou les jours de rétention ne peut pas être appliqué deux fois, car son application change la révision. Un plan qui propose le mode et les jours actuels laisse la politique inchangée, mais modifie quand même `updated_at`, ce qui peut rendre périmés d’autres plans en attente pour le namespace. Une nouvelle application n’est acceptée que si le `updated_at` stocké n’a pas changé (sur PostgreSQL, MySQL et MariaDB, la même seconde stockée), et réécrit alors la même politique. Sinon, elle est refusée comme périmée.
+
+L’application ne modifie que la politique du namespace. Elle ne marque, n’archive et ne supprime aucun run, et n’ouvre aucun délai de grâce. La politique est active à partir de `applied_at`. Chaque passage de rétention ultérieur supprime les runs fermés et non archivés au-delà de la date limite telle qu’elle est lors de ce passage. Cela peut inclure des runs fermés ou devenus plus anciens après le plan, et ignore les runs archivés ou bloqués à ce moment.
+
+##### Mettre à jour la politique directement {#update-the-retention-policy-directly}
+
+Sans plan, modifiez le namespace avec un identifiant administrateur. La nouvelle politique est active immédiatement :
 
 ```bash
 curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \

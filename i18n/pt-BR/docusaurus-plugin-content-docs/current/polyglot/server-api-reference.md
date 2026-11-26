@@ -612,8 +612,12 @@ armazenamento externo exigem admin.
 | `POST` | `/api/namespaces` | Cria um namespace. |
 | `GET` | `/api/namespaces/{namespace}` | Descreve retenção, metadados e política de armazenamento. |
 | `PUT` | `/api/namespaces/{namespace}` | Atualiza metadados ou retenção. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | Visualiza uma política de retenção proposta sem aplicá-la. Server nativo 3.30.0 e posteriores. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | Aplica uma política de retenção planejada somente enquanto o plano ainda for válido. Server nativo 3.30.0 e posteriores. |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | Configura a política de armazenamento externo de payloads. |
 | `POST` | `/api/storage/test` | Grava e lê payloads pequeno e grande pelo driver externo configurado. |
+
+As rotas de plano e aplicação de retenção exigem admin. O plano não grava nada. A aplicação recusa um plano desatualizado ou divergente e exige confirmação explícita para remoção retroativa. `PUT /api/namespaces/{namespace}` continua ativando uma política de retenção imediatamente. Veja [Visualizar e aplicar uma alteração de retenção](./server.md#preview-and-apply-a-retention-change) para o fluxo, os campos da resposta e as recusas.
 
 Políticas de armazenamento externo permitem que envelopes grandes carreguem
 referências estáveis em vez de bytes brutos. Políticas locais resolvem pelo
