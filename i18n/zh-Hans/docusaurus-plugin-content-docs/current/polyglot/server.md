@@ -281,7 +281,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `exclusions` | 早于拟议截止时间的已归档运行（`archived`）、`forever` 拟议策略保留的已关闭运行（`forever`）以及未关闭的运行（`not_terminal`）。还包括可清理但当前清理会跳过的运行，原因是仍未结束的被放弃活动（`detached_activity_hold`）、Server 无法处理的载荷引用（`external_payload_cleanup_unavailable`）或有效的在线备份保留约束（`backup_hold`）。 |
 | `policy_revision`、`plan_revision` | 应用时必须回传的值。`policy_revision` 标识命名空间的当前策略。`plan_revision` 将计划绑定到该策略和这一确切的拟议策略。 |
 
-每项计数都包含 `count`、`lower_bound` 和 `complete`。达到扫描上限的计数为 `count: null` 和 `complete: false`，并会列在计划的 `incomplete` 列表中。应将此类计数视为最小值，而非精确数字。之后的任何命名空间更新都会产生新的 `policy_revision`，即使它不改变保留策略。
+每项计数都包含 `count`、`lower_bound` 和 `complete`。达到扫描上限的计数为 `count: null` 和 `complete: false`，并会列在计划的 `incomplete` 列表中。应将此类计数视为最小值，而非精确数字。任何保留模式或天数的变更都会产生新的 `policy_revision`。其他命名空间更新（例如修改描述）通常也会产生。修订值包含命名空间的 `updated_at`，精度取决于数据库的时间戳精度。PostgreSQL 和 MySQL 按整秒存储，因此在与上一次命名空间写入同一秒内进行的此类更新，在这些数据库上不会改变修订值。
 
 计划是某一时刻的扫描，而不是删除集合。它读取一个快照，只描述那一刻。在下一次保留清理之前，运行可能关闭、超过截止时间、被归档，或获得和失去保留约束，策略本身也可能改变。计划不是之后清理将删除的运行的固定列表。
 

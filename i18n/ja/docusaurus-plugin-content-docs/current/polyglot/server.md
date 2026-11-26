@@ -282,7 +282,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `exclusions` | 提案した境界より古いアーカイブ済み実行（`archived`）、`forever` の提案で保持される終了済み実行（`forever`）、未終了の実行（`not_terminal`）。さらに、削除対象でも現時点では削除がスキップされる実行。原因は、放棄されたまま開いているアクティビティ（`detached_activity_hold`）、Server が解決できないペイロード参照（`external_payload_cleanup_unavailable`）、有効なオンラインバックアップの保持（`backup_hold`）です。 |
 | `policy_revision`、`plan_revision` | 適用時に送り返す値。`policy_revision` は Namespace の現在のポリシーを識別します。`plan_revision` は計画をそのポリシーとこの提案そのものに結び付けます。 |
 
-各件数には `count`、`lower_bound`、`complete` があります。走査上限に達した件数は `count: null` と `complete: false` になり、計画の `incomplete` 一覧にその名前が載ります。そのような件数は正確な値ではなく最小値として扱ってください。その後の Namespace 更新は、保持設定を変えないものでも新しい `policy_revision` を生みます。
+各件数には `count`、`lower_bound`、`complete` があります。走査上限に達した件数は `count: null` と `complete: false` になり、計画の `incomplete` 一覧にその名前が載ります。そのような件数は正確な値ではなく最小値として扱ってください。保持モードや日数の変更は必ず新しい `policy_revision` を生みます。説明の変更など、その他の Namespace 更新も通常は新しいリビジョンを生みます。リビジョンには、データベースのタイムスタンプ精度での Namespace の `updated_at` が含まれます。PostgreSQL と MySQL は秒単位で保存するため、直前の Namespace 書き込みと同じ秒に行われたそのような更新では、リビジョンは変わりません。
 
 計画はある時点の走査であり、削除対象の確定集合ではありません。1 つのスナップショットを読み、その時点だけを表します。次の保持処理までに、実行が終了する、境界を過ぎる、アーカイブされる、保持条件が付く・外れることがあり、ポリシー自体も変わり得ます。計画は、後の削除で消える実行の固定一覧ではありません。
 

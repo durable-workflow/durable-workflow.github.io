@@ -393,8 +393,12 @@ payload object and prunes nothing. Review these fields of the
 Each count carries `count`, `lower_bound` and `complete`. A count that reaches
 its scan bound has `count: null` and `complete: false`, and the plan's
 `incomplete` list names it. Treat such a count as a minimum, not an exact
-figure. Any later namespace update produces a new `policy_revision`, even one
-that leaves retention unchanged.
+figure. Any change to retention mode or days produces a new `policy_revision`.
+Other namespace updates, such as a description change, usually do too. The
+revision includes the namespace's `updated_at` at the database's timestamp
+precision. PostgreSQL and MySQL store it to the whole second, so such an
+update made in the same second as the previous namespace write leaves the
+revision unchanged there.
 
 The plan is a point-in-time scan, not a deletion set. It reads one snapshot
 and describes that moment only. Before the next retention pass, runs can
