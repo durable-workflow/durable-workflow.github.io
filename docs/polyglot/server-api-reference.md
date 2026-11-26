@@ -672,8 +672,17 @@ external-storage routes require admin role.
 | `POST` | `/api/namespaces` | Create a namespace. |
 | `GET` | `/api/namespaces/{namespace}` | Describe namespace retention, metadata, and storage policy. |
 | `PUT` | `/api/namespaces/{namespace}` | Update namespace metadata or retention. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | Preview a proposed retention policy without applying it. Native Server 3.30.0 and later. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | Apply a planned retention policy only while the plan still holds. Native Server 3.30.0 and later. |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | Configure the namespace external payload storage policy. |
 | `POST` | `/api/storage/test` | Round-trip a small and large payload through the configured external storage driver. |
+
+The retention plan and apply routes require admin role. The plan makes no
+writes. The apply refuses a stale or mismatched plan and requires explicit
+confirmation for retroactive pruning. `PUT /api/namespaces/{namespace}` still
+activates a retention policy at once. See
+[Preview and apply a retention change](./server.md#preview-and-apply-a-retention-change)
+for the operator flow, answer fields and refusals.
 
 External payload storage policies let large payload envelopes carry stable
 references instead of raw bytes. Local policies resolve through the configured

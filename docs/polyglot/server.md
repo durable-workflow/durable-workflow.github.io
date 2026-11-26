@@ -355,7 +355,104 @@ and keep recoverable database and external-payload backups. A replay export
 must retain its referenced payload objects; it does not replace a database
 and storage backup.
 
-Update the namespace with an admin credential:
+##### Preview and apply a retention change {#preview-and-apply-a-retention-change}
+
+Native Server 3.30.0 and later can show the impact of a proposed policy before
+it takes effect, then apply it only while that preview still holds. Both
+routes need an admin credential. PHP Server 2.x and earlier native releases do
+not offer them. `PUT /api/namespaces/{namespace}`, described below, is
+unchanged. It still activates a policy at once, with no plan or confirmation,
+so existing clients keep working.
+
+Request a plan with the proposed `retention_mode` and `retention_days`. The
+fields follow the namespace update's rules, and a field left out keeps its
+current value. Optional `scan_limit` (default 1000, at most 10000) bounds each
+count. Optional `hold_scan_limit` (default 100, at most 1000) bounds how many
+runs are checked for holds.
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+The plan makes no writes. It changes no policy, marks no run, fetches no
+payload object and prunes nothing. Review these fields of the
+`durable-workflow.v2.retention-plan.v1` answer before you apply it:
+
+| Field | What it tells you |
+| --- | --- |
+| `current_policy`, `proposed_policy` | Each policy with its cutoff. |
+| `retroactive` | `true` when the proposal makes closed runs eligible for pruning that the current policy keeps, such as fewer days or a bounded policy replacing `forever`. |
+| `changes` | Closed, unarchived runs that become eligible (`newly_eligible`), stop being eligible (`no_longer_eligible`), stay eligible (`unchanged_eligible`) or stay retained (`unchanged_retained`). Each lists up to five example runs, oldest first. |
+| `exclusions` | Archived runs past the proposed cutoff (`archived`), closed runs a `forever` proposal keeps (`forever`) and open runs (`not_terminal`). Also eligible runs that a prune would currently skip because of an open abandoned activity (`detached_activity_hold`), a payload reference the Server cannot settle (`external_payload_cleanup_unavailable`) or an active online backup hold (`backup_hold`). |
+| `policy_revision`, `plan_revision` | The values the apply must send back. `policy_revision` identifies the namespace's current policy. `plan_revision` binds the plan to that policy and to this exact proposal. |
+
+Each count carries `count`, `lower_bound` and `complete`. A count that reaches
+its scan bound has `count: null` and `complete: false`, and the plan's
+`incomplete` list names it. Treat such a count as a minimum, not an exact
+figure. Any change to retention mode or days produces a new `policy_revision`.
+Other namespace updates, such as a description change, move `updated_at` too,
+so they usually produce a new revision, but only at the stored precision.
+PostgreSQL and MySQL round `updated_at` to the nearest whole second and
+MariaDB truncates it to the second, so an update that stores the same second
+as the previous namespace write leaves the revision unchanged. The Server
+writes SQLite times with milliseconds.
+
+The plan is a point-in-time scan, not a deletion set. It reads one snapshot
+and describes that moment only. Before the next retention pass, runs can
+close, age past the cutoff, be archived or gain and lose holds, and the policy
+itself can change. The plan is not a fixed list of the runs a later prune will
+delete.
+
+To apply the plan, send the same proposal with the plan's `policy_revision`
+and `plan_revision`. A retroactive proposal also needs
+`"confirm_retroactive_pruning": true`, because pruning is irreversible.
+Replace the two revisions in this example with the values from your plan:
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan/apply" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7,"policy_revision":"sha256:…","plan_revision":"sha256:…","confirm_retroactive_pruning":true}'
+```
+
+The checks and the policy update run in one write transaction, so no other
+policy change can land in between. The apply changes nothing and refuses when:
+
+| Status and reason | Cause | Next step |
+| --- | --- | --- |
+| `409 retention_policy_revision_stale` | The namespace changed after the plan. The answer carries the current `policy_revision`. | Request and review a new plan. |
+| `409 retention_plan_revision_mismatch` | The policy sent is not the policy that was planned. | Send the planned policy, or plan this policy first. |
+| `422 retention_pruning_confirmation_required` | The proposal is retroactive and `confirm_retroactive_pruning` is not `true`. | Review the newly eligible runs and your backups, then confirm. |
+| `422` validation errors, `422 invalid_namespace_definition` | A revision is missing, or the proposal breaks the namespace update's rules. | Correct the request and plan again if the proposal changes. |
+
+An accepted apply answers with schema `durable-workflow.v2.retention-apply.v1`.
+It reports `applied_at`, `retroactive`, `confirmed_retroactive_pruning`, the
+`previous_policy` with its `previous_policy_revision`, and the applied
+`policy` with its new `policy_revision`. A plan that changes the retention
+mode or days cannot be applied twice, because applying it changes the
+revision. A plan that proposes the current mode and days leaves the policy
+unchanged but still moves `updated_at`, which can make other outstanding
+plans for the namespace stale. Applying it again is accepted only if the
+stored `updated_at` did not change (on PostgreSQL, MySQL and MariaDB, the
+same stored second), and then rewrites the same policy. Otherwise it is
+refused as stale.
+
+The apply changes only the namespace's policy. It marks, archives and prunes
+no run, and it does not start a grace period. The policy is active from
+`applied_at`. Each later retention pass prunes the closed, unarchived runs
+past the cutoff as it stands at that pass. That can include runs that closed
+or aged after the plan, and it skips runs that are archived or held at that
+time.
+
+##### Update the policy directly {#update-the-retention-policy-directly}
+
+Without a plan, update the namespace with an admin credential. The new policy
+is active at once:
 
 ```bash
 curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \

@@ -484,8 +484,12 @@ curl -X POST "$SERVER/api/activities" \
 | `POST` | `/api/namespaces` | 名前空間を作成。 |
 | `GET` | `/api/namespaces/{namespace}` | 保持、メタデータ、ストレージポリシーを説明。 |
 | `PUT` | `/api/namespaces/{namespace}` | メタデータ・保持を更新。 |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | 提案した保持ポリシーを適用せずにプレビュー。ネイティブ Server 3.30.0 以降。 |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | 計画がまだ有効な間だけ、計画した保持ポリシーを適用。ネイティブ Server 3.30.0 以降。 |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | 外部ペイロードストレージポリシーを設定。 |
 | `POST` | `/api/storage/test` | 設定済みドライバーで小・大のペイロードを書いて読み戻す。 |
+
+保持計画と適用のルートには admin ロールが必要です。計画は何も書き込みません。適用は古い計画や一致しない計画を拒否し、遡及的な削除には明示的な承認を求めます。`PUT /api/namespaces/{namespace}` は引き続き保持ポリシーを直ちに有効にします。手順、応答フィールド、拒否の詳細は[保持設定の変更をプレビューして適用する](./server.md#preview-and-apply-a-retention-change)を参照してください。
 
 外部ペイロードストレージポリシーは、大きいペイロードエンベロープに生バイト列ではなく安定した参照を持たせます。ローカルポリシーは設定済みファイルシステムパスから解決します。`s3`、`gcs`、`azure` などのオブジェクトストレージポリシーは、Server 上で明示的に設定したファイルシステムディスクとバケット・プレフィックス設定を使います。
 
