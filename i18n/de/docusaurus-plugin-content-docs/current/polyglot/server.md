@@ -282,7 +282,60 @@ Am **19. Oktober um 12:00 UTC** ist ein am **1. Oktober um 12:00 UTC** geschloss
 
 Prüfen Sie vor einer Verkürzung Abschlusszeiten und erhalten Sie benötigte Historie. Exportieren Sie wichtige Läufe über die [Historienexport-API](./server-api-reference.md#workflow-control-plane) und halten Sie wiederherstellbare Datenbank- und Payload-Sicherungen vor. Ein Replay-Export benötigt seine referenzierten Objekte und ersetzt keine Datenbank- und Speichersicherung.
 
-Aktualisieren Sie den Namespace mit Admin-Zugangsdaten:
+##### Aufbewahrungsänderung prüfen und anwenden {#preview-and-apply-a-retention-change}
+
+Der native Server ab 3.30.0 zeigt die Auswirkung einer vorgeschlagenen Regel, bevor sie wirksam wird, und wendet sie nur an, solange diese Vorschau noch gilt. Beide Routen benötigen Admin-Zugangsdaten. PHP Server 2.x und ältere native Versionen bieten sie nicht an. `PUT /api/namespaces/{namespace}`, unten beschrieben, bleibt unverändert. Es aktiviert eine Regel weiterhin sofort, ohne Plan oder Bestätigung, sodass bestehende Clients weiter funktionieren.
+
+Fordern Sie einen Plan mit dem vorgeschlagenen `retention_mode` und `retention_days` an. Die Felder folgen den Regeln der Namespace-Aktualisierung, und ein weggelassenes Feld behält seinen aktuellen Wert. Das optionale `scan_limit` (Standard 1000, höchstens 10000) begrenzt jede Zählung. Das optionale `hold_scan_limit` (Standard 100, höchstens 1000) begrenzt, wie viele Läufe auf Sperren geprüft werden.
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+Der Plan schreibt nichts. Er ändert keine Regel, markiert keinen Lauf, ruft kein Payload-Objekt ab und bereinigt nichts. Prüfen Sie vor dem Anwenden diese Felder der Antwort `durable-workflow.v2.retention-plan.v1`:
+
+| Feld | Bedeutung |
+| --- | --- |
+| `current_policy`, `proposed_policy` | Jede Regel mit ihrem Stichtag. |
+| `retroactive` | `true`, wenn der Vorschlag abgeschlossene Läufe zur Bereinigung freigibt, die die aktuelle Regel behält, etwa durch weniger Tage oder eine begrenzte Regel anstelle von `forever`. |
+| `changes` | Abgeschlossene, nicht archivierte Läufe, die bereinigbar werden (`newly_eligible`), es nicht mehr sind (`no_longer_eligible`), es bleiben (`unchanged_eligible`) oder aufbewahrt bleiben (`unchanged_retained`). Jede Gruppe nennt bis zu fünf Beispielläufe, die ältesten zuerst. |
+| `exclusions` | Archivierte Läufe jenseits des vorgeschlagenen Stichtags (`archived`), abgeschlossene Läufe, die ein `forever`-Vorschlag behält (`forever`), und offene Läufe (`not_terminal`). Außerdem bereinigbare Läufe, die eine Bereinigung derzeit überspringen würde, wegen einer offenen verwaisten Aktivität (`detached_activity_hold`), einer Payload-Referenz, die der Server nicht abschließend klären kann (`external_payload_cleanup_unavailable`), oder einer aktiven Online-Sicherungssperre (`backup_hold`). |
+| `policy_revision`, `plan_revision` | Die Werte, die die Anwendung zurücksenden muss. `policy_revision` kennzeichnet die aktuelle Regel des Namespace. `plan_revision` bindet den Plan an diese Regel und genau diesen Vorschlag. |
+
+Jede Zählung enthält `count`, `lower_bound` und `complete`. Erreicht eine Zählung ihre Suchgrenze, hat sie `count: null` und `complete: false`, und die Liste `incomplete` des Plans nennt sie. Behandeln Sie eine solche Zählung als Mindestwert, nicht als genaue Zahl. Jede Änderung von Aufbewahrungsmodus oder -tagen erzeugt eine neue `policy_revision`. Andere Namespace-Aktualisierungen, etwa eine geänderte Beschreibung, verändern ebenfalls `updated_at` und erzeugen daher meist eine neue Revision, aber nur in der gespeicherten Genauigkeit. PostgreSQL und MySQL runden `updated_at` auf die nächste volle Sekunde, MariaDB schneidet es auf die Sekunde ab. Eine Aktualisierung, die dieselbe Sekunde speichert wie der vorige Namespace-Schreibvorgang, lässt die Revision daher unverändert. Der Server schreibt SQLite-Zeiten mit Millisekunden.
+
+Der Plan ist eine Momentaufnahme, keine Löschmenge. Er liest einen einzigen Datenstand und beschreibt nur diesen Moment. Bis zum nächsten Aufbewahrungsdurchlauf können Läufe abgeschlossen werden, den Stichtag überschreiten, archiviert werden oder Sperren erhalten und verlieren, und die Regel selbst kann sich ändern. Der Plan ist keine feste Liste der Läufe, die eine spätere Bereinigung löscht.
+
+Um den Plan anzuwenden, senden Sie denselben Vorschlag mit `policy_revision` und `plan_revision` des Plans. Ein rückwirkender Vorschlag benötigt zusätzlich `"confirm_retroactive_pruning": true`, weil die Bereinigung unumkehrbar ist. Ersetzen Sie die beiden Revisionen in diesem Beispiel durch die Werte Ihres Plans:
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan/apply" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7,"policy_revision":"sha256:…","plan_revision":"sha256:…","confirm_retroactive_pruning":true}'
+```
+
+Die Prüfungen und die Regeländerung laufen in einer Schreibtransaktion, sodass keine andere Regeländerung dazwischen eintreffen kann. Die Anwendung ändert nichts und lehnt ab, wenn:
+
+| Status und Grund | Ursache | Nächster Schritt |
+| --- | --- | --- |
+| `409 retention_policy_revision_stale` | Der Namespace hat sich nach dem Plan geändert. Die Antwort enthält die aktuelle `policy_revision`. | Einen neuen Plan anfordern und prüfen. |
+| `409 retention_plan_revision_mismatch` | Die gesendete Regel ist nicht die geplante Regel. | Die geplante Regel senden oder diese Regel zuerst planen. |
+| `422 retention_pruning_confirmation_required` | Der Vorschlag ist rückwirkend und `confirm_retroactive_pruning` ist nicht `true`. | Die neu bereinigbaren Läufe und Ihre Sicherungen prüfen, dann bestätigen. |
+| `422`-Validierungsfehler, `422 invalid_namespace_definition` | Eine Revision fehlt, oder der Vorschlag verletzt die Regeln der Namespace-Aktualisierung. | Die Anfrage korrigieren und neu planen, falls sich der Vorschlag ändert. |
+
+Eine angenommene Anwendung antwortet mit dem Schema `durable-workflow.v2.retention-apply.v1`. Sie meldet `applied_at`, `retroactive`, `confirmed_retroactive_pruning`, die `previous_policy` mit ihrer `previous_policy_revision` und die angewendete `policy` mit ihrer neuen `policy_revision`. Ein Plan, der Aufbewahrungsmodus oder -tage ändert, kann nicht zweimal angewendet werden, weil seine Anwendung die Revision ändert. Ein Plan, der den aktuellen Modus und die aktuellen Tage vorschlägt, lässt die Regel unverändert, verändert aber trotzdem `updated_at`, wodurch andere offene Pläne für den Namespace veraltet sein können. Eine erneute Anwendung wird nur angenommen, wenn sich das gespeicherte `updated_at` nicht geändert hat (bei PostgreSQL, MySQL und MariaDB dieselbe gespeicherte Sekunde), und schreibt dann dieselbe Regel noch einmal. Andernfalls wird sie als veraltet abgelehnt.
+
+Die Anwendung ändert nur die Regel des Namespace. Sie markiert, archiviert und bereinigt keinen Lauf und startet keine Schonfrist. Die Regel gilt ab `applied_at`. Jeder spätere Aufbewahrungsdurchlauf bereinigt die abgeschlossenen, nicht archivierten Läufe jenseits des Stichtags, wie er bei diesem Durchlauf gilt. Das kann Läufe einschließen, die nach dem Plan abgeschlossen wurden oder älter geworden sind, und überspringt Läufe, die zu diesem Zeitpunkt archiviert oder gesperrt sind.
+
+##### Regel direkt aktualisieren {#update-the-retention-policy-directly}
+
+Ohne Plan aktualisieren Sie den Namespace mit Admin-Zugangsdaten. Die neue Regel gilt sofort:
 
 ```bash
 curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \

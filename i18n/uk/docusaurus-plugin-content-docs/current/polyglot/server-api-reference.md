@@ -632,8 +632,12 @@ curl -X POST "$SERVER/api/activities" \
 | `POST` | `/api/namespaces` | Створити namespace. |
 | `GET` | `/api/namespaces/{namespace}` | Описати retention, метадані й політику сховища namespace. |
 | `PUT` | `/api/namespaces/{namespace}` | Оновити метадані чи retention namespace. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | Попередньо переглянути запропоновану політику retention без застосування. Нативний Server 3.30.0 і новіші. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | Застосувати сплановану політику retention, лише поки план чинний. Нативний Server 3.30.0 і новіші. |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | Налаштувати політику зовнішнього сховища payload namespace. |
 | `POST` | `/api/storage/test` | Перевірити запис і читання малого й великого payload через налаштований драйвер сховища. |
+
+Маршрути плану й застосування retention вимагають ролі admin. План нічого не записує. Застосування відхиляє застарілий чи невідповідний план і вимагає явного підтвердження ретроактивного видалення. `PUT /api/namespaces/{namespace}` і далі активує політику retention одразу. Процес, поля відповіді й відмови описано в розділі [Попередній перегляд і застосування зміни retention](./server.md#preview-and-apply-a-retention-change).
 
 Політики зовнішнього сховища payload дозволяють великим обгорткам містити
 сталі посилання замість байтів. Локальні політики використовують налаштований
