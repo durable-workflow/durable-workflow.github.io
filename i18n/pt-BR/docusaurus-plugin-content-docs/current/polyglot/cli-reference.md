@@ -226,7 +226,7 @@ runtime, não no arquivo de perfil.
 | `dw workflow:show-run <workflow-id> <run-id>` | Mostra uma execução. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Lê eventos do histórico da execução. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Exporta o pacote de histórico da execução. Payloads externos permanecem como referências. | `--output-file`, opções globais |
-| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Grava um arquivo autossuficiente verificado de uma execução encerrada, incluindo os bytes de cada payload externo (Server native). | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Grava um arquivo autossuficiente verificado de uma execução encerrada, incluindo os bytes de cada payload externo (Server native). | `--hold-ttl`, `--json`, opções globais |
 | `dw workflow:history-archive-check <directory>` | Verifica um arquivo de histórico apenas a partir dos arquivos que o compõem. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Envia um sinal. | `--request-id`, `--run-id`, opções de entrada, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Executa consulta de workflow somente leitura. | `--run-id`, opções de entrada, `--json` |
@@ -312,8 +312,9 @@ de resultado.
 ### Arquivos de histórico {#history-archives}
 
 `dw workflow:history-archive` (dw 2.13.0 ou posterior, Server native
-3.30.0 ou posterior, credencial de administrador) grava uma execução
-encerrada em um diretório. O diretório contém a exportação de histórico do
+3.0.3 ou posterior, credencial de administrador) grava uma execução
+encerrada em um diretório. Ele usa as rotas do Server de exportação de
+histórico, busca de payloads externos e bloqueio de backup. O diretório contém a exportação de histórico do
 Server, os bytes exatos de cada payload externo referenciado pela exportação,
 um `manifest.json` com o codec, o tamanho e o SHA-256 de cada objeto, e um
 `receipt.json`.
@@ -327,8 +328,13 @@ A cópia funciona assim:
 4. O dw confirma que o bloqueio nunca expirou.
 5. Só então o dw grava o recibo.
 
-O bloqueio é liberado em todos os caminhos. Isso inclui Ctrl-C e, no Unix,
-SIGTERM.
+O bloqueio é liberado em todos os caminhos. Isso inclui Ctrl-C (código de saída
+130) e, no Unix, SIGTERM (código de saída 143). Nenhum recibo é gravado após um
+sinal.
+
+`--hold-ttl` define a duração do bloqueio em segundos: 900 por padrão, de 60 a
+3600. Cada objeto precisa chegar dentro da metade dessa duração, então aumente o
+valor para objetos grandes.
 
 O comando informa um de três resultados:
 
@@ -339,14 +345,19 @@ O comando informa um de três resultados:
 | `refused` | 2 | Nada foi copiado. A execução está aberta, limpa ou ocultada, seu histórico tem uma lacuna de sequência, ou ela contém uma referência que o transporte do runtime não consegue buscar. |
 
 Outros backups usam o mesmo bloqueio, então uma cópia é recusada com HTTP 409
-enquanto outro o mantém.
+(código de saída 2) enquanto outro o mantém; tente novamente mais tarde. Um
+token sem permissão de administrador recebe HTTP 403 (código de saída 4), e nada
+é copiado. Um Server sem a rota do bloqueio de backup, ou um `--hold-ttl`
+inválido, termina com o código 1. Os demais erros de conexão, autenticação e do
+Server mantêm seus códigos de saída habituais.
 
 `dw workflow:history-archive-check <directory>` não precisa de Server. Ele lê
 cada arquivo de volta e informa `verified`, `incomplete` com uma constatação
 codificada para cada verificação que falhou, ou `refused`.
 
-O Server native 3.30.0 também verifica um arquivo offline com
-`durable-workflow-server history-archive verify <directory>`. O comando lê
+O Server native 3.30.0 adiciona apenas um verificador offline,
+`durable-workflow-server history-archive verify <directory>`, de que o
+`dw workflow:history-archive` não precisa. O verificador lê
 apenas o diretório, imprime o relatório JSON e só termina com 0 quando o
 resultado é `verified`.
 

@@ -237,7 +237,7 @@ l'environnement du runtime plutôt que dans le fichier de profil.
 | `dw workflow:show-run <workflow-id> <run-id>` | Afficher une exécution. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Lire les événements de l'historique d'une exécution. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Exporter le bundle de l'historique d'exécution. Les payloads externes restent des références. | `--output-file`, options globales |
-| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Écrire une archive autonome vérifiée d'une exécution fermée, y compris les octets de chaque payload externe (Server native). | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Écrire une archive autonome vérifiée d'une exécution fermée, y compris les octets de chaque payload externe (Server native). | `--hold-ttl`, `--json`, options globales |
 | `dw workflow:history-archive-check <directory>` | Vérifier une archive d'historique à partir de ses seuls fichiers. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Envoyer un signal. | `--request-id`, `--run-id`, options d'entrée, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Exécuter une requête de lecture de workflow. | `--run-id`, options d'entrée, `--json` |
@@ -326,8 +326,10 @@ avant l'envoi d'une requête de résultat.
 ### Archives d'historique {#history-archives}
 
 `dw workflow:history-archive` (dw 2.13.0 ou ultérieur, Server native
-3.30.0 ou ultérieur, identifiant administrateur) écrit une exécution
-fermée dans un répertoire. Le répertoire contient l'export d'historique du
+3.0.3 ou ultérieur, identifiant administrateur) écrit une exécution
+fermée dans un répertoire. La commande utilise les routes du Server pour
+l'export d'historique, la récupération des payloads externes et le verrou de
+sauvegarde. Le répertoire contient l'export d'historique du
 Server, les octets exacts de chaque payload externe référencé par l'export, un
 `manifest.json` indiquant le codec, la longueur et le SHA-256 de chaque objet,
 et un `receipt.json`.
@@ -342,8 +344,13 @@ La copie se déroule ainsi :
 4. dw confirme que le verrou n'a jamais expiré.
 5. Alors seulement, dw écrit le reçu.
 
-Le verrou est libéré dans tous les cas. Cela inclut Ctrl-C et, sous Unix,
-SIGTERM.
+Le verrou est libéré dans tous les cas. Cela inclut Ctrl-C (code de sortie 130)
+et, sous Unix, SIGTERM (code de sortie 143). Aucun reçu n'est écrit après un
+signal.
+
+`--hold-ttl` fixe la durée du verrou en secondes : 900 par défaut, de 60 à 3600.
+Chaque objet doit arriver dans la moitié de cette durée ; augmentez-la donc pour
+les gros objets.
 
 La commande signale l'un des trois résultats suivants :
 
@@ -354,14 +361,19 @@ La commande signale l'un des trois résultats suivants :
 | `refused` | 2 | Rien n'a été copié. L'exécution est ouverte, nettoyée ou occultée, son historique présente un trou de séquence, ou elle contient une référence que le transport d'exécution ne peut pas récupérer. |
 
 D'autres sauvegardes utilisent le même verrou : une copie est donc refusée avec
-HTTP 409 tant qu'une autre le détient.
+HTTP 409 (code de sortie 2) tant qu'une autre le détient ; réessayez plus tard.
+Un jeton sans droits d'administrateur reçoit HTTP 403 (code de sortie 4), et
+rien n'est copié. Un Server sans la route du verrou de sauvegarde, ou une valeur
+`--hold-ttl` invalide, termine avec le code 1. Les autres erreurs de connexion,
+d'authentification et du Server conservent leurs codes de sortie habituels.
 
 `dw workflow:history-archive-check <directory>` ne nécessite aucun Server. Cette
 commande relit chaque fichier et signale `verified`, `incomplete` avec un
 constat codé pour chaque contrôle échoué, ou `refused`.
 
-Server native 3.30.0 vérifie aussi une archive hors ligne avec
-`durable-workflow-server history-archive verify <directory>`. La commande ne
+Server native 3.30.0 ajoute seulement un vérificateur hors ligne,
+`durable-workflow-server history-archive verify <directory>`, dont
+`dw workflow:history-archive` n'a pas besoin. Ce vérificateur ne
 lit que le répertoire, affiche le rapport JSON et ne se termine avec 0 que si
 le résultat est `verified`.
 

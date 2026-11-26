@@ -392,7 +392,7 @@ Verwenden Sie diese Prüfreihenfolge:
 
 Die entsprechenden Waterline-Routen stehen in der [Waterline-Betriebs-API-Referenz](./waterline-operator-api.md).
 
-Prüfsummen- und Strukturprüfungen beweisen nicht, dass ein Export alle ursprünglichen Ereignisse oder unabhängige externe Bytes enthält. Lehnen Sie bereits bereinigte Quellen ab. Das falsche Vollständigkeitsmerkmal bleibt unter [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) ein offener Fehler. Dieses manuelle Verfahren erzeugt auch kein eigenständiges Archiv. Verwenden Sie dafür auf nativem Server `dw workflow:history-archive` ([Befehle für Historienarchive](./polyglot/cli-reference.md#history-archives)). Unterscheiden Sie diese Produktlücken von den tatsächlich bestandenen Wiederherstellungsprüfungen Ihrer Bereitstellung.
+Prüfsummen- und Strukturprüfungen beweisen nicht, dass ein Export alle ursprünglichen Ereignisse oder unabhängige externe Bytes enthält. Lehnen Sie bereits bereinigte Quellen ab. Das falsche Vollständigkeitsmerkmal bleibt unter [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) ein offener Fehler. Dieses manuelle Verfahren erzeugt auch kein eigenständiges Archiv. Verwenden Sie dafür auf nativem Server `dw workflow:history-archive` ([Befehle für Historienarchive](./polyglot/cli-reference.md#history-archives)). Unterscheiden Sie diese Produktlücke von den tatsächlich bestandenen Wiederherstellungsprüfungen Ihrer Bereitstellung.
 
 ## Vertrag für Sicherung, Wiederherstellung und Notfallwiederanlauf {#backup-restore-and-disaster-recovery-contract}
 

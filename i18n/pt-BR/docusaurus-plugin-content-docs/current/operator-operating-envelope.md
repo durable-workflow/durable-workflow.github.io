@@ -395,7 +395,7 @@ Use esta sequência de verificação:
 
 As rotas correspondentes de exportação e arquivamento do Waterline estão na [referência da sua API do operador](./waterline-operator-api.md).
 
-Verificações de checksum e estrutura não provam que uma exportação contenha todos os eventos originais ou bytes externos independentes. Recuse fontes já limpas: o indicador incorreto de exportação completa continua sendo um defeito aberto em [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Este procedimento manual também não produz um arquivo autossuficiente. Para isso, no Server native, use `dw workflow:history-archive` ([comandos de arquivo de histórico](./polyglot/cli-reference.md#history-archives)). Separe essas lacunas do produto das verificações de recuperação que sua implantação realmente passou.
+Verificações de checksum e estrutura não provam que uma exportação contenha todos os eventos originais ou bytes externos independentes. Recuse fontes já limpas: o indicador incorreto de exportação completa continua sendo um defeito aberto em [Workflow #856](https://github.com/durable-workflow/workflow/issues/856). Este procedimento manual também não produz um arquivo autossuficiente. Para isso, no Server native, use `dw workflow:history-archive` ([comandos de arquivo de histórico](./polyglot/cli-reference.md#history-archives)). Separe essa lacuna do produto das verificações de recuperação que sua implantação realmente passou.
 
 ## Contrato de backup, restauração e recuperação de desastres {#backup-restore-and-disaster-recovery-contract}
 

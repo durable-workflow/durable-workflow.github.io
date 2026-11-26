@@ -624,8 +624,8 @@ complete-export flag remains an open defect in
 This manual procedure also does not produce a self-contained archive. On
 native Server, use `dw workflow:history-archive`
 ([history archive commands](./polyglot/cli-reference.md#history-archives)) for
-that. Keep those product gaps separate from
-the recovery checks your deployment actually passed.
+that. Keep that product gap separate from the recovery checks your deployment
+actually passed.
 
 For Waterline users, the matching history-export and archive routes are listed
 in the [Waterline Operator API Reference](./waterline-operator-api.md).

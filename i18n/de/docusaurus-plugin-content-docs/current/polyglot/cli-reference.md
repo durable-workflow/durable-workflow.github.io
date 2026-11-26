@@ -232,7 +232,7 @@ der Laufzeitumgebung statt in der Profildatei bleiben.
 | `dw workflow:show-run <workflow-id> <run-id>` | Einen Lauf anzeigen. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Historienereignisse eines Laufs lesen. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Bundle der Laufhistorie exportieren. Externe Payloads bleiben Referenzen. | `--output-file`, globale Optionen |
-| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Eigenständiges, verifiziertes Archiv eines geschlossenen Laufs schreiben, einschließlich der Bytes jeder externen Payload (nativer Server). | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Eigenständiges, verifiziertes Archiv eines geschlossenen Laufs schreiben, einschließlich der Bytes jeder externen Payload (nativer Server). | `--hold-ttl`, `--json`, globale Optionen |
 | `dw workflow:history-archive-check <directory>` | Ein Historienarchiv allein anhand seiner Dateien prüfen. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Signal senden. | `--request-id`, `--run-id`, Eingabeoptionen, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Schreibgeschützte Workflow-Abfrage ausführen. | `--run-id`, Eingabeoptionen, `--json` |
@@ -319,8 +319,9 @@ mit 8, bevor eine Ergebnisanfrage gesendet wird.
 ### Historienarchive {#history-archives}
 
 `dw workflow:history-archive` (dw 2.13.0 oder neuer, nativer Server
-3.30.0 oder neuer, Admin-Zugangsdaten) schreibt einen geschlossenen Lauf
-in ein Verzeichnis. Das Verzeichnis enthält den Historienexport des Servers, die
+3.0.3 oder neuer, Admin-Zugangsdaten) schreibt einen geschlossenen Lauf
+in ein Verzeichnis. Der Befehl verwendet die Server-Routen für den
+Historienexport, den Abruf externer Payloads und die Backup-Sperre. Das Verzeichnis enthält den Historienexport des Servers, die
 exakten Bytes jeder externen Payload, auf die der Export verweist, eine
 `manifest.json` mit Codec, Länge und SHA-256 jedes Objekts sowie eine
 `receipt.json`.
@@ -334,8 +335,13 @@ Die Kopie läuft so ab:
 4. dw bestätigt, dass die Sperre nie abgelaufen ist.
 5. Erst dann schreibt dw die Quittung.
 
-Die Sperre wird auf jedem Weg freigegeben. Das gilt auch für Ctrl-C und unter
-Unix für SIGTERM.
+Die Sperre wird auf jedem Weg freigegeben. Das gilt auch für Ctrl-C (Exitcode
+130) und unter Unix für SIGTERM (Exitcode 143). Nach einem Signal wird keine
+Quittung geschrieben.
+
+`--hold-ttl` legt die Laufzeit der Sperre in Sekunden fest: standardmäßig 900,
+zulässig von 60 bis 3600. Jedes Objekt muss innerhalb der halben Laufzeit
+eintreffen; erhöhen Sie den Wert daher für große Objekte.
 
 Der Befehl meldet eines von drei Ergebnissen:
 
@@ -346,14 +352,19 @@ Der Befehl meldet eines von drei Ergebnissen:
 | `refused` | 2 | Es wurde nichts kopiert. Der Lauf ist offen, bereinigt oder geschwärzt, seine Historie hat eine Sequenzlücke, oder er enthält eine Referenz, die der Laufzeittransport nicht abrufen kann. |
 
 Andere Backups verwenden dieselbe Sperre. Solange eines sie hält, wird eine
-Kopie mit HTTP 409 abgelehnt.
+Kopie mit HTTP 409 abgelehnt (Exitcode 2); versuchen Sie es später erneut. Ein
+Token ohne Admin-Rechte erhält HTTP 403 (Exitcode 4), und es wird nichts
+kopiert. Ein Server ohne die Route für die Backup-Sperre oder ein ungültiger
+Wert für `--hold-ttl` führt zu Exitcode 1. Andere Verbindungs-,
+Authentifizierungs- und Serverfehler behalten ihre üblichen Exitcodes.
 
 `dw workflow:history-archive-check <directory>` benötigt keinen Server. Der
 Befehl liest jede Datei zurück und meldet `verified`, `incomplete` mit einem
 codierten Befund für jede fehlgeschlagene Prüfung oder `refused`.
 
-Der native Server 3.30.0 prüft ein Archiv auch offline mit
-`durable-workflow-server history-archive verify <directory>`. Der Befehl liest
+Der native Server 3.30.0 ergänzt nur einen Offline-Prüfer,
+`durable-workflow-server history-archive verify <directory>`, den
+`dw workflow:history-archive` nicht benötigt. Der Prüfer liest
 nur das Verzeichnis, gibt den JSON-Bericht aus und endet nur beim Ergebnis
 `verified` mit 0.
 

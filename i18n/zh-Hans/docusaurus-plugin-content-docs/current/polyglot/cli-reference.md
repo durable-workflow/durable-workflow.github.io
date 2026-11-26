@@ -149,7 +149,7 @@ dw server:info --output=json \
 | `dw workflow:show-run <workflow-id> <run-id>` | 展示单次运行。 | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | 读取运行历史事件。 | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | 导出运行历史包。外部负载仍为引用。 | `--output-file`, 全局选项 |
-| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | 为已关闭的运行写出自包含且经过验证的归档，包括每个外部负载的字节（native Server）。 | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | 为已关闭的运行写出自包含且经过验证的归档，包括每个外部负载的字节（native Server）。 | `--hold-ttl`, `--json`, 全局选项 |
 | `dw workflow:history-archive-check <directory>` | 仅凭归档自身的文件验证历史归档。 | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | 发送信号。 | `--request-id`, `--run-id`, 输入选项, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | 执行只读工作流查询。 | `--run-id`, 输入选项, `--json` |
@@ -208,7 +208,7 @@ dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeou
 
 ### 历史归档 {#history-archives}
 
-`dw workflow:history-archive`（dw 2.13.0 或更高版本、native Server 3.30.0 或更高版本、管理员凭据）将一个已关闭的运行写入目录。该目录包含 Server 的历史导出、导出所引用的每个外部负载的确切字节、记录每个对象编解码器、长度和 SHA-256 的 `manifest.json`，以及 `receipt.json`。
+`dw workflow:history-archive`（dw 2.13.0 或更高版本、native Server 3.0.3 或更高版本、管理员凭据）将一个已关闭的运行写入目录。它使用 Server 的历史导出、外部负载获取和备份保留锁路由。该目录包含 Server 的历史导出、导出所引用的每个外部负载的确切字节、记录每个对象编解码器、长度和 SHA-256 的 `manifest.json`，以及 `receipt.json`。
 
 复制过程如下：
 
@@ -218,7 +218,9 @@ dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeou
 4. dw 确认保留锁从未失效。
 5. 只有在此之后，dw 才写入回执。
 
-无论走哪条路径，保留锁都会被释放，包括 Ctrl-C，以及 Unix 上的 SIGTERM。
+无论走哪条路径，保留锁都会被释放，包括 Ctrl-C（退出码 130），以及 Unix 上的 SIGTERM（退出码 143）。收到信号后不会写入回执。
+
+`--hold-ttl` 以秒为单位设置保留锁的租期：默认 900，范围为 60 到 3600。每个对象必须在租期的一半内到达，因此对于大型对象请调高该值。
 
 该命令报告以下三种结果之一：
 
@@ -228,11 +230,11 @@ dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeou
 | `incomplete` | 1 | 未写入回执。再次运行同一命令即可继续。 |
 | `refused` | 2 | 未复制任何内容。该运行仍处于打开状态、已清理或已脱敏，其历史存在序号缺口，或者它包含运行时传输无法获取的引用。 |
 
-其他备份也使用同一个保留锁，因此在其他备份持有该锁时，复制会以 HTTP 409 被拒绝。
+其他备份也使用同一个保留锁，因此在其他备份持有该锁时，复制会以 HTTP 409（退出码 2）被拒绝；请稍后重试。非管理员令牌会收到 HTTP 403（退出码 4），且不会复制任何内容。Server 不提供备份保留锁路由或 `--hold-ttl` 无效时，退出码为 1。其他连接、认证和 Server 错误保持其通常的退出码。
 
 `dw workflow:history-archive-check <directory>` 不需要 Server。它会读回每个文件，并报告 `verified`、针对每项失败检查附带编码发现的 `incomplete`，或 `refused`。
 
-native Server 3.30.0 还可以使用 `durable-workflow-server history-archive verify <directory>` 离线验证归档。该命令只读取目录，输出 JSON 报告，并且仅在结果为 `verified` 时以 0 退出。
+native Server 3.30.0 仅新增离线验证命令 `durable-workflow-server history-archive verify <directory>`，`dw workflow:history-archive` 并不需要它。该验证命令只读取目录，输出 JSON 报告，并且仅在结果为 `verified` 时以 0 退出。
 
 归档仅涵盖所选运行，不是数据库备份。归档以未加密形式写入，其生命周期由应用负责。格式、范围和发现代码见 Server 的[历史归档指南](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)。
 

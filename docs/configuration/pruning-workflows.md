@@ -79,8 +79,8 @@ qualify a full application replay or restoration of external objects.
 
 These are application-owned steps for embedded exports. An embedded export
 keeps references to external payloads, so a successful export or checksum
-check does not preserve the external bytes. On native Server 3.30.0 or
-later, `dw` 2.13.0 or later writes a
+check does not preserve the external bytes. On native Server 3.0.3 or
+later, `dw` 2.13.0 or later with an admin credential writes a
 [self-contained verified history archive](../polyglot/cli-reference.md#history-archives)
 instead. That archive copies every referenced external object under the
 Server's backup hold, then cold-verifies the bytes.

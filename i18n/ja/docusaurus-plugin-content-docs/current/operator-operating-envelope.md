@@ -395,7 +395,7 @@ Workflow 2.6.3 以降では `details_pruned_at` がある実行は、summary 欠
 
 Waterline の対応ルートは [Waterline 運用 API リファレンス](./waterline-operator-api.md)を参照してください。
 
-チェックサムと構造の確認では、すべての元イベントや独立した外部バイトがエクスポートに含まれることは証明できません。削除済みのソースは拒否してください。誤った完全エクスポートフラグは、[Workflow #856](https://github.com/durable-workflow/workflow/issues/856) で未解決の不具合です。この手動手順では自己完結型アーカイブも作成されません。native Server では、そのために `dw workflow:history-archive`（[履歴アーカイブのコマンド](./polyglot/cli-reference.md#history-archives)）を使用してください。これらの製品の不足と、実際にデプロイ環境が合格した復旧確認を区別してください。
+チェックサムと構造の確認では、すべての元イベントや独立した外部バイトがエクスポートに含まれることは証明できません。削除済みのソースは拒否してください。誤った完全エクスポートフラグは、[Workflow #856](https://github.com/durable-workflow/workflow/issues/856) で未解決の不具合です。この手動手順では自己完結型アーカイブも作成されません。native Server では、そのために `dw workflow:history-archive`（[履歴アーカイブのコマンド](./polyglot/cli-reference.md#history-archives)）を使用してください。この製品の不足と、実際にデプロイ環境が合格した復旧確認を区別してください。
 
 ## バックアップ、復元、災害復旧の契約 {#backup-restore-and-disaster-recovery-contract}
 

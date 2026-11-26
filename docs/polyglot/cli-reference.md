@@ -235,7 +235,7 @@ runtime environment and not in the profile file.
 | `dw workflow:show-run <workflow-id> <run-id>` | Show one run. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Read run history events. | `--follow`, `--page-size`, `--json` |
 | `dw workflow:history-export <workflow-id> <run-id>` | Export the run-history bundle. External payloads stay references. | `--output-file`, global options |
-| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Write a self-contained verified archive of a closed run, including every external payload's bytes (native Server). | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Write a self-contained verified archive of a closed run, including every external payload's bytes (native Server). | `--hold-ttl`, `--json`, global options |
 | `dw workflow:history-archive-check <directory>` | Verify a history archive from its files alone. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Send a signal. | `--request-id`, `--run-id`, input options, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Execute a read-only workflow query. | `--run-id`, input options, `--json` |
@@ -318,11 +318,12 @@ including PHP Server 2.x, exits 8 before an outcome request is sent.
 
 ### History archives {#history-archives}
 
-`dw workflow:history-archive` (dw 2.13.0 or later, native Server
-3.30.0 or later, admin credential) writes one closed run to a
-directory. The directory holds the Server's history export, the exact bytes of
-every external payload the export references, a `manifest.json` with each
-object's codec, length and SHA-256, and a `receipt.json`.
+`dw workflow:history-archive` (dw 2.13.0 or later, native Server 3.0.3 or
+later, admin credential) writes one closed run to a directory. It uses the
+Server's history export, external payload fetch and backup hold routes. The
+directory holds the Server's history export, the exact bytes of every external
+payload the export references, a `manifest.json` with each object's codec,
+length and SHA-256, and a `receipt.json`.
 
 The copy works like this:
 
@@ -333,8 +334,11 @@ The copy works like this:
 4. dw confirms that the hold never lapsed.
 5. Only then does dw write the receipt.
 
-The hold is released on every path. That includes Ctrl-C and, on Unix,
-SIGTERM.
+The hold is released on every path. That includes Ctrl-C (exit 130) and, on
+Unix, SIGTERM (exit 143). No receipt is written after a signal.
+
+`--hold-ttl` sets the hold lease in seconds: 900 by default, from 60 to 3600.
+Each object must arrive within half the lease, so raise it for large objects.
 
 The command reports one of three outcomes:
 
@@ -344,15 +348,19 @@ The command reports one of three outcomes:
 | `incomplete` | 1 | No receipt was written. Run the same command again to resume. |
 | `refused` | 2 | Nothing was copied. The run is open, pruned or redacted, its history has a sequence gap, or it holds a reference the runtime transport cannot fetch. |
 
-Other backups use the same hold, so a copy is refused with HTTP 409 while one
-holds it.
+Other backups use the same hold, so a copy is refused with HTTP 409 (exit 2)
+while one holds it; retry later. A non-admin token gets HTTP 403 (exit 4), and
+nothing is copied. A Server without the backup hold route, or an invalid
+`--hold-ttl`, exits 1. Other connection, authentication and Server errors keep
+their usual exit codes.
 
 `dw workflow:history-archive-check <directory>` needs no Server. It reads every
 file back and reports `verified`, `incomplete` with a coded finding for each
 failed check, or `refused`.
 
-Native Server 3.30.0 also verifies an archive offline with
-`durable-workflow-server history-archive verify <directory>`. It reads only the
+Native Server 3.30.0 adds only an offline verifier,
+`durable-workflow-server history-archive verify <directory>`, which
+`dw workflow:history-archive` does not need. The verifier reads only the
 directory, prints the JSON report and exits 0 only when the outcome is
 `verified`.
 
