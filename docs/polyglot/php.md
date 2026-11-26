@@ -324,6 +324,26 @@ same parser as the embedded package.
 The [PHP SDK duration reference](https://php.durable-workflow.com/build/workflows-activities/#durations)
 lists every unit.
 
+## Replay-safe workflow time {#replay-safe-workflow-time}
+
+`WorkflowContext::replayNow()` returns replay-safe UTC business time as a
+`DateTimeImmutable`. At ordinary entry it is the run's start (for a redrive successor, the original run's start) from the task's
+`replay_clock` (Server 3.6.0 and later). After each supported consumed durable
+step (activities, timers, child workflows, condition waits, validated groups)
+it is that step's recorded time. Repeated reads between durable steps return
+the same value, and every replay returns the same values.
+
+Where the SDK cannot prove the time, it throws
+`DurableWorkflow\Exception\ReplayClockUnavailable`. That includes side effects,
+version markers and local activities, which stay unavailable until Core defines
+a persisted time for them. A clock read right after such a step is not portable
+across runners or mixed fleets; see
+[Clock reads after inline steps are not portable](./python.md#inline-step-clock-reads).
+Query and update handlers read history snapshots and never rebuild the workflow
+body. See the
+[cross-SDK clock semantics](./python.md#advancing-replay-clock) for the full
+list, release status and the upgrade note.
+
 ## Entry compatibility and recovery {#entry-compatibility-and-recovery}
 
 **Released support.** PHP SDK 2.5.4 introduced the entry safeguard below, with routing and recovery support in Server 2.9.9. These are minimum feature versions; install current stable releases for security fixes.

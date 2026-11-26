@@ -334,6 +334,28 @@ mesmo parser do pacote embarcado. A
 [referência de durações do SDK PHP](https://php.durable-workflow.com/build/workflows-activities/#durations)
 lista todas as unidades.
 
+## Horário do workflow seguro para replay {#replay-safe-workflow-time}
+
+`WorkflowContext::replayNow()` retorna o horário de negócio UTC seguro para
+replay como `DateTimeImmutable`. Na entrada normal, é o início do run (para um sucessor de redrive, o início do run original) vindo do
+`replay_clock` da tarefa (Server 3.6.0 e posteriores). Depois de cada passo
+durável consumido compatível (atividades, temporizadores, workflows filhos,
+esperas de condições, grupos validados), é o horário registrado desse passo.
+Leituras repetidas entre passos duráveis retornam o mesmo valor, e cada replay
+retorna os mesmos valores.
+
+Quando o SDK não consegue comprovar o horário, ele lança
+`DurableWorkflow\Exception\ReplayClockUnavailable`. Isso inclui efeitos
+colaterais, marcadores de versão e atividades locais, que continuam
+indisponíveis até que o Core defina um horário persistido para eles. Uma
+leitura do relógio logo depois de um desses passos não é portável entre runners
+nem em frotas mistas; veja
+[Leituras do relógio após passos inline não são portáveis](./python.md#inline-step-clock-reads).
+Handlers de consultas e atualizações leem snapshots do histórico e nunca reconstroem o
+corpo do workflow. Veja a
+[semântica de relógio entre SDKs](./python.md#advancing-replay-clock) para a
+lista completa, o status de lançamento e a nota de atualização.
+
 ## Compatibilidade de entrada e recuperação {#entry-compatibility-and-recovery}
 
 **Suporte publicado.** O SDK PHP 2.5.4 introduziu a proteção de entrada abaixo, com roteamento e recuperação no Server 2.9.9. Essas são as versões mínimas para esses recursos; instale as versões estáveis atuais para receber correções de segurança.

@@ -236,6 +236,19 @@ $receipt = $ctx->activity('payments.capture', [$orderId], [
 至少需要一秒。更早的 SDK 版本只接受秒数。PHP SDK 3.9.0 将 `nesbot/carbon`（`^2.72.6|^3.8.4`）添加为必需依赖，因此时长使用与嵌入式包相同的解析器进行转换。
 [PHP SDK 时长参考](https://php.durable-workflow.com/build/workflows-activities/#durations)列出了所有单位。
 
+## 对重放安全的工作流时间 {#replay-safe-workflow-time}
+
+`WorkflowContext::replayNow()` 以 `DateTimeImmutable` 返回对重放安全的 UTC
+业务时间。在普通入口处，它是任务 `replay_clock`（Server 3.6.0 及更高版本）中的运行开始时间（对重新驱动的后继运行而言，是原始运行的开始时间）。在每个受支持的已消费持久步骤（活动、定时器、子工作流、条件等待、
+经过验证的组）之后，它是该步骤的记录时间。在持久步骤之间重复读取会返回同一个
+值，每次重放都会返回相同的值。
+
+当 SDK 无法证明时间时，它会抛出 `DurableWorkflow\Exception\ReplayClockUnavailable`。
+这包括副作用、版本标记和本地活动，在 Core 为其定义持久化时间之前，它们保持
+不可用。紧接在这类步骤之后的时钟读取在不同运行器之间或混合集群中不可移植；参见
+[内联步骤之后的时钟读取不可移植](./python.md#inline-step-clock-reads)。查询处理器和更新处理器读取历史快照，从不重建工作流主体。完整列表、发布
+状态以及升级说明，请参见[跨 SDK 的时钟语义](./python.md#advancing-replay-clock)。
+
 ## 入口兼容性与恢复 {#entry-compatibility-and-recovery}
 
 **已发布支持。** PHP SDK 2.5.4 引入了下述入口保护，Server 2.9.9 提供了配套的路由和恢复支持。这些是相应功能的最低支持版本；请安装当前稳定版本以获取安全修复。

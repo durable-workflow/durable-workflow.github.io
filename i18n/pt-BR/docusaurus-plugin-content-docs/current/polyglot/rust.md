@@ -883,6 +883,27 @@ Mantenha a ordem de comandos duráveis independente desse estado de observação
 
 Veja o [guia publicado de logging](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), a [API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) e a [API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). Os [controles de lifecycle/deadline do registro](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) e a [aceitação de logging com quatro processos](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) foram registrados na tupla nomeada native Server 3.10.0 linux/amd64. Outros bindings e qualificações mais amplas de replay/produtor mantêm seus próprios escopos.
 
+## Horário do workflow seguro para replay {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` retorna o horário de negócio UTC seguro para
+replay como `Result<DateTime<Utc>>`. Na entrada normal, é o início do run (para um sucessor de redrive, o início do run original) vindo do `replay_clock` da tarefa (Server 3.6.0 e posteriores). Depois de cada passo
+durável consumido compatível (atividades, temporizadores, workflows filhos,
+esperas de sinais e condições, grupos validados), é o horário registrado desse
+passo. Leituras repetidas entre passos duráveis retornam o mesmo valor, e cada
+replay retorna os mesmos valores.
+
+Quando o SDK não consegue comprovar o horário, ele retorna
+`Error::ReplayClockUnavailable`. Isso inclui operações inline e locais (efeitos
+colaterais, marcadores de versão, atividades locais, memos), que continuam
+indisponíveis até que o Core defina um horário persistido para elas. Uma
+leitura do relógio logo depois de um desses passos não é portável entre runners
+nem em frotas mistas; veja
+[Leituras do relógio após passos inline não são portáveis](./python.md#inline-step-clock-reads).
+O replay offline fornece um portador com `WorkflowHistory::replay_clock(carrier)`. Veja a
+[semântica de relógio entre SDKs](./python.md#advancing-replay-clock) para a
+lista completa, a regra de consultas e validações, o status de lançamento e a
+nota de atualização.
+
 ## Regras de determinismo do Rust {#rust-determinism-rules}
 
 Um replay deve produzir os mesmos comandos duráveis, na mesma ordem, para a entrada e o histórico registrados. Coleções, relógios e primitivas de concorrência comuns do Rust não preservam automaticamente esse contrato:
@@ -890,7 +911,7 @@ Um replay deve produzir os mesmos comandos duráveis, na mesma ordem, para a ent
 | Padrão no código do workflow | Substituição durável |
 | --- | --- |
 | Agendar durante a iteração de um `HashMap` | Ordene as chaves antes ou use `BTreeMap`. |
-| Relógio do sistema, `thread_rng` ou UUID novo | Registre um snapshot com `ctx.side_effect(...)` ou use uma atividade. |
+| Relógio do sistema, `thread_rng` ou UUID novo | `ctx.replay_now()` para o horário de negócio; registre outros valores com `ctx.side_effect(...)` ou use uma atividade. |
 | `tokio::time::sleep` ou `std::thread::sleep` | `ctx.sleep(...)` ou `ctx.start_timer(...)`. |
 | `tokio::select!` ou disputa de futures comuns | `ctx.select(...)` ou `ctx.select_keyed(...)`. |
 | Chamadas duráveis concorrentes sem rastreamento | `ctx.parallel(...)` com ordem estável de entrada. |

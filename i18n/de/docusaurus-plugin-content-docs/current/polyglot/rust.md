@@ -907,6 +907,28 @@ Halten Sie die dauerhafte Befehlsreihenfolge unabhängig von diesem Beobachtungs
 
 Siehe den [veröffentlichten Logging-Guide](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), die [WorkflowLogger-API](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) und die [WorkflowReplayState-API](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). [Registry-Lifecycle-/Deadline-Kontrollen](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) und [Logging-Abnahme mit vier Prozessen](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) wurden auf dem benannten Tupel mit native Server 3.10.0 unter linux/amd64 erfasst. Andere Bindings und weitergehende Replay-/Producer-Qualifikation behalten ihren eigenen Umfang.
 
+## Replay-sichere Workflow-Zeit {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` liefert replay-sichere UTC-Geschäftszeit als
+`Result<DateTime<Utc>>`. Beim normalen Einstieg ist es der Start des Runs (bei einem Redrive-Nachfolger der Start des ursprünglichen Runs) aus dem `replay_clock` der Aufgabe (Server 3.6.0 und neuer). Nach jedem
+unterstützten verarbeiteten dauerhaften Schritt (Aktivitäten, Timer,
+Child-Workflows, Signal- und Bedingungswartevorgänge, validierte Gruppen) ist
+es dessen aufgezeichnete Zeit. Wiederholte Lesevorgänge zwischen dauerhaften
+Schritten liefern denselben Wert, und jedes Replay liefert dieselben Werte.
+
+Wo das SDK die Zeit nicht nachweisen kann, liefert es
+`Error::ReplayClockUnavailable`. Das umfasst Inline- und lokale Operationen
+(Seiteneffekte, Versionsmarker, lokale Aktivitäten, Memos), die nicht verfügbar
+bleiben, bis Core für sie eine gespeicherte Zeit festlegt. Eine Uhrlesung
+direkt nach einem solchen Schritt ist weder zwischen Runnern noch in gemischten
+Flotten portabel; siehe
+[Uhrlesungen nach Inline-Schritten sind nicht portabel](./python.md#inline-step-clock-reads).
+Offline-Replay
+übergibt einen Träger mit `WorkflowHistory::replay_clock(carrier)`. Die
+vollständige Liste, die Regel für Queries und Validierungen, den Release-Status
+und den Upgrade-Hinweis finden Sie in der
+[SDK-übergreifenden Uhrsemantik](./python.md#advancing-replay-clock).
+
 ## Rust-Regeln für Determinismus {#rust-determinism-rules}
 
 Ein Replay muss für aufgezeichnete Eingabe und Historie dieselben dauerhaften Befehle in derselben Reihenfolge erzeugen. Gewöhnliche Rust-Sammlungen, Uhren und Nebenläufigkeitsprimitive erhalten diesen Vertrag nicht automatisch:
@@ -914,7 +936,7 @@ Ein Replay muss für aufgezeichnete Eingabe und Historie dieselben dauerhaften B
 | Muster im Workflow-Code | Dauerhafter Ersatz |
 | --- | --- |
 | Beim Durchlaufen einer `HashMap` planen | Schlüssel vorher sortieren oder eine `BTreeMap` verwenden. |
-| Systemzeit, `thread_rng` oder neue UUID lesen | Snapshot mit `ctx.side_effect(...)` aufzeichnen oder eine Activity verwenden. |
+| Systemzeit, `thread_rng` oder neue UUID lesen | `ctx.replay_now()` für Geschäftszeit; andere Werte mit `ctx.side_effect(...)` aufzeichnen oder eine Aktivität verwenden. |
 | `tokio::time::sleep` oder `std::thread::sleep` | `ctx.sleep(...)` oder `ctx.start_timer(...)`. |
 | `tokio::select!` oder gewöhnliche Futures gegeneinander starten | `ctx.select(...)` oder `ctx.select_keyed(...)`. |
 | Nicht verfolgte parallele dauerhafte Aufrufe | `ctx.parallel(...)` mit stabiler Eingabereihenfolge. |

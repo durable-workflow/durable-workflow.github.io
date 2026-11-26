@@ -902,6 +902,27 @@ Gardez l’ordre des commandes durables indépendant de cet état d’observatio
 
 Consultez le [guide de journalisation publié](https://github.com/durable-workflow/sdk-rust/blob/4.17.0/README.md#workflow-logging), l’[API WorkflowLogger](https://rust.durable-workflow.com/durable_workflow/struct.WorkflowLogger.html) et l’[API WorkflowReplayState](https://rust.durable-workflow.com/durable_workflow/enum.WorkflowReplayState.html). Les [contrôles cycle de vie/deadline depuis le registre](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868388853) et l’[acceptation de journalisation avec quatre processus](https://github.com/durable-workflow/sdk-rust/pull/269#issuecomment-6868494262) ont été enregistrés sur le tuple nommé native Server 3.10.0 linux/amd64. Les autres bindings et qualifications plus larges de replay/producteur gardent leur propre périmètre.
 
+## Heure du workflow sûre pour le replay {#replay-safe-workflow-time}
+
+`WorkflowContext::replay_now()` renvoie l'heure métier UTC sûre pour le replay
+sous la forme `Result<DateTime<Utc>>`. À l'entrée ordinaire, c'est le début du run (pour un successeur de redrive, le début du run d'origine) issu du `replay_clock` de la tâche (Server 3.6.0 et ultérieur). Après chaque
+étape durable consommée prise en charge (activités, temporisateurs, workflows
+enfants, attentes de signaux et de conditions, groupes validés), c'est l'heure
+enregistrée de cette étape. Les lectures répétées entre étapes durables
+renvoient la même valeur, et chaque replay renvoie les mêmes valeurs.
+
+Lorsque le SDK ne peut pas prouver l'heure, il renvoie
+`Error::ReplayClockUnavailable`. Cela inclut les opérations en ligne et locales
+(effets de bord, marqueurs de version, activités locales, mémos), qui restent
+indisponibles jusqu'à ce que Core définisse une heure persistée pour elles. Une
+lecture d'horloge juste après une telle étape n'est portable ni entre runners
+ni dans des flottes mixtes ; voir
+[Les lectures d'horloge après une étape en ligne ne sont pas portables](./python.md#inline-step-clock-reads).
+Le replay hors ligne fournit un porteur avec `WorkflowHistory::replay_clock(carrier)`.
+Consultez la [sémantique d'horloge commune aux SDK](./python.md#advancing-replay-clock)
+pour la liste complète, la règle des requêtes et validations, l'état de
+publication et la note de mise à niveau.
+
 ## Règles de déterminisme Rust {#rust-determinism-rules}
 
 Une relecture doit produire les mêmes commandes durables dans le même ordre pour l’entrée et l’historique enregistrés. Les collections, horloges et primitives de concurrence ordinaires de Rust ne préservent pas automatiquement ce contrat :
@@ -909,7 +930,7 @@ Une relecture doit produire les mêmes commandes durables dans le même ordre po
 | Motif dans le code du workflow | Remplacement durable |
 | --- | --- |
 | Planifier en parcourant un `HashMap` | Trier les clés d’abord ou utiliser un `BTreeMap`. |
-| Lire l’horloge, `thread_rng` ou un nouvel UUID | Enregistrer un instantané avec `ctx.side_effect(...)` ou utiliser une activité. |
+| Lire l’horloge, `thread_rng` ou un nouvel UUID | `ctx.replay_now()` pour l'heure métier ; enregistrez les autres valeurs avec `ctx.side_effect(...)` ou utilisez une activité. |
 | `tokio::time::sleep` ou `std::thread::sleep` | `ctx.sleep(...)` ou `ctx.start_timer(...)`. |
 | `tokio::select!` ou mise en concurrence de futures ordinaires | `ctx.select(...)` ou `ctx.select_keyed(...)`. |
 | Appels durables concurrents non suivis | `ctx.parallel(...)` avec un ordre d’entrée stable. |
