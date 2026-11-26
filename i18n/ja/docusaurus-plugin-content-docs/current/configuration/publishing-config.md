@@ -237,3 +237,100 @@ final class WorkflowHistoryExportRedactor implements HistoryExportRedactor
 秘匿化処理は現在の値と、`path`、`category`、`workflow_instance_id`、`workflow_run_id`、`workflow_type` などのコンテキストを受け取ります。ワークフローの引数・出力、履歴イベント、コマンドのペイロード・コンテキスト、更新、タスク、アクティビティ、失敗のメッセージ・ファイル・トレース診断に対して呼ばれます。結果のバンドルは `redaction.applied`、`redaction.policy`、`redaction.paths` を含み、後続ツールは適用したポリシーを識別できます。
 
 各エクスポートは秘匿化後に計算した `integrity` も含みます。チェックサムは `canonicalization = json-recursive-ksort-v1` と `checksum_algorithm = sha256` を使います。`signing_key` が設定されていれば、同じ正規化ペイロードに `signature_algorithm = hmac-sha256` で署名し、任意の `signing_key_id` を `key_id` として報告します。署名キーはエクスポート成果物の外に保管し、後続の検証器がキーを区別する必要がある場合はキー ID を更新してください。
+
+## Worker インターセプター {#worker-interceptors}
+
+Worker インターセプターは Workflow 2.42.0 以降で利用できます。組み込み Durable Workflow は、アプリケーションのプロセス内で実行するワークフロータスク、アクティビティ、クエリ、更新の検証の前後で、順序付きの Worker インターセプターを実行します。監査ログ、メトリクスタグ、テナントコンテキスト、トレースなど、各ワークフローやアクティビティではなく一度だけ書きたい処理に使用します。フックの形は [Python](../polyglot/python.md#worker-interceptors)、[PHP](../polyglot/php.md#worker-interceptors)、[Rust](../polyglot/rust.md#worker-interceptors) の SDK インターセプターと同じです。
+
+インターセプタークラスを `config/workflows.php` の `workflows.v2.interceptors` に列挙します。これらは Laravel コンテナから解決されるためコンストラクターインジェクションが使え、列挙した順に実行されます。最初のものが最も外側のラッパーです。
+
+```php
+'v2' => [
+    // ...
+    'interceptors' => [
+        App\Workflows\AuditInterceptor::class,
+    ],
+],
+```
+
+各インターセプターは `Workflow\V2\Interceptors\WorkerInterceptor` を実装します。必要なフックだけを実装するには `Workflow\V2\Interceptors\PassthroughWorkerInterceptor` を継承し、チェーンを続けるために `$next($context)` を呼び出します。次の監査インターセプターは、コミットされた各ワークフロータスクとすべてのアクティビティ試行をログに記録します。
+
+```php
+namespace App\Workflows;
+
+use Illuminate\Support\Facades\DB;
+use Psr\Log\LoggerInterface;
+use Workflow\V2\Interceptors\ActivityInterceptorContext;
+use Workflow\V2\Interceptors\PassthroughWorkerInterceptor;
+use Workflow\V2\Interceptors\WorkflowTaskInterceptorContext;
+use Workflow\V2\Interceptors\WorkflowTaskOutcome;
+
+final class AuditInterceptor extends PassthroughWorkerInterceptor
+{
+    public function __construct(private readonly LoggerInterface $audit)
+    {
+    }
+
+    public function executeWorkflowTask(WorkflowTaskInterceptorContext $context, callable $next): WorkflowTaskOutcome
+    {
+        $outcome = $next($context);
+        // The task commits after the chain returns; log only once it has.
+        DB::afterCommit(fn () => $this->audit->info('workflow task', [
+            'workflow_id' => $context->workflowId,
+            'run_id' => $context->runId,
+            'attempt' => $context->workflowTaskAttempt,
+            'recorded' => $outcome->historyEventTypes,
+        ]));
+
+        return $outcome;
+    }
+
+    public function executeActivity(ActivityInterceptorContext $context, callable $next): mixed
+    {
+        $this->audit->info('activity started', [
+            'activity_type' => $context->activityType,
+            'attempt' => $context->attemptNumber,
+            'workflow_id' => $context->workflowId,
+        ]);
+        try {
+            return $next($context);
+        } finally {
+            $this->audit->info('activity finished', ['activity_type' => $context->activityType]);
+        }
+    }
+}
+```
+
+コンテナは、設定されたインターセプターをタスクごとに構築します。タスク間で状態を保持する必要がある場合は、シングルトンとしてバインドしてください。
+
+| フック | コンテキスト | `$next` の戻り値 |
+| --- | --- | --- |
+| `executeWorkflowTask($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `taskId`, `workflowType`, `workflowId`, `runId`, `workflowTaskAttempt`, `historyLength`, `replaying`（`replayState()` も） | `historyEventTypes`、`runStatus`、`nextTaskId` を持つ `WorkflowTaskOutcome` |
+| `executeActivity($context, $next)` | `workerId`, `connection`, `taskQueue`, `namespace`, `task`, `activityType`, `activityClass`, `arguments`, `attemptNumber`, `taskId`, `activityExecutionId`, `activityAttemptId`, `workflowId`, `runId`, `local`, `activity` | アクティビティの結果 |
+| `executeQueryTask($context, $next)` | `workerId`（常に null）, `connection`, `taskQueue`, `namespace`, `task`, `queryName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（常に `Replaying`） | クエリの結果 |
+| `executeUpdateValidation($context, $next)` | `workerId`（常に null）, `connection`, `taskQueue`, `namespace`, `updateName`, `workflowType`, `workflowId`, `runId`, `arguments`, `replayState()`（常に `Replaying`） | `approved`、`rejectionMessage`、`exceptionType`、`validationErrors` を持つ `UpdateValidationOutcome` |
+
+`task` は取得したタスク行の配列スナップショットであり、モデルそのものではありません。`workerId` はホストとプロセス ID でキュー Worker プロセスを識別します。クエリと更新の検証は呼び出し元のプロセスで実行されるため、その `workerId` は null です。
+
+ワークフロータスクのインターセプターは、ワークフローが記録する内容を変更できません。
+
+- `executeWorkflowTask` は、ワークフロータスクをそのデータベーストランザクションの内側で、タスク試行ごとに一度ラップします。それ以前のワークフロータスクがその実行に対してすでにコマンドを記録している場合、`replaying` は `true` になります。これは重複排除のキーではありません。`historyEventTypes` には、このタスクが追加したイベントだけが列挙されます。
+- `replayState()` は同じ答えを、`Workflow::replayState()` が使う列挙型 `Workflow\V2\Enums\WorkflowReplayState` として返します。インターセプターが見る値はそのタスクの間は固定です。
+- フックの副作用はタスクのコミット前に実行され、試行が再試行されると繰り返される可能性があります。そのため、`DB::afterCommit()` で遅延させるか、`taskId` と `workflowTaskAttempt` をキーにしてください。
+- エンジンは、ワークフローコードが生成した履歴をコミットします。結果は読み取り専用のビューです。別の結果を返したり、別のコンテキストを `$next` に渡したりしても、何も変わりません。
+- ワークフローコードからの失敗は、インターセプターがそれを捕捉して正常に戻った場合でも、そのままエンジンに届きます。
+- インターセプターがチェーンの外に例外をスローした場合、`$next` を呼ばなかった場合、または複数回呼び出した場合、タスクのトランザクションはロールバックされるため、何も記録されません。タスクは `WorkflowTaskInterceptorFailed` を最後のエラーとして解放され、通常の修復バックオフの後に再試行されます。内側のインターセプターが `$next` の後にスローした例外を外側のインターセプターが捕捉し、タスクをコミットさせることはできます。ただし、`$next` を呼ばなかった場合や繰り返し呼び出した場合は、常にタスクが失敗します。
+- フックは実行行とタスク行がロックされている間に実行されるため、短く保ってください。フックは周囲のトランザクションをコミットまたはロールバックしてはならず、ラップしている実行に対してシグナルなどのコマンドを送信してはなりません。実行の記録済み状態を変更すると、すべての試行でタスクが失敗します。
+- ローカルアクティビティはワークフロータスクの内側で実行されるため、`$next` の後に失敗し続けるフックがあると、再試行のたびにそれらのローカルアクティビティが再度実行されます。
+
+更新検証のインターセプターは、`#[UpdateValidator]` を持つ更新が受理される前に実行されるリプレイとバリデーター呼び出しをラップします。バリデーターのない更新ではこのフックは実行されません。フックは判定を観察するだけで、変更はできません。
+
+- エンジンはバリデーター自身の結果に従って動作します。別の `UpdateValidationOutcome` を返したり、別の引数を `$next` に渡したりしても、何も変わりません。バリデーターは常に更新の引数を受け取ります。
+- フックが例外をスローした場合、`$next` を呼ばなかった場合、または複数回呼び出した場合、更新は `UpdateValidationFailedException` で拒否され、何も記録されません。そのため、フックが検証されていない更新を通すことはありません。
+- フックは更新の受理トランザクションの内側で、実行の行がロックされている間に実行されるため、短く保ってください。副作用は `DB::afterCommit()` で遅延させてください。フックによる書き込みは、受理とともにコミットまたはロールバックされます。フックのコードはワークフローの Fiber の外側で実行されるため、その実行に対して永続的な処理をスケジュールすることはできません。
+
+アクティビティとクエリのインターセプターは、`$context->withArguments(...)` で引数を変更でき、戻り値も変更できます。アクティビティの結果は一度だけ記録され、クエリは何も記録しないためです。書き換えられたクエリの引数は、クエリの契約に対して再度検証されます。アクティビティの例外は、いずれかのインターセプターが処理しない限り、すべてのインターセプターを通過し、その後アクティビティの通常のリトライポリシーに従います。アクティビティのインターセプターはキューに入れられたアクティビティとローカルアクティビティの両方をラップし、`local` で両者を区別できます。`WorkflowStub::fake()` でモックしたアクティビティでは、インターセプターは実行されません。
+
+[組み込みトレース](../monitoring.md#embedded-tracing)が有効な場合、組み込みのワークフローとアクティビティのスパンが最も外側に留まるため、インターセプターはアクティブなスパンの内側で実行され、属性や子スパンを追加できます。
+
+インターセプターは、このパッケージが実行するキュージョブ、ローカルアクティビティ、クエリをラップします。Worker タスクブリッジを通じて外部 SDK の Worker に渡されたタスクは、その SDK 自身のインターセプターの下で実行されます。ブリッジの呼び出し元のために取得済みのワークフロータスクをプロセス内で実行する Worker ブリッジの `execute` ルートでは、ワークフロータスクのインターセプターは実行されません。`workflows.v2.interceptors` 内のエントリーを解決できない場合、経路ごとに異なる形で失敗します。キューに入れられたワークフロータスクは解放されて再試行され、アクティビティ試行はそのリトライポリシーの下で失敗し、クエリは呼び出し元に例外をスローします。デプロイ時にリストを確認してください。完全な契約は[組み込みインターセプターガイド](https://github.com/durable-workflow/workflow/blob/main/docs/worker-interceptors.md)にあります。
