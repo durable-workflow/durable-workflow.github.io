@@ -164,7 +164,8 @@ hard-timeout behavior above.
 Before enabling this option in embedded mode, install Workflow 2.29.0 or later,
 run the application migrations, and deploy compatible embedded queue workers.
 The new migration adds `workflow_runs.timeout_cleanup_work_deadline_at`; it
-does not opt existing runs in. Do not enable the option before the migration completes.
+does not opt existing runs in. Do not enable the option before the migration
+completes.
 
 ```bash
 php artisan migrate
@@ -200,8 +201,8 @@ allowance and original execution clocks; each run derives its own run clocks.
 When a worker observes the work deadline, the run enters cleanup once and
 records `WorkflowTimeoutCleanupStarted`. If no worker observes it before the
 hard deadline, that event is never written and the `expired` outcome has no
-`started_at`. Compatible workflow code receives
-`WorkflowTimeoutCleanupRequested`, a subtype of
+`started_at`. At its next unresolved durable wait, compatible workflow code
+receives `WorkflowTimeoutCleanupRequested`, a subtype of
 `WorkflowCancellationRequestedException` with cancellation `cause: timeout`.
 Handle that interruption to run registered saga compensation or protected
 cleanup; `compensate()` uses its cancellation shield. The shield does not
@@ -211,10 +212,23 @@ Cleanup has a separate `timeout_cleanup.outcome`:
 
 | Outcome | Meaning |
 |---|---|
-| `completed` | Workflow cleanup returned or rethrew the timeout interruption before its deadline. A returned value does not become the business result. |
+| `completed` | Workflow code returned, or rethrew the timeout interruption, before the cleanup deadline. It does not prove cleanup code ran. A returned value does not become the business result. |
 | `failed` | Cleanup threw another exception; `failure_id` links the cleanup failure. |
 | `expired` | The hard cap arrived before cleanup finished, including when no worker could run it. |
-| `preempted` | Immediate `cancel()` or `terminate()` interrupted cleanup; the corresponding cancellation/termination outcome remains terminal. |
+| `preempted` | Immediate `cancel()` or `terminate()`, or a hard deadline before the cleanup deadline, interrupted cleanup; the preempting outcome remains terminal. |
+
+`completed` does not prove that cleanup code ran, in embedded and service mode
+alike. The interruption is delivered at the next durable wait (activity,
+timer, child, signal, condition or selection) whose result was not already in
+history when cleanup started, never in a side effect or inside
+`cancellationShield()`. If the wait the workflow is blocked on had already
+resolved, for example a timer that fired or an activity that completed,
+workflow code can return without receiving the interruption, and the outcome
+is still `completed`. History then shows `WorkflowTimeoutCleanupStarted` with
+no `CooperativeCancellationDelivered` after it. Make compensation that must
+always run idempotent, and run it on every path that can return after the work
+deadline, for example by comparing workflow time with the deadline the run was
+admitted with, not only in the interruption handler.
 
 Completed, failed or expired cleanup still ends with business status `failed`,
 `closed_reason = timed_out` and `WorkflowTimedOut`. Successful compensation does
@@ -232,6 +246,7 @@ top-level `timeout_cleanup`. While cleanup is open, it shows `outcome: running`
 with `cause: timeout`, the timeout kind, the detection time and the work and
 cleanup deadlines. After closure, it shows the terminal outcome, with
 `failure_id` for `failed`. The field is omitted when no cleanup was recorded.
+List views do not show the cleanup state yet, so open run detail.
 
 Unavailable or delayed workers cannot guarantee an external cleanup effect;
 keep compensation idempotent and reconcile uncertain effects in your application.
@@ -241,15 +256,15 @@ returns `timeout_cleanup_not_supported` without taking the lease.
 
 **Service mode.** Native Server 3.30.0 and later accepts
 `timeout_cleanup_seconds` on service starts and `start_child_workflow`
-commands, with the same limits as the embedded allowance, and advertises `timeout_cleanup: {supported: true, version: 1}`.
-It admits an opted-in start only when a live worker on the task queue
-advertises the capability. Otherwise it answers
-`422 timeout_cleanup_not_supported`, writes nothing and never falls back to a
-plain hard timeout. Workers with cooperative cancellation enabled advertise
-the capability from PHP SDK 3.31.0 (3.32.0 for the stricter marker rule
-below), Python SDK 2.24.0 and Rust SDK 4.25.0. Workflow code receives the
-SDK's cooperative-cancellation interruption with `cause: timeout`. See
-[Cooperative Cancellation](../polyglot/cancellation.md).
+commands, with the same limits as the embedded allowance, and advertises
+`timeout_cleanup: {supported: true, version: 1}`. It admits an opted-in start
+only when a live worker on the task queue advertises the capability.
+Otherwise it answers `422 timeout_cleanup_not_supported`, writes nothing and
+never falls back to a plain hard timeout. Workers with cooperative
+cancellation enabled advertise the capability from PHP SDK 3.31.0 (3.32.0 for
+the stricter marker rule below), Python SDK 2.24.0 and Rust SDK 4.25.0.
+Workflow code receives the SDK's cooperative-cancellation interruption with
+`cause: timeout`. See [Cooperative Cancellation](../polyglot/cancellation.md).
 
 For SDK authors: a service worker reports an uncaught or rethrown cleanup
 interruption with `fail_workflow.failure.interruption: "timeout_cleanup"`, and

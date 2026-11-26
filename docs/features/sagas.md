@@ -64,7 +64,8 @@ original hard cap. It is experimental, with no backward-compatibility promise
 yet. Embedded queue workers support it from Workflow 2.29.0 (embedded poll-mode
 starts refuse it), and service mode supports it from native Server 3.30.0 with
 supporting SDK workers. It does not make compensation automatic or guarantee an
-effect when workers are unavailable.
+effect when workers are unavailable, and a `completed` cleanup outcome
+[does not prove cleanup code ran](./timeouts.md#timeout-cleanup).
 
 Use an earlier application deadline when timeout should undo completed work.
 This embedded workflow reserves a resource, then waits up to 30 seconds for a

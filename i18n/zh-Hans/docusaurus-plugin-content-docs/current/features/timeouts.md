@@ -161,20 +161,22 @@ WorkflowStub::make(MyWorkflow::class, 'order-123')->start(
 
 本例为普通工作提供 60 秒，清理可使用原始 70 秒硬上限内的最后 10 秒。预留绝不在硬上限后增加时间。若两个硬截止时间都适用，较早的一个限制清理。延迟检测、重试、worker 替换和 lease 续期都不重置任何截止时间。continue-as-new 和 redrive 保留已接纳的预留及原始 execution 时钟；每个 run 推导自己的时钟。
 
-worker 发现已到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。如果在硬截止时间前没有 worker 发现，则不会写入该事件，`expired` 结果也没有 `started_at`。兼容代码收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
+worker 发现已到工作截止时间后，运行只进入一次清理并记录 `WorkflowTimeoutCleanupStarted`。如果在硬截止时间前没有 worker 发现，则不会写入该事件，`expired` 结果也没有 `started_at`。兼容代码会在下一个未解决的持久等待处收到 `WorkflowTimeoutCleanupRequested`，它是 `WorkflowCancellationRequestedException` 的子类型，取消上下文包含 `cause: timeout`。处理此中断以执行已注册的 saga 补偿或受保护清理；`compensate()` 使用其取消屏蔽，但屏蔽不延长硬上限。参阅 [Sagas](./sagas.md#deadline-driven-compensation)。
 
 清理具有独立的 `timeout_cleanup.outcome`：
 
 | 结果 | 含义 |
 |---|---|
-| `completed` | 清理在截止时间前返回或重新抛出超时中断。返回值不会成为业务结果。 |
+| `completed` | 工作流代码在清理截止时间前返回，或重新抛出超时中断。这不能证明清理代码已运行。返回值不会成为业务结果。 |
 | `failed` | 清理抛出其他异常；`failure_id` 链接清理失败。 |
 | `expired` | 硬上限先于清理完成到达，包括没有 worker 能运行清理的情况。 |
-| `preempted` | 立即 `cancel()` 或 `terminate()` 中断清理；对应的取消/终止结果仍为终态。 |
+| `preempted` | 立即 `cancel()` 或 `terminate()`，或早于清理截止时间的硬截止时间中断了清理；抢先发生的结果仍为终态。 |
+
+无论嵌入式模式还是 service 模式，`completed` 都不能证明清理代码已运行。中断会在下一个持久等待（activity、timer、child、signal、condition 或 selection）处投递，前提是该等待的结果在清理开始时尚未写入历史；它绝不会在 side effect 中或 `cancellationShield()` 内投递。如果工作流正在阻塞的等待已经解决，例如 timer 已触发或 activity 已完成，工作流代码可能未收到中断就返回，结果仍为 `completed`。此时历史中有 `WorkflowTimeoutCleanupStarted`，其后没有 `CooperativeCancellationDelivered`。必须始终运行的补偿应保持幂等，并在工作截止时间之后可能返回的每条路径上运行，而不只是在中断处理器中运行，例如将工作流时间与运行接纳时的截止时间进行比较。
 
 清理完成、失败或过期后，业务状态仍是 `failed`、`closed_reason = timed_out` 和 `WorkflowTimedOut`。补偿成功不会把超时变为 workflow 成功。清理提前完成时，运行会立即关闭，但超时消息仍引用原始硬截止时间。
 
-请从历史读取清理结果。终止事件 `WorkflowTimedOut`、`WorkflowTerminated` 或 `WorkflowCancelled` 上的 `timeout_cleanup` 载荷是权威记录，也包含在 `php artisan workflow:v2:history-export` 的输出中。从 Workflow 2.40.0 起，以及在原生 Server 3.30.0 及更高版本上，describe 在 `run.timeout_cleanup` 下报告已记录的清理状态，run detail 和 Waterline 读取的有界运行观察则以顶层 `timeout_cleanup` 报告。清理进行中时，它显示 `outcome: running`、`cause: timeout`、超时类型、检测时间以及工作截止时间和清理截止时间。关闭后，它显示终态结果，`failed` 时附带 `failure_id`。未记录清理时省略该字段。
+请从历史读取清理结果。终止事件 `WorkflowTimedOut`、`WorkflowTerminated` 或 `WorkflowCancelled` 上的 `timeout_cleanup` 载荷是权威记录，也包含在 `php artisan workflow:v2:history-export` 的输出中。从 Workflow 2.40.0 起，以及在原生 Server 3.30.0 及更高版本上，describe 在 `run.timeout_cleanup` 下报告已记录的清理状态，run detail 和 Waterline 读取的有界运行观察则以顶层 `timeout_cleanup` 报告。清理进行中时，它显示 `outcome: running`、`cause: timeout`、超时类型、检测时间以及工作截止时间和清理截止时间。关闭后，它显示终态结果，`failed` 时附带 `failure_id`。未记录清理时省略该字段。列表视图尚不显示清理状态，请打开 run detail 查看。
 
 不可用或延迟的 worker 无法保证外部清理效果；补偿必须幂等，并由应用核对不确定的效果。
 
