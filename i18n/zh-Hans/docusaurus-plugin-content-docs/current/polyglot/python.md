@@ -748,15 +748,17 @@ class PollUntilDeadline:
 步骤之后的时钟读取，而应在下一个持久步骤之后再读取时钟。
 
 Python 和 Rust 会根据历史重建工作流，以响应查询或接受前的更新验证。如果重建后的
-工作流在入口处读取时钟，而任务没有 `replay_clock`（下一个 Server 版本之前的
+工作流在入口处读取时钟，而任务没有 `replay_clock`（3.30.0 之前的
 Server 从不在这些任务上发送它），查询或验证会失败，而不是用工作流任务从未计算过
 的状态作答。PHP SDK 从不为查询或更新重建工作流主体。
 
 离线重放（`replay()`、`Replayer.replay()`、`replay_history()`）以 `replay_clock_entry` 接收任务的对象。内存中的 `WorkflowEnvironment` 不提供载体，因此其中的入口读取不可用。
 
-**发布状态。** 入口值（全部三个 SDK）以及查询和验证规则（Python 和 Rust）将在下一个 Python、Rust 和 PHP SDK 版本中
-提供，并需要 Server 3.6.0 或更高版本。查询和验证任务上的载体将在下一个 Server
-版本中提供。更早的 SDK 版本会将入口报告为不可用。
+**发布状态。** 入口值（全部三个 SDK）以及查询和验证规则（Python 和 Rust）在 Python SDK 2.24.0、Rust SDK 4.25.0 和 PHP SDK 3.32.0 中
+提供，并需要 Server 3.6.0 或更高版本。查询和验证任务上的载体在 Server 3.30.0
+中提供。嵌入式包的 Worker 协议运行器（`WorkflowFiberRunner`）从 Workflow 2.42.0
+起接受该载体：一旦构建运行器的代码传入它，入口处的 `Workflow::now()` 就会返回
+运行的规范开始时间。更早的 SDK 版本会将入口报告为不可用。
 
 **升级。** 如果正在运行的工作流的代码根据入口读取是否不可用进行分支（例如捕获
 `ReplayClockUnavailable`），在升级后、新旧 worker 混合的滚动部署期间，或将 Server 升级到 3.6.0 之后，重放时会走另一个分支。请将此类代码放在

@@ -940,16 +940,19 @@ relógio depois do próximo passo durável.
 Python e Rust reconstroem o workflow a partir do histórico para responder a uma
 consulta ou a uma validação de atualização antes da aceitação. Se o workflow
 reconstruído ler o relógio na entrada e a tarefa não tiver `replay_clock` (os
-Servers anteriores à próxima versão do Server nunca o enviam nessas tarefas), a
+Servers anteriores à 3.30.0 nunca o enviam nessas tarefas), a
 consulta ou a validação falha em vez de responder com um estado que a tarefa de
 workflow nunca calculou. O SDK de PHP nunca reconstrói o corpo do workflow para
 consultas ou atualizações.
 
 O replay offline (`replay()`, `Replayer.replay()`, `replay_history()`) recebe o objeto da tarefa como `replay_clock_entry`. O `WorkflowEnvironment` em memória não fornece portador, então leituras na entrada ficam indisponíveis nele.
 
-**Status de lançamento.** O valor de entrada (os três SDKs) e a regra para consultas e validações (Python e Rust) chegam nas próximas versões dos SDKs de Python, Rust e PHP e exigem
+**Status de lançamento.** O valor de entrada (os três SDKs) e a regra para consultas e validações (Python e Rust) chegam no SDK Python 2.24.0, no SDK Rust 4.25.0 e no SDK PHP 3.32.0 e exigem
 Server 3.6.0 ou posterior. O portador nas tarefas de consulta e validação chega
-na próxima versão do Server. Versões anteriores dos SDKs informam a entrada
+no Server 3.30.0. O runner do protocolo de workers do pacote embarcado
+(`WorkflowFiberRunner`) aceita o portador a partir do Workflow 2.42.0: quando o
+código que constrói o runner o repassa, `Workflow::now()` na entrada retorna o
+início canônico da execução. Versões anteriores dos SDKs informam a entrada
 como indisponível.
 
 **Atualização.** Um workflow em execução cujo código se ramifica conforme a

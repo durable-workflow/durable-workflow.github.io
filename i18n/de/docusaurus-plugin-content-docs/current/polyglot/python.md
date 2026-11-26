@@ -944,16 +944,19 @@ Schritt.
 Python und Rust bauen den Workflow aus der Historie neu auf, um eine Query oder
 eine Update-Validierung vor der Annahme zu beantworten. Liest der neu
 aufgebaute Workflow die Uhr beim Einstieg und hat die Aufgabe kein
-`replay_clock` – Server vor dem nächsten Server-Release senden es bei diesen
+`replay_clock` – Server vor 3.30.0 senden es bei diesen
 Aufgaben nie –, schlägt die Query oder Validierung fehl, statt mit einem Zustand
 zu antworten, den die Workflow-Aufgabe nie berechnet hat. Das PHP-SDK baut den
 Workflow-Körper für Queries oder Updates nie neu auf.
 
 Offline-Replay (`replay()`, `Replayer.replay()`, `replay_history()`) übernimmt das Objekt der Aufgabe als `replay_clock_entry`. Das In-Memory-`WorkflowEnvironment` liefert keinen Träger, daher sind Einstiegslesevorgänge dort nicht verfügbar.
 
-**Release-Status.** Der Einstiegswert (alle drei SDKs) und die Regel für Queries und Validierungen (Python und Rust) erscheinen in den nächsten Releases der SDKs für Python, Rust und
-PHP und benötigen Server 3.6.0 oder neuer. Der Träger bei Query- und
-Validierungsaufgaben erscheint im nächsten Server-Release. Frühere SDK-Releases
+**Release-Status.** Der Einstiegswert (alle drei SDKs) und die Regel für Queries und Validierungen (Python und Rust) erscheinen in Python-SDK 2.24.0, Rust-SDK 4.25.0 und
+PHP-SDK 3.32.0 und benötigen Server 3.6.0 oder neuer. Der Träger bei Query- und
+Validierungsaufgaben erscheint in Server 3.30.0. Der Worker-Protokoll-Runner des
+eingebetteten Pakets (`WorkflowFiberRunner`) akzeptiert den Träger ab Workflow
+2.42.0: Sobald der Code, der den Runner erstellt, ihn übergibt, liefert
+`Workflow::now()` beim Einstieg den kanonischen Start des Laufs. Frühere SDK-Releases
 melden den Einstieg als nicht verfügbar.
 
 **Upgrade.** Ein laufender Workflow, dessen Code davon abhängig verzweigt, dass

@@ -944,16 +944,19 @@ l'horloge après l'étape durable suivante.
 Python et Rust reconstruisent le workflow à partir de l'historique pour
 répondre à une requête ou à une validation de mise à jour avant acceptation. Si
 le workflow reconstruit lit l'horloge à l'entrée et que la tâche n'a pas de
-`replay_clock` (les Servers antérieurs à la prochaine version de Server ne
+`replay_clock` (les Servers antérieurs à 3.30.0 ne
 l'envoient jamais sur ces tâches), la requête ou la validation échoue au lieu de
 répondre avec un état que la tâche de workflow n'a jamais calculé. Le SDK PHP ne
 reconstruit jamais le corps du workflow pour les requêtes ou les mises à jour.
 
 Le replay hors ligne (`replay()`, `Replayer.replay()`, `replay_history()`) reçoit l'objet de la tâche sous la forme `replay_clock_entry`. Le `WorkflowEnvironment` en mémoire ne fournit pas de porteur ; les lectures d'entrée y sont donc indisponibles.
 
-**État de publication.** La valeur d'entrée (les trois SDK) et la règle pour les requêtes et les validations (Python et Rust) arrivent dans les prochaines versions des SDK Python, Rust et
-PHP et nécessitent Server 3.6.0 ou ultérieur. Le porteur sur les tâches de
-requête et de validation arrive dans la prochaine version de Server. Les
+**État de publication.** La valeur d'entrée (les trois SDK) et la règle pour les requêtes et les validations (Python et Rust) arrivent dans le SDK Python 2.24.0, le SDK Rust 4.25.0 et
+le SDK PHP 3.32.0 et nécessitent Server 3.6.0 ou ultérieur. Le porteur sur les tâches de
+requête et de validation arrive dans Server 3.30.0. Le runner du protocole worker
+du paquet embarqué (`WorkflowFiberRunner`) accepte le porteur à partir de
+Workflow 2.42.0 : dès que le code qui construit le runner le lui transmet,
+`Workflow::now()` à l'entrée renvoie le début canonique de l'exécution. Les
 versions antérieures des SDK signalent l'entrée comme indisponible.
 
 **Mise à niveau.** Un workflow en cours dont le code bifurque selon que la

@@ -998,15 +998,18 @@ step instead.
 
 Python and Rust rebuild the workflow from history to answer a query or a
 pre-accept update validation. If the rebuilt workflow reads the clock at entry
-and the task has no `replay_clock`, which Servers before the next Server
-release never send on those tasks, the query or validation fails rather than
+and the task has no `replay_clock`, which Servers before 3.30.0 never send
+on those tasks, the query or validation fails rather than
 answering with state the workflow task never computed. The PHP SDK never
 rebuilds the workflow body for queries or updates.
 
 Offline replay (`replay()`, `Replayer.replay()`, `replay_history()`) takes the task's object as `replay_clock_entry`. The in-memory `WorkflowEnvironment` supplies no carrier, so entry reads there are unavailable.
 
-**Release status.** The entry value (all three SDKs) and the query and validation rule (Python and Rust) ship in the next Python, Rust and PHP SDK releases and need Server 3.6.0 or later. The
-carrier on query and validation tasks ships in the next Server release.
+**Release status.** The entry value (all three SDKs) and the query and validation rule (Python and Rust) ship in Python SDK 2.24.0, Rust SDK 4.25.0 and PHP SDK 3.32.0 and need Server 3.6.0 or later. The
+carrier on query and validation tasks ships in Server 3.30.0. The embedded
+package's worker-protocol runner (`WorkflowFiberRunner`) accepts the carrier
+from Workflow 2.42.0: once the code that builds the runner passes it,
+`Workflow::now()` at entry returns the run's canonical start.
 Earlier SDK releases report entry as unavailable.
 
 **Upgrading.** A running workflow whose code branches on the entry read being

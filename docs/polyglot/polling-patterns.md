@@ -268,7 +268,7 @@ Register `PollDemo` and `check_status` in the same [Python worker](./python.md),
 
 The two examples were exercised on published Server **2.9.7 / Core 2.7.2**, with normally installed Python **2.6.1** and test input `[2, 1]`. Both completed two real checks across two runs. Continue-as-new resets run history, adds run/link overhead and preserves the original execution deadline. It does not provide an unlimited lifetime.
 
-Use relative durable waits here. `ctx.replay_now()` (Python SDK 2.15.0+) advances with consumed durable steps, and from the next release it also has a value at entry (see [Advancing replay clock](./python.md#advancing-replay-clock)); replay-stable history-budget reads remain separate [budget](https://github.com/durable-workflow/workflow/issues/859) work. This recipe does not branch on `ctx.now()` or recomputed history length. Do not treat `DW_MAX_HISTORY_EVENTS` as an enforced automatic rollover: [Server #504](https://github.com/durable-workflow/server/issues/504) tracks that gap.
+Use relative durable waits here. `ctx.replay_now()` (Python SDK 2.15.0+) advances with consumed durable steps, and from Python SDK 2.24.0 it also has a value at entry (see [Advancing replay clock](./python.md#advancing-replay-clock)); replay-stable history-budget reads remain separate [budget](https://github.com/durable-workflow/workflow/issues/859) work. This recipe does not branch on `ctx.now()` or recomputed history length. Do not treat `DW_MAX_HISTORY_EVENTS` as an enforced automatic rollover: [Server #504](https://github.com/durable-workflow/server/issues/504) tracks that gap.
 
 ## Interrupt and reconcile {#interrupt-and-reconcile}
 
