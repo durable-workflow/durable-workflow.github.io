@@ -124,8 +124,9 @@ service-mode clients rather than treating an embedded threshold as a wire limit.
   the object. Its checksum or `history_complete` flag does not prove that external
   bytes exist or that the archive can be replayed. Follow the
   [backup and restore boundary](../configuration/pruning-workflows.md#export-before-pruning)
-  and verify objects independently. Self-contained archives remain tracked in
-  [Server #520](https://github.com/durable-workflow/server/issues/520).
+  and verify objects independently. Embedded exports stay reference-only. On
+  native Server, `dw workflow:history-archive` copies the bytes into a
+  [self-contained verified archive](../polyglot/cli-reference.md#history-archives).
 
 ## Using It From Code
 

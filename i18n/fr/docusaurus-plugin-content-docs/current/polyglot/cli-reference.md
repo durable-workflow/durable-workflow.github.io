@@ -236,7 +236,9 @@ l'environnement du runtime plutôt que dans le fichier de profil.
 | `dw workflow:list-runs <workflow-id>` | Lister les exécutions d'une instance de workflow. | `--json` |
 | `dw workflow:show-run <workflow-id> <run-id>` | Afficher une exécution. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Lire les événements de l'historique d'une exécution. | `--follow`, `--page-size`, `--json` |
-| `dw workflow:history-export <workflow-id> <run-id>` | Exporter la charge utile d'archivage de l'historique d'exécution. | `--output-file`, options globales |
+| `dw workflow:history-export <workflow-id> <run-id>` | Exporter le bundle de l'historique d'exécution. Les payloads externes restent des références. | `--output-file`, options globales |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Écrire une archive autonome vérifiée d'une exécution fermée, y compris les octets de chaque payload externe (Server native). | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive-check <directory>` | Vérifier une archive d'historique à partir de ses seuls fichiers. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Envoyer un signal. | `--request-id`, `--run-id`, options d'entrée, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Exécuter une requête de lecture de workflow. | `--run-id`, options d'entrée, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Soumettre ou exécuter une mise à jour de workflow. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, options d'entrée, `--json` |
@@ -320,6 +322,55 @@ seconde. Une mise à jour échouée se termine avec le code 2. Un ID inconnu ou
 supprimé donne le code 5, ce qui ne prouve pas que la mise à jour n'a jamais été
 acceptée. Un Server sans cette capacité, dont PHP Server 2.x, donne le code 8
 avant l'envoi d'une requête de résultat.
+
+### Archives d'historique {#history-archives}
+
+`dw workflow:history-archive` (dw 2.13.0 ou ultérieur, Server native
+3.30.0 ou ultérieur, identifiant administrateur) écrit une exécution
+fermée dans un répertoire. Le répertoire contient l'export d'historique du
+Server, les octets exacts de chaque payload externe référencé par l'export, un
+`manifest.json` indiquant le codec, la longueur et le SHA-256 de chaque objet,
+et un `receipt.json`.
+
+La copie se déroule ainsi :
+
+1. dw acquiert le verrou de sauvegarde des payloads externes du Server, afin
+   qu'aucun payload ne soit supprimé pendant la copie.
+2. dw récupère chaque objet une seule fois et vérifie sa longueur et son
+   empreinte.
+3. dw vérifie l'ensemble du répertoire depuis le disque.
+4. dw confirme que le verrou n'a jamais expiré.
+5. Alors seulement, dw écrit le reçu.
+
+Le verrou est libéré dans tous les cas. Cela inclut Ctrl-C et, sous Unix,
+SIGTERM.
+
+La commande signale l'un des trois résultats suivants :
+
+| Résultat | Code de sortie | Signification |
+| --- | --- | --- |
+| `verified` | 0 | L'archive est complète. |
+| `incomplete` | 1 | Aucun reçu n'a été écrit. Relancez la même commande pour reprendre. |
+| `refused` | 2 | Rien n'a été copié. L'exécution est ouverte, nettoyée ou occultée, son historique présente un trou de séquence, ou elle contient une référence que le transport d'exécution ne peut pas récupérer. |
+
+D'autres sauvegardes utilisent le même verrou : une copie est donc refusée avec
+HTTP 409 tant qu'une autre le détient.
+
+`dw workflow:history-archive-check <directory>` ne nécessite aucun Server. Cette
+commande relit chaque fichier et signale `verified`, `incomplete` avec un
+constat codé pour chaque contrôle échoué, ou `refused`.
+
+Server native 3.30.0 vérifie aussi une archive hors ligne avec
+`durable-workflow-server history-archive verify <directory>`. La commande ne
+lit que le répertoire, affiche le rapport JSON et ne se termine avec 0 que si
+le résultat est `verified`.
+
+Une archive ne couvre que l'exécution sélectionnée. Ce n'est pas une sauvegarde
+de base de données. Elle est écrite sans chiffrement et sa durée de vie relève
+de l'application. Le format, le périmètre et les codes de constat sont décrits
+dans le
+[guide des archives d'historique](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)
+du Server.
 
 ## Inspection des appels de service {#service-call-inspection}
 

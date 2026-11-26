@@ -511,10 +511,14 @@ covers `CloseTime` selection, pagination, external bytes and export-before-prune
 reconciliation. The published API has no unarchive operation. An archived run
 therefore cannot later be removed through Server retention passes.
 
-Current history exports preserve external references, not an independent copy
-of their objects. The self-contained verified archive workflow is requested in
-[Server #520](https://github.com/durable-workflow/server/issues/520), not supplied
-by an export plus a checksum. Also reject already-pruned history rather than
+A history export preserves external references, not an independent copy of
+their objects. From native Server 3.30.0, `dw workflow:history-archive`
+(dw 2.13.0 or later) writes a self-contained verified archive. It holds the
+export, the exact bytes of every external object it references, a manifest of
+their digests and a receipt. The archive stays readable after retention prunes
+the run, and without the Server or its payload store. See the
+[history archive commands](./cli-reference.md#history-archives) and the Server's
+[archive format guide](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md). Also reject already-pruned history rather than
 trusting its `history_complete` flag; the known false-complete case remains open
 in [Workflow #856](https://github.com/durable-workflow/workflow/issues/856).
 

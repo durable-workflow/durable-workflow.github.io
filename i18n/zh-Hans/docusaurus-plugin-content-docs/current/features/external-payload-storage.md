@@ -71,7 +71,7 @@ Server 自身可以使用本地存储，而远程 SDK Worker 通过 HTTP 获取�
 - **重放完整性。** 只有在获取并验证引用字节后才解码值。任何保留运行仍需使用的对象都必须保留。
 - **已验证读取缓存。** `ExternalPayloadStorage` 对已验证字节缓存设有边界。清空缓存不会删除底层对象或改变其所有权。
 - **保留。** 运行时清理会考虑仍被保留的所有者和共享对象。存储故障、备份保留或剩余引用可能延迟删除。运行保留清理并不保证没有孤立对象。
-- **历史导出。** 导出可以不获取对象而保留引用元数据。校验和或 `history_complete` 标记并不能证明外部字节存在，也不能证明归档可重放。请遵守[备份与恢复边界](../configuration/pruning-workflows.md#export-before-pruning)，并单独验证对象。自包含归档仍由 [Server #520](https://github.com/durable-workflow/server/issues/520) 跟踪。
+- **历史导出。** 导出可以不获取对象而保留引用元数据。校验和或 `history_complete` 标记并不能证明外部字节存在，也不能证明归档可重放。请遵守[备份与恢复边界](../configuration/pruning-workflows.md#export-before-pruning)，并单独验证对象。嵌入式导出仍只包含引用。在 native Server 上，`dw workflow:history-archive` 会将这些字节复制到[自包含且经过验证的归档](../polyglot/cli-reference.md#history-archives)中。
 
 ## 在代码中使用 {#using-it-from-code}
 

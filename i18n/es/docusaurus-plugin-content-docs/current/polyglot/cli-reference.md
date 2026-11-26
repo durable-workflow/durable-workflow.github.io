@@ -148,7 +148,9 @@ Prefiere `--token-env=NAME` en producción para mantener secretos en el entorno 
 | `dw workflow:list-runs <workflow-id>` | Listar ejecuciones de una instancia. | `--json` |
 | `dw workflow:show-run <workflow-id> <run-id>` | Mostrar una ejecución. | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | Leer eventos del historial. | `--follow`, `--page-size`, `--json` |
-| `dw workflow:history-export <workflow-id> <run-id>` | Exportar la carga de historial para archivo. | `--output-file`, opciones globales |
+| `dw workflow:history-export <workflow-id> <run-id>` | Exportar el paquete del historial de la ejecución. Las cargas externas siguen siendo referencias. | `--output-file`, opciones globales |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | Escribir un archivo autosuficiente verificado de una ejecución cerrada, con los bytes de cada carga externa (Server native). | `--hold-ttl`, `--json` |
+| `dw workflow:history-archive-check <directory>` | Verificar un archivo de historial solo a partir de sus ficheros. | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | Enviar una señal. | `--request-id`, `--run-id`, opciones de entrada, `--json` |
 | `dw workflow:query <workflow-id> <query-name>` | Ejecutar una consulta de solo lectura. | `--run-id`, opciones de entrada, `--json` |
 | `dw workflow:update <workflow-id> <update-name>` | Enviar o ejecutar una actualización. | `--wait=accepted\|completed`, `--request-id`, `--run-id`, opciones de entrada, `--json` |
@@ -214,6 +216,53 @@ Una actualización fallida sale con código 2. Un ID desconocido o eliminado
 sale con 5, lo que no demuestra que la actualización nunca fuera aceptada.
 Un Server sin la capacidad, incluido PHP Server 2.x, produce el código 8 antes
 de enviar una solicitud de resultado.
+
+### Archivos de historial {#history-archives}
+
+`dw workflow:history-archive` (dw 2.13.0 o posterior, Server native
+3.30.0 o posterior, credencial de administrador) escribe una ejecución
+cerrada en un directorio. El directorio contiene la exportación del historial
+del Server, los bytes exactos de cada carga externa que la exportación
+referencia, un `manifest.json` con el codec, la longitud y el SHA-256 de cada
+objeto, y un `receipt.json`.
+
+La copia funciona así:
+
+1. dw adquiere el bloqueo de copia de seguridad de cargas externas del Server,
+   para que no se libere ninguna carga durante la copia.
+2. dw obtiene cada objeto una vez y comprueba su longitud y su resumen.
+3. dw verifica todo el directorio desde el disco.
+4. dw confirma que el bloqueo nunca caducó.
+5. Solo entonces dw escribe el recibo.
+
+El bloqueo se libera en todos los casos. Eso incluye Ctrl-C y, en Unix,
+SIGTERM.
+
+El comando informa uno de tres resultados:
+
+| Resultado | Código de salida | Significado |
+| --- | --- | --- |
+| `verified` | 0 | El archivo está completo. |
+| `incomplete` | 1 | No se escribió ningún recibo. Ejecute de nuevo el mismo comando para reanudar. |
+| `refused` | 2 | No se copió nada. La ejecución está abierta, depurada u ocultada, su historial tiene un hueco de secuencia, o contiene una referencia que el transporte del runtime no puede obtener. |
+
+Otras copias de seguridad usan el mismo bloqueo, así que una copia se rechaza
+con HTTP 409 mientras otra lo mantiene.
+
+`dw workflow:history-archive-check <directory>` no necesita un Server. Vuelve a
+leer cada fichero e informa `verified`, `incomplete` con un hallazgo codificado
+por cada comprobación fallida, o `refused`.
+
+Server native 3.30.0 también verifica un archivo sin conexión con
+`durable-workflow-server history-archive verify <directory>`. El comando solo
+lee el directorio, imprime el informe JSON y termina con 0 solo cuando el
+resultado es `verified`.
+
+Un archivo cubre solo la ejecución seleccionada. No es una copia de seguridad
+de la base de datos. Se escribe sin cifrar y su vida útil es responsabilidad de
+la aplicación. El formato, el alcance y los códigos de hallazgo están en la
+[guía de archivos de historial](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)
+del Server.
 
 ## Inspección de llamadas a servicios {#service-call-inspection}
 

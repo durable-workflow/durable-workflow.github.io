@@ -148,7 +148,9 @@ dw server:info --output=json \
 | `dw workflow:list-runs <workflow-id>` | インスタンスの実行を一覧。 | `--json` |
 | `dw workflow:show-run <workflow-id> <run-id>` | 1実行を表示。 | `--follow`, `--json` |
 | `dw workflow:history <workflow-id> <run-id>` | 実行の履歴イベントを読む。 | `--follow`, `--page-size`, `--json` |
-| `dw workflow:history-export <workflow-id> <run-id>` | アーカイブ用実行履歴ペイロードをエクスポート。 | `--output-file`、グローバルオプション |
+| `dw workflow:history-export <workflow-id> <run-id>` | 実行履歴バンドルをエクスポート。外部ペイロードは参照のまま。 | `--output-file`、グローバルオプション |
+| `dw workflow:history-archive <workflow-id> <run-id> <directory>` | 閉じた実行の自己完結型の検証済みアーカイブを、すべての外部ペイロードのバイトを含めて書き出す（native Server）。 | `--hold-ttl`、`--json` |
+| `dw workflow:history-archive-check <directory>` | 履歴アーカイブをそのファイルだけで検証。 | `--json` |
 | `dw workflow:signal <workflow-id> <signal-name>` | シグナルを送信。 | `--request-id`、`--run-id`、入力オプション、`--json` |
 | `dw workflow:query <workflow-id> <query-name>` | 読み取り専用クエリを実行。 | `--run-id`、入力オプション、`--json` |
 | `dw workflow:update <workflow-id> <update-name>` | 更新を送信または実行。 | `--wait=accepted\|completed`, `--request-id`、`--run-id`、入力オプション、`--json` |
@@ -203,6 +205,36 @@ dw workflow:update-outcome order-123 "$UPDATE_ID" --wait=completed --wait-timeou
 既定の `--wait=accepted` はすぐに応答します。受け付け済みでも完了していない更新は、完了待ちがタイムアウトした場合も保留中です。完了した更新の結果が null の場合もあります。`--json` は検証済みのレシートを返すので、`update_status` で区別してください。各実行は結果を一度読み取るだけで、更新を再送信しません。
 
 `--wait-timeout` には `--wait=completed` と 1 秒以上の整数が必要です。失敗した更新は終了コード 2 を返します。不明または削除済みの更新 ID は 5 を返しますが、更新が一度も受け付けられなかったことを意味しません。PHP Server 2.x など、この機能を持たない Server では、結果のリクエストを送る前に 8 で終了します。
+
+### 履歴アーカイブ {#history-archives}
+
+`dw workflow:history-archive`（dw 2.13.0 以降、native Server 3.30.0 以降、管理者資格情報が必要）は、閉じた実行を一つディレクトリに書き出します。ディレクトリには、Server の履歴エクスポート、エクスポートが参照するすべての外部ペイロードの正確なバイト、各オブジェクトのコーデック・長さ・SHA-256 を記した `manifest.json`、および `receipt.json` が含まれます。
+
+コピーは次の順に進みます。
+
+1. dw は Server の外部ペイロードのバックアップホールドを取得し、コピー中にペイロードが回収されないようにします。
+2. dw は各オブジェクトを一度だけ取得し、長さとダイジェストを確認します。
+3. dw はディスク上のディレクトリ全体を検証します。
+4. dw はホールドが一度も失効していないことを確認します。
+5. その後に初めて、dw はレシートを書き込みます。
+
+ホールドはどの経路でも解放されます。Ctrl-C の場合や、Unix での SIGTERM の場合も同様です。
+
+コマンドは次の三つの結果のいずれかを報告します。
+
+| 結果 | 終了コード | 意味 |
+| --- | --- | --- |
+| `verified` | 0 | アーカイブは完全です。 |
+| `incomplete` | 1 | レシートは書き込まれていません。同じコマンドを再実行すると再開します。 |
+| `refused` | 2 | 何もコピーされていません。実行が開いている、削除済み、または秘匿化されている、履歴のシーケンスに欠落がある、またはランタイム転送で取得できない参照を含んでいます。 |
+
+ほかのバックアップも同じホールドを使うため、別のバックアップがホールドを保持している間、コピーは HTTP 409 で拒否されます。
+
+`dw workflow:history-archive-check <directory>` は Server を必要としません。すべてのファイルを読み戻し、`verified`、失敗した確認ごとにコード付きの所見を伴う `incomplete`、または `refused` を報告します。
+
+native Server 3.30.0 は、`durable-workflow-server history-archive verify <directory>` でアーカイブをオフラインでも検証します。このコマンドはディレクトリだけを読み取り、JSON レポートを出力し、結果が `verified` の場合にのみ終了コード 0 で終了します。
+
+アーカイブは選択した実行だけを対象とし、データベースのバックアップではありません。暗号化せずに書き出され、その保存期間はアプリケーションが管理します。形式、対象範囲、所見コードは Server の[履歴アーカイブガイド](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)にあります。
 
 ## サービス呼び出しの検査 {#service-call-inspection}
 

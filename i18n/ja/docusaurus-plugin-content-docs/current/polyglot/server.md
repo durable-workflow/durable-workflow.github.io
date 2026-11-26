@@ -352,7 +352,7 @@ PHP Server に `run_ids` を指定すると、有限保持期間より新しい�
 
 削除は履歴、関連詳細、削除可能な外部ペイロードを取り除きます。後から期間を延長しても復元できません。[組み込みの削除ガイド](../configuration/pruning-workflows.md)はアプリケーション管理の別の処理で、その API は Server の Namespace 保持設定を適用しません。他の runtime には、PHP Server の手順を使う前に保持動作を確認してください。
 
-現在の履歴エクスポートは外部参照を保持しますが、そのオブジェクトの独立したコピーは作りません。自己完結型の検証済みアーカイブフローは [Server #520](https://github.com/durable-workflow/server/issues/520) で要求されており、エクスポートとチェックサムだけでは提供されません。また、削除済み履歴の `history_complete` フラグを信頼せず拒否してください。既知の誤った完全性の問題は [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) で未解決のままです。
+履歴エクスポートは外部参照を保持しますが、そのオブジェクトの独立したコピーは作りません。native Server 3.30.0 以降では、`dw workflow:history-archive`（dw 2.13.0 以降）が自己完結型の検証済みアーカイブを書き出します。アーカイブには、エクスポート、エクスポートが参照するすべての外部オブジェクトの正確なバイト、それらのダイジェストを記したマニフェスト、レシートが含まれます。アーカイブは、保持期間によって実行が削除された後も、Server やそのペイロードストアがなくても読み取れます。[履歴アーカイブのコマンド](./cli-reference.md#history-archives)と Server の[アーカイブ形式ガイド](https://github.com/durable-workflow/server/blob/main/docs/history-archives.md)を参照してください。また、削除済み履歴の `history_complete` フラグを信頼せず拒否してください。既知の誤った完全性の問題は [Workflow #856](https://github.com/durable-workflow/workflow/issues/856) で未解決のままです。
 
 ### Namespace {#namespaces}
 
