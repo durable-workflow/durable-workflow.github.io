@@ -154,6 +154,66 @@ Bootstrap звільняє користувача від вибору шляху
 та `registerUpdate`. Повні параметри й типи результатів наведено
 у [згенерованому довіднику PHP SDK API](https://php.durable-workflow.com/api/).
 
+## Валідатори update {#update-validators}
+
+Починаючи з PHP SDK 3.32.0, workflow може відхилити update ще до його прийняття. Додайте `#[UpdateValidator]` до методу класу workflow поруч з його обробником `#[Update]`. Низькорівнева форма — `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`, яку викликають після `registerUpdate()`.
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+Валідатор отримує `QueryContext` із зафіксованою історією запуску, а за ним — аргументи update. Worker оголошує валідатор Server і опитує задачі workflow та валідації update разом. Реєстрацію відхилено з `update_validation_tasks_unavailable`, якщо Server не оголошує синхронну валідацію update. Для кожної задачі валідації worker виконує лише валідатор:
+
+- Якщо він завершується звичайно, він схвалює update, і Server його приймає.
+- Якщо він кидає виняток або повертає `false`, update відхиляється з `update_validator_rejected`, повідомленням і класом винятку та помилками полів із методу `errors()` винятку. Update ніколи не приймається, і його обробник ніколи не виконується. Server записує відхилення лише як аудиторську подію `UpdateRejected`.
+- Спробу запланувати довговічну роботу відхилено з `UpdateValidatorCommandRefused`, що відхиляє update.
+
+На клієнті `updateWorkflow()` кидає `UpdateFailed`. `rejectedByValidator()` визначає відхилення валідатором, а `validationErrors()` повертає його помилки полів. `validationFailed()` повертає true, коли Server не зміг вчасно отримати рішення; нічого не прийнято, тож повторіть запит із тим самим ідентифікатором.
+
+Валідатори ніколи не виконуються під час replay. Кожна валідація бачить лише історію, зафіксовану до її власної задачі, тож дві одночасні валідації можуть обидві пройти перевірку, яку мала б пройти лише одна. Worker із валідаторами не використовує перенесені опитування workflow. Interceptor-и worker обгортають задачі валідації update через `executeUpdateValidation()`; вони бачать рішення валідатора, але не можуть його змінити.
+
+## Логування workflow з урахуванням replay {#workflow-logging}
+
+Worker відтворює workflow з історії в кожній задачі workflow, тож звичайний виклик логування в коді workflow повторюється для кожного завершеного кроку. PHP SDK 3.32.0 і новіші надають `$context->logger()`. Він повертає PSR-3 логер, що пише через логер, переданий у `Worker` (іменований аргумент `logger`), і лише тоді, коли код виконується за межами зафіксованої історії запуску:
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+Кожен рядок містить `namespace`, `workflow_type`, `workflow_id` і `workflow_run_id`. `$context->replayState()` повертає `WorkflowReplayState::Replaying`, `Executing` або `Unavailable`, а `isReplaying()` — його булеву форму. Використовуйте їх лише для діагностики; ніколи не обирайте команди workflow на їхній основі.
+
+Рядки записуються лише після того, як Worker надішле задачу workflow, що виконала код, і Server її прийме. Замінений replay, спекулятивний replay, який Server відхилив, і відхилене завершення нічого не пишуть. Код, що чекає на незавершеному дескрипторі дочірнього workflow чи операції без запису кроку, логує один раз — у задачі, яка проходить це очікування. Виклик `logger()` усередині замикання side effect нічого не пише.
+
+Якщо worker завершиться між прийняттям Server і записом, ці рядки буде втрачено. Це логер процесу, а не outbox для бізнес-ефектів. Тримайте обробники логів швидкими й неблокувальними: обробник, що чекає на мережу, зупиняє worker і може коштувати йому оренди задачі. Збої логера перехоплюються й ніколи не змінюють команди workflow.
+
 ## Контекст повторних спроб і вихідний запуск активності {#activity-retry-context}
 
 PHP SDK **3.6.1 або новіший** надає `$context->retryInfo`, `$context->workflowId` і `$context->runId` в активностях у сервісному режимі. Перевірка `$context->retryInfo->isLastConfiguredAttempt() === true` визначає останню налаштовану спробу політики з обмеженням кількості спроб. `attemptNumber` зберігає початковий отриманий номер спроби.

@@ -1119,6 +1119,49 @@ Worker registrieren benannte Handler mit `Worker::register_update`.
 liefern. Ein Update ist eine dauerhafte Workflow-Änderung mit Ergebnis,
 getrennt von Fire-and-forget-Signalen und schreibgeschützten Abfragen mit Replay.
 
+### Update-Validatoren {#update-validators}
+
+Ab Rust SDK 4.25.0 kann ein Worker ein Update ablehnen, bevor es angenommen
+wird. Registrieren Sie einen Validator mit `Worker::register_update_validator`
+nach dem gleichnamigen Update-Handler:
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` nimmt Avro-Werte entgegen. Ein Validator
+mit wiederhergestelltem Zustand, `register_replayed_update_validator::<S>`, liest
+eine abgetrennte Kopie des wiederhergestellten Workflow-Zustands; er muss
+denselben Zustandstyp wie der wiederhergestellte Workflow verwenden. Der Worker
+meldet den Validator an, lehnt die Registrierung ab, wenn der Server keine
+synchrone Update-Validierung anbietet, und fragt Workflow- und
+Update-Validierungs-Tasks gemeinsam ab. Für jeden Validierungs-Task führt er nur
+den Validator aus:
+
+- `Ok(())` genehmigt das Update, und der Server nimmt es an.
+- Eine `UpdateRejection` lehnt es mit `update_validator_rejected`, der Meldung,
+  dem Typ und den Validierungsfehlern ab. Das Update wird nie angenommen, und
+  sein Handler läuft nie. Der Server zeichnet die Ablehnung nur als
+  Audit-Ereignis `UpdateRejected` auf.
+- Ein Validator, der einen Workflow-Befehl hinzufügt, wird mit
+  `UpdateValidatorCommandRefused` verweigert; eine Panic oder ein fehlgeschlagenes
+  Replay meldet `update_validation_worker_failed`.
+
+Auf dem Client liefert `Error::update_validator_rejection()` die Meldung, die
+Validierungsfehler und die IDs der Ablehnung, und
+`Error::is_update_validation_failed()` deckt Timeouts und Worker-Fehler ab. Ein
+gewöhnlich fehlgeschlagenes Update erfüllt keines von beiden. Validatoren laufen
+nie während eines Replays. Worker-Interceptors umschließen Update-Validierungs-Tasks
+über `execute_update_validation_task`; sie sehen die Entscheidung des Validators,
+können sie aber nicht ändern.
+
 ## Nutzlast-Envelope {#payload-envelope}
 
 Workflow-Eingaben, Signale, Aktivitäten, Abfragen und Ergebnisse verwenden den

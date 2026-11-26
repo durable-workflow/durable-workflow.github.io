@@ -16,6 +16,7 @@ Jedes angenommene Update:
 - verwendet den deklarierten dauerhaften Updatenamen in Befehlshistorie und Webhook-Routing. `#[UpdateMethod('mark-approved')]` hält den öffentlichen aufrufbaren Namen über PHP-Methodenumbenennungen hinweg stabil;
 - wird für historische oder bereits geschlossene Läufe abgelehnt, statt still den aktuellen Lauf zu verändern;
 - lehnt nicht deklarierte Methodennamen als `rejected_unknown_update` und vertragswidrige Argumente als `rejected_invalid_arguments` (mit maschinenlesbaren `validation_errors`) vor Ausführung des Handlers ab.
+- lehnt eine Anfrage, die Ihr [Update-Validator](#validate-updates-before-acceptance) ablehnt, vor der Annahme als `update_validator_rejected` ab.
 
 Wie Abfragen spielen Updates zuerst festgeschriebene Historie erneut ab.
 Anders als Abfragen dürfen sie Replay-sicheren Workflow-Zustand ändern und
@@ -131,6 +132,53 @@ $latest->closedAt();     // null until the lifecycle closes
 `inspectUpdate()` wartet nicht auf Workflow-Ausführung. Es lädt den
 gespeicherten dauerhaften Lebenszyklus neu und gibt das aktuelle
 `UpdateResult` zurück.
+
+## Updates vor der Annahme validieren {#validate-updates-before-acceptance}
+
+Ohne Validator wird ein Update, das gegen eine Geschäftsregel verstößt, zuerst angenommen und schlägt dann fehl. Es wird als fehlgeschlagenes Update aufgezeichnet, und der Aufrufer kann eine fehlerhafte Anfrage nicht von einer fehlgeschlagenen Operation unterscheiden. Deklarieren Sie einen Validator, um die Anfrage vor der Annahme abzulehnen. Validatoren erfordern Workflow 2.42.0 oder neuer.
+
+```php
+use Workflow\UpdateMethod;
+use Workflow\UpdateValidator;
+use Workflow\V2\Workflow;
+
+final class CartWorkflow extends Workflow
+{
+    private array $items = [];
+
+    #[UpdateMethod('add-item')]
+    public function addItem(string $item): array
+    {
+        $this->items[] = $item;
+
+        return $this->items;
+    }
+
+    #[UpdateValidator('add-item')]
+    public function validateAddItem(string $item): void
+    {
+        if (count($this->items) >= 10) {
+            throw new \RuntimeException('The cart is full.');
+        }
+    }
+}
+```
+
+`#[UpdateValidator]` benennt das Update über seinen dauerhaften Namen oder, wenn das Update keinen Alias hat, über seinen Methodennamen. Der Validator erhält dieselben Argumente wie das Update. Bevor das Update angenommen wird, rekonstruiert die Engine den Zustand des Laufs aus seinem Verlauf und ruft nur den Validator auf:
+
+- Kehrt er normal zurück, wird das Update wie gewohnt angenommen und angewendet.
+- Wirft er eine Exception oder gibt `false` zurück, wird das Update mit dem Grund `update_validator_rejected` und dem Ergebnis `rejected_invalid_arguments` abgelehnt. `rejectedByValidator()` ist dann wahr, `rejectionMessage()` liefert die Exception-Meldung, und `validationErrors()` liefert die Fehler einer Laravel-`ValidationException`. `update()` wirft eine `LogicException`, die den Grund und die Meldung des Validators enthält.
+- Ein abgelehntes Update wird nie angenommen, sein Handler läuft nie, und der Workflow wird nicht geweckt. Wie jede andere Ablehnung wird es nur als Audit-Ereignis `UpdateRejected` aufgezeichnet, das der Replay ignoriert.
+
+Validatoren sind schreibgeschützt. Sie können den wiederhergestellten Workflow-Zustand lesen, aber jeder dauerhafte Aufruf (eine Aktivität, ein Timer, ein Child-Workflow, ein Signal, ein Side Effect, `await`, `getVersion()`, `patched()`, Continue-as-New oder ein Upsert von Memo oder Suchattributen) wirft `UpdateValidatorCommandException` und lehnt das Update ab. Änderungen, die ein Validator am wiederhergestellten Zustand vornimmt, werden verworfen. Ein Generator-Validator wird abgelehnt, weil sein Rumpf nie ausgeführt wird.
+
+Validatoren werden nicht im Verlauf aufgezeichnet und laufen nie während eines Replays, daher beeinflussen sie den Determinismus nicht. Sie sehen den Zustand aus dem persistierten Verlauf: Ein Update, das angenommen, aber noch nicht angewendet wurde, ist für sie nicht sichtbar. Replay und Validator laufen, während die Annahme des Updates die Sperren des Laufs hält; halten Sie Validatoren deshalb schnell.
+
+Kann der Zustand nicht wiederhergestellt werden oder trifft der Validator auf einen Datenbankfehler, wird `UpdateValidationFailedException` geworfen, und nichts wird aufgezeichnet. Webhook-Routen für Updates beantworten das mit einem wiederholbaren `503` und `update_validation_failed`. Wiederholen Sie die Anfrage mit derselben Request-ID.
+
+Eine Wiederholung eines abgelehnten Updates mit demselben Schlüssel liefert die gespeicherte Ablehnung, ohne den Validator erneut auszuführen.
+
+Worker-Interceptors umschließen die Update-Validierung über `executeUpdateValidation()`. Sie sehen die Entscheidung des Validators, können sie aber nicht ändern.
 
 ## Nach einer ungewissen Antwort wiederherstellen {#recover-after-an-uncertain-response}
 

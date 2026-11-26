@@ -154,6 +154,66 @@ Entfernte Worker registrieren Workflow-, Aktivitäts-, Abfrage- und Update-Handl
 Vollständige Parameter und Rückgabetypen stehen in der generierten
 [PHP-SDK-API-Referenz](https://php.durable-workflow.com/api/).
 
+## Update-Validatoren {#update-validators}
+
+Ab PHP SDK 3.32.0 kann ein Workflow ein Update ablehnen, bevor es angenommen wird. Setzen Sie `#[UpdateValidator]` auf eine Methode der Workflow-Klasse, neben ihren `#[Update]`-Handler. Die Low-Level-Form ist `Worker::registerUpdateValidator($workflowType, $updateName, $callable)`, aufgerufen nach `registerUpdate()`.
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+Der Validator erhält einen `QueryContext` mit dem persistierten Verlauf des Laufs, gefolgt von den Argumenten des Updates. Der Worker meldet den Validator beim Server an und fragt Workflow- und Update-Validierungs-Tasks gemeinsam ab. Die Registrierung wird mit `update_validation_tasks_unavailable` abgelehnt, wenn der Server keine synchrone Update-Validierung anbietet. Für jeden Validierungs-Task führt der Worker nur den Validator aus:
+
+- Kehrt er normal zurück, genehmigt er das Update, und der Server nimmt es an.
+- Wirft er eine Exception oder gibt `false` zurück, wird das Update mit `update_validator_rejected`, der Exception-Meldung und -Klasse sowie etwaigen Feldfehlern aus einer `errors()`-Methode der Exception abgelehnt. Das Update wird nie angenommen, und sein Handler läuft nie. Der Server zeichnet die Ablehnung nur als Audit-Ereignis `UpdateRejected` auf.
+- Der Versuch, dauerhafte Arbeit einzuplanen, wird mit `UpdateValidatorCommandRefused` verweigert und lehnt das Update ab.
+
+Auf dem Client wirft `updateWorkflow()` eine `UpdateFailed`. `rejectedByValidator()` erkennt eine Validator-Ablehnung, und `validationErrors()` liefert ihre Feldfehler. `validationFailed()` ist wahr, wenn der Server nicht rechtzeitig eine Entscheidung erhalten konnte; es wurde nichts angenommen, also wiederholen Sie mit derselben Request-ID.
+
+Validatoren laufen nie während eines Replays. Jede Validierung sieht nur den Verlauf, der vor ihrem eigenen Task persistiert wurde, daher können zwei gleichzeitige Validierungen beide eine Prüfung bestehen, die nur eine von ihnen bestehen sollte. Ein Worker mit Validatoren verwendet keine mitgeführten Workflow-Polls. Worker-Interceptors umschließen Update-Validierungs-Tasks über `executeUpdateValidation()`; sie sehen die Entscheidung des Validators, können sie aber nicht ändern.
+
+## Replay-bewusstes Workflow-Logging {#workflow-logging}
+
+Der Worker spielt einen Workflow bei jedem Workflow-Task aus seinem Verlauf erneut ab, daher wiederholt sich ein gewöhnlicher Log-Aufruf im Workflow-Code für jeden abgeschlossenen Schritt. Ab PHP SDK 3.32.0 gibt es `$context->logger()`. Es liefert einen PSR-3-Logger, der über den Logger schreibt, den Sie dem `Worker` übergeben (das benannte Argument `logger`), und zwar nur, wenn der Code über den persistierten Verlauf des Laufs hinaus ausgeführt wird:
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+Jede Zeile enthält `namespace`, `workflow_type`, `workflow_id` und `workflow_run_id`. `$context->replayState()` liefert `WorkflowReplayState::Replaying`, `Executing` oder `Unavailable`, und `isReplaying()` ist die boolesche Form. Verwenden Sie sie nur zur Diagnose; wählen Sie Workflow-Befehle nie danach aus.
+
+Zeilen werden erst geschrieben, nachdem der Worker den Workflow-Task, der den Code ausgeführt hat, übermittelt und der Server ihn angenommen hat. Ein überholtes Replay, ein spekulatives Replay, das der Server ablehnt, und ein verweigerter Abschluss schreiben nichts. Code, der auf einem ausstehenden Child- oder Operations-Handle wartet, ohne einen Schritt aufzuzeichnen, protokolliert einmal, und zwar in dem Task, der über das Warten hinauskommt. Ein `logger()`-Aufruf innerhalb einer Side-Effect-Closure schreibt nichts.
+
+Stirbt der Worker zwischen der Annahme durch den Server und dem Schreiben, gehen diese Zeilen verloren. Dies ist ein Prozess-Logger, kein Outbox für Geschäftseffekte. Halten Sie Log-Handler schnell und nicht blockierend: Ein Handler, der auf das Netzwerk wartet, blockiert den Worker und kann ihn die Task-Lease kosten. Fehler des Loggers werden abgefangen und ändern nie die Befehle des Workflows.
+
 ## Wiederholungskontext und zugehöriger Lauf einer Aktivität {#activity-retry-context}
 
 Das PHP SDK **ab 3.6.1** stellt `$context->retryInfo`, `$context->workflowId` und `$context->runId` in Aktivitäten im Service-Modus bereit. Mit `$context->retryInfo->isLastConfiguredAttempt() === true` erkennen Sie den letzten konfigurierten Versuch einer begrenzten Richtlinie. `attemptNumber` bewahrt die ursprünglich empfangene Versuchsnummer.

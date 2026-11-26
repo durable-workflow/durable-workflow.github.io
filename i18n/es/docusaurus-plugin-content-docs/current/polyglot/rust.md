@@ -917,6 +917,48 @@ Rust admite actualizaciones duraderas en las funciones de cliente de aplicación
 
 Los workers registran manejadores con nombre mediante `Worker::register_update`; utiliza `register_update_avro_value` si el manejador consume y devuelve valores Avro directamente. Una actualización modifica el workflow de forma duradera y devuelve un resultado. Es distinta de las señales sin espera y las consultas de solo lectura mediante reproducción.
 
+### Validadores de actualización {#update-validators}
+
+Rust SDK 4.25.0 y posteriores permiten que un worker rechace una actualización
+antes de aceptarla. Registra un validador con `Worker::register_update_validator`,
+después del handler de actualización con el mismo nombre:
+
+```rust,ignore
+worker.register_update("orders", "approve", |_ctx, args| async move { Ok(args) });
+worker.register_update_validator("orders", "approve", |_ctx: QueryContext, args: Value| {
+    if args[0].as_u64() == Some(0) {
+        return Err(UpdateRejection::new("amount must be positive")
+            .with_validation_error("amount", "must be positive"));
+    }
+    Ok(())
+});
+```
+
+`register_update_validator_avro_value` recibe valores Avro. Un validador de estado
+reproducido, `register_replayed_update_validator::<S>`, lee una copia separada
+del estado reproducido del workflow; debe usar el mismo tipo de estado que el
+workflow reproducido. El worker anuncia el validador, rechaza el registro cuando
+el Server no anuncia la validación síncrona de actualizaciones y consulta juntas
+las tareas de workflow y de validación de actualizaciones. Para cada tarea de
+validación, ejecuta solo el validador:
+
+- `Ok(())` aprueba la actualización y el Server la acepta.
+- Un `UpdateRejection` la rechaza con `update_validator_rejected`, el mensaje,
+  el tipo y los errores de validación. La actualización nunca se acepta y su
+  handler nunca se ejecuta. El Server registra el rechazo solo como un evento de
+  auditoría `UpdateRejected`.
+- Un validador que añade un comando de workflow se rechaza con
+  `UpdateValidatorCommandRefused`, y un panic o un fallo de reproducción informa
+  `update_validation_worker_failed`.
+
+En el cliente, `Error::update_validator_rejection()` devuelve el mensaje, los
+errores de validación y los IDs del rechazo, y `Error::is_update_validation_failed()`
+cubre los tiempos de espera agotados y los fallos del worker. Una actualización
+fallida ordinaria no coincide con ninguno. Los validadores nunca se ejecutan
+durante la reproducción. Los interceptores del worker envuelven las tareas de
+validación de actualizaciones mediante `execute_update_validation_task`; ven la
+decisión del validador, pero no pueden cambiarla.
+
 ## Sobre de cargas útiles {#payload-envelope}
 
 Las entradas de workflow, señales, actividades, consultas y resultados utilizan el contrato publicado `PayloadEnvelope`: un `codec` y un `blob` codificado. La ruta predeterminada `avro` del SDK utiliza su dependencia declarada `apache-avro` y el esquema Value fijo y versionado de la plataforma; no construyas el blob manualmente ni sustituyas el sobre por un registro específico de implementación.

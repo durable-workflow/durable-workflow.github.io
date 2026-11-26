@@ -89,6 +89,66 @@ SDK 所有のクイックスタートは、空の Composer プロジェクトを
 
 リモート Worker は `registerWorkflow`、`registerActivity`、`registerQuery`、`registerUpdate` でワークフロー、アクティビティ、クエリ、更新のハンドラーを登録します。完全なパラメーターと戻り値の型は、生成された [PHP SDK API リファレンス](https://php.durable-workflow.com/api/)を使ってください。
 
+## 更新バリデーター {#update-validators}
+
+PHP SDK 3.32.0 以降では、ワークフローは更新を受理前に拒否できます。ワークフロークラスのメソッドに、`#[Update]` ハンドラーと並べて `#[UpdateValidator]` を付けます。低レベルの形式は `Worker::registerUpdateValidator($workflowType, $updateName, $callable)` で、`registerUpdate()` の後に呼び出します。
+
+```php
+use DurableWorkflow\Attribute\Update;
+use DurableWorkflow\Attribute\UpdateValidator;
+use DurableWorkflow\Worker\QueryContext;
+
+final class OrderWorkflow
+{
+    #[Update('approve')]
+    public function approve(QueryContext $context, int $amount): int
+    {
+        return $amount;
+    }
+
+    #[UpdateValidator('approve')]
+    public function validateApprove(QueryContext $context, int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \DomainException('The amount must be positive.');
+        }
+    }
+}
+```
+
+バリデーターは、実行の確定済み履歴を持つ `QueryContext` と、それに続く更新の引数を受け取ります。Worker はバリデーターを Server に通知し、ワークフロータスクと更新検証タスクをまとめてポーリングします。Server が同期的な更新検証を通知しない場合、登録は `update_validation_tasks_unavailable` で拒否されます。各検証タスクで、Worker はバリデーターだけを実行します。
+
+- 通常どおり戻ると更新を承認し、Server がそれを受理します。
+- 例外を投げるか `false` を返すと、`update_validator_rejected`、例外のメッセージとクラス、例外の `errors()` メソッドが返すフィールドエラーで更新を拒否します。更新は受理されず、ハンドラーも実行されません。Server は拒否を監査イベント `UpdateRejected` としてだけ記録します。
+- 永続的な処理をスケジュールしようとすると `UpdateValidatorCommandRefused` で拒否され、更新も拒否されます。
+
+クライアントでは、`updateWorkflow()` が `UpdateFailed` を投げます。`rejectedByValidator()` でバリデーターによる拒否を判別でき、`validationErrors()` がそのフィールドエラーを返します。`validationFailed()` は、Server が時間内に判断を得られなかった場合に true です。何も受理されていないので、同じリクエスト ID で再試行してください。
+
+バリデーターはリプレイ中に実行されません。各検証は自分のタスクより前に確定した履歴だけを見るため、同時に実行される 2 つの検証が、本来は片方だけが通るべきチェックを両方とも通ることがあります。バリデーターを持つ Worker は持ち越しのワークフローポーリングを使いません。Worker のインターセプターは `executeUpdateValidation()` を通じて更新検証タスクをラップし、バリデーターの判定は見えますが、変更はできません。
+
+## リプレイ対応のワークフローロギング {#workflow-logging}
+
+Worker はワークフロータスクごとに履歴からワークフローをリプレイするため、ワークフローコード内の通常のログ呼び出しは完了したステップごとに繰り返されます。PHP SDK 3.32.0 以降には `$context->logger()` があります。これは PSR-3 ロガーを返し、`Worker` に渡したロガー（名前付き引数 `logger`）を通じて、コードが実行の確定済み履歴を越えて動くときだけ書き込みます。
+
+```php
+use DurableWorkflow\Worker\WorkflowContext;
+
+function approve(WorkflowContext $context, string $orderId): string
+{
+    $context->logger()->info('Approval started', ['order_id' => $orderId]);
+    $decision = $context->activity('review', [$orderId]);
+    $context->logger()->info('Review finished', ['decision' => $decision]);
+
+    return $decision;
+}
+```
+
+各行には `namespace`、`workflow_type`、`workflow_id`、`workflow_run_id` が含まれます。`$context->replayState()` は `WorkflowReplayState::Replaying`、`Executing`、`Unavailable` のいずれかを返し、`isReplaying()` はその真偽値版です。診断にだけ使い、これをもとにワークフローコマンドを選ばないでください。
+
+行が書き込まれるのは、Worker がコードを実行したワークフロータスクを送信し、Server がそれを受理した後だけです。置き換えられたリプレイ、Server が辞退した投機的リプレイ、拒否された完了は何も書き込みません。ステップを記録せずに保留中の子ワークフローまたは操作のハンドルで待機するコードは、その待機を抜けたタスクで一度だけログを書きます。side effect のクロージャー内の `logger()` 呼び出しは何も書き込みません。
+
+Server の受理から書き込みまでの間に Worker が停止すると、それらの行は失われます。これはプロセスのロガーであり、業務効果のための outbox ではありません。ログハンドラーは高速かつ非ブロッキングに保ってください。ネットワークを待つハンドラーは Worker を止め、タスクのリースを失わせることがあります。ロガーの失敗は捕捉され、ワークフローのコマンドを変えることはありません。
+
 ## アクティビティの再試行コンテキストと所属する実行 {#activity-retry-context}
 
 PHP SDK **3.6.1 以降**では、サービスモードのアクティビティで `$context->retryInfo`、`$context->workflowId`、`$context->runId` を参照できます。回数制限のあるポリシーの最後の設定済み試行は、`$context->retryInfo->isLastConfiguredAttempt() === true` で判定します。`attemptNumber` は、受信した元の試行番号を保持します。

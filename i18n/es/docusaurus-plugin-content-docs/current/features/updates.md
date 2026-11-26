@@ -14,6 +14,7 @@ Cada actualización aceptada:
 - Usa el nombre duradero declarado en el historial y en las rutas webhook. `#[UpdateMethod('mark-approved')]` mantiene estable el nombre público aunque cambie el método PHP.
 - Se rechaza para ejecuciones históricas o cerradas, sin modificar silenciosamente la actual.
 - Rechaza nombres no declarados con `rejected_unknown_update` y argumentos contrarios al contrato con `rejected_invalid_arguments` y `validation_errors` legibles por máquinas antes de ejecutar el manejador.
+- Rechaza como `update_validator_rejected`, antes de aceptarla, una solicitud que tu [validador de actualización](#validate-updates-before-acceptance) rechaza.
 
 Como las consultas, primero reproduce historial confirmado. A diferencia de ellas, puede modificar estado seguro para la reproducción y devolver un valor.
 
@@ -110,6 +111,53 @@ $latest->closedAt();     // null until the lifecycle closes
 ```
 
 `inspectUpdate()` no espera a la ejecución. Recarga el ciclo duradero y devuelve el `UpdateResult` actual.
+
+## Validar actualizaciones antes de aceptarlas {#validate-updates-before-acceptance}
+
+Sin un validador, una actualización que incumple una regla de negocio se acepta y después falla. Queda registrada como una actualización fallida, y quien llama no puede distinguir una solicitud incorrecta de una operación fallida. Declara un validador para rechazar la solicitud antes de que se acepte. Los validadores requieren Workflow 2.42.0 o posterior.
+
+```php
+use Workflow\UpdateMethod;
+use Workflow\UpdateValidator;
+use Workflow\V2\Workflow;
+
+final class CartWorkflow extends Workflow
+{
+    private array $items = [];
+
+    #[UpdateMethod('add-item')]
+    public function addItem(string $item): array
+    {
+        $this->items[] = $item;
+
+        return $this->items;
+    }
+
+    #[UpdateValidator('add-item')]
+    public function validateAddItem(string $item): void
+    {
+        if (count($this->items) >= 10) {
+            throw new \RuntimeException('The cart is full.');
+        }
+    }
+}
+```
+
+`#[UpdateValidator]` identifica la actualización por su nombre durable, o por el nombre de su método cuando la actualización no tiene alias. El validador recibe los mismos argumentos que la actualización. Antes de aceptar la actualización, el motor reconstruye el estado de la ejecución a partir de su historial y llama solo al validador:
+
+- Si retorna con normalidad, la actualización se acepta y se aplica como de costumbre.
+- Si lanza una excepción o devuelve `false`, la actualización se rechaza con el motivo `update_validator_rejected` y el resultado `rejected_invalid_arguments`. `rejectedByValidator()` es verdadero, `rejectionMessage()` devuelve el mensaje de la excepción y `validationErrors()` devuelve los errores de una `ValidationException` de Laravel. `update()` lanza una `LogicException` que incluye el motivo y el mensaje del validador.
+- Una actualización rechazada nunca se acepta, su handler nunca se ejecuta y el workflow no se despierta. Como cualquier otro rechazo, solo se registra como un evento de auditoría `UpdateRejected`, que la reproducción ignora.
+
+Los validadores son de solo lectura. Pueden leer el estado reconstruido del workflow, pero cualquier llamada durable (una actividad, un temporizador, un workflow hijo, una señal, un side effect, `await`, `getVersion()`, `patched()`, continue-as-new o un upsert de memo o de atributos de búsqueda) lanza `UpdateValidatorCommandException` y rechaza la actualización. Los cambios que un validador hace en el estado reconstruido se descartan. Un validador generador se rechaza, porque su cuerpo nunca se ejecuta.
+
+Los validadores no se registran en el historial y nunca se ejecutan durante la reproducción, así que no afectan al determinismo. Ven el estado del historial confirmado: una actualización aceptada pero aún no aplicada no es visible para ellos. La reproducción y el validador se ejecutan mientras la admisión de la actualización mantiene los bloqueos de la ejecución, así que mantén los validadores rápidos.
+
+Si el estado no puede reconstruirse, o el validador encuentra un error de base de datos, se lanza `UpdateValidationFailedException` y no se registra nada. Las rutas de webhook de actualización responden con un `503` reintentable y `update_validation_failed`. Reintenta con el mismo ID de solicitud.
+
+Un reintento con clave de una actualización rechazada devuelve el rechazo conservado sin volver a ejecutar el validador.
+
+Los interceptores del worker envuelven la validación de actualizaciones mediante `executeUpdateValidation()`. Ven la decisión del validador, pero no pueden cambiarla.
 
 ## Recuperarse tras una respuesta incierta {#recover-after-an-uncertain-response}
 
