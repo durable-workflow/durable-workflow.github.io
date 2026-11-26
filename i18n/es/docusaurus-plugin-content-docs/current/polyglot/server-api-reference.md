@@ -484,8 +484,12 @@ Estas rutas requieren operator o admin. Las que modifican espacios o almacenamie
 | `POST` | `/api/namespaces` | Crear un espacio. |
 | `GET` | `/api/namespaces/{namespace}` | Describir retención, metadatos y política de almacenamiento. |
 | `PUT` | `/api/namespaces/{namespace}` | Actualizar metadatos o retención. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | Previsualizar una política de retención propuesta sin aplicarla. Server nativo 3.30.0 y posteriores. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | Aplicar una política de retención planificada solo mientras el plan siga vigente. Server nativo 3.30.0 y posteriores. |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | Configurar almacenamiento externo de cargas. |
 | `POST` | `/api/storage/test` | Probar ida y vuelta de cargas pequeña y grande mediante el controlador configurado. |
+
+Las rutas de plan y aplicación de retención requieren admin. El plan no escribe nada. La aplicación rechaza un plan obsoleto o que no coincide y exige confirmación explícita para el borrado retroactivo. `PUT /api/namespaces/{namespace}` sigue activando una política de retención de inmediato. Consulte [Previsualizar y aplicar un cambio de retención](./server.md#preview-and-apply-a-retention-change) para el flujo, los campos de respuesta y los rechazos.
 
 Las políticas permiten que sobres grandes contengan referencias estables en lugar de bytes. Las locales resuelven mediante la ruta de archivos configurada. Las de objetos, como `s3`, `gcs` y `azure`, utilizan un disco explícito y ajustes de bucket/prefijo del servidor.
 

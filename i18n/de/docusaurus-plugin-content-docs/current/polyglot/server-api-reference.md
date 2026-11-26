@@ -618,8 +618,12 @@ und externe Speicherrouten benötigen die Admin-Rolle.
 | `POST` | `/api/namespaces` | Namespace erstellen. |
 | `GET` | `/api/namespaces/{namespace}` | Aufbewahrung, Metadaten und Speicherrichtlinie eines Namespace beschreiben. |
 | `PUT` | `/api/namespaces/{namespace}` | Namespace-Metadaten oder Aufbewahrung aktualisieren. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan` | Eine vorgeschlagene Aufbewahrungsregel ohne Anwendung vorab prüfen. Nativer Server ab 3.30.0. |
+| `POST` | `/api/namespaces/{namespace}/retention-plan/apply` | Eine geplante Aufbewahrungsregel nur anwenden, solange der Plan noch gilt. Nativer Server ab 3.30.0. |
 | `PUT` | `/api/namespaces/{namespace}/external-storage` | Externe Nutzlastspeicherrichtlinie des Namespace konfigurieren. |
 | `POST` | `/api/storage/test` | Kleine und große Nutzlast über konfigurierten externen Speichertreiber schreiben und zurücklesen. |
+
+Die Routen für Aufbewahrungsplan und -anwendung benötigen die Admin-Rolle. Der Plan schreibt nichts. Die Anwendung lehnt einen veralteten oder abweichenden Plan ab und verlangt für rückwirkende Bereinigung eine ausdrückliche Bestätigung. `PUT /api/namespaces/{namespace}` aktiviert eine Aufbewahrungsregel weiterhin sofort. Ablauf, Antwortfelder und Ablehnungen beschreibt [Aufbewahrungsänderung prüfen und anwenden](./server.md#preview-and-apply-a-retention-change).
 
 Externe Nutzlastspeicherrichtlinien ersetzen rohe Bytes großer Envelopes durch
 stabile Referenzen. Lokale Richtlinien lösen über den konfigurierten

@@ -257,7 +257,60 @@ DW_HISTORY_RETENTION_DAYS=30
 
 缩短保留期前，应检查关闭时间并保存所需历史。通过[历史导出 API](./server-api-reference.md#workflow-control-plane)导出重要运行，并保留可恢复的数据库及外部载荷备份。重放导出必须保留引用的载荷对象，不能替代数据库和存储备份。
 
-使用管理员凭据更新命名空间：
+##### 预览并应用保留策略变更 {#preview-and-apply-a-retention-change}
+
+原生 Server 3.30.0 及更高版本可以在拟议策略生效前展示其影响，并且只在该预览仍然有效时应用它。两个路由都需要管理员凭据。PHP Server 2.x 和更早的原生版本不提供这些路由。下文介绍的 `PUT /api/namespaces/{namespace}` 保持不变。它仍会立即激活策略，不需要计划或确认，因此现有客户端可以继续工作。
+
+使用拟议的 `retention_mode` 和 `retention_days` 请求计划。这些字段遵循命名空间更新的规则，省略的字段保持当前值。可选的 `scan_limit`（默认 1000，最多 10000）限制每项计数。可选的 `hold_scan_limit`（默认 100，最多 1000）限制检查保留约束的运行数量。
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+计划不写入任何内容。它不更改策略，不标记运行，不获取载荷对象，也不清理任何内容。应用前，请检查 `durable-workflow.v2.retention-plan.v1` 响应中的以下字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `current_policy`、`proposed_policy` | 每个策略及其截止时间。 |
+| `retroactive` | 当拟议策略使当前策略保留的已关闭运行变为可清理时为 `true`，例如缩短天数，或用有界策略替换 `forever`。 |
+| `changes` | 已关闭且未归档的运行中，变为可清理的（`newly_eligible`）、不再可清理的（`no_longer_eligible`）、仍可清理的（`unchanged_eligible`）和仍被保留的（`unchanged_retained`）。每组按从旧到新列出最多五个示例运行。 |
+| `exclusions` | 早于拟议截止时间的已归档运行（`archived`）、`forever` 拟议策略保留的已关闭运行（`forever`）以及未关闭的运行（`not_terminal`）。还包括可清理但当前清理会跳过的运行，原因是仍未结束的被放弃活动（`detached_activity_hold`）、Server 无法处理的载荷引用（`external_payload_cleanup_unavailable`）或有效的在线备份保留约束（`backup_hold`）。 |
+| `policy_revision`、`plan_revision` | 应用时必须回传的值。`policy_revision` 标识命名空间的当前策略。`plan_revision` 将计划绑定到该策略和这一确切的拟议策略。 |
+
+每项计数都包含 `count`、`lower_bound` 和 `complete`。达到扫描上限的计数为 `count: null` 和 `complete: false`，并会列在计划的 `incomplete` 列表中。应将此类计数视为最小值，而非精确数字。之后的任何命名空间更新都会产生新的 `policy_revision`，即使它不改变保留策略。
+
+计划是某一时刻的扫描，而不是删除集合。它读取一个快照，只描述那一刻。在下一次保留清理之前，运行可能关闭、超过截止时间、被归档，或获得和失去保留约束，策略本身也可能改变。计划不是之后清理将删除的运行的固定列表。
+
+要应用计划，请发送相同的拟议策略，并附上计划的 `policy_revision` 和 `plan_revision`。由于清理不可逆，追溯性的拟议策略还需要 `"confirm_retroactive_pruning": true`。请将此示例中的两个修订值替换为你的计划中的值：
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan/apply" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7,"policy_revision":"sha256:…","plan_revision":"sha256:…","confirm_retroactive_pruning":true}'
+```
+
+检查和策略更新在同一个写事务中执行，因此其间不会插入其他策略变更。出现以下情况时，应用会被拒绝，且不做任何更改：
+
+| 状态和原因 | 起因 | 下一步 |
+| --- | --- | --- |
+| `409 retention_policy_revision_stale` | 计划之后命名空间已更改。响应包含当前的 `policy_revision`。 | 请求并检查新的计划。 |
+| `409 retention_plan_revision_mismatch` | 发送的策略不是计划中的策略。 | 发送计划中的策略，或先为此策略生成计划。 |
+| `422 retention_pruning_confirmation_required` | 拟议策略具有追溯性，且 `confirm_retroactive_pruning` 不为 `true`。 | 检查新变为可清理的运行和备份，然后确认。 |
+| `422` 验证错误、`422 invalid_namespace_definition` | 缺少修订值，或拟议策略违反命名空间更新的规则。 | 更正请求，若拟议策略改变则重新生成计划。 |
+
+被接受的应用以 `durable-workflow.v2.retention-apply.v1` 模式响应。它报告 `applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` 及其 `previous_policy_revision`，以及已应用的 `policy` 及其新的 `policy_revision`。由于修订值会改变，同一计划不能应用两次。
+
+应用只更改命名空间的策略。它不标记、不归档也不清理任何运行，也不会开始宽限期。策略从 `applied_at` 起生效。之后每次保留清理都会删除早于当时截止时间的已关闭、未归档运行。这可能包括计划之后才关闭或超过期限的运行，并会跳过当时已归档或受保留约束的运行。
+
+##### 直接更新策略 {#update-the-retention-policy-directly}
+
+不使用计划时，使用管理员凭据更新命名空间。新策略立即生效：
 
 ```bash
 curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \

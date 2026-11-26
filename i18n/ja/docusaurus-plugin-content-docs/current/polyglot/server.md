@@ -258,7 +258,60 @@ DW_HISTORY_RETENTION_DAYS=30
 
 保持期間を短縮する前に終了時刻を確認し、必要な履歴を保存します。重要な実行を[履歴エクスポート API](./server-api-reference.md#workflow-control-plane)で出力し、復旧可能なデータベースと外部ペイロードのバックアップを保持してください。Replay エクスポートには参照先オブジェクトも必要であり、データベースとストレージのバックアップの代わりにはなりません。
 
-管理者の認証情報で Namespace を更新します。
+##### 保持設定の変更をプレビューして適用する {#preview-and-apply-a-retention-change}
+
+ネイティブ Server 3.30.0 以降では、提案した保持ポリシーが有効になる前にその影響を確認し、そのプレビューがまだ有効な間だけ適用できます。どちらのルートにも管理者の認証情報が必要です。PHP Server 2.x と以前のネイティブリリースにはこれらのルートはありません。後述の `PUT /api/namespaces/{namespace}` は変わりません。引き続き計画も確認もなしにポリシーを直ちに有効にするため、既存のクライアントはそのまま動作します。
+
+提案する `retention_mode` と `retention_days` を指定して計画を要求します。各フィールドは Namespace 更新と同じ規則に従い、省略したフィールドは現在の値を保ちます。任意の `scan_limit`（既定 1000、最大 10000）は各件数の上限です。任意の `hold_scan_limit`（既定 100、最大 1000）は、保持条件を確認する実行数の上限です。
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7}'
+```
+
+計画は何も書き込みません。ポリシーを変更せず、実行に印を付けず、ペイロードオブジェクトを取得せず、何も削除しません。適用する前に、`durable-workflow.v2.retention-plan.v1` の応答で次のフィールドを確認してください。
+
+| フィールド | 示す内容 |
+| --- | --- |
+| `current_policy`、`proposed_policy` | 各ポリシーとその境界時刻。 |
+| `retroactive` | 日数の短縮や `forever` から有限ポリシーへの変更など、現在のポリシーでは保持される終了済み実行が提案によって削除対象になる場合は `true`。 |
+| `changes` | アーカイブされていない終了済み実行のうち、新たに削除対象になるもの（`newly_eligible`）、対象から外れるもの（`no_longer_eligible`）、引き続き対象のもの（`unchanged_eligible`）、引き続き保持されるもの（`unchanged_retained`）。それぞれ例として最大 5 件の実行を古い順に示します。 |
+| `exclusions` | 提案した境界より古いアーカイブ済み実行（`archived`）、`forever` の提案で保持される終了済み実行（`forever`）、未終了の実行（`not_terminal`）。さらに、削除対象でも現時点では削除がスキップされる実行。原因は、放棄されたまま開いているアクティビティ（`detached_activity_hold`）、Server が解決できないペイロード参照（`external_payload_cleanup_unavailable`）、有効なオンラインバックアップの保持（`backup_hold`）です。 |
+| `policy_revision`、`plan_revision` | 適用時に送り返す値。`policy_revision` は Namespace の現在のポリシーを識別します。`plan_revision` は計画をそのポリシーとこの提案そのものに結び付けます。 |
+
+各件数には `count`、`lower_bound`、`complete` があります。走査上限に達した件数は `count: null` と `complete: false` になり、計画の `incomplete` 一覧にその名前が載ります。そのような件数は正確な値ではなく最小値として扱ってください。その後の Namespace 更新は、保持設定を変えないものでも新しい `policy_revision` を生みます。
+
+計画はある時点の走査であり、削除対象の確定集合ではありません。1 つのスナップショットを読み、その時点だけを表します。次の保持処理までに、実行が終了する、境界を過ぎる、アーカイブされる、保持条件が付く・外れることがあり、ポリシー自体も変わり得ます。計画は、後の削除で消える実行の固定一覧ではありません。
+
+計画を適用するには、同じ提案に計画の `policy_revision` と `plan_revision` を付けて送ります。削除は元に戻せないため、遡及的な提案には `"confirm_retroactive_pruning": true` も必要です。この例の 2 つのリビジョンは、実際の計画の値に置き換えてください。
+
+```bash
+curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retention-plan/apply" \
+  -H "Authorization: Bearer $DW_ADMIN_TOKEN" \
+  -H "X-Durable-Workflow-Control-Plane-Version: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_mode":"bounded","retention_days":7,"policy_revision":"sha256:…","plan_revision":"sha256:…","confirm_retroactive_pruning":true}'
+```
+
+確認とポリシー更新は 1 つの書き込みトランザクションで実行されるため、その間に他のポリシー変更が入ることはありません。次の場合、適用は何も変更せずに拒否されます。
+
+| ステータスと理由 | 原因 | 次の操作 |
+| --- | --- | --- |
+| `409 retention_policy_revision_stale` | 計画の後に Namespace が変更されました。応答には現在の `policy_revision` が含まれます。 | 新しい計画を要求して確認します。 |
+| `409 retention_plan_revision_mismatch` | 送信したポリシーが計画したポリシーと異なります。 | 計画したポリシーを送るか、先にこのポリシーの計画を作成します。 |
+| `422 retention_pruning_confirmation_required` | 提案が遡及的で、`confirm_retroactive_pruning` が `true` ではありません。 | 新たに削除対象になる実行とバックアップを確認してから承認します。 |
+| `422` 検証エラー、`422 invalid_namespace_definition` | リビジョンがないか、提案が Namespace 更新の規則に反しています。 | リクエストを修正し、提案が変わる場合は再度計画します。 |
+
+受け付けられた適用は、スキーマ `durable-workflow.v2.retention-apply.v1` で応答します。`applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` とその `previous_policy_revision`、適用された `policy` とその新しい `policy_revision` を返します。リビジョンが変わるため、同じ計画を 2 回適用することはできません。
+
+適用で変わるのは Namespace のポリシーだけです。実行に印を付けたり、アーカイブしたり、削除したりはせず、猶予期間も始まりません。ポリシーは `applied_at` から有効です。その後の各保持処理は、その時点の境界より古い、アーカイブされていない終了済み実行を削除します。計画の後に終了した実行や境界を過ぎた実行も含まれる場合があり、その時点でアーカイブ済みまたは保持中の実行はスキップされます。
+
+##### ポリシーを直接更新する {#update-the-retention-policy-directly}
+
+計画を使わない場合は、管理者の認証情報で Namespace を更新します。新しいポリシーは直ちに有効になります。
 
 ```bash
 curl -sS -X PUT "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod" \
