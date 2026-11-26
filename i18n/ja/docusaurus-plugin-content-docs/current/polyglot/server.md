@@ -305,7 +305,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `422 retention_pruning_confirmation_required` | 提案が遡及的で、`confirm_retroactive_pruning` が `true` ではありません。 | 新たに削除対象になる実行とバックアップを確認してから承認します。 |
 | `422` 検証エラー、`422 invalid_namespace_definition` | リビジョンがないか、提案が Namespace 更新の規則に反しています。 | リクエストを修正し、提案が変わる場合は再度計画します。 |
 
-受け付けられた適用は、スキーマ `durable-workflow.v2.retention-apply.v1` で応答します。`applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` とその `previous_policy_revision`、適用された `policy` とその新しい `policy_revision` を返します。保持モードや日数を変える計画は、適用するとリビジョンが変わるため、2 回適用できません。現在のポリシーを提案する計画は何も変えず、再度適用しても同じポリシーを書き直すだけです。
+受け付けられた適用は、スキーマ `durable-workflow.v2.retention-apply.v1` で応答します。`applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` とその `previous_policy_revision`、適用された `policy` とその新しい `policy_revision` を返します。保持モードや日数を変える計画は、適用するとリビジョンが変わるため、2 回適用できません。現在のモードと日数を提案する計画はポリシーを変えませんが、`updated_at` は更新するため、その Namespace の他の未適用の計画が古くなることがあります。再度の適用は、保存された `updated_at` が変わっていない場合（PostgreSQL、MySQL、MariaDB では保存された秒が同じ場合）にだけ受け付けられ、同じポリシーを書き直します。それ以外の場合は古い計画として拒否されます。
 
 適用で変わるのは Namespace のポリシーだけです。実行に印を付けたり、アーカイブしたり、削除したりはせず、猶予期間も始まりません。ポリシーは `applied_at` から有効です。その後の各保持処理は、その時点の境界より古い、アーカイブされていない終了済み実行を削除します。計画の後に終了した実行や境界を過ぎた実行も含まれる場合があり、その時点でアーカイブ済みまたは保持中の実行はスキップされます。
 

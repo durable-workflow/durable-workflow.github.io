@@ -304,7 +304,7 @@ curl -sS -X POST "$DURABLE_WORKFLOW_SERVER_URL/api/namespaces/orders-prod/retent
 | `422 retention_pruning_confirmation_required` | 拟议策略具有追溯性，且 `confirm_retroactive_pruning` 不为 `true`。 | 检查新变为可清理的运行和备份，然后确认。 |
 | `422` 验证错误、`422 invalid_namespace_definition` | 缺少修订值，或拟议策略违反命名空间更新的规则。 | 更正请求，若拟议策略改变则重新生成计划。 |
 
-被接受的应用以 `durable-workflow.v2.retention-apply.v1` 模式响应。它报告 `applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` 及其 `previous_policy_revision`，以及已应用的 `policy` 及其新的 `policy_revision`。更改保留模式或天数的计划不能应用两次，因为应用它会改变修订值。提议当前策略的计划不会更改任何内容，再次应用只会重写相同的策略。
+被接受的应用以 `durable-workflow.v2.retention-apply.v1` 模式响应。它报告 `applied_at`、`retroactive`、`confirmed_retroactive_pruning`、`previous_policy` 及其 `previous_policy_revision`，以及已应用的 `policy` 及其新的 `policy_revision`。更改保留模式或天数的计划不能应用两次，因为应用它会改变修订值。提议当前模式和天数的计划不会改变策略，但仍会更新 `updated_at`，这可能使该命名空间的其他待应用计划过期。只有在存储的 `updated_at` 未改变时（在 PostgreSQL、MySQL 和 MariaDB 上即存储的秒值相同），再次应用才会被接受，并重写相同的策略。否则会因过期而被拒绝。
 
 应用只更改命名空间的策略。它不标记、不归档也不清理任何运行，也不会开始宽限期。策略从 `applied_at` 起生效。之后每次保留清理都会删除早于当时截止时间的已关闭、未归档运行。这可能包括计划之后才关闭或超过期限的运行，并会跳过当时已归档或受保留约束的运行。
 
