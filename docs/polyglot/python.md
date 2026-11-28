@@ -1388,7 +1388,15 @@ For remote activities, call `await ctx.heartbeat(...)` during bounded work, well
 
 The direct `Client.heartbeat_activity_task()` call uses the configured `TransportRetryPolicy`. After that policy, transport errors can propagate as `httpx.TransportError`, and HTTP refusals become mapped SDK exceptions such as `ServerError`. This is HTTP retry behavior, not another activity attempt or more heartbeat time. `ActivityContext.heartbeat()` can raise `ActivityCancelled` when the worker tells the activity to stop. When cooperative process supervision is enabled, failed heartbeat or ownership checks can stop or abandon the callback. Do not assume every failure returns to a catch block or that cleanup code always runs.
 
-Do not suppress heartbeat/ownership failures and continue external work or report success. Progress is not an external commit or a resumable-checkpoint receipt. Keep external effects idempotent.
+Do not suppress heartbeat/ownership failures and continue external work or report success.
+
+#### Resume from an acknowledged heartbeat {#resume-activity-checkpoint}
+
+When the worker and Server support heartbeat resume version 1, a heartbeat with application details can commit a checkpoint for the logical activity execution. At the start of a retry, use `ctx.last_heartbeat_checkpoint()` to read the fixed snapshot and its original acknowledgement time. A supported claim with no recorded details returns `None`. A context without the contract reports `ActivityHeartbeatResumeUnavailable`.
+
+If a heartbeat acknowledgement is lost, resume from what Server committed. Activity retry policy and deadlines still apply. Use stable idempotency keys and check the provider’s receipt before repeating an external operation. The external operation has its own commit boundary. [Activity retries and idempotency](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK checkpoint example](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+When an external operation requires exclusive ownership, have the provider reject stale fencing tokens.
 
 ### Heartbeat refusals and callback exit {#heartbeat-refusals-and-callback-exit}
 

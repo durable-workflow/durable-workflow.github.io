@@ -175,7 +175,13 @@ SDK は受信した空でない文字列をそのまま保持します。省略�
 
 このメソッドは `void` を返します。直接ハンドラーの経路では、停止を求める応答は `ActivityCancelled` を発生させます。`Client::heartbeatActivityTask()` の HTTP や通信の障害は `ServerException` として現れます。協調的な監督下の Worker は、ハートビートや所有権の確認に失敗すると、アクティビティコードに通常の応答を渡さずにコールバックを停止または放棄する場合があります。後始末が必ず実行されると考えたり、権限喪失のエラーを抑制したり、権限を失ってから成功を送信したりしないでください。
 
-呼び出しから戻っても外部処理をコミットしたり、再開可能なチェックポイントを取得したりするわけではありません。外部作用は冪等にし、通信の再試行を新しいハートビート期間として扱わないでください。
+### 確認済みハートビートから再開する {#resume-activity-checkpoint}
+
+ワーカーと Server がハートビート再開のバージョン 1 に対応している場合、アプリケーションの詳細を含むハートビートで、論理アクティビティ実行のチェックポイントを保存できます。再試行の開始時に、`$context->lastHeartbeatCheckpoint()` で固定されたスナップショットと元の確認時刻を読み取ります。対応する試行に保存済みの詳細がなければ `null` が返ります。未対応のコンテキストでは `ActivityHeartbeatResumeUnavailable` が報告されます。
+
+応答が失われたときは、Server が保存した状態から再開します。再試行ポリシーと期限は引き続き適用されます。外部操作を繰り返す前に、安定した冪等性キーを使用し、サービス提供元の処理結果を照合してください。外部操作は別に確定します。 [アクティビティの再試行と冪等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK のチェックポイントの例](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+外部操作に排他的な実行権限が必要な場合は、サービス提供元で古いフェンシングトークンを拒否してください。
 
 ## リモート PHP Worker の実行 {#run-a-remote-php-worker}
 

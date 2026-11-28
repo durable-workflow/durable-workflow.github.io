@@ -899,6 +899,14 @@ fn round_trip() -> Result<()> {
 
 第一个心跳窗口从运行时领取任务开始，早于任务交付。已记录心跳使用其运行时时间，而不是调用方的接收时间。选择在配置超时内留足余量的节奏，限制每个工作或 I/O 步骤，并为执行暂停、请求延迟及可能的传输重试预留时间。请遵循[发送节奏建议](../features/heartbeats.md#heartbeat-cadence-and-receipts)。不保证自动进度心跳或批量发送计划。
 
-取消时，如执行条件仍允许，请释放进程内资源并及时返回。持久状态会拒绝迟到的完成，不能将已取消或已终止的运行变为成功。受管理的 Worker 在该明确拒绝后及重启后继续轮询。成功心跳不是外部副作用的提交，也不是替代尝试的可恢复检查点。
+取消时，如执行条件仍允许，请释放进程内资源并及时返回。持久状态会拒绝迟到的完成，不能将已取消或已终止的运行变为成功。受管理的 Worker 在该明确拒绝后及重启后继续轮询。
+
+### 从已确认的心跳恢复 {#resume-activity-checkpoint}
+
+当工作进程和 Server 都支持第 1 版心跳恢复协议时，带有应用详情的心跳可以为逻辑活动执行提交检查点。重试开始时，用 `ctx.last_heartbeat_checkpoint()` 读取固定的快照及原始确认时间。支持该协议但没有已记录详情的尝试返回 `Ok(None)`。不支持的上下文报告 `ActivityHeartbeatResumeUnavailable`。
+
+如果心跳确认丢失，请从 Server 实际提交的状态恢复。活动的重试策略和截止时间仍然适用。重复外部操作前，请使用稳定的幂等键并核对服务提供方的回执。外部操作有独立的提交边界。 [活动重试与幂等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK 检查点示例](https://github.com/durable-workflow/sdk-rust/blob/4.25.0/README.md#acknowledged-activity-checkpoints).
+
+如果外部操作要求独占所有权，请让服务提供方拒绝过期的隔离令牌（fencing token）。
 
 Server 镜像、认证及生产拓扑请继续查看 [Server 设置指南](/docs/polyglot/server)。

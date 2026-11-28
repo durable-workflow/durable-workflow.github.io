@@ -1196,7 +1196,15 @@ For remote activities, `ActivityContext::heartbeat(...).await` returns a `Result
 
 The first heartbeat window starts at runtime claim, before task delivery. A recorded heartbeat uses its runtime timestamp, not the caller's receipt time. Choose a cadence well inside the configured timeout, bound each work/I/O step and allow for scheduling, request latency and any transport retries. Follow the [cadence guidance](../features/heartbeats.md#heartbeat-cadence-and-receipts). No automatic progress-heartbeat or batching schedule is promised.
 
-On cancellation, release process-local resources when execution still permits it and return promptly. A late completion is rejected by durable state and cannot turn a cancelled or terminated run into success. Managed workers continue polling after that definitive rejection and restart. A successful heartbeat is not an external-effect commit or a replacement attempt's resumable checkpoint.
+On cancellation, release process-local resources when execution still permits it and return promptly. A late completion is rejected by durable state and cannot turn a cancelled or terminated run into success. Managed workers continue polling after that definitive rejection and restart.
+
+### Resume from an acknowledged heartbeat {#resume-activity-checkpoint}
+
+When the worker and Server support heartbeat resume version 1, a heartbeat with application details can commit a checkpoint for the logical activity execution. At the start of a retry, use `ctx.last_heartbeat_checkpoint()` to read the fixed snapshot and its original acknowledgement time. A supported claim with no recorded details returns `Ok(None)`. A context without the contract reports `ActivityHeartbeatResumeUnavailable`.
+
+If a heartbeat acknowledgement is lost, resume from what Server committed. Activity retry policy and deadlines still apply. Use stable idempotency keys and check the provider’s receipt before repeating an external operation. The external operation has its own commit boundary. [Activity retries and idempotency](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK checkpoint example](https://github.com/durable-workflow/sdk-rust/blob/4.25.0/README.md#acknowledged-activity-checkpoints).
+
+When an external operation requires exclusive ownership, have the provider reject stale fencing tokens.
 
 For server images, authentication, and production topology, continue with the
 [server setup guide](/docs/polyglot/server).

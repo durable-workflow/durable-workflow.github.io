@@ -55,7 +55,15 @@ No hay un calendario automático de heartbeats de progreso ni una garantía de a
 
 En modo embebido, `Activity::heartbeat()` devuelve `void`. El progreso inválido y los fallos de almacenamiento pueden lanzar excepciones. Un retorno normal no es un objeto de confirmación: un intento cerrado, vencido o reemplazado puede volver sin registrar otro heartbeat. En modo servicio, el tratamiento de errores difiere entre las llamadas directas al cliente y los workers supervisados. Consulte las guías de [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) y [Rust](../polyglot/rust.md#activity-heartbeats).
 
-El progreso de heartbeat no confirma atómicamente un lote externo ni delimita sus efectos. Un punto de control de aplicación seguro ante reintentos necesita su propia confirmación duradera, una clave lógica estable de trabajo e idempotencia o control externo de titularidad. El acceso de un intento de reemplazo a puntos de control confirmados se sigue por separado en [la función de puntos de control](https://github.com/durable-workflow/.github/issues/218).
+## Reanudar desde un punto de control confirmado {#acknowledged-checkpoint}
+
+Desde Workflow 2.43.0, una actividad V2 integrada que se ejecuta en una cola puede llamar a `$this->heartbeatCheckpoint($details)` con un array PHP compatible con JSON. Si la llamada termina correctamente, el punto de control se ha guardado para esa ejecución lógica de la actividad. Aplica la migración del paquete antes de iniciar los workers que usan esta API. Usa `heartbeat()` para mostrar el progreso al operador.
+
+Lee `$this->lastHeartbeatCheckpoint()` al empezar un intento. La instantánea permanece fija durante ese intento. El punto de control ofrece `details()` y la marca de tiempo original `acknowledgedAt`. Un intento compatible sin punto de control recibe `null`. Un contexto incompatible lanza `ActivityHeartbeatResumeUnavailable`. Consulta `heartbeatResumeVersion()` para saber si el contexto admite la versión 1.
+
+Si un worker se detiene antes de recibir la confirmación, un intento posterior lee lo que se guardó realmente. El reintento mantiene la política y los plazos de la actividad. Para una operación externa, reutiliza una clave de idempotencia estable y verifica el recibo del proveedor antes de repetirla. El punto de control confirma la escritura en el almacenamiento del workflow. La operación externa tiene su propio límite de confirmación. Consulta [reintentos de actividades e idempotencia](../constraints/execution-guarantees.md#activity-execution-is-at-least-once).
+
+Si una operación externa exige titularidad exclusiva, haz que el proveedor rechace los tokens de cercado obsoletos.
 
 ## Instantáneas de progreso {#progress-snapshots}
 

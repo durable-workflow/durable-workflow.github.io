@@ -237,7 +237,13 @@ For remote activities, call `ActivityContext::heartbeat($details)` during bounde
 
 The method returns `void`. In the direct handler path, a stop reply raises `ActivityCancelled`. HTTP and transport failures from `Client::heartbeatActivityTask()` surface as `ServerException`. A cooperatively supervised worker can stop or abandon its callback when a heartbeat or ownership check fails instead of delivering a normal response to activity code. Do not assume cleanup code always runs. Do not suppress a failure after losing the claim or submit success after losing authority.
 
-A returned call does not commit external work or provide a resumable checkpoint. Keep external effects idempotent and do not treat a transport retry as a fresh heartbeat window.
+### Resume from an acknowledged heartbeat {#resume-activity-checkpoint}
+
+When the worker and Server support heartbeat resume version 1, a heartbeat with application details can commit a checkpoint for the logical activity execution. At the start of a retry, use `$context->lastHeartbeatCheckpoint()` to read the fixed snapshot and its original acknowledgement time. A supported claim with no recorded details returns `null`. A context without the contract reports `ActivityHeartbeatResumeUnavailable`.
+
+If a heartbeat acknowledgement is lost, resume from what Server committed. Activity retry policy and deadlines still apply. Use stable idempotency keys and check the provider’s receipt before repeating an external operation. The external operation has its own commit boundary. [Activity retries and idempotency](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK checkpoint example](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+When an external operation requires exclusive ownership, have the provider reject stale fencing tokens.
 
 ## Run a remote PHP worker
 

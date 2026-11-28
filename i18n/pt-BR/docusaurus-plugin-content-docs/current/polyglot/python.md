@@ -1334,7 +1334,15 @@ Para atividades remotas, chame `await ctx.heartbeat(...)` durante trabalho de at
 
 A chamada direta a `Client.heartbeat_activity_task()` usa a `TransportRetryPolicy` configurada. Após essa política, erros de transporte podem se propagar como `httpx.TransportError`, e recusas HTTP se tornam exceções do SDK, como `ServerError`. São novas tentativas HTTP, não outra tentativa de atividade nem mais tempo para o heartbeat. `ActivityContext.heartbeat()` pode lançar `ActivityCancelled` quando o worker manda a atividade parar. Quando a supervisão cooperativa de processos está ativada, falhas de heartbeat ou de verificação de posse podem parar ou abandonar o callback. Não suponha que toda falha volte a um bloco de captura ou que a limpeza sempre seja executada.
 
-Não suprima falhas de heartbeat ou de posse para continuar trabalho externo ou informar sucesso. Progresso não é um commit externo nem uma confirmação de checkpoint retomável. Mantenha os efeitos externos idempotentes.
+Não suprima falhas de heartbeat ou de posse para continuar trabalho externo ou informar sucesso.
+
+#### Retomar após um heartbeat confirmado {#resume-activity-checkpoint}
+
+Quando o worker e o servidor oferecem a versão 1 da retomada por heartbeat, um heartbeat com dados da aplicação pode gravar um checkpoint para a execução lógica da atividade. No início de uma nova tentativa, use `ctx.last_heartbeat_checkpoint()` para ler o snapshot fixo e o horário original de confirmação. Uma tentativa compatível sem dados gravados retorna `None`. Um contexto incompatível informa `ActivityHeartbeatResumeUnavailable`.
+
+Se a confirmação do heartbeat se perder, retome a partir do estado que o servidor gravou. A política de novas tentativas e os prazos continuam valendo. Use chaves de idempotência estáveis e confira o comprovante do provedor antes de repetir uma operação externa. A operação externa tem seu próprio commit. [Novas tentativas de atividades e idempotência](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Exemplo de checkpoint do SDK](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+Quando uma operação externa exige posse exclusiva, faça o provedor rejeitar tokens de fencing obsoletos.
 
 ### Recusas de heartbeat e saída do callback {#heartbeat-refusals-and-callback-exit}
 

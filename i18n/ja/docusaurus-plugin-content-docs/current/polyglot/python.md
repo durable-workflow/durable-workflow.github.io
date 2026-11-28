@@ -1128,7 +1128,15 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
 
 `Client.heartbeat_activity_task()` の直接呼び出しは、設定された `TransportRetryPolicy` を使います。このポリシーの処理後、通信エラーは `httpx.TransportError` として伝播し、HTTP の拒否は `ServerError` などの SDK 例外になります。これは HTTP の再試行であり、新しいアクティビティ試行やハートビートの時間延長ではありません。Worker が停止を求めると、`ActivityContext.heartbeat()` は `ActivityCancelled` を発生させる場合があります。協調的なプロセス監督が有効な場合、ハートビートや所有権確認の失敗によってコールバックが停止または放棄される場合があります。すべての失敗が例外処理ブロックに戻ったり、後始末が必ず実行されたりするとは限りません。
 
-ハートビートや所有権の失敗を抑制して外部処理を続けたり、成功を報告したりしないでください。進捗は外部コミットや再開可能なチェックポイントの確認ではありません。外部作用は冪等にしてください。
+ハートビートや所有権の失敗を抑制して外部処理を続けたり、成功を報告したりしないでください。
+
+#### 確認済みハートビートから再開する {#resume-activity-checkpoint}
+
+ワーカーと Server がハートビート再開のバージョン 1 に対応している場合、アプリケーションの詳細を含むハートビートで、論理アクティビティ実行のチェックポイントを保存できます。再試行の開始時に、`ctx.last_heartbeat_checkpoint()` で固定されたスナップショットと元の確認時刻を読み取ります。対応する試行に保存済みの詳細がなければ `None` が返ります。未対応のコンテキストでは `ActivityHeartbeatResumeUnavailable` が報告されます。
+
+応答が失われたときは、Server が保存した状態から再開します。再試行ポリシーと期限は引き続き適用されます。外部操作を繰り返す前に、安定した冪等性キーを使用し、サービス提供元の処理結果を照合してください。外部操作は別に確定します。 [アクティビティの再試行と冪等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK のチェックポイントの例](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+外部操作に排他的な実行権限が必要な場合は、サービス提供元で古いフェンシングトークンを拒否してください。
 
 ### ハートビートの拒否とコールバックの終了 {#heartbeat-refusals-and-callback-exit}
 

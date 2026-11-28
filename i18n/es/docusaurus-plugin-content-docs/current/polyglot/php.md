@@ -238,7 +238,13 @@ Para actividades remotas, llame a `ActivityContext::heartbeat($details)` durante
 
 El método devuelve `void`. En la ruta directa del manejador, una respuesta de detención lanza `ActivityCancelled`. Los fallos HTTP y de transporte de `Client::heartbeatActivityTask()` aparecen como `ServerException`. Un worker con supervisión cooperativa puede detener o abandonar su callback cuando falla un heartbeat o una comprobación de titularidad, en vez de entregar una respuesta normal al código de actividad. No suponga que la limpieza siempre se ejecutará, no suprima un error de pérdida de autoridad ni envíe éxito después de perderla.
 
-Que la llamada retorne no confirma el trabajo externo ni proporciona un punto de control reanudable. Mantenga idempotentes los efectos externos y no trate un reintento de transporte como una nueva ventana de heartbeat.
+### Reanudar tras un heartbeat confirmado {#resume-activity-checkpoint}
+
+Cuando el worker y el servidor admiten la versión 1 de reanudación por heartbeat, un heartbeat con datos de la aplicación puede guardar un punto de control para la ejecución lógica de la actividad. Al empezar un reintento, usa `$context->lastHeartbeatCheckpoint()` para leer la instantánea fija y su hora de confirmación original. Un intento compatible sin datos guardados devuelve `null`. Un contexto incompatible indica `ActivityHeartbeatResumeUnavailable`.
+
+Si se pierde la confirmación, reanuda desde el estado que guardó el servidor. La política de reintentos y los plazos siguen vigentes. Usa claves de idempotencia estables y verifica el recibo del proveedor antes de repetir una operación externa. La operación externa se confirma por separado. [Reintentos de actividades e idempotencia](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Ejemplo de punto de control del SDK](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+Si una operación externa exige titularidad exclusiva, haz que el proveedor rechace los tokens de cercado obsoletos.
 
 ## Ejecutar un worker PHP remoto {#run-a-remote-php-worker}
 

@@ -55,7 +55,15 @@ Il n’existe ni calendrier automatique de heartbeats de progression ni garantie
 
 En mode embarqué, `Activity::heartbeat()` renvoie `void`. Une progression invalide ou une défaillance de stockage peut lever une exception. Un retour normal n’est pas un objet de confirmation : une tentative fermée, expirée ou remplacée peut retourner sans enregistrer un nouveau heartbeat. En mode service, les erreurs diffèrent entre les appels directs au client et les workers supervisés. Consultez les guides [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) et [Rust](../polyglot/rust.md#activity-heartbeats).
 
-La progression d’un heartbeat ne valide pas atomiquement un lot externe et ne protège pas ses effets externes contre un ancien détenteur. Un point de reprise applicatif sûr face aux nouvelles tentatives exige sa propre validation durable, une clé logique de travail stable et de l’idempotence ou un contrôle externe de possession. L’accès d’une tentative de remplacement à un point de reprise confirmé est suivi séparément dans [la fonction de points de reprise](https://github.com/durable-workflow/.github/issues/218).
+## Reprendre à partir d’un point de reprise confirmé {#acknowledged-checkpoint}
+
+Depuis Workflow 2.43.0, une activité V2 embarquée exécutée sur une file peut appeler `$this->heartbeatCheckpoint($details)` avec un tableau PHP compatible JSON. Un retour réussi confirme l’enregistrement durable du point de reprise pour l’exécution logique de l’activité. Appliquez la migration du paquet avant de lancer les workers qui utilisent cette API. Utilisez `heartbeat()` pour afficher la progression à l’opérateur.
+
+Lisez `$this->lastHeartbeatCheckpoint()` au début de la tentative. Cet instantané reste fixe pendant la tentative. Le point fournit `details()` et l’horodatage de confirmation d’origine `acknowledgedAt`. Une tentative compatible sans point enregistré reçoit `null`. Un contexte incompatible lève `ActivityHeartbeatResumeUnavailable`. Vérifiez la prise en charge de la version 1 avec `heartbeatResumeVersion()`.
+
+Si un worker s’arrête avant de recevoir la confirmation, la tentative suivante lit ce que le stockage a effectivement enregistré. La politique de nouvelle tentative et les échéances de l’activité continuent de s’appliquer. Pour une opération externe, réutilisez une clé d’idempotence stable et vérifiez le reçu du prestataire avant de répéter l’opération. Le point de reprise confirme l’écriture dans le stockage du workflow. L’opération externe est validée séparément. Voir [les nouvelles tentatives d’activité et l’idempotence](../constraints/execution-guarantees.md#activity-execution-is-at-least-once).
+
+Si une opération externe exige une possession exclusive, demandez au prestataire de refuser les jetons de clôture périmés.
 
 ## Instantanés de progression {#progress-snapshots}
 

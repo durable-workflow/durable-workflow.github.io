@@ -1217,7 +1217,15 @@ Für entfernte Aktivitäten gibt `ActivityContext::heartbeat(...).await` einen `
 
 Das erste Heartbeat-Zeitfenster beginnt bei Beanspruchung durch die Laufzeit, vor der Aufgabenauslieferung. Ein aufgezeichneter Heartbeat verwendet seinen Laufzeitzeitpunkt, nicht den Empfangszeitpunkt beim Aufrufer. Wählen Sie einen Takt deutlich innerhalb des konfigurierten Zeitlimits, begrenzen Sie jeden Arbeits- oder E/A-Schritt und lassen Sie Spielraum für Ausführungspausen, Anfragelatenz und mögliche Transportwiederholungen. Beachten Sie die [Taktempfehlungen](../features/heartbeats.md#heartbeat-cadence-and-receipts). Ein automatischer Fortschritts-Heartbeat-Takt oder Bündelungstakt wird nicht zugesagt.
 
-Geben Sie bei Abbruch prozesslokale Ressourcen frei, soweit die Ausführung dies noch zulässt, und kehren Sie zeitnah zurück. Dauerhafter Zustand lehnt späten Abschluss ab und verhindert, dass ein abgebrochener oder terminierter Lauf erfolgreich wird. Verwaltete Worker fragen nach dieser endgültigen Ablehnung und nach Neustart weiter ab. Ein erfolgreicher Heartbeat ist weder ein Commit externer Effekte noch ein fortsetzbarer Prüfpunkt für einen Ersatzversuch.
+Geben Sie bei Abbruch prozesslokale Ressourcen frei, soweit die Ausführung dies noch zulässt, und kehren Sie zeitnah zurück. Dauerhafter Zustand lehnt späten Abschluss ab und verhindert, dass ein abgebrochener oder terminierter Lauf erfolgreich wird. Verwaltete Worker fragen nach dieser endgültigen Ablehnung und nach Neustart weiter ab.
+
+### Nach einem bestätigten Heartbeat fortsetzen {#resume-activity-checkpoint}
+
+Wenn Worker und Server Version 1 der Heartbeat-Wiederaufnahme unterstützen, kann ein Heartbeat mit Anwendungsdaten einen Prüfpunkt für die logische Aktivitätsausführung speichern. Lies zu Beginn eines Wiederholungsversuchs mit `ctx.last_heartbeat_checkpoint()` die feste Momentaufnahme und den ursprünglichen Bestätigungszeitpunkt. Ein unterstützter Versuch ohne gespeicherte Details liefert `Ok(None)`. Ein Kontext ohne Unterstützung meldet `ActivityHeartbeatResumeUnavailable`.
+
+Geht die Heartbeat-Bestätigung verloren, setze mit dem fort, was der Server gespeichert hat. Wiederholungsrichtlinie und Fristen gelten weiter. Verwende stabile Idempotenzschlüssel und prüfe den Beleg des Anbieters, bevor du einen externen Vorgang wiederholst. Der externe Vorgang hat eine eigene Commit-Grenze. [Wiederholungsversuche und Idempotenz](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK-Beispiel für Prüfpunkte](https://github.com/durable-workflow/sdk-rust/blob/4.25.0/README.md#acknowledged-activity-checkpoints).
+
+Wenn ein externer Vorgang exklusiven Besitz voraussetzt, lass den Anbieter veraltete Fencing-Token ablehnen.
 
 Server-Images, Authentifizierung und Produktionstopologie beschreibt der
 [Server-Einrichtungsleitfaden](/docs/polyglot/server).

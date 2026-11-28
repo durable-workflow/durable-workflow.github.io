@@ -1343,7 +1343,15 @@ Rufen Sie bei entfernten Aktivitäten `await ctx.heartbeat(...)` während begren
 
 Der direkte Aufruf von `Client.heartbeat_activity_task()` verwendet die konfigurierte `TransportRetryPolicy`. Nach dieser Richtlinie können Transportfehler als `httpx.TransportError` weitergegeben werden. HTTP-Ablehnungen werden zu zugeordneten SDK-Ausnahmen wie `ServerError`. Das ist HTTP-Wiederholungsverhalten, kein neuer Aktivitätsversuch und keine zusätzliche Heartbeat-Zeit. `ActivityContext.heartbeat()` kann `ActivityCancelled` auslösen, wenn der Worker die Aktivität zum Stoppen auffordert. Wenn die kooperative Prozessüberwachung aktiviert ist, können fehlgeschlagene Heartbeat- oder Besitzprüfungen den Callback stoppen oder aufgeben. Nicht jeder Fehler erreicht einen Ausnahmehandler, und Bereinigungscode läuft nicht immer.
 
-Unterdrücken Sie Heartbeat- oder Besitzfehler nicht, um externe Arbeit fortzusetzen oder Erfolg zu melden. Fortschritt ist weder ein externer Commit noch eine Bestätigung eines fortsetzbaren Prüfpunkts. Halten Sie externe Effekte idempotent.
+Unterdrücken Sie Heartbeat- oder Besitzfehler nicht, um externe Arbeit fortzusetzen oder Erfolg zu melden.
+
+#### Nach einem bestätigten Heartbeat fortsetzen {#resume-activity-checkpoint}
+
+Wenn Worker und Server Version 1 der Heartbeat-Wiederaufnahme unterstützen, kann ein Heartbeat mit Anwendungsdaten einen Prüfpunkt für die logische Aktivitätsausführung speichern. Lies zu Beginn eines Wiederholungsversuchs mit `ctx.last_heartbeat_checkpoint()` die feste Momentaufnahme und den ursprünglichen Bestätigungszeitpunkt. Ein unterstützter Versuch ohne gespeicherte Details liefert `None`. Ein Kontext ohne Unterstützung meldet `ActivityHeartbeatResumeUnavailable`.
+
+Geht die Heartbeat-Bestätigung verloren, setze mit dem fort, was der Server gespeichert hat. Wiederholungsrichtlinie und Fristen gelten weiter. Verwende stabile Idempotenzschlüssel und prüfe den Beleg des Anbieters, bevor du einen externen Vorgang wiederholst. Der externe Vorgang hat eine eigene Commit-Grenze. [Wiederholungsversuche und Idempotenz](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK-Beispiel für Prüfpunkte](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+Wenn ein externer Vorgang exklusiven Besitz voraussetzt, lass den Anbieter veraltete Fencing-Token ablehnen.
 
 ### Heartbeat-Ablehnung und Ende des Callbacks {#heartbeat-refusals-and-callback-exit}
 

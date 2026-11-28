@@ -55,7 +55,15 @@ There is no automatic progress-heartbeat schedule or SDK batching guarantee. Wor
 
 Embedded `Activity::heartbeat()` returns `void`. Invalid progress and storage failures can throw. A normal return is not an acknowledgement object: a closed, expired or replaced attempt can return without recording another heartbeat. Service-mode error behavior differs between direct client calls and supervised workers. See the [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) and [Rust](../polyglot/rust.md#activity-heartbeats) guides.
 
-Heartbeat progress does not atomically commit an external batch or fence external effects. A retry-safe application checkpoint needs its own durable commit, stable logical job key and idempotency or external fencing. A replacement attempt's acknowledged-checkpoint accessor is tracked separately in [the checkpoint feature](https://github.com/durable-workflow/.github/issues/218).
+## Resume from an acknowledged checkpoint {#acknowledged-checkpoint}
+
+In Workflow 2.43.0 and later, a queued embedded V2 activity can call `$this->heartbeatCheckpoint($details)` with a JSON-compatible PHP array. A successful return confirms that the checkpoint was committed for the logical activity execution. Apply the package migration before starting workers that use this API. Use `heartbeat()` for operator progress.
+
+Read `$this->lastHeartbeatCheckpoint()` when an attempt starts. Its snapshot stays fixed for that attempt. The checkpoint provides `details()` and the original `acknowledgedAt` timestamp. A supported attempt without a checkpoint gets `null`. A context without checkpoint support throws `ActivityHeartbeatResumeUnavailable`. Use `heartbeatResumeVersion()` to check whether the context supports version 1.
+
+If a worker stops before it sees the acknowledgement, a later attempt reads what storage actually committed. The retry still uses the activity's existing policy and deadlines. For external operations, reuse a stable idempotency key and reconcile the provider's receipt before repeating the operation. A checkpoint acknowledges the workflow storage write. The external operation has its own commit boundary. See [activity retries and idempotency](../constraints/execution-guarantees.md#activity-execution-is-at-least-once).
+
+When an external operation requires exclusive ownership, have the provider reject stale fencing tokens.
 
 ## Progress Snapshots
 
