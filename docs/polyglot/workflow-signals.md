@@ -54,6 +54,12 @@ The workflow type must be the instance's type, and the task queue must be the
 open run's queue. Otherwise the Server refuses with `workflow_type_conflict` or
 `task_queue_conflict`. Nothing is written for any refusal.
 
+Each new signal-with-start request addresses the workflow instance by ID.
+For an existing instance, the Server selects its current run in the same
+transaction as the signal. To signal a previously selected run, use the
+ordinary signal operation with that run's ID. The Server refuses a selected
+run that is no longer current.
+
 The request ID is the signal's [command key](./server-api-reference.md#command-keys).
 Each SDK generates one per call when you omit it. Save your own key when a
 retry must survive a process restart. A retry with the same key, signal name,

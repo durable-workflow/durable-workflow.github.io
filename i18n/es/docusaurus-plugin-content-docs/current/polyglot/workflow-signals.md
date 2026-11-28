@@ -57,6 +57,12 @@ El tipo de workflow debe ser el tipo de la instancia, y la cola de tareas debe
 ser la cola de la ejecución abierta. De lo contrario, el Server rechaza con
 `workflow_type_conflict` o `task_queue_conflict`. Ningún rechazo escribe nada.
 
+Cada nueva solicitud de signal-with-start se dirige a la instancia del flujo
+de trabajo por su ID. Si ya existe, el servidor selecciona la ejecución actual
+en la misma transacción en que registra la señal. Para enviar una señal a una
+ejecución elegida antes, usa la operación de señal normal con su ID de ejecución.
+El servidor rechaza la solicitud si esa ejecución ya no es la actual.
+
 El id de solicitud es la [clave de comando](./server-api-reference.md#command-keys)
 de la señal. Cada SDK genera una por llamada si la omites. Guarda tu propia
 clave cuando un reintento deba sobrevivir a un reinicio del proceso. Un

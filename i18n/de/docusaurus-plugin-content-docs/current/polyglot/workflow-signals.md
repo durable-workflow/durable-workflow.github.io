@@ -59,6 +59,12 @@ Queue des offenen Laufs sein. Andernfalls lehnt der Server mit
 `workflow_type_conflict` oder `task_queue_conflict` ab. Bei einer Ablehnung
 wird nie etwas geschrieben.
 
+Jede neue Signal-with-start-Anfrage adressiert die Workflow-Instanz über
+ihre ID. Bei einer bestehenden Instanz wählt der Server den aktuellen Lauf
+in derselben Transaktion wie das Signal aus. Verwenden Sie für einen zuvor
+ausgewählten Lauf die normale Signaloperation mit dessen Lauf-ID. Der Server
+lehnt die Anfrage ab, wenn dieser Lauf nicht mehr aktuell ist.
+
 Die Anfrage-ID ist der [Befehlsschlüssel](./server-api-reference.md#command-keys)
 des Signals. Jedes SDK erzeugt pro Aufruf einen, wenn Sie ihn weglassen.
 Speichern Sie einen eigenen Schlüssel, wenn eine Wiederholung einen

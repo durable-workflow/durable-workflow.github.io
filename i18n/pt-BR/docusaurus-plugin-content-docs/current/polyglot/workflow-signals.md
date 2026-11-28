@@ -58,6 +58,12 @@ fila da execução aberta. Caso contrário, o Server recusa com
 `workflow_type_conflict` ou `task_queue_conflict`. Nada é gravado em nenhuma
 recusa.
 
+Cada nova requisição de signal-with-start identifica a instância do workflow
+pelo ID. Se a instância já existe, o servidor seleciona a execução atual na
+mesma transação que registra o sinal. Para enviar um sinal a uma execução
+selecionada anteriormente, use a operação de sinal comum com o ID dessa
+execução. O servidor recusa a requisição se ela já não for a execução atual.
+
 O ID da requisição é a [chave de comando](./server-api-reference.md#command-keys)
 do sinal. Cada SDK gera uma por chamada quando você a omite. Salve sua própria
 chave quando uma repetição precisar sobreviver a um reinício do processo. Uma

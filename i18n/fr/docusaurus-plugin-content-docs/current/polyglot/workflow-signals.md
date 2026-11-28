@@ -58,6 +58,13 @@ Le type de workflow doit être celui de l’instance, et la file de tâches doit
 `workflow_type_conflict` ou `task_queue_conflict`. Aucun refus n’écrit quoi que
 ce soit.
 
+Chaque nouvelle requête signal-with-start cible l’instance du workflow par
+son identifiant. Pour une instance existante, le serveur sélectionne son
+exécution courante dans la transaction qui enregistre le signal. Pour signaler
+une exécution choisie au préalable, utilisez l’opération de signal ordinaire
+avec l’identifiant de cette exécution. Le serveur refuse la requête si cette
+exécution n’est plus l’exécution courante.
+
 L’identifiant de requête est la [clé de commande](./server-api-reference.md#command-keys)
 du signal. Chaque SDK en génère une par appel si vous l’omettez. Enregistrez
 votre propre clé lorsqu’une nouvelle tentative doit survivre au redémarrage du
