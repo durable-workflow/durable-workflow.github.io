@@ -198,7 +198,7 @@ except SignalFailed as failed:
 
 Use [atomic signal-with-start](./workflow-signals.md#signal-with-start) with a stable workflow ID and a declared, typed `changed(revision)` signal. Keep the request ID and original arguments across a retry, including when the reply is lost. The receipt confirms admission. Choose `start_new_run` explicitly if a terminal instance should receive a new execution.
 
-In the workflow, accumulate the maximum unapplied revision from delivered signals. Each new delivery starts a fresh durable timeout-backed condition wait. After the quiet period elapses, send the selected revision to an idempotent activity. Keep later deliveries pending while that activity runs so the next batch can consume them. This policy deliberately coalesces intermediate revisions.
+In the workflow, accumulate the maximum unapplied revision from delivered signals. Each new delivery starts a fresh durable timeout-backed condition wait. Advance an input cursor by one after each successful wait, consume that revision, and derive the next wait key from the cursor. Replaying a recorded wait then consumes the same input even when newer signals are already visible. After the quiet period elapses, send the selected revision to an idempotent activity. Keep later deliveries pending while that activity runs so the next batch can consume them. This policy deliberately coalesces intermediate revisions.
 
 At continue-as-new, carry the applied revision and consumed pending state in the successor arguments. Native Server can defer the transition to deliver a declared signal received during the lease. Replay the resulting turn and include the new state when planning the continuation again. A new atomic intake then selects the current successor.
 

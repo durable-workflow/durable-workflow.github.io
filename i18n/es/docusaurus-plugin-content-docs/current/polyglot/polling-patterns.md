@@ -198,7 +198,7 @@ except SignalFailed as failed:
 
 Use [signal-with-start atómico](./workflow-signals.md#signal-with-start) con un ID de workflow estable y una señal declarada y tipada `changed(revision)`. Conserve el ID de solicitud y los argumentos originales para reintentar, incluso si pierde la respuesta. El recibo confirma la admisión. Elija explícitamente `start_new_run` para iniciar otra ejecución tras el cierre.
 
-En el workflow, acumule la revisión entregada más alta que siga pendiente. Cada entrega abre una nueva espera de condición duradera con tiempo límite. Tras la pausa, envíe la revisión elegida a una actividad idempotente. Las entregas posteriores quedan pendientes durante la actividad para el siguiente lote. La política agrupa las revisiones intermedias.
+En el workflow, acumule la revisión entregada más alta que siga pendiente. Cada entrega abre una nueva espera de condición duradera con tiempo límite. Avance el cursor de entrada una posición tras cada espera exitosa, consuma esa revisión y obtenga del cursor la clave de la siguiente espera. Al reproducir una espera registrada se consume así la misma entrada, aunque ya haya señales más recientes visibles. Tras la pausa, envíe la revisión elegida a una actividad idempotente. Las entregas posteriores quedan pendientes durante la actividad para el siguiente lote. La política agrupa las revisiones intermedias.
 
 Al continuar como nuevo, transfiera en los argumentos la revisión aplicada y el estado pendiente ya consumido. El Server nativo puede aplazar la transición para entregar una señal declarada recibida durante la concesión de la tarea. Reproduzca ese turno e incluya el nuevo estado al planear la continuación. La siguiente admisión atómica selecciona la ejecución sucesora actual.
 
