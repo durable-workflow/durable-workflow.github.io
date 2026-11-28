@@ -242,7 +242,13 @@ Para atividades remotas, chame `ActivityContext::heartbeat($details)` durante tr
 
 O método retorna `void`. No caminho direto do handler, uma resposta de parada lança `ActivityCancelled`. Falhas HTTP e de transporte de `Client::heartbeatActivityTask()` aparecem como `ServerException`. Um worker com supervisão cooperativa pode parar ou abandonar seu callback quando um heartbeat ou uma verificação de posse falha, em vez de entregar uma resposta normal ao código da atividade. Não suponha que a limpeza sempre será executada, não suprima um erro de perda de autoridade nem envie sucesso depois de perdê-la.
 
-O retorno da chamada não confirma trabalho externo nem fornece um checkpoint retomável. Mantenha os efeitos externos idempotentes e não trate uma nova tentativa de transporte como uma nova janela de heartbeat.
+### Retomar após um heartbeat confirmado {#resume-activity-checkpoint}
+
+Quando o worker e o servidor oferecem a versão 1 da retomada por heartbeat, um heartbeat com dados da aplicação pode gravar um checkpoint para a execução lógica da atividade. No início de uma nova tentativa, use `$context->lastHeartbeatCheckpoint()` para ler o snapshot fixo e o horário original de confirmação. Uma tentativa compatível sem dados gravados retorna `null`. Um contexto incompatível informa `ActivityHeartbeatResumeUnavailable`.
+
+Se a confirmação do heartbeat se perder, retome a partir do estado que o servidor gravou. A política de novas tentativas e os prazos continuam valendo. Use chaves de idempotência estáveis e confira o comprovante do provedor antes de repetir uma operação externa. A operação externa tem seu próprio commit. [Novas tentativas de atividades e idempotência](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Exemplo de checkpoint do SDK](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+Quando uma operação externa exige posse exclusiva, faça o provedor rejeitar tokens de fencing obsoletos.
 
 ## Executar um worker PHP remoto {#run-a-remote-php-worker}
 

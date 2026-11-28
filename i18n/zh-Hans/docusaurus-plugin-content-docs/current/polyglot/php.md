@@ -175,7 +175,13 @@ SDK 原样保留收到的非空字符串。省略、null、空字符串或非字
 
 该方法返回 `void`。在直接处理器路径中，停止响应会抛出 `ActivityCancelled`。`Client::heartbeatActivityTask()` 的 HTTP 和传输故障表现为 `ServerException`。协作监督下的 Worker 在心跳或所有权检查失败时，可能停止或放弃回调，而不是向活动代码返回正常响应。不要假定清理代码总会执行，不要忽略权限丢失错误，也不要在失去权限后提交成功结果。
 
-调用返回并不表示外部工作已提交，也不会提供可恢复的检查点。请保持外部副作用幂等，不要将传输重试视为新的心跳窗口。
+### 从已确认的心跳恢复 {#resume-activity-checkpoint}
+
+当工作进程和 Server 都支持第 1 版心跳恢复协议时，带有应用详情的心跳可以为逻辑活动执行提交检查点。重试开始时，用 `$context->lastHeartbeatCheckpoint()` 读取固定的快照及原始确认时间。支持该协议但没有已记录详情的尝试返回 `null`。不支持的上下文报告 `ActivityHeartbeatResumeUnavailable`。
+
+如果心跳确认丢失，请从 Server 实际提交的状态恢复。活动的重试策略和截止时间仍然适用。重复外部操作前，请使用稳定的幂等键并核对服务提供方的回执。外部操作有独立的提交边界。 [活动重试与幂等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK 检查点示例](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+如果外部操作要求独占所有权，请让服务提供方拒绝过期的隔离令牌（fencing token）。
 
 ## 运行远程 PHP Worker {#run-a-remote-php-worker}
 

@@ -54,7 +54,15 @@ Python Worker 应遵循[上下文捕获与取消示例](../polyglot/python.md#he
 
 嵌入式 `Activity::heartbeat()` 返回 `void`。无效进度和存储故障可能抛出异常。正常返回不是确认对象：已关闭、过期或被替换的尝试可能直接返回，而不再记录心跳。服务模式下，直接客户端调用与受监督 Worker 的错误行为不同。请参阅 [PHP](../polyglot/php.md#activity-heartbeats)、[Python](../polyglot/python.md#activity-heartbeat-requests) 和 [Rust](../polyglot/rust.md#activity-heartbeats) 指南。
 
-心跳进度不会原子提交外部批次，也不能阻止旧执行者产生外部副作用。可安全重试的应用检查点需要独立的持久提交、稳定的逻辑作业键，以及幂等性或外部权限校验。替代尝试读取已确认检查点的接口由单独的[检查点功能](https://github.com/durable-workflow/.github/issues/218)跟踪。
+## 从已确认的检查点恢复 {#acknowledged-checkpoint}
+
+从 Workflow 2.43.0 开始，在队列中运行的嵌入式 V2 活动可以调用 `$this->heartbeatCheckpoint($details)`，传入兼容 JSON 的 PHP 数组。调用成功返回，表示该逻辑活动执行的检查点已持久提交。启动使用此 API 的工作进程前，请先应用软件包的数据库迁移。向运维人员报告进度时，使用 `heartbeat()`。
+
+每次尝试开始时，读取 `$this->lastHeartbeatCheckpoint()`。当前尝试看到的快照保持不变。检查点提供 `details()` 和原始确认时间 `acknowledgedAt`。支持检查点但尚无记录的尝试会得到 `null`。不支持的上下文会抛出 `ActivityHeartbeatResumeUnavailable`。用 `heartbeatResumeVersion()` 检查上下文是否支持第 1 版协议。
+
+如果工作进程在收到确认前停止，后续尝试会读取存储实际提交的状态。活动原有的重试策略和截止时间仍然适用。对于外部操作，请重用稳定的幂等键，并在重试前核对服务提供方的回执。检查点确认的是工作流存储中的写入。外部操作有独立的提交边界。参阅[活动重试与幂等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once)。
+
+如果外部操作要求独占所有权，请让服务提供方拒绝过期的隔离令牌（fencing token）。
 
 ## 进度快照 {#progress-snapshots}
 

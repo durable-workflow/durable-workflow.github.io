@@ -240,7 +240,13 @@ Rufen Sie bei entfernten Aktivitäten `ActivityContext::heartbeat($details)` wä
 
 Die Methode gibt `void` zurück. Im direkten Handler-Pfad löst eine Stoppantwort `ActivityCancelled` aus. HTTP- und Transportfehler von `Client::heartbeatActivityTask()` erscheinen als `ServerException`. Ein kooperativ überwachter Worker kann seinen Callback bei einem fehlgeschlagenen Heartbeat oder einer Besitzprüfung stoppen oder aufgeben, statt dem Aktivitätscode eine normale Antwort zuzustellen. Verlassen Sie sich nicht darauf, dass Bereinigungscode immer läuft. Unterdrücken Sie keinen Fehler wegen verlorener Befugnis und melden Sie danach keinen Erfolg.
 
-Eine Rückkehr aus dem Aufruf schreibt externe Arbeit nicht fest und liefert keinen fortsetzbaren Prüfpunkt. Halten Sie externe Effekte idempotent und behandeln Sie eine Transportwiederholung nicht als neues Heartbeat-Zeitfenster.
+### Nach einem bestätigten Heartbeat fortsetzen {#resume-activity-checkpoint}
+
+Wenn Worker und Server Version 1 der Heartbeat-Wiederaufnahme unterstützen, kann ein Heartbeat mit Anwendungsdaten einen Prüfpunkt für die logische Aktivitätsausführung speichern. Lies zu Beginn eines Wiederholungsversuchs mit `$context->lastHeartbeatCheckpoint()` die feste Momentaufnahme und den ursprünglichen Bestätigungszeitpunkt. Ein unterstützter Versuch ohne gespeicherte Details liefert `null`. Ein Kontext ohne Unterstützung meldet `ActivityHeartbeatResumeUnavailable`.
+
+Geht die Heartbeat-Bestätigung verloren, setze mit dem fort, was der Server gespeichert hat. Wiederholungsrichtlinie und Fristen gelten weiter. Verwende stabile Idempotenzschlüssel und prüfe den Beleg des Anbieters, bevor du einen externen Vorgang wiederholst. Der externe Vorgang hat eine eigene Commit-Grenze. [Wiederholungsversuche und Idempotenz](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK-Beispiel für Prüfpunkte](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+Wenn ein externer Vorgang exklusiven Besitz voraussetzt, lass den Anbieter veraltete Fencing-Token ablehnen.
 
 ## Einen entfernten PHP-Worker ausführen {#run-a-remote-php-worker}
 

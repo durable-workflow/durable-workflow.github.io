@@ -1216,7 +1216,15 @@ Pour les activités distantes, `ActivityContext::heartbeat(...).await` renvoie `
 
 La première fenêtre de heartbeat commence lorsque le moteur réclame l’activité, avant la livraison de la tâche. Un heartbeat enregistré utilise son horodatage du moteur, pas la réception par l’appelant. Choisissez une fréquence bien à l’intérieur du délai configuré, bornez chaque étape de travail ou d’E/S et gardez une marge pour les pauses, la latence et les éventuelles nouvelles tentatives de transport. Suivez les [conseils de fréquence](../features/heartbeats.md#heartbeat-cadence-and-receipts). Aucune programmation automatique de progression ou de regroupement n’est promise.
 
-À l’annulation, libérez les ressources locales au processus lorsque l’exécution le permet encore et retournez rapidement. L’état durable refuse une fin tardive et ne peut pas transformer une exécution annulée ou terminée en réussite. Les workers gérés continuent de sonder après ce refus définitif et après redémarrage. Un heartbeat réussi n’est ni une validation des effets externes ni un point de reprise pour une tentative de remplacement.
+À l’annulation, libérez les ressources locales au processus lorsque l’exécution le permet encore et retournez rapidement. L’état durable refuse une fin tardive et ne peut pas transformer une exécution annulée ou terminée en réussite. Les workers gérés continuent de sonder après ce refus définitif et après redémarrage.
+
+### Reprendre après un heartbeat confirmé {#resume-activity-checkpoint}
+
+Lorsque le worker et le serveur prennent en charge la version 1 de la reprise par heartbeat, un heartbeat contenant des données applicatives peut enregistrer un point de reprise pour l’exécution logique de l’activité. Au début d’une nouvelle tentative, utilisez `ctx.last_heartbeat_checkpoint()` pour lire l’instantané fixe et son horodatage de confirmation d’origine. Une tentative compatible sans données enregistrées renvoie `Ok(None)`. Un contexte incompatible signale `ActivityHeartbeatResumeUnavailable`.
+
+Si la confirmation du heartbeat est perdue, reprenez à partir de l’état enregistré par le serveur. La politique de nouvelle tentative et les échéances continuent de s’appliquer. Utilisez des clés d’idempotence stables et vérifiez le reçu du prestataire avant de répéter une opération externe. L’opération externe est validée séparément. [Nouvelles tentatives d’activité et idempotence](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Exemple de point de reprise dans le SDK](https://github.com/durable-workflow/sdk-rust/blob/4.25.0/README.md#acknowledged-activity-checkpoints).
+
+Si une opération externe exige une possession exclusive, demandez au prestataire de refuser les jetons de clôture périmés.
 
 Pour les images Server, l’authentification et la topologie de production,
 consultez le [guide de configuration du serveur](/docs/polyglot/server).

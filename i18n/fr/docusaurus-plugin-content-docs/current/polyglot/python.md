@@ -1343,7 +1343,15 @@ Pour les activités distantes, appelez `await ctx.heartbeat(...)` pendant un tra
 
 L’appel direct à `Client.heartbeat_activity_task()` utilise la `TransportRetryPolicy` configurée. Après cette politique, les erreurs de transport peuvent se propager comme `httpx.TransportError`, et les refus HTTP deviennent des exceptions du SDK telles que `ServerError`. Il s’agit de nouvelles tentatives HTTP, pas d’une autre tentative d’activité ni de temps supplémentaire pour le heartbeat. `ActivityContext.heartbeat()` peut lever `ActivityCancelled` lorsque le worker demande à l’activité de s’arrêter. Lorsque la supervision coopérative des processus est activée, un échec de heartbeat ou de vérification de possession peut arrêter ou abandonner le callback. Ne supposez pas que chaque échec revient dans un gestionnaire d’exception ou que le nettoyage s’exécute toujours.
 
-Ne masquez pas les échecs de heartbeat ou de possession pour poursuivre le travail externe ou annoncer une réussite. La progression n’est ni une validation externe ni une confirmation de point de reprise. Gardez les effets externes idempotents.
+Ne masquez pas les échecs de heartbeat ou de possession pour poursuivre le travail externe ou annoncer une réussite.
+
+#### Reprendre après un heartbeat confirmé {#resume-activity-checkpoint}
+
+Lorsque le worker et le serveur prennent en charge la version 1 de la reprise par heartbeat, un heartbeat contenant des données applicatives peut enregistrer un point de reprise pour l’exécution logique de l’activité. Au début d’une nouvelle tentative, utilisez `ctx.last_heartbeat_checkpoint()` pour lire l’instantané fixe et son horodatage de confirmation d’origine. Une tentative compatible sans données enregistrées renvoie `None`. Un contexte incompatible signale `ActivityHeartbeatResumeUnavailable`.
+
+Si la confirmation du heartbeat est perdue, reprenez à partir de l’état enregistré par le serveur. La politique de nouvelle tentative et les échéances continuent de s’appliquer. Utilisez des clés d’idempotence stables et vérifiez le reçu du prestataire avant de répéter une opération externe. L’opération externe est validée séparément. [Nouvelles tentatives d’activité et idempotence](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Exemple de point de reprise dans le SDK](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+Si une opération externe exige une possession exclusive, demandez au prestataire de refuser les jetons de clôture périmés.
 
 ### Refus du heartbeat et sortie du callback {#heartbeat-refusals-and-callback-exit}
 

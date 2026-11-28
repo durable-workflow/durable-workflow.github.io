@@ -243,7 +243,13 @@ Pour les activités distantes, appelez `ActivityContext::heartbeat($details)` pe
 
 La méthode renvoie `void`. Dans le chemin direct du gestionnaire, une réponse demandant l’arrêt lève `ActivityCancelled`. Les erreurs HTTP et de transport de `Client::heartbeatActivityTask()` apparaissent comme `ServerException`. Un worker à supervision coopérative peut arrêter ou abandonner son callback lorsqu’un heartbeat ou une vérification de possession échoue, au lieu de livrer une réponse normale au code de l’activité. Ne supposez pas que le nettoyage s’exécute toujours, ne masquez pas une perte d’autorité et ne soumettez pas de réussite après cette perte.
 
-Le retour de l’appel ne valide pas le travail externe et ne fournit pas de point de reprise. Gardez les effets externes idempotents et ne considérez pas une nouvelle tentative de transport comme une nouvelle fenêtre de heartbeat.
+### Reprendre après un heartbeat confirmé {#resume-activity-checkpoint}
+
+Lorsque le worker et le serveur prennent en charge la version 1 de la reprise par heartbeat, un heartbeat contenant des données applicatives peut enregistrer un point de reprise pour l’exécution logique de l’activité. Au début d’une nouvelle tentative, utilisez `$context->lastHeartbeatCheckpoint()` pour lire l’instantané fixe et son horodatage de confirmation d’origine. Une tentative compatible sans données enregistrées renvoie `null`. Un contexte incompatible signale `ActivityHeartbeatResumeUnavailable`.
+
+Si la confirmation du heartbeat est perdue, reprenez à partir de l’état enregistré par le serveur. La politique de nouvelle tentative et les échéances continuent de s’appliquer. Utilisez des clés d’idempotence stables et vérifiez le reçu du prestataire avant de répéter une opération externe. L’opération externe est validée séparément. [Nouvelles tentatives d’activité et idempotence](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Exemple de point de reprise dans le SDK](https://github.com/durable-workflow/sdk-php/blob/3.33.0/docs/sdk-reference.md#resume-an-activity-from-its-last-acknowledged-heartbeat).
+
+Si une opération externe exige une possession exclusive, demandez au prestataire de refuser les jetons de clôture périmés.
 
 ## Exécuter un worker PHP distant {#run-a-remote-php-worker}
 

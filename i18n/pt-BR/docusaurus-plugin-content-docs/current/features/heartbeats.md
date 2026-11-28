@@ -55,7 +55,15 @@ Não há agenda automática de heartbeats de progresso nem garantia de agrupamen
 
 No modo embarcado, `Activity::heartbeat()` retorna `void`. Progresso inválido e falhas de armazenamento podem lançar exceções. Um retorno normal não é um objeto de confirmação: uma tentativa encerrada, expirada ou substituída pode retornar sem registrar outro heartbeat. No modo de serviço, o tratamento de erros difere entre chamadas diretas ao cliente e workers supervisionados. Consulte os guias de [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) e [Rust](../polyglot/rust.md#activity-heartbeats).
 
-O progresso de heartbeat não confirma atomicamente um lote externo nem impede efeitos de um detentor obsoleto. Um checkpoint de aplicação seguro para novas tentativas precisa de seu próprio commit durável, uma chave lógica de trabalho estável e idempotência ou controle externo de posse. O acesso de uma tentativa substituta a checkpoints confirmados é acompanhado separadamente no [recurso de checkpoints](https://github.com/durable-workflow/.github/issues/218).
+## Retomar a partir de um checkpoint confirmado {#acknowledged-checkpoint}
+
+A partir do Workflow 2.43.0, uma atividade V2 incorporada que usa fila pode chamar `$this->heartbeatCheckpoint($details)` com um array PHP compatível com JSON. Um retorno bem-sucedido confirma a gravação durável do checkpoint para a execução lógica da atividade. Aplique a migração do pacote antes de iniciar workers que usam essa API. Use `heartbeat()` para informar o progresso ao operador.
+
+Leia `$this->lastHeartbeatCheckpoint()` no início de uma tentativa. O snapshot permanece fixo durante essa tentativa. O checkpoint fornece `details()` e o horário original de confirmação `acknowledgedAt`. Uma tentativa compatível sem checkpoint recebe `null`. Um contexto incompatível lança `ActivityHeartbeatResumeUnavailable`. Use `heartbeatResumeVersion()` para verificar se o contexto oferece a versão 1.
+
+Se um worker parar antes de receber a confirmação, a próxima tentativa lê o que foi efetivamente gravado. A política de novas tentativas e os prazos da atividade continuam valendo. Para operações externas, reutilize uma chave de idempotência estável e confira o comprovante do provedor antes de repetir a operação. O checkpoint confirma a gravação no armazenamento do workflow. A operação externa tem seu próprio commit. Veja [novas tentativas de atividades e idempotência](../constraints/execution-guarantees.md#activity-execution-is-at-least-once).
+
+Quando uma operação externa exige posse exclusiva, faça o provedor rejeitar tokens de fencing obsoletos.
 
 ## Instantâneos de progresso {#progress-snapshots}
 

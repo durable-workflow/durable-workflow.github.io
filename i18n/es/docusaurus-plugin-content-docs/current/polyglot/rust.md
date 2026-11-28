@@ -1007,6 +1007,14 @@ Para actividades remotas, `ActivityContext::heartbeat(...).await` devuelve `Resu
 
 La primera ventana de heartbeat empieza al reclamar la actividad en el entorno de ejecución, antes de entregar la tarea. Un heartbeat registrado usa su marca de tiempo del entorno, no la recepción del llamador. Elija una cadencia con margen suficiente dentro del tiempo configurado, limite cada paso de trabajo o E/S y reserve tiempo para pausas, latencia y posibles reintentos de transporte. Siga las [recomendaciones de cadencia](../features/heartbeats.md#heartbeat-cadence-and-receipts). No se promete una programación automática de heartbeats de progreso ni de agrupación.
 
-Al cancelar, libere recursos locales del proceso cuando la ejecución aún lo permita y vuelva con prontitud. El estado duradero rechaza una finalización tardía y no permite convertir una ejecución cancelada o terminada en éxito. Los workers gestionados siguen sondeando tras ese rechazo definitivo y después de reiniciar. Un heartbeat correcto no confirma efectos externos ni ofrece un punto de control reanudable a un intento de reemplazo.
+Al cancelar, libere recursos locales del proceso cuando la ejecución aún lo permita y vuelva con prontitud. El estado duradero rechaza una finalización tardía y no permite convertir una ejecución cancelada o terminada en éxito. Los workers gestionados siguen sondeando tras ese rechazo definitivo y después de reiniciar.
+
+### Reanudar tras un heartbeat confirmado {#resume-activity-checkpoint}
+
+Cuando el worker y el servidor admiten la versión 1 de reanudación por heartbeat, un heartbeat con datos de la aplicación puede guardar un punto de control para la ejecución lógica de la actividad. Al empezar un reintento, usa `ctx.last_heartbeat_checkpoint()` para leer la instantánea fija y su hora de confirmación original. Un intento compatible sin datos guardados devuelve `Ok(None)`. Un contexto incompatible indica `ActivityHeartbeatResumeUnavailable`.
+
+Si se pierde la confirmación, reanuda desde el estado que guardó el servidor. La política de reintentos y los plazos siguen vigentes. Usa claves de idempotencia estables y verifica el recibo del proveedor antes de repetir una operación externa. La operación externa se confirma por separado. [Reintentos de actividades e idempotencia](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Ejemplo de punto de control del SDK](https://github.com/durable-workflow/sdk-rust/blob/4.25.0/README.md#acknowledged-activity-checkpoints).
+
+Si una operación externa exige titularidad exclusiva, haz que el proveedor rechace los tokens de cercado obsoletos.
 
 Para imágenes del servidor, autenticación y topología de producción, continúa en la [guía de configuración del servidor](/docs/polyglot/server).

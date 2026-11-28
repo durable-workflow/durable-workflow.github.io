@@ -63,7 +63,15 @@ Es gibt keinen automatischen Fortschritts-Heartbeat-Takt und keine Zusage einer 
 
 Eingebettetes `Activity::heartbeat()` gibt `void` zurück. Ungültiger Fortschritt und Speicherfehler können Ausnahmen auslösen. Eine normale Rückkehr ist kein Bestätigungsobjekt: Ein geschlossener, abgelaufener oder ersetzter Versuch kann zurückkehren, ohne einen weiteren Heartbeat aufzuzeichnen. Im Service-Modus unterscheiden sich direkte Client-Aufrufe und überwachte Worker. Siehe die Anleitungen für [PHP](../polyglot/php.md#activity-heartbeats), [Python](../polyglot/python.md#activity-heartbeat-requests) und [Rust](../polyglot/rust.md#activity-heartbeats).
 
-Heartbeat-Fortschritt schreibt einen externen Stapel nicht atomar fest und grenzt externe Effekte nicht ab. Ein wiederholungssicherer Anwendungsprüfpunkt braucht einen eigenen dauerhaften Commit, einen stabilen logischen Auftragsschlüssel und Idempotenz oder externes Fencing. Ein Zugriff auf bestätigte Prüfpunkte durch einen Ersatzversuch wird separat in [der Prüfpunkt-Funktion](https://github.com/durable-workflow/.github/issues/218) verfolgt.
+## An einem bestätigten Prüfpunkt fortsetzen {#acknowledged-checkpoint}
+
+Ab Workflow 2.43.0 kann eine eingebettete V2-Aktivität in einer Warteschlange `$this->heartbeatCheckpoint($details)` mit einem JSON-kompatiblen PHP-Array aufrufen. Eine erfolgreiche Rückkehr bestätigt, dass der Prüfpunkt für die logische Aktivitätsausführung dauerhaft gespeichert wurde. Führe die Paketmigration aus, bevor du Worker startest, die diese API verwenden. Verwende `heartbeat()` für den im Betrieb angezeigten Fortschritt.
+
+Lies `$this->lastHeartbeatCheckpoint()` zu Beginn eines Versuchs. Die Momentaufnahme bleibt während dieses Versuchs unverändert. Der Prüfpunkt liefert `details()` und den ursprünglichen Zeitstempel `acknowledgedAt`. Ein unterstützter Versuch ohne Prüfpunkt erhält `null`. Ein Kontext ohne Unterstützung löst `ActivityHeartbeatResumeUnavailable` aus. Mit `heartbeatResumeVersion()` prüfst du, ob der Kontext Version 1 unterstützt.
+
+Wenn ein Worker vor dem Empfang der Bestätigung stoppt, liest ein späterer Versuch den tatsächlich gespeicherten Prüfpunkt. Die bisherige Wiederholungsrichtlinie und die Fristen der Aktivität gelten weiter. Verwende bei externen Vorgängen einen stabilen Idempotenzschlüssel und prüfe den Beleg des Anbieters, bevor du den Vorgang wiederholst. Die Prüfpunktbestätigung gilt für den Workflow-Speicher. Der externe Vorgang hat eine eigene Commit-Grenze. Siehe [Wiederholungsversuche und Idempotenz](../constraints/execution-guarantees.md#activity-execution-is-at-least-once).
+
+Wenn ein externer Vorgang exklusiven Besitz voraussetzt, lass den Anbieter veraltete Fencing-Token ablehnen.
 
 ## Fortschritts-Snapshots {#progress-snapshots}
 

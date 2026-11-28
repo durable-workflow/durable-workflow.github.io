@@ -55,7 +55,15 @@ Python では[コンテキストの取得とキャンセルの実装例](../poly
 
 埋め込みの `Activity::heartbeat()` は `void` を返します。無効な進捗やストレージ障害は例外になり得ます。正常に戻っても確認オブジェクトを返すわけではありません。終了、期限切れ、置換済みの試行では、新しいハートビートを記録せずに戻る場合があります。サービスモードでは、クライアントの直接呼び出しと監督下の Worker でエラー動作が異なります。[PHP](../polyglot/php.md#activity-heartbeats)、[Python](../polyglot/python.md#activity-heartbeat-requests)、[Rust](../polyglot/rust.md#activity-heartbeats) のガイドを参照してください。
 
-ハートビート進捗は外部バッチを原子的にコミットせず、古い実行者の外部作用を防ぐ権限境界にもなりません。再試行に安全なアプリケーションのチェックポイントには、独自の永続コミット、安定した論理ジョブキー、冪等性または外部での権限確認が必要です。置換試行が確認済みチェックポイントを取得する API は、別の[チェックポイント機能](https://github.com/durable-workflow/.github/issues/218)で追跡しています。
+## 確認済みチェックポイントから再開する {#acknowledged-checkpoint}
+
+Workflow 2.43.0 以降では、キューで実行する組み込み V2 アクティビティが、JSON 互換の PHP 配列を渡して `$this->heartbeatCheckpoint($details)` を呼び出せます。正常に戻ると、論理アクティビティ実行のチェックポイントが永続ストレージにコミットされたことが確認できます。この API を使うワーカーを起動する前に、パッケージのマイグレーションを適用してください。運用者向けの進捗報告には `heartbeat()` を使います。
+
+試行の開始時に `$this->lastHeartbeatCheckpoint()` を読み取ります。このスナップショットは試行中に変化しません。チェックポイントから `details()` と元の確認時刻 `acknowledgedAt` を取得できます。対応する試行にチェックポイントがなければ `null` が返ります。未対応のコンテキストでは `ActivityHeartbeatResumeUnavailable` が発生します。バージョン 1 への対応は `heartbeatResumeVersion()` で確認します。
+
+ワーカーが応答を受け取る前に停止すると、後続の試行はストレージに実際にコミットされた状態を読み取ります。既存の再試行ポリシーと期限は引き続き適用されます。外部操作を繰り返す前に、安定した冪等性キーを再利用し、サービス提供元の処理結果を照合してください。チェックポイントが確認するのはワークフローのストレージへの書き込みです。外部操作は別に確定します。[アクティビティの再試行と冪等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once)を参照してください。
+
+外部操作に排他的な実行権限が必要な場合は、サービス提供元で古いフェンシングトークンを拒否してください。
 
 ## 進捗スナップショット {#progress-snapshots}
 

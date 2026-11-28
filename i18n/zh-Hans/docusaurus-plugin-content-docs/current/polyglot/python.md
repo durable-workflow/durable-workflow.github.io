@@ -1081,7 +1081,15 @@ async def signal_originating_run(client: Client, business_event_id: str) -> dict
 
 直接调用 `Client.heartbeat_activity_task()` 会使用配置的 `TransportRetryPolicy`。策略处理后，传输错误可能以 `httpx.TransportError` 传播，HTTP 拒绝会映射为 `ServerError` 等 SDK 异常。这是 HTTP 重试，不是新的活动尝试，也不会增加心跳时间。Worker 要求活动停止时，`ActivityContext.heartbeat()` 可能抛出 `ActivityCancelled`。启用协作式进程监督后，心跳或所有权检查失败可能停止或放弃回调。不要假定每次失败都会回到异常处理块，或清理代码总会执行。
 
-不要忽略心跳或所有权故障后继续执行外部工作或报告成功。进度不是外部提交，也不是可恢复检查点的确认。请保持外部副作用幂等。
+不要忽略心跳或所有权故障后继续执行外部工作或报告成功。
+
+#### 从已确认的心跳恢复 {#resume-activity-checkpoint}
+
+当工作进程和 Server 都支持第 1 版心跳恢复协议时，带有应用详情的心跳可以为逻辑活动执行提交检查点。重试开始时，用 `ctx.last_heartbeat_checkpoint()` 读取固定的快照及原始确认时间。支持该协议但没有已记录详情的尝试返回 `None`。不支持的上下文报告 `ActivityHeartbeatResumeUnavailable`。
+
+如果心跳确认丢失，请从 Server 实际提交的状态恢复。活动的重试策略和截止时间仍然适用。重复外部操作前，请使用稳定的幂等键并核对服务提供方的回执。外部操作有独立的提交边界。 [活动重试与幂等性](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [SDK 检查点示例](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+如果外部操作要求独占所有权，请让服务提供方拒绝过期的隔离令牌（fencing token）。
 
 ### 心跳拒绝与回调退出 {#heartbeat-refusals-and-callback-exit}
 

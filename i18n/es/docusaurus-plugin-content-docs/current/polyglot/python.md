@@ -1312,7 +1312,15 @@ Para actividades remotas, llame a `await ctx.heartbeat(...)` durante trabajo de 
 
 La llamada directa a `Client.heartbeat_activity_task()` usa la `TransportRetryPolicy` configurada. Tras esa política, los errores de transporte pueden propagarse como `httpx.TransportError`, y los rechazos HTTP se convierten en excepciones del SDK, como `ServerError`. Son reintentos HTTP, no otro intento de actividad ni más tiempo para el heartbeat. `ActivityContext.heartbeat()` puede lanzar `ActivityCancelled` cuando el worker indica a la actividad que se detenga. Cuando la supervisión cooperativa de procesos está activada, los fallos de heartbeat o de titularidad pueden detener o abandonar el callback. No suponga que todos los fallos vuelven a un bloque de captura ni que la limpieza siempre se ejecuta.
 
-No suprima fallos de heartbeat o de titularidad para seguir haciendo trabajo externo o informar de éxito. El progreso no es una confirmación externa ni un recibo de punto de control reanudable. Mantenga idempotentes los efectos externos.
+No suprima fallos de heartbeat o de titularidad para seguir haciendo trabajo externo o informar de éxito.
+
+#### Reanudar tras un heartbeat confirmado {#resume-activity-checkpoint}
+
+Cuando el worker y el servidor admiten la versión 1 de reanudación por heartbeat, un heartbeat con datos de la aplicación puede guardar un punto de control para la ejecución lógica de la actividad. Al empezar un reintento, usa `ctx.last_heartbeat_checkpoint()` para leer la instantánea fija y su hora de confirmación original. Un intento compatible sin datos guardados devuelve `None`. Un contexto incompatible indica `ActivityHeartbeatResumeUnavailable`.
+
+Si se pierde la confirmación, reanuda desde el estado que guardó el servidor. La política de reintentos y los plazos siguen vigentes. Usa claves de idempotencia estables y verifica el recibo del proveedor antes de repetir una operación externa. La operación externa se confirma por separado. [Reintentos de actividades e idempotencia](../constraints/execution-guarantees.md#activity-execution-is-at-least-once). [Ejemplo de punto de control del SDK](https://github.com/durable-workflow/sdk-python/blob/2.24.0/examples/checkpointed_batch.py).
+
+Si una operación externa exige titularidad exclusiva, haz que el proveedor rechace los tokens de cercado obsoletos.
 
 ### Rechazo de heartbeats y salida del callback {#heartbeat-refusals-and-callback-exit}
 
