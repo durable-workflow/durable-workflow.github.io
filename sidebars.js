@@ -95,6 +95,7 @@ const sidebars = {
           },
           items: [
             'features/signals',
+            'features/debouncing',
             'features/updates',
             'features/queries',
             'features/signal+timer',

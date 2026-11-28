@@ -168,7 +168,7 @@ Isso chama `POST /api/workflows/{workflowId}/signal/{signalName}` do Server usan
 
 Provedores repetem callbacks, e um erro de rede pode ocorrer após a admissão do sinal. Persista a chave da operação/evento e a intenção exata, deduplique na entrada do callback e no processamento de negócio e mantenha entregas incertas para reconciliação. O manipulador Python mantém o primeiro resultado por operação neste run; isso não garante deduplicação entre runs nem admissão única. Não marque um encaminhamento incerto como processado só porque a requisição foi enviada. No Server nativo 3.9.2 e posteriores, uma chave de comando de sinal torna o próprio encaminhamento seguro para repetir; consulte [repetir um callback encaminhado](#retry-a-forwarded-callback). Um cabeçalho de idempotência ou uma única tentativa de atividade, isoladamente, não garante efeitos externos únicos.
 
-Inicie o workflow antes que esta receita envie o trabalho. Em modo serviço, `start(use-existing)` seguido de `signal` são **duas operações**, sujeitas a uma corrida com o fechamento. No Server nativo 3.15.0 ou posterior, o [signal-with-start](./workflow-signals.md#signal-with-start) inicia ou reutiliza a execução e registra o sinal em uma única transação. O `signalWithStart` embutido é a API atômica do modo embarcado. A solicitação de debounce [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) foi substituída por esse requisito de produto, não concluída por esta receita.
+Inicie o workflow antes que esta receita envie o trabalho. Em modo serviço, `start(use-existing)` seguido de `signal` são **duas operações**, sujeitas a uma corrida com o fechamento. No Server nativo 3.15.0 ou posterior, o [signal-with-start](./workflow-signals.md#signal-with-start) inicia ou reutiliza a execução e registra o sinal em uma única transação. O `signalWithStart` embutido é a API atômica do modo embarcado.
 
 Um socket HTTP/SSE mantido dentro de uma atividade não é durável: perder o worker ou processo o encerra, ele ocupa um slot de atividade e a reconexão pode repetir ou perder eventos externos. Envio e callbacks continuam acrescentando histórico de atividade, sinal e espera; a execução não é gratuita nem ilimitada. Para **saída durável do workflow**, use [Workflow Streams](./workflow-streams.md) e seu contrato persistido de sequência/cursor, em vez de tratar uma conexão de transporte como armazenamento.
 
@@ -193,6 +193,16 @@ except SignalFailed as failed:
 ```
 
 `receipt["retained"]` é `True` quando um encaminhamento anterior com essa chave já foi admitido. `request_id_conflict` significa que a chave já identifica um sinal com argumentos diferentes, por exemplo quando um provedor enviou um resultado diferente para a mesma operação. `request_id_ambiguous` significa que a chave corresponde a uma identidade legada que o Server não consegue selecionar. Nenhuma das recusas registra algo, portanto não reenvie nenhuma delas sem alterações. Um recibo com `intent_verified` definido como `False` é uma admissão legada, não uma prova de que os argumentos deste encaminhamento correspondem a ela. A chave cobre somente a admissão; o manipulador do workflow acima continua mantendo o primeiro resultado por operação. Consulte [chaves de comando de sinais e atualizações](./server-api-reference.md#command-keys) para o contrato completo e as chamadas em PHP, Rust e CLI.
+
+## Agrupe revisões de uma entidade após um período de silêncio {#debounce-signals}
+
+Use [signal-with-start atômico](./workflow-signals.md#signal-with-start) com um ID de workflow estável e um sinal `changed(revision)` declarado e tipado. Preserve o ID da requisição e os argumentos originais nas novas tentativas, inclusive após a perda de uma resposta. O recibo confirma a admissão. Se uma instância encerrada precisar de outra execução, escolha explicitamente `start_new_run`.
+
+No workflow, acumule a maior revisão entregue que ainda não foi aplicada. Cada entrega inicia uma nova espera durável de condição com limite de tempo. Depois do período de silêncio, passe a revisão escolhida a uma atividade idempotente. Entregas posteriores ficam pendentes durante a atividade e entram no próximo lote. A política agrupa revisões intermediárias.
+
+Ao executar continue-as-new, leve a revisão aplicada e o estado pendente já consumido nos argumentos da sucessora. O Server nativo pode adiar a transição para entregar um sinal declarado que chegou durante a concessão da tarefa. Reproduza a tarefa resultante e inclua o novo estado ao preparar a continuação novamente. Uma nova admissão atômica então seleciona a sucessora atual.
+
+Reserve histórico para admissão, entrega, esperas, temporizadores e atividades. Limite entradas contínuas e valide o orçamento sob carga. Use uma chave como `(entidade, revisão)` para deduplicar efeitos externos no destino. Uma nova tentativa da atividade pode repetir uma solicitação após um efeito bem-sucedido. A [receita embarcada](../features/debouncing.md) mostra a implementação em Laravel.
 
 ## Limite tentativas e histórico {#bound-retries-and-history}
 

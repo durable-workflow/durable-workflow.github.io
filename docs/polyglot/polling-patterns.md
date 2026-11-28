@@ -168,7 +168,7 @@ This calls the Server's `POST /api/workflows/{workflowId}/signal/{signalName}` a
 
 Providers retry callbacks, and a network error can occur after signal admission. Persist your application operation/event key and exact intent, deduplicate at the callback boundary and in business processing, and retain unresolved deliveries for reconciliation. The Python handler keeps the first result per operation in this run; it is not a cross-run or once-only admission guarantee. Do not mark an uncertain forward as processed merely because the request was sent. On native Server 3.9.2 and later, a signal command key makes the forward itself safe to retry; see [retry a forwarded callback](#retry-a-forwarded-callback). A provider idempotency header or one activity attempt does not by itself guarantee once-only external effects.
 
-Start the workflow before this recipe submits work. Service `start(use-existing)` followed by `signal` is **two operations**, with a closure race. On native Server 3.15.0 or later, [signal-with-start](./workflow-signals.md#signal-with-start) starts or reuses the run and records the signal in one transaction. Embedded `signalWithStart` is the embedded atomic API. The debounce request [Website #280](https://github.com/durable-workflow/durable-workflow.github.io/issues/280) was superseded by that product requirement, not completed by this callback recipe.
+Start the workflow before this recipe submits work. Service `start(use-existing)` followed by `signal` is **two operations**, with a closure race. On native Server 3.15.0 or later, [signal-with-start](./workflow-signals.md#signal-with-start) starts or reuses the run and records the signal in one transaction. Embedded `signalWithStart` is the embedded atomic API.
 
 An HTTP/SSE socket held inside an activity is not durable: worker/process loss ends it, it occupies an activity slot, and reconnecting can replay or miss external events. Submission and callbacks still add activity, signal and wait history; this is not a free or unlimited execution. For durable **workflow output**, use [Workflow Streams](./workflow-streams.md) and their persisted sequence/cursor contract rather than treating a transport connection as storage.
 
@@ -193,6 +193,16 @@ except SignalFailed as failed:
 ```
 
 `receipt["retained"]` is `True` when an earlier forward under this key was already admitted. `request_id_conflict` means the key already names a signal with different arguments, for example a provider that sent a different result for the same operation. `request_id_ambiguous` means the key matches a legacy identity the Server cannot select. Neither refusal records anything, so do not resend either unchanged. A receipt with `intent_verified` set to `False` is a legacy admission, not proof that this forward's arguments match it. The key covers admission only; the workflow handler above still keeps the first result per operation. See [signal and update command keys](./server-api-reference.md#command-keys) for the full contract and the PHP, Rust and CLI calls.
+
+## Coalesce entity revisions after a quiet period {#debounce-signals}
+
+Use [atomic signal-with-start](./workflow-signals.md#signal-with-start) with a stable workflow ID and a declared, typed `changed(revision)` signal. Keep the request ID and original arguments across a retry, including when the reply is lost. The receipt confirms admission. Choose `start_new_run` explicitly if a terminal instance should receive a new execution.
+
+In the workflow, accumulate the maximum unapplied revision from delivered signals. Each new delivery starts a fresh durable timeout-backed condition wait. After the quiet period elapses, send the selected revision to an idempotent activity. Keep later deliveries pending while that activity runs so the next batch can consume them. This policy deliberately coalesces intermediate revisions.
+
+At continue-as-new, carry the applied revision and consumed pending state in the successor arguments. Native Server can defer the transition to deliver a declared signal received during the lease. Replay the resulting turn and include the new state when planning the continuation again. A new atomic intake then selects the current successor.
+
+Budget for admission, delivery, condition waits, timers and activities. A continuous burst can fill the history before the next timeout, so bound admitted inputs and validate the budget under load. Deduplicate external effects at the destination using an application key such as `(entity, revision)`. An activity retry can repeat an external request after a successful effect. See the [embedded recipe](../features/debouncing.md) for the Laravel implementation.
 
 ## Bound retries and history {#bound-retries-and-history}
 
